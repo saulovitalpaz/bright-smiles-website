@@ -1,73 +1,129 @@
-# Welcome to your Lovable project
+# Vitalité - Odontologia & Harmonização
 
-## Project info
+> Website institucional para o Núcleo Especializado em Odontologia e Harmonização Facial
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+[![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)](https://github.com)
+[![Stack](https://img.shields.io/badge/stack-React%20+%20Vite-blue)](https://vitejs.dev)
+[![Lovable](https://img.shields.io/badge/built%20with-Lovable-ff69b4)](https://lovable.dev)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 📋 Sobre o Projeto
 
-**Use Lovable**
+Website profissional para o consultório **Vitalité Odontologia & Harmonização**, localizado na Sala 206.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 👩‍⚕️ Profissionais
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Dra. Ana Karolina Vital da Paz** - CRO/MG 60.514
+- **Dra. Clara Lima de Souza** - CRO/MG 60.938
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🎯 Objetivos
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Público-Alvo Principal
+- Nova geração de pacientes (18-40 anos) que buscam informações em redes sociais
+- Usuários de TikTok e Instagram para descoberta de serviços
+- Pacientes que valorizam transparência e educação sobre procedimentos
 
-Follow these steps:
+### Funcionalidades Implementadas
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- [x] Landing page institucional responsiva
+- [x] Seção Hero com imagem do consultório
+- [x] Catálogo de tratamentos (Odontologia + Harmonização)
+- [x] Apresentação da equipe profissional
+- [x] Seção de contato com WhatsApp CTA
+- [x] Header com navegação suave
+- [x] Footer institucional
+- [x] SEO básico configurado
+- [x] Design system premium (dourado + elegante)
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🏗️ Stack Tecnológica
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+Frontend:     React 18 + TypeScript
+Build Tool:   Vite
+Estilização:  Tailwind CSS + shadcn/ui
+Hospedagem:   Lovable (Preview/Deploy)
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📦 Próximas Funcionalidades (A desenvolver)
 
-**Use GitHub Codespaces**
+### 🌐 Site Público
+- [ ] Páginas individuais de tratamentos
+- [ ] Blog com artigos educativos
+- [ ] Galeria de antes/depois
+- [ ] Formulário de contato
+- [ ] Integração Google Maps
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 📊 Marketing (Futuro)
+- [ ] Rastreamento UTM para campanhas
+- [ ] Integração com Google Analytics
+- [ ] Pixel do Facebook/Instagram
 
-## What technologies are used for this project?
+### 🔐 Área Administrativa (Futuro)
+- [ ] Painel de gestão de conteúdo
+- [ ] Sistema de leads
+- [ ] Relatórios de origem
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📝 Informações Pendentes
 
-## How can I deploy this project?
+Para completar o site, são necessárias as seguintes informações:
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+| Item | Status | Observação |
+|------|--------|------------|
+| Domínio | ❌ Pendente | Sugestão: vitaliteodonto.com.br |
+| Endereço completo | ❌ Pendente | Apenas "Sala 206" definido |
+| Telefone/WhatsApp | ❌ Pendente | Número com DDD |
+| Horário de atendimento | ⚠️ Placeholder | 8h-18h (confirmar) |
+| Instagram | ❌ Pendente | @ handle |
+| Fotos das profissionais | ❌ Pendente | Para seção equipe |
+| Fotos do consultório | ❌ Pendente | Para galeria |
+| Logo oficial | ⚠️ Em definição | Versões horizontal/vertical |
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## 🚀 Como Rodar Localmente
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```bash
+# Instalar dependências
+npm install
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+# Rodar em desenvolvimento
+npm run dev
+
+# Build para produção
+npm run build
+```
+
+---
+
+## 📁 Estrutura de Pastas
+
+```
+src/
+├── assets/              # Imagens e assets
+├── components/
+│   ├── layout/          # Header, Footer
+│   ├── sections/        # Hero, Services, Team, Contact
+│   └── ui/              # Componentes shadcn/ui
+├── hooks/               # Custom hooks
+├── lib/                 # Utilitários
+└── pages/               # Páginas da aplicação
+```
+
+---
+
+## 📄 Licença
+
+Projeto proprietário. Todos os direitos reservados.
+
+---
+
+*Desenvolvido com ❤️ para Vitalité Odontologia & Harmonização*
