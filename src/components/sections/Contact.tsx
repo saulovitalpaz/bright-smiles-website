@@ -1,10 +1,11 @@
-import { MapPin, Phone, Clock, Instagram, MessageCircle } from "lucide-react";
+import { MapPin, Phone, Clock, Instagram, MessageCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 const Contact = () => {
-  const whatsappNumber = "5500000000000"; // Placeholder - será atualizado com número real
-  const whatsappMessage = encodeURIComponent("Olá! Gostaria de agendar uma consulta na Vitalité.");
+  const whatsappNumber = "5533991219695";
+  const whatsappMessage = encodeURIComponent("Olá! Gostaria de agendar uma consulta no Núcleo Odontológico Especializado.");
+  const mapUrl = "https://maps.app.goo.gl/Lypy6vwy9pcBP2jg8";
 
   return (
     <section id="contato" className="section-padding bg-accent text-accent-foreground">
@@ -16,7 +17,7 @@ const Contact = () => {
               Entre em Contato
             </span>
             <h2 className="text-3xl md:text-4xl font-serif font-bold mt-2 mb-4">
-              Agende sua consulta
+              Venha nos conhecer
             </h2>
             <p className="text-accent-foreground/80 mb-8 max-w-md">
               Estamos prontos para cuidar do seu sorriso. Entre em contato pelo 
@@ -42,9 +43,17 @@ const Contact = () => {
                 <div>
                   <h4 className="font-medium text-accent-foreground">Localização</h4>
                   <p className="text-sm text-accent-foreground/70">
-                    Sala 206 - Endereço a definir<br />
-                    <span className="text-xs">(Endereço completo será adicionado)</span>
+                    2º andar, Sala 202
                   </p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-primary gap-1"
+                    onClick={() => window.open(mapUrl, '_blank')}
+                  >
+                    Ver no Google Maps
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
                 </div>
               </div>
 
@@ -66,41 +75,70 @@ const Contact = () => {
                   <Phone className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-accent-foreground">Telefone</h4>
+                  <h4 className="font-medium text-accent-foreground">WhatsApp</h4>
                   <p className="text-sm text-accent-foreground/70">
-                    (00) 0000-0000<br />
-                    <span className="text-xs">(Número a definir)</span>
+                    (33) 99121-9695
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Content - Social & Map Placeholder */}
+          {/* Right Content - Map & Social */}
           <div className="space-y-6">
             <Card className="overflow-hidden">
               <CardContent className="p-0">
-                {/* Map Placeholder */}
-                <div className="aspect-video bg-muted flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Mapa será adicionado após definição do endereço
-                    </p>
+                {/* Map Embed */}
+                <div className="aspect-video relative">
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3750.8!2d-41.5!3d-18.8!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTjCsDQ4JzAwLjAiUyA0McKwMzAnMDAuMCJX!5e0!3m2!1spt-BR!2sbr!4v1"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="absolute inset-0"
+                    title="Localização do Consultório"
+                  />
+                  {/* Fallback overlay with button */}
+                  <div className="absolute inset-0 bg-muted/90 flex items-center justify-center">
+                    <div className="text-center p-8">
+                      <MapPin className="w-12 h-12 text-primary mx-auto mb-4" />
+                      <p className="text-muted-foreground mb-4">
+                        Clique para ver a localização completa
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(mapUrl, '_blank')}
+                        className="gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Abrir no Google Maps
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Social Links */}
-            <div className="flex gap-4">
-              <Button variant="outline" className="flex-1 gap-2">
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => window.open('https://www.instagram.com/anav_paz', '_blank')}
+              >
                 <Instagram className="w-5 h-5" />
-                Instagram
+                @anav_paz
               </Button>
-              <Button variant="outline" className="flex-1 gap-2">
-                <MessageCircle className="w-5 h-5" />
-                WhatsApp
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => window.open('https://www.instagram.com/claraslima', '_blank')}
+              >
+                <Instagram className="w-5 h-5" />
+                @claraslima
               </Button>
             </div>
           </div>
