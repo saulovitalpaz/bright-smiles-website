@@ -9,7 +9,7 @@ const Hero = () => {
       <div className="absolute inset-0 z-0">
         <img
           src={heroImage}
-          alt="Consultório Vitalité - Ambiente moderno e acolhedor"
+          alt="Núcleo Odontológico Especializado - Ambiente moderno e acolhedor"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/40" />
@@ -33,34 +33,26 @@ const Hero = () => {
           {/* Subtitle */}
           <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed max-w-xl">
             Odontologia de alta qualidade e harmonização facial com tecnologia avançada 
-            e atendimento personalizado na Sala 206.
+            e atendimento personalizado.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button size="lg" className="gap-2 glow-gold">
+            <Button 
+              size="lg" 
+              className="gap-2 glow-gold"
+              onClick={() => document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' })}
+            >
               Agendar Consulta
               <ArrowRight className="w-5 h-5" />
             </Button>
-            <Button variant="outline" size="lg">
+            <Button 
+              variant="outline" 
+              size="lg"
+              onClick={() => document.getElementById('tratamentos')?.scrollIntoView({ behavior: 'smooth' })}
+            >
               Conhecer Tratamentos
             </Button>
-          </div>
-
-          {/* Trust Indicators */}
-          <div className="flex flex-wrap gap-8 mt-12 pt-8 border-t border-border">
-            <div>
-              <p className="text-2xl font-serif font-bold text-foreground">2+</p>
-              <p className="text-sm text-muted-foreground">Especialistas</p>
-            </div>
-            <div>
-              <p className="text-2xl font-serif font-bold text-foreground">CRO/MG</p>
-              <p className="text-sm text-muted-foreground">Registradas</p>
-            </div>
-            <div>
-              <p className="text-2xl font-serif font-bold text-foreground">100%</p>
-              <p className="text-sm text-muted-foreground">Atendimento Humanizado</p>
-            </div>
           </div>
         </div>
       </div>

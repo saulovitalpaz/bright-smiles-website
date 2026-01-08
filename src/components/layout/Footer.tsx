@@ -11,15 +11,15 @@ const Footer = () => {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center">
-                <span className="text-primary-foreground font-serif font-bold text-lg">V</span>
+                <span className="text-primary-foreground font-serif font-bold text-lg">N</span>
               </div>
               <div>
-                <h3 className="font-serif font-semibold text-foreground">Vitalité</h3>
-                <p className="text-xs text-muted-foreground">Odontologia & Harmonização</p>
+                <h3 className="font-serif font-semibold text-foreground">Núcleo Odontológico</h3>
+                <p className="text-xs text-muted-foreground">Especializado & Harmonização</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Núcleo Especializado em Odontologia e Harmonização Facial. 
+              Núcleo Odontológico Especializado & Harmonização. 
               Excelência no cuidado do seu sorriso.
             </p>
           </div>
@@ -36,6 +36,9 @@ const Footer = () => {
               </a>
               <a href="#equipe" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Nossa Equipe
+              </a>
+              <a href="#blog" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Blog
               </a>
               <a href="#contato" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Contato
@@ -62,7 +65,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} Vitalité Odontologia & Harmonização. Todos os direitos reservados.
+            © {currentYear} Núcleo Odontológico Especializado & Harmonização. Todos os direitos reservados.
           </p>
           <p className="text-sm text-muted-foreground flex items-center gap-1">
             Feito com <Heart className="w-4 h-4 text-primary" /> para seu sorriso

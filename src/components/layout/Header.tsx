@@ -9,6 +9,7 @@ const Header = () => {
     { label: "Início", href: "#inicio" },
     { label: "Tratamentos", href: "#tratamentos" },
     { label: "Equipe", href: "#equipe" },
+    { label: "Blog", href: "#blog" },
     { label: "Contato", href: "#contato" },
   ];
 
@@ -19,14 +20,14 @@ const Header = () => {
           {/* Logo */}
           <a href="#inicio" className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center">
-              <span className="text-primary-foreground font-serif font-bold text-lg">V</span>
+              <span className="text-primary-foreground font-serif font-bold text-lg">N</span>
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg font-serif font-semibold text-foreground leading-tight">
-                Vitalité
+                Núcleo Odontológico
               </h1>
               <p className="text-xs text-muted-foreground -mt-0.5">
-                Odontologia & Harmonização
+                Especializado & Harmonização
               </p>
             </div>
           </a>
@@ -46,7 +47,12 @@ const Header = () => {
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="default" size="sm" className="gap-2">
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' })}
+            >
               <Phone className="w-4 h-4" />
               Agendar Consulta
             </Button>
@@ -76,7 +82,14 @@ const Header = () => {
                   {item.label}
                 </a>
               ))}
-              <Button variant="default" className="mt-2 gap-2">
+              <Button 
+                variant="default" 
+                className="mt-2 gap-2"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 <Phone className="w-4 h-4" />
                 Agendar Consulta
               </Button>

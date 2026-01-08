@@ -1,5 +1,6 @@
-import { Award } from "lucide-react";
+import { Award, Instagram, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const team = [
   {
@@ -7,12 +8,16 @@ const team = [
     cro: "CRO/MG 60.514",
     specialty: "Cirurgiã-Dentista",
     description: "Especialista em harmonização orofacial e procedimentos estéticos com foco em resultados naturais.",
+    phone: "5533991219695",
+    instagram: "https://www.instagram.com/anav_paz",
   },
   {
     name: "Dra. Clara Lima de Souza",
     cro: "CRO/MG 60.938",
     specialty: "Cirurgiã-Dentista",
     description: "Especialista em odontologia restauradora e tratamentos de bruxismo com abordagem humanizada.",
+    phone: null,
+    instagram: "https://www.instagram.com/claraslima",
   },
 ];
 
@@ -29,7 +34,7 @@ const Team = () => {
             Profissionais dedicadas ao seu sorriso
           </h2>
           <p className="text-muted-foreground">
-            Conheça as especialistas que fazem parte do Núcleo de Odontologia Especializada, 
+            Conheça as especialistas que fazem parte do Núcleo Odontológico Especializado, 
             comprometidas com excelência e atendimento humanizado.
           </p>
         </div>
@@ -61,9 +66,33 @@ const Team = () => {
                     <span className="text-xs font-medium text-primary">{member.cro}</span>
                   </div>
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed">
+                <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                   {member.description}
                 </p>
+
+                {/* Social Links */}
+                <div className="flex gap-2">
+                  {member.phone && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => window.open(`https://wa.me/${member.phone}`, '_blank')}
+                    >
+                      <Phone className="w-4 h-4" />
+                      WhatsApp
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => window.open(member.instagram, '_blank')}
+                  >
+                    <Instagram className="w-4 h-4" />
+                    Instagram
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
