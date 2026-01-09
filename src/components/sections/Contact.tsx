@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 const Contact = () => {
   const whatsappNumber = "5533991219695";
   const whatsappMessage = encodeURIComponent("Olá! Gostaria de agendar uma consulta no Núcleo Odontológico Especializado.");
-  const mapUrl = "https://maps.app.goo.gl/Lypy6vwy9pcBP2jg8";
+  const mapUrl = "https://maps.app.goo.gl/chx7grgranKEyPhP8";
 
   return (
     <section id="contato" className="section-padding bg-accent text-accent-foreground">
@@ -20,13 +20,13 @@ const Contact = () => {
               Venha nos conhecer
             </h2>
             <p className="text-accent-foreground/80 mb-8 max-w-md">
-              Estamos prontos para cuidar do seu sorriso. Entre em contato pelo 
+              Estamos prontos para cuidar do seu sorriso. Entre em contato pelo
               WhatsApp para um atendimento rápido e personalizado.
             </p>
 
             {/* WhatsApp CTA */}
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="gap-2 mb-8"
               onClick={() => window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank')}
             >
@@ -43,7 +43,7 @@ const Contact = () => {
                 <div>
                   <h4 className="font-medium text-accent-foreground">Localização</h4>
                   <p className="text-sm text-accent-foreground/70">
-                    2º andar, Sala 202
+                    Rua Barão do Rio Branco, 461 - Sala 202
                   </p>
                   <Button
                     variant="link"
@@ -124,16 +124,16 @@ const Contact = () => {
 
             {/* Social Links */}
             <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="gap-2"
                 onClick={() => window.open('https://www.instagram.com/anav_paz', '_blank')}
               >
                 <Instagram className="w-5 h-5" />
                 @anav_paz
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="gap-2"
                 onClick={() => window.open('https://www.instagram.com/claraslima', '_blank')}
               >

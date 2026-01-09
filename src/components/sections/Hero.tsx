@@ -21,33 +21,33 @@ const Hero = () => {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Núcleo Especializado</span>
+            <span className="text-sm font-medium text-primary">Governador Valadares - MG</span>
           </div>
 
           {/* Heading */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground leading-tight mb-6">
-            Seu sorriso merece{" "}
+            Núcleo Odontológico: Seu sorriso merece{" "}
             <span className="text-gold">excelência</span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed max-w-xl">
-            Odontologia de alta qualidade e harmonização facial com tecnologia avançada 
+            Odontologia de alta qualidade e harmonização facial com tecnologia avançada
             e atendimento personalizado.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="gap-2 glow-gold"
               onClick={() => document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Agendar Consulta
               <ArrowRight className="w-5 h-5" />
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="lg"
               onClick={() => document.getElementById('tratamentos')?.scrollIntoView({ behavior: 'smooth' })}
             >

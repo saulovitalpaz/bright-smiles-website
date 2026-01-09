@@ -1,66 +1,89 @@
 import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+  const isHome = location.pathname === "/";
 
   const navItems = [
-    { label: "Início", href: "#inicio" },
-    { label: "Tratamentos", href: "#tratamentos" },
-    { label: "Equipe", href: "#equipe" },
-    { label: "Blog", href: "#blog" },
-    { label: "Contato", href: "#contato" },
+    { label: "Início", href: isHome ? "#inicio" : "/#inicio" },
+    { label: "Tratamentos", href: isHome ? "#tratamentos" : "/#tratamentos" },
+    { label: "Equipe", href: isHome ? "#equipe" : "/#equipe" },
+    { label: "Blog", href: "/blog" },
+    { label: "Contato", href: isHome ? "#contato" : "/#contato" },
   ];
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
-          <a href="#inicio" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center">
-              <span className="text-primary-foreground font-serif font-bold text-lg">N</span>
+        <div className="flex items-center justify-between h-16 md:h-24 transition-all duration-300">
+          {/* Logo with Image */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden">
+              <img
+                src="/images/Logo.JPG"
+                alt="Logo Núcleo Odontológico"
+                className="w-full h-full object-contain transition-transform group-hover:scale-105"
+              />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-serif font-semibold text-foreground leading-tight">
+              <h1 className="text-lg md:text-xl font-serif font-bold text-foreground leading-tight">
                 Núcleo Odontológico
               </h1>
-              <p className="text-xs text-muted-foreground -mt-0.5">
+              <p className="text-xs md:text-sm text-primary font-medium tracking-wider uppercase">
                 Especializado & Harmonização
               </p>
             </div>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-8">
             {navItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {item.label}
-              </a>
+              item.href.startsWith('/') ? (
+                <Link
+                  key={item.label}
+                  to={item.href}
+                  className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest"
+                >
+                  {item.label}
+                </a>
+              )
             ))}
           </nav>
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center gap-4">
-            <Button 
-              variant="default" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' })}
+            <Button
+              variant="default"
+              size="lg"
+              className="gap-2 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all font-bold"
+              onClick={() => {
+                if (isHome) {
+                  document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  window.location.href = '/#agendamento';
+                }
+              }}
             >
               <Phone className="w-4 h-4" />
-              Agendar Consulta
+              Agendar
             </Button>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-foreground"
+            className="lg:hidden p-2 text-foreground"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -70,29 +93,46 @@ const Header = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
-            <nav className="flex flex-col gap-4">
+          <div className="lg:hidden py-6 border-t border-border bg-background animate-in slide-in-from-top-4 duration-300">
+            <nav className="flex flex-col gap-6 ">
               {navItems.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="text-base font-medium text-foreground hover:text-primary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.label}
-                </a>
+                item.href.startsWith('/') ? (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className="text-lg font-bold text-foreground hover:text-primary transition-colors uppercase tracking-widest px-4"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    className="text-lg font-bold text-foreground hover:text-primary transition-colors uppercase tracking-widest px-4"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                )
               ))}
-              <Button 
-                variant="default" 
-                className="mt-2 gap-2"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                <Phone className="w-4 h-4" />
-                Agendar Consulta
-              </Button>
+              <div className="px-4">
+                <Button
+                  variant="default"
+                  className="w-full gap-2 h-12 text-lg font-bold"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    if (isHome) {
+                      document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      window.location.href = '/#agendamento';
+                    }
+                  }}
+                >
+                  <Phone className="w-5 h-5" />
+                  Agendar Consulta
+                </Button>
+              </div>
             </nav>
           </div>
         )}

@@ -1,46 +1,11 @@
-import { Smile, Syringe, Shield, Sparkles, Heart, Sun } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-const services = [
-  {
-    icon: Shield,
-    title: "Bruxismo",
-    description: "Tratamento especializado para ranger de dentes com placas personalizadas e acompanhamento.",
-    category: "Odontologia"
-  },
-  {
-    icon: Smile,
-    title: "Implantes Dentários",
-    description: "Reposição de dentes perdidos com técnicas modernas e resultados naturais.",
-    category: "Odontologia"
-  },
-  {
-    icon: Heart,
-    title: "Próteses",
-    description: "Soluções em próteses fixas e removíveis para recuperar sua autoestima.",
-    category: "Odontologia"
-  },
-  {
-    icon: Syringe,
-    title: "Toxina Botulínica",
-    description: "Harmonização facial com aplicação precisa para resultados naturais e sutis.",
-    category: "Harmonização"
-  },
-  {
-    icon: Sparkles,
-    title: "Preenchimento Labial",
-    description: "Volume e contorno labial com ácido hialurônico de alta qualidade.",
-    category: "Harmonização"
-  },
-  {
-    icon: Sun,
-    title: "Bioestimuladores",
-    description: "Rejuvenescimento natural através da estimulação de colágeno.",
-    category: "Harmonização"
-  },
-];
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { treatments } from "@/data/treatments";
+import * as LucideIcons from "lucide-react";
 
 const Services = () => {
+  const navigate = useNavigate();
+
   return (
     <section id="tratamentos" className="section-padding bg-card">
       <div className="container mx-auto">
@@ -53,36 +18,48 @@ const Services = () => {
             Especialidades que transformam
           </h2>
           <p className="text-muted-foreground">
-            Oferecemos tratamentos odontológicos completos e procedimentos de 
+            Oferecemos tratamentos odontológicos completos e procedimentos de
             harmonização facial realizados por profissionais experientes.
           </p>
         </div>
 
         {/* Services Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service, index) => (
-            <Card 
-              key={index}
-              className="group hover:border-primary/30 transition-all duration-300 hover:shadow-lg"
-            >
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <service.icon className="w-6 h-6 text-primary" />
+          {treatments.map((service, index) => {
+            return (
+              <Card
+                key={index}
+                className="group hover:border-primary/30 transition-all duration-300 hover:shadow-lg overflow-hidden cursor-pointer flex flex-col"
+                onClick={() => navigate(`/tratamentos/${service.slug}`)}
+              >
+                <div className="aspect-[16/9] overflow-hidden bg-secondary/10 p-4">
+                  <img
+                    src={service.image}
+                    alt={service.title}
+                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                  />
                 </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
-                    {service.category}
+                <CardHeader className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-primary font-bold">
+                      {service.category}
+                    </span>
+                  </div>
+                  <CardTitle className="font-serif group-hover:text-primary transition-colors">
+                    {service.title}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-3">
+                    {service.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <span className="text-sm font-medium text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                    Saiba mais <LucideIcons.ArrowRight className="w-4 h-4" />
                   </span>
-                </div>
-                <CardTitle className="font-serif text-xl">{service.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base">
-                  {service.description}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </section>

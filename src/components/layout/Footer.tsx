@@ -9,17 +9,21 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-full gradient-gold flex items-center justify-center">
-                <span className="text-primary-foreground font-serif font-bold text-lg">N</span>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-16 h-16 flex items-center justify-center overflow-hidden">
+                <img
+                  src="/images/Logo.JPG"
+                  alt="Logo Núcleo Odontológico"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
-                <h3 className="font-serif font-semibold text-foreground">Núcleo Odontológico</h3>
-                <p className="text-xs text-muted-foreground">Especializado & Harmonização</p>
+                <h3 className="font-serif font-semibold text-foreground text-lg">Núcleo Odontológico</h3>
+                <p className="text-xs text-primary font-medium uppercase tracking-wider">Especializado & Harmonização</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Núcleo Odontológico Especializado & Harmonização. 
+              Núcleo Odontológico Especializado & Harmonização.
               Excelência no cuidado do seu sorriso.
             </p>
           </div>

@@ -5,6 +5,7 @@ import Team from "@/components/sections/Team";
 import Blog from "@/components/sections/Blog";
 import AppointmentForm from "@/components/sections/AppointmentForm";
 import Contact from "@/components/sections/Contact";
+import Feedback from "@/components/sections/Feedback";
 import Footer from "@/components/layout/Footer";
 
 const Index = () => {
@@ -18,6 +19,7 @@ const Index = () => {
         <Blog />
         <AppointmentForm />
         <Contact />
+        <Feedback />
       </main>
       <Footer />
     </div>

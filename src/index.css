@@ -3,13 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Vitalité Odontologia & Harmonização - Design System
+/* Núcleo Odontológico Especializado & Harmonização - Design System
    All colors MUST be HSL. Premium dental clinic theme with gold accents.
 */
 
 @layer base {
   :root {
-    /* Vitalité - Tema Elegante Claro */
+    /* Núcleo Odontológico - Tema Elegante Claro */
     --background: 30 10% 96%;
     --foreground: 30 15% 15%;
 
@@ -80,7 +80,7 @@
   }
 
   .dark {
-    /* Vitalité - Tema Elegante Escuro (Premium) */
+    /* Núcleo Odontológico - Tema Elegante Escuro (Premium) */
     --background: 30 15% 10%;
     --foreground: 30 10% 95%;
 
@@ -145,7 +145,12 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-serif tracking-tight;
   }
 }
