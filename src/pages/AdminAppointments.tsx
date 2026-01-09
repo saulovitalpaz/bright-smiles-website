@@ -5,12 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, History, User, Stethoscope } from "lucide-react";
+import { Plus, History, User, Stethoscope, Search, CreditCard, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Link, useNavigate } from "react-router-dom";
+import { FileSignature, ArrowRight } from "lucide-react";
 
 interface AppointmentRecord {
     id: number;
     patientName: string;
+    cpf?: string;
     date: string;
     procedure: string;
     notes: string;
@@ -21,6 +32,9 @@ const AdminAppointments = () => {
     const [patientName, setPatientName] = useState("");
     const [procedure, setProcedure] = useState("");
     const [notes, setNotes] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedRecord, setSelectedRecord] = useState<AppointmentRecord | null>(null);
+    const navigate = useNavigate();
 
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional" };
@@ -29,6 +43,7 @@ const AdminAppointments = () => {
         {
             id: 1,
             patientName: "João Silva",
+            cpf: "987.654.321-00",
             date: "2023-10-24",
             procedure: "Limpeza e Clareamento",
             notes: "Paciente relatou sensibilidade. Aplicado dessensibilizante.",
@@ -37,6 +52,7 @@ const AdminAppointments = () => {
         {
             id: 2,
             patientName: "Maria Oliveira",
+            cpf: "123.456.789-00",
             date: "2023-10-23",
             procedure: "Harmonização Facial - Preenchimento",
             notes: "Retorno em 15 dias para avaliação.",
@@ -62,102 +78,243 @@ const AdminAppointments = () => {
         toast.success("Histórico de atendimento registrado!");
     };
 
+    const filteredAppointments = appointments.filter(record =>
+        record.patientName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <AdminLayout title="Atendimentos & Consultas">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <Card className="border-slate-100 shadow-sm">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                <Stethoscope size={20} />
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Atendimentos</p>
+                                <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
                 {/* Form to add new record */}
                 <div className="lg:col-span-1">
-                    <Card className="border-slate-200 shadow-sm sticky top-8">
-                        <CardHeader>
+                    <Card className="border-slate-200 shadow-sm">
+                        <CardHeader className="pb-4">
                             <CardTitle className="text-xl font-serif">Novo Registro</CardTitle>
-                            <CardDescription>Insira os detalhes do atendimento realizado.</CardDescription>
+                            <CardDescription className="text-xs">Insira os detalhes do atendimento.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleAddRecord} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="patient">Paciente</Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="patient" className="text-xs font-bold uppercase text-slate-500">Paciente</Label>
                                     <Input
                                         id="patient"
                                         placeholder="Nome completo"
+                                        className="h-9 text-sm"
                                         value={patientName}
                                         onChange={(e) => setPatientName(e.target.value)}
                                         required
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="procedure">Procedimento</Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="procedure" className="text-xs font-bold uppercase text-slate-500">Procedimento</Label>
                                     <Input
                                         id="procedure"
-                                        placeholder="Ex: Harmonização, Canal, etc"
+                                        placeholder="Ex: Harmonização"
+                                        className="h-9 text-sm"
                                         value={procedure}
                                         onChange={(e) => setProcedure(e.target.value)}
                                         required
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="notes">Notas Clínicas</Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="notes" className="text-xs font-bold uppercase text-slate-500">Notas Clínicas</Label>
                                     <Textarea
                                         id="notes"
-                                        placeholder="Detalhes técnicos, observações e plano futuro..."
-                                        className="min-h-[120px]"
+                                        placeholder="Detalhes técnicos..."
+                                        className="min-h-[100px] text-sm"
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
                                         required
                                     />
                                 </div>
-                                <Button type="submit" className="w-full gap-2">
-                                    <Plus size={18} />
-                                    Registrar Atendimento
+                                <Button type="submit" className="w-full gap-2 h-9 text-sm font-bold">
+                                    <Plus size={16} />
+                                    Registrar
                                 </Button>
                             </form>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* History list */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-serif font-bold text-slate-900">Histórico Recente</h2>
-                        <div className="flex gap-2">
-                            <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full border border-slate-200 font-medium">
-                                Total: {appointments.length}
-                            </span>
+                {/* Main History Area */}
+                <div className="lg:col-span-3 space-y-6">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h2 className="text-2xl font-serif font-bold text-slate-900">Histórico de Atendimentos</h2>
+                                <p className="text-sm text-slate-500">Consulte e filtre registros anteriores.</p>
+                            </div>
+                            <div className="relative w-full md:w-72">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <Input
+                                    placeholder="Pesquisar por nome..."
+                                    className="pl-10 h-10 border-slate-200 focus:ring-primary/20"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-4">
-                        {appointments.map((record) => (
-                            <Card key={record.id} className="border-slate-200 hover:border-primary/30 transition-all shadow-sm">
-                                <CardContent className="p-6">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                                <User size={20} />
+                        <div className="divide-y divide-slate-100">
+                            {filteredAppointments.length > 0 ? (
+                                filteredAppointments.map((record) => (
+                                    <div key={record.id} className="py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-4 -mx-4">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
+                                                    <User size={24} />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-900 text-lg leading-tight">{record.patientName}</h3>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                                                            <History size={12} />
+                                                            {record.date}
+                                                        </span>
+                                                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-slate-200">
+                                                            {record.professional}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h3 className="font-bold text-slate-900">{record.patientName}</h3>
-                                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                    <History size={12} />
-                                                    {record.date}
-                                                </p>
-                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-xs font-bold text-primary hover:text-primary hover:bg-primary/5"
+                                                onClick={() => setSelectedRecord(record)}
+                                            >
+                                                Ver Detalhes
+                                            </Button>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded-full font-bold uppercase tracking-wider">
-                                                {record.professional}
-                                            </span>
+                                        <div className="bg-[#fcfdfd] p-5 rounded-2xl border border-slate-100 ml-16 cursor-pointer hover:border-primary/20 transition-all" onClick={() => setSelectedRecord(record)}>
+                                            <p className="text-xs font-bold text-primary mb-2 uppercase tracking-widest">{record.procedure}</p>
+                                            <p className="text-slate-600 leading-relaxed text-sm italic">"{record.notes}"</p>
                                         </div>
                                     </div>
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                        <p className="text-sm font-bold text-primary mb-1 uppercase tracking-tight">{record.procedure}</p>
-                                        <p className="text-sm text-slate-600 leading-relaxed italic">"{record.notes}"</p>
+                                ))
+                            ) : (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                        <Search size={32} />
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                    <p className="text-slate-500 font-medium">Nenhum paciente encontrado com "{searchTerm}"</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Record Details Dialog */}
+            <Dialog open={!!selectedRecord} onOpenChange={(open) => !open && setSelectedRecord(null)}>
+                <DialogContent className="max-w-2xl bg-white rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <div className="bg-primary p-8 text-white relative">
+                        <DialogHeader>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                                    <User size={28} />
+                                </div>
+                                <div className="text-left">
+                                    <DialogTitle className="text-2xl font-serif font-bold leading-none">{selectedRecord?.patientName}</DialogTitle>
+                                    <p className="text-xs font-bold text-white/70 uppercase tracking-widest mt-2">{selectedRecord?.procedure}</p>
+                                </div>
+                            </div>
+                        </DialogHeader>
+                    </div>
+
+                    <div className="p-8 space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">CPF do Paciente</Label>
+                                <div className="relative">
+                                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <Input
+                                        defaultValue={selectedRecord?.cpf}
+                                        className="pl-10 font-mono font-bold text-slate-700 bg-slate-50 border-slate-100 focus:border-primary transition-all"
+                                        placeholder="000.000.000-00"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Data do Atendimento</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <Input value={selectedRecord?.date} disabled className="pl-10 bg-slate-50/50 border-slate-100 font-bold text-slate-600" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Notas Clínicas Detalhadas</Label>
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 min-h-[120px] relative transition-all hover:bg-white hover:shadow-inner">
+                                <p className="text-slate-800 leading-relaxed italic">"{selectedRecord?.notes}"</p>
+                                <div className="mt-6 pt-4 border-t border-slate-200">
+                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Anotações Adicionais</Label>
+                                    <Textarea
+                                        placeholder="Inserir novas observações para este atendimento..."
+                                        className="mt-2 border-none bg-transparent shadow-none focus-visible:ring-0 p-0 text-sm italic text-slate-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => navigate(`/admin/prescricao?cpf=${selectedRecord?.cpf}`)}
+                                className="group flex flex-col items-start p-6 rounded-2xl bg-[#0f172a] text-white hover:bg-[#1a2b4b] transition-all text-left shadow-lg shadow-slate-900/10"
+                            >
+                                <div className="p-2 bg-white/10 rounded-lg mb-4 text-primary">
+                                    <FileSignature size={20} />
+                                </div>
+                                <span className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">Prescrição</span>
+                                <span className="font-serif font-bold text-lg flex items-center gap-2">
+                                    Emitir Receita <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                </span>
+                            </button>
+
+                            <button
+                                onClick={() => navigate("/admin/prescricao")}
+                                className="group flex flex-col items-start p-6 rounded-2xl bg-white border border-slate-100 highlight-gold hover:bg-primary/5 hover:border-primary/20 transition-all text-left"
+                            >
+                                <div className="p-2 bg-primary/10 rounded-lg mb-4 text-primary">
+                                    <History size={20} />
+                                </div>
+                                <span className="text-xs font-bold text-primary/60 uppercase tracking-widest mb-1">Histórico Facial</span>
+                                <span className="font-serif font-bold text-lg text-slate-900 flex items-center gap-2">
+                                    Ver receitas <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="bg-slate-50 p-4 border-t border-slate-100">
+                        <div className="flex justify-between items-center w-full px-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                                Responsável: {selectedRecord?.professional}
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} className="text-[10px] font-black uppercase">Fechar</Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </AdminLayout>
     );
 };

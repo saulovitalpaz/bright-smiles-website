@@ -27,6 +27,9 @@ const AppointmentForm = () => {
     phone: "",
     treatment: "",
     message: "",
+    ageRange: "",
+    gender: "",
+    location: "",
   });
 
   const handleChange = (
@@ -38,7 +41,7 @@ const AppointmentForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!formData.name.trim() || !formData.phone.trim()) {
       toast({
@@ -73,7 +76,16 @@ const AppointmentForm = () => {
     });
 
     setIsSubmitting(false);
-    setFormData({ name: "", email: "", phone: "", treatment: "", message: "" });
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      treatment: "",
+      message: "",
+      ageRange: "",
+      gender: "",
+      location: ""
+    });
   };
 
   return (
@@ -132,6 +144,47 @@ const AppointmentForm = () => {
                   />
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ageRange">Faixa Etária</Label>
+                    <Select
+                      value={formData.ageRange}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, ageRange: value }))
+                      }
+                    >
+                      <SelectTrigger id="ageRange">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="18-24">18-24 anos</SelectItem>
+                        <SelectItem value="25-34">25-34 anos</SelectItem>
+                        <SelectItem value="35-44">35-44 anos</SelectItem>
+                        <SelectItem value="45-54">45-54 anos</SelectItem>
+                        <SelectItem value="55+">55+ anos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gênero</Label>
+                    <Select
+                      value={formData.gender}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, gender: value }))
+                      }
+                    >
+                      <SelectTrigger id="gender">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="feminino">Feminino</SelectItem>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="outro">Outro / Prefer não informar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="treatment">Tratamento de interesse</Label>
                   <Select
@@ -140,7 +193,7 @@ const AppointmentForm = () => {
                       setFormData((prev) => ({ ...prev, treatment: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="treatment">
                       <SelectValue placeholder="Selecione um tratamento" />
                     </SelectTrigger>
                     <SelectContent>

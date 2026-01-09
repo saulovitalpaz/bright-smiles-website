@@ -16,6 +16,11 @@ import AdminLeads from "./pages/AdminLeads";
 import AdminComments from "./pages/AdminComments";
 import AdminAppointments from "./pages/AdminAppointments";
 import AdminStories from "./pages/AdminStories";
+import AdminFinance from "./pages/AdminFinance";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminPrescription from "./pages/AdminPrescription";
+import AdminDigitalGuide from "./pages/AdminDigitalGuide";
+import AdminDocuments from "./pages/AdminDocuments";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +43,11 @@ const App = () => (
           <Route path="/admin/comentarios" element={<AdminComments />} />
           <Route path="/admin/consultas" element={<AdminAppointments />} />
           <Route path="/admin/stories" element={<AdminStories />} />
+          <Route path="/admin/finance" element={<AdminFinance />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/prescricao" element={<AdminPrescription />} />
+          <Route path="/admin/digital-guide" element={<AdminDigitalGuide />} />
+          <Route path="/admin/documentos" element={<AdminDocuments />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
