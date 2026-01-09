@@ -24,16 +24,16 @@ const Header = () => {
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden">
               <img
-                src="/images/Logo.JPG"
+                src="/images/logo oficial.png"
                 alt="Logo Núcleo Odontológico"
-                className="w-full h-full object-contain transition-transform group-hover:scale-105"
+                className="w-full h-full object-contain transition-transform group-hover:scale-105 rounded-full shadow-sm border border-border/50"
               />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg md:text-xl font-serif font-bold text-foreground leading-tight">
                 Núcleo Odontológico
               </h1>
-              <p className="text-xs md:text-sm text-primary font-medium tracking-wider uppercase">
+              <p className="text-xs md:text-sm text-foreground font-medium tracking-wider uppercase opacity-80">
                 Especializado & Harmonização
               </p>
             </div>

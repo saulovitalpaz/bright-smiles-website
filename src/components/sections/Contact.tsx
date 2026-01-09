@@ -43,7 +43,7 @@ const Contact = () => {
                 <div>
                   <h4 className="font-medium text-accent-foreground">Localização</h4>
                   <p className="text-sm text-accent-foreground/70">
-                    Rua Barão do Rio Branco, 461 - Sala 202
+                    Rua Barão do Rio Branco, 461 - Sala 206
                   </p>
                   <Button
                     variant="link"

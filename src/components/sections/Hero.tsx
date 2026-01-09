@@ -25,9 +25,12 @@ const Hero = () => {
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground leading-tight mb-6">
-            Núcleo Odontológico: Seu sorriso merece{" "}
-            <span className="text-gold">excelência</span>
+          <h1 className="text-4xl md:text-5xl lg:text-5xl font-serif font-bold text-foreground leading-tight mb-6">
+            Núcleo Odontológico: <br />
+            <span className="text-gold">
+              Excelência em Sorriso & <br />
+              Harmonização Facial
+            </span>
           </h1>
 
           {/* Subtitle */}
