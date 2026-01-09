@@ -21,7 +21,7 @@ const team = [
     phone: null,
     instagram: "https://www.instagram.com/claraslima",
     image: "/images/profissionais/Clara Lima.jpg",
-    objectPosition: "top" // Specific positioning for Dra. Clara
+    objectPosition: "top"
   },
 ];
 
@@ -30,21 +30,21 @@ const Team = () => {
 
   return (
     <section id="equipe" className="section-padding relative overflow-hidden bg-background">
-      {/* Background Image with Transparency - Isolated in a separate div */}
+      {/* Background Image with Transparency */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
         style={{
           backgroundImage: 'url("/images/profissionais/Ana Karolina e Clara.jpg")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: 0.15, // Low opacity as requested
+          opacity: 0.1,
           mixBlendMode: 'multiply'
         }}
       />
 
-      <div className="container mx-auto relative z-10">
+      <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-sm font-medium text-primary uppercase tracking-wider">
             Nossa Equipe
           </span>
@@ -58,11 +58,11 @@ const Team = () => {
         </div>
 
         {/* Team Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-5xl mx-auto">
           {team.map((member, index) => (
-            <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/90 backdrop-blur-md shadow-xl border-border/50">
+            <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/95 backdrop-blur-md shadow-lg border-border/50">
               <div
-                className="aspect-[4/5] bg-muted relative overflow-hidden cursor-pointer"
+                className="aspect-[3/4] bg-muted relative overflow-hidden cursor-pointer"
                 onClick={() => setSelectedImage(member.image)}
               >
                 <img
@@ -71,28 +71,28 @@ const Team = () => {
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   style={{ objectPosition: member.objectPosition || 'center' }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-70" />
 
                 {/* Zoom Icon Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                  <Maximize2 className="w-10 h-10 text-white drop-shadow-lg" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/20">
+                  <Maximize2 className="w-10 h-10 text-foreground drop-shadow-lg" />
                 </div>
               </div>
 
-              <CardContent className="pt-6 relative">
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div>
-                    <h3 className="font-serif text-xl font-semibold text-foreground">
+              <CardContent className="p-5 lg:p-6">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <h3 className="font-serif text-lg lg:text-xl font-semibold text-foreground truncate">
                       {member.name}
                     </h3>
-                    <p className="text-sm text-primary font-medium tracking-wide">{member.specialty}</p>
+                    <p className="text-sm text-primary font-medium">{member.specialty}</p>
                   </div>
                   <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 flex-shrink-0">
                     <Award className="w-3 h-3 text-primary" />
-                    <span className="text-[10px] font-bold text-primary">{member.cro}</span>
+                    <span className="text-[10px] font-bold text-primary whitespace-nowrap">{member.cro}</span>
                   </div>
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed mb-6 font-medium">
+                <p className="text-muted-foreground text-sm leading-relaxed mb-5 line-clamp-3">
                   {member.description}
                 </p>
 
@@ -101,8 +101,8 @@ const Team = () => {
                     <Button
                       variant="default"
                       size="sm"
-                      className="gap-1 flex-1 sm:flex-none font-bold"
-                      onClick={() => window.open(`https://wa.me/${member.phone}`, '_blank')}
+                      className="gap-1 flex-1 font-semibold"
+                      onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${member.phone}`, '_blank'); }}
                     >
                       <Phone className="w-4 h-4" />
                       WhatsApp
@@ -111,8 +111,8 @@ const Team = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1 flex-1 sm:flex-none font-bold"
-                    onClick={() => window.open(member.instagram, '_blank')}
+                    className="gap-1 flex-1 font-semibold"
+                    onClick={(e) => { e.stopPropagation(); window.open(member.instagram, '_blank'); }}
                   >
                     <Instagram className="w-4 h-4" />
                     Instagram
@@ -127,16 +127,16 @@ const Team = () => {
       {/* Lightbox / Zoom Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-300"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 p-4 animate-in fade-in duration-300"
           onClick={() => setSelectedImage(null)}
         >
           <button
-            className="absolute top-6 right-6 text-white hover:text-primary transition-colors p-2"
+            className="absolute top-6 right-6 text-foreground hover:text-primary transition-colors p-2"
             onClick={() => setSelectedImage(null)}
           >
             <X className="w-8 h-8" />
           </button>
-          <div className="max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border-2 border-primary/20 shadow-2xl">
+          <div className="max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl border border-primary/20 shadow-2xl">
             <img
               src={selectedImage}
               alt="Professional Zoom"

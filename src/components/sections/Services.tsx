@@ -1,16 +1,18 @@
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { treatments } from "@/data/treatments";
-import * as LucideIcons from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const Services = () => {
-  const navigate = useNavigate();
+  // Show only first 6 treatments on homepage
+  const displayedTreatments = treatments.slice(0, 6);
 
   return (
     <section id="tratamentos" className="section-padding bg-card">
-      <div className="container mx-auto">
+      <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-sm font-medium text-primary uppercase tracking-wider">
             Nossos Tratamentos
           </span>
@@ -24,42 +26,44 @@ const Services = () => {
         </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {treatments.map((service, index) => {
-            return (
-              <Card
-                key={index}
-                className="group hover:border-primary/30 transition-all duration-300 hover:shadow-lg overflow-hidden cursor-pointer flex flex-col"
-                onClick={() => navigate(`/tratamentos/${service.slug}`)}
-              >
-                <div className="aspect-[16/9] overflow-hidden bg-secondary/10 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          {displayedTreatments.map((service) => (
+            <Link key={service.slug} to={`/tratamentos/${service.slug}`} className="group h-full">
+              <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-300 flex flex-col">
+                <div className="aspect-[4/3] overflow-hidden bg-secondary/5">
                   <img
                     src={service.image}
                     alt={service.title}
-                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-                <CardHeader className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] uppercase tracking-widest text-primary font-bold">
-                      {service.category}
-                    </span>
-                  </div>
-                  <CardTitle className="font-serif group-hover:text-primary transition-colors">
+                <CardContent className="p-5 flex flex-col flex-grow">
+                  <span className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">
+                    {service.category}
+                  </span>
+                  <h3 className="font-serif text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                     {service.title}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-3">
+                  </h3>
+                  <p className="text-muted-foreground text-sm line-clamp-2 mb-4 flex-grow">
                     {service.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <span className="text-sm font-medium text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                    Saiba mais <LucideIcons.ArrowRight className="w-4 h-4" />
+                  </p>
+                  <span className="text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+                    Saiba mais <ArrowRight className="w-4 h-4" />
                   </span>
                 </CardContent>
               </Card>
-            );
-          })}
+            </Link>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="text-center mt-12">
+          <Link to="/tratamentos">
+            <Button variant="outline" size="lg" className="gap-2">
+              Ver todos os tratamentos
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
