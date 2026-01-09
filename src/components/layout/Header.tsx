@@ -9,8 +9,8 @@ const Header = () => {
   const isHome = location.pathname === "/";
 
   const navItems = [
-    { label: "Início", href: isHome ? "#inicio" : "/#inicio" },
-    { label: "Tratamentos", href: isHome ? "#tratamentos" : "/#tratamentos" },
+    { label: "Início", href: "/" },
+    { label: "Tratamentos", href: "/tratamentos" },
     { label: "Equipe", href: isHome ? "#equipe" : "/#equipe" },
     { label: "Blog", href: "/blog" },
     { label: "Contato", href: isHome ? "#contato" : "/#contato" },

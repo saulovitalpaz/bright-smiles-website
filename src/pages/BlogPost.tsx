@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Clock, Share2, ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
+import { ArrowLeft, User, Clock, Share2, ChevronLeft, ChevronRight, Maximize2, X, BookOpen, ExternalLink } from "lucide-react";
 import { blogPosts } from "@/data/posts";
 import { useState } from "react";
 
@@ -139,6 +139,46 @@ const BlogPost = () => {
                                 {post.content}
                             </div>
                         </div>
+
+                        {/* Scientific References Section */}
+                        {post.references && post.references.length > 0 && (
+                            <section className="mt-16 p-8 md:p-10 bg-card/50 rounded-[2rem] border border-border/50">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <div className="p-3 rounded-full bg-primary/10">
+                                        <BookOpen className="w-6 h-6 text-primary" />
+                                    </div>
+                                    <h3 className="text-2xl font-serif font-bold text-foreground">Referências Científicas</h3>
+                                </div>
+                                <ul className="space-y-4">
+                                    {post.references.map((ref, index) => (
+                                        <li key={index} className="group">
+                                            <a
+                                                href={ref.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-start gap-4 p-4 rounded-xl hover:bg-primary/5 transition-colors border border-transparent hover:border-primary/20"
+                                            >
+                                                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-bold flex items-center justify-center">
+                                                    {index + 1}
+                                                </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                                                        {ref.title}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        {ref.authors} • <span className="italic">{ref.journal}</span> • {ref.year}
+                                                    </p>
+                                                </div>
+                                                <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 mt-1" />
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <p className="mt-6 text-xs text-muted-foreground italic text-center">
+                                    Clique em cada referência para acessar o artigo científico completo
+                                </p>
+                            </section>
+                        )}
 
                         <div className="mt-20 p-10 bg-gradient-to-br from-primary/10 to-transparent rounded-[3rem] border border-primary/20 shadow-inner">
                             <div className="flex flex-col md:flex-row items-center justify-between gap-8">
