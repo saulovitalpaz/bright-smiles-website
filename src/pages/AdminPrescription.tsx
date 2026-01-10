@@ -33,10 +33,7 @@ import {
 } from "@/components/ui/dialog";
 
 // Mock data for search
-const mockPatients = [
-    { name: "Maria Oliveira", cpf: "123.456.789-00", address: "Rua das Flores, 123", phone: "(33) 98877-6655" },
-    { name: "João Silva", cpf: "987.654.321-00", address: "Av. Brasil, 500", phone: "(33) 91122-3344" }
-];
+const mockPatients = [];
 
 const AdminPrescription = () => {
     const [patientData, setPatientData] = useState({
@@ -46,9 +43,7 @@ const AdminPrescription = () => {
         phone: ""
     });
 
-    const [prescriptionHistory, setPrescriptionHistory] = useState([
-        { id: 1, patient: "Maria Oliveira", date: "2023-11-20", preview: "Medicamento X..." },
-    ]);
+    const [prescriptionHistory, setPrescriptionHistory] = useState([]);
 
     const [prescriptionContent, setPrescriptionContent] = useState("");
     const editorRef = useRef<HTMLDivElement>(null);

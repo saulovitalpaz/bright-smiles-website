@@ -15,11 +15,7 @@ interface AdminStory {
 }
 
 const AdminStories = () => {
-    const [stories, setStories] = useState<AdminStory[]>([
-        { id: 1, title: "Dica de Limpeza", type: "image", status: "Ativo", date: "2024-01-09", views: 124 },
-        { id: 2, title: "Rotina Clínica", type: "video", status: "Ativo", date: "2024-01-09", views: 89 },
-        { id: 3, title: "Antes e Depois", type: "image", status: "Expirado", date: "2024-01-07", views: 450 },
-    ]);
+    const [stories, setStories] = useState<AdminStory[]>([]);
 
     const handleUpload = () => {
         toast.info("Função de upload de arquivos (Galeria) ativada. Selecione o arquivo.");

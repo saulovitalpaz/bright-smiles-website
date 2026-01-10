@@ -2,7 +2,8 @@ import React from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Eye } from "lucide-react";
-import { blogPosts } from "@/data/posts";
+// import { blogPosts } from "@/data/posts";
+const blogPosts = [];
 
 const AdminBlog = () => {
     return (

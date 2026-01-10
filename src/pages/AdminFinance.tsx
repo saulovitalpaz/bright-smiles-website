@@ -29,12 +29,7 @@ interface Transaction {
 }
 
 const AdminFinance = () => {
-    const [transactions, setTransactions] = useState<Transaction[]>([
-        { id: 1, type: "revenue", description: "Clareamento - João Silva", amount: 1500, date: "2023-10-24", category: "Procedimento", status: "paid" },
-        { id: 2, type: "expense", description: "Material Odontológico", amount: 450, date: "2023-10-23", category: "Insumos", status: "paid" },
-        { id: 3, type: "revenue", description: "Preenchimento - Maria Oliveira", amount: 2500, date: "2023-10-23", category: "Harmonização", status: "paid" },
-        { id: 4, type: "expense", description: "Aluguel Sala 206", amount: 3200, date: "2023-10-05", category: "Fixo", status: "paid" },
-    ]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
 
     const [newDesc, setNewDesc] = useState("");
     const [newAmount, setNewAmount] = useState("");

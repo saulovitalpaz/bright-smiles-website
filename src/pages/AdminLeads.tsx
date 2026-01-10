@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Phone, Mail, CheckCircle, Clock } from "lucide-react";
 
 const AdminLeads = () => {
-    const leads = [
-        { id: 1, name: "João Silva", type: "Agendamento", status: "Pendente", date: "09/01/2026", contact: "31 98888-7777" },
-        { id: 2, name: "Maria Oliveira", type: "Contato", status: "Concluído", date: "08/01/2026", contact: "31 97777-6666" },
-        { id: 3, name: "Carlos Souza", type: "Agendamento", status: "Pendente", date: "08/01/2026", contact: "31 96666-5555" },
-    ];
+    const leads = [];
 
     return (
         <AdminLayout title="Solicitações e Agendamentos">

@@ -34,6 +34,8 @@ const AdminAppointments = () => {
     const [notes, setNotes] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedRecord, setSelectedRecord] = useState<AppointmentRecord | null>(null);
+    const [editCpf, setEditCpf] = useState("");
+    const [editNotes, setEditNotes] = useState("");
     const navigate = useNavigate();
 
     const userStr = localStorage.getItem("admin_user");
@@ -215,12 +217,20 @@ const AdminAppointments = () => {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-xs font-bold text-primary hover:text-primary hover:bg-primary/5"
-                                                onClick={() => setSelectedRecord(record)}
+                                                onClick={() => {
+                                                    setSelectedRecord(record);
+                                                    setEditCpf(record.cpf || "");
+                                                    setEditNotes(record.notes || "");
+                                                }}
                                             >
                                                 Ver Detalhes
                                             </Button>
                                         </div>
-                                        <div className="bg-[#fcfdfd] p-5 rounded-2xl border border-slate-100 ml-16 cursor-pointer hover:border-primary/20 transition-all" onClick={() => setSelectedRecord(record)}>
+                                        <div className="bg-[#fcfdfd] p-5 rounded-2xl border border-slate-100 ml-16 cursor-pointer hover:border-primary/20 transition-all" onClick={() => {
+                                            setSelectedRecord(record);
+                                            setEditCpf(record.cpf || "");
+                                            setEditNotes(record.notes || "");
+                                        }}>
                                             <p className="text-xs font-bold text-primary mb-2 uppercase tracking-widest">{record.procedure}</p>
                                             <p className="text-slate-600 leading-relaxed text-sm italic">"{record.notes}"</p>
                                         </div>
@@ -263,7 +273,8 @@ const AdminAppointments = () => {
                                 <div className="relative">
                                     <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <Input
-                                        defaultValue={selectedRecord?.cpf}
+                                        value={editCpf}
+                                        onChange={(e) => setEditCpf(e.target.value)}
                                         className="pl-10 font-mono font-bold text-slate-700 bg-slate-50 border-slate-100 focus:border-primary transition-all"
                                         placeholder="000.000.000-00"
                                     />
@@ -281,20 +292,18 @@ const AdminAppointments = () => {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Notas Clínicas Detalhadas</Label>
                             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 min-h-[120px] relative transition-all hover:bg-white hover:shadow-inner">
-                                <p className="text-slate-800 leading-relaxed italic">"{selectedRecord?.notes}"</p>
-                                <div className="mt-6 pt-4 border-t border-slate-200">
-                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Anotações Adicionais</Label>
-                                    <Textarea
-                                        placeholder="Inserir novas observações para este atendimento..."
-                                        className="mt-2 border-none bg-transparent shadow-none focus-visible:ring-0 p-0 text-sm italic text-slate-600"
-                                    />
-                                </div>
+                                <Textarea
+                                    value={editNotes}
+                                    onChange={(e) => setEditNotes(e.target.value)}
+                                    placeholder="Inserir e editar observações..."
+                                    className="border-none bg-transparent shadow-none focus-visible:ring-0 p-0 text-sm italic text-slate-600 min-h-[100px]"
+                                />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <button
-                                onClick={() => navigate(`/admin/prescricao?cpf=${selectedRecord?.cpf}`)}
+                                onClick={() => navigate(`/admin/prescricao?cpf=${editCpf}`)}
                                 className="group flex flex-col items-start p-6 rounded-2xl bg-[#0f172a] text-white hover:bg-[#1a2b4b] transition-all text-left shadow-lg shadow-slate-900/10"
                             >
                                 <div className="p-2 bg-white/10 rounded-lg mb-4 text-primary">
@@ -327,7 +336,35 @@ const AdminAppointments = () => {
                                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
                                 Responsável: {selectedRecord?.professional}
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} className="text-[10px] font-black uppercase">Fechar</Button>
+                            <div className="flex gap-2">
+                                <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold" size="sm" onClick={async () => {
+                                    if (!selectedRecord) return;
+                                    try {
+                                        const res = await fetch(`${apiBaseUrl}/appointments/${selectedRecord.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                                cpf: editCpf,
+                                                notes: editNotes
+                                            })
+                                        });
+
+                                        if (res.ok) {
+                                            const updated = await res.json();
+                                            // Update local list
+                                            setAppointments(prev => prev.map(p => p.id === updated.id ? updated : p));
+                                            setSelectedRecord(updated);
+                                            toast.success("Dados atualizados com sucesso!");
+                                        } else {
+                                            toast.error("Erro ao salvar.");
+                                        }
+                                    } catch (e) {
+                                        console.error(e);
+                                        toast.error("Erro de conexão.");
+                                    }
+                                }}>Salvar Alterações</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} className="text-[10px] font-black uppercase">Fechar</Button>
+                            </div>
                         </div>
                     </DialogFooter>
                 </DialogContent>

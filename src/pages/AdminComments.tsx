@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Star, MessageSquare, Trash2, CheckSquare } from "lucide-react";
 
 const AdminComments = () => {
-    const comments = [
-        { id: 1, user: "Maria Oliveira", rating: 5, date: "09/01/2026", text: "Atendimento excelente, as doutoras são muito atenciosas!", status: "Publicado" },
-        { id: 2, user: "João Silva", rating: 4, date: "08/01/2026", text: "Gostei muito do resultado da harmonização facial.", status: "Publicado" },
-        { id: 3, user: "Clara Santos", rating: 5, date: "07/01/2026", text: "Consultório muito limpo e moderno. Profissionais incríveis.", status: "Pendente" },
-    ];
+    const comments = [];
 
     return (
         <AdminLayout title="Comentários dos Clientes">
