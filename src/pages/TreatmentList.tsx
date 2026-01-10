@@ -5,19 +5,41 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ArrowRight, Search, Sparkles, Stethoscope } from "lucide-react";
-import { treatments } from "@/data/treatments";
+import { ArrowLeft, ArrowRight, Search, Sparkles, Stethoscope, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+// Helper type matching the API response
+interface Treatment {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  image: string;
+  content: string;
+}
+
+const API_URL = "http://localhost:3001";
 
 const TreatmentList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "Odontologia" | "Harmonização">("all");
 
-  const filteredTreatments = treatments.filter(treatment => {
+  const { data: treatments, isLoading } = useQuery({
+    queryKey: ['public-treatments'],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/treatments`);
+      return response.data;
+    }
+  });
+
+  const filteredTreatments = treatments?.filter((treatment: Treatment) => {
     const matchesSearch = treatment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       treatment.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = activeFilter === "all" || treatment.category === activeFilter;
     return matchesSearch && matchesFilter;
-  });
+  }) || [];
 
   const categories = [
     { id: "all" as const, label: "Todos", icon: null },
@@ -48,7 +70,7 @@ const TreatmentList = () => {
               Nossos Tratamentos
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed">
-              Conheça todos os procedimentos odontológicos e de harmonização facial 
+              Conheça todos os procedimentos odontológicos e de harmonização facial
               realizados por nossas especialistas.
             </p>
 
@@ -85,7 +107,9 @@ const TreatmentList = () => {
       {/* Treatments Grid */}
       <main className="pb-24">
         <div className="container mx-auto px-4">
-          {filteredTreatments.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-20"><Loader2 className="animate-spin w-10 h-10 text-primary" /></div>
+          ) : filteredTreatments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
               {filteredTreatments.map((treatment) => (
                 <Link key={treatment.slug} to={`/tratamentos/${treatment.slug}`} className="group h-full">

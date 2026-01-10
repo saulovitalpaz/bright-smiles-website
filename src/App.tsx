@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminBlog from "./pages/AdminBlog";
 import AdminLeads from "./pages/AdminLeads";
 import AdminComments from "./pages/AdminComments";
+import AdminTreatments from "./pages/AdminTreatments";
 import AdminAppointments from "./pages/AdminAppointments";
 import AdminStories from "./pages/AdminStories";
 import AdminFinance from "./pages/AdminFinance";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/admin/blog" element={<AdminBlog />} />
           <Route path="/admin/solicitacoes" element={<AdminLeads />} />
           <Route path="/admin/comentarios" element={<AdminComments />} />
+          <Route path="/admin/tratamentos" element={<AdminTreatments />} />
           <Route path="/admin/consultas" element={<AdminAppointments />} />
           <Route path="/admin/stories" element={<AdminStories />} />
           <Route path="/admin/finance" element={<AdminFinance />} />

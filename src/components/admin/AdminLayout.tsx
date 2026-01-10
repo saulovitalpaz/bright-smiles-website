@@ -13,7 +13,8 @@ import {
     BarChart3,
     ChevronLeft,
     Menu,
-    FileSignature
+    FileSignature,
+    Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -40,6 +41,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
         { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar },
         { label: "Comentários", href: "/admin/comentarios", icon: MessageSquare },
+        { label: "Tratamentos", href: "/admin/tratamentos", icon: Sparkles },
         { label: "Blog", href: "/admin/blog", icon: FileText },
         {
             label: "Consultas", href: "/admin/consultas", icon: Stethoscope, subItems: [

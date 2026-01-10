@@ -2,17 +2,64 @@ import { useParams, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MessageCircle, CheckCircle2, Clock, Sparkles, ShieldCheck, ChevronRight, ChevronLeft, Maximize2, X } from "lucide-react";
-import { treatments } from "@/data/treatments";
+import { ArrowLeft, MessageCircle, CheckCircle2, Clock, Sparkles, ShieldCheck, ChevronRight, ChevronLeft, Maximize2, X, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { useState } from "react";
+
+// Types matching API
+interface TreatmentResult {
+    id: number;
+    image: string;
+    description: string;
+}
+
+interface Treatment {
+    id: number;
+    slug: string;
+    title: string;
+    description: string;
+    category: string;
+    image: string;
+    content: string;
+    indications: string[];
+    benefits: string[];
+    duration: {
+        procedure: string;
+        recovery: string;
+        longevity: string;
+    };
+    results: TreatmentResult[];
+}
+
+const API_URL = "http://localhost:3001";
 
 const TreatmentDetail = () => {
     const { slug } = useParams();
-    const treatment = treatments.find((t) => t.slug === slug);
     const [activeImage, setActiveImage] = useState(0);
     const [isZoomOpen, setIsZoomOpen] = useState(false);
 
-    if (!treatment) {
+    // Result Carousel State
+    const [activeResultIndex, setActiveResultIndex] = useState(0);
+
+    const { data: treatment, isLoading, error } = useQuery({
+        queryKey: ['treatment', slug],
+        queryFn: async () => {
+            const response = await axios.get(`${API_URL}/treatments/${slug}`);
+            return response.data as Treatment;
+        },
+        enabled: !!slug
+    });
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="animate-spin w-10 h-10 text-primary" />
+            </div>
+        );
+    }
+
+    if (error || !treatment) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
                 <h1 className="text-2xl font-bold mb-4">Tratamento não encontrado</h1>
@@ -24,12 +71,20 @@ const TreatmentDetail = () => {
     const whatsappNumber = "5533991219695";
     const whatsappMessage = encodeURIComponent(`Olá! Gostaria de saber mais sobre o tratamento de ${treatment.title}.`);
 
-    const nextImage = () => {
-        setActiveImage((prev) => (prev + 1) % treatment.images.length);
+    // Only one main image per treatment in new schema, but we can treat it as a single item array for compatibility if needed,
+    // or just display the single image. The design expects 'images' array. 
+    // For now, let's wrap the single main image in an array to keep the zoom logic similar if we want,
+    // BUT the new requirement is about "Results" having their own gallery.
+    // The main image is just one cover.
+
+    const nextResult = () => {
+        if (!treatment.results?.length) return;
+        setActiveResultIndex((prev) => (prev + 1) % treatment.results.length);
     };
 
-    const prevImage = () => {
-        setActiveImage((prev) => (prev - 1 + treatment.images.length) % treatment.images.length);
+    const prevResult = () => {
+        if (!treatment.results?.length) return;
+        setActiveResultIndex((prev) => (prev - 1 + treatment.results.length) % treatment.results.length);
     };
 
     return (
@@ -55,7 +110,7 @@ const TreatmentDetail = () => {
                             <p className="text-xl text-muted-foreground mb-8 leading-relaxed italic">
                                 {treatment.description}
                             </p>
-                            <div className="prose prose-lg max-w-none text-muted-foreground mb-8">
+                            <div className="prose prose-lg max-w-none text-muted-foreground mb-8 whitespace-pre-wrap">
                                 <p>{treatment.content}</p>
                             </div>
 
@@ -72,15 +127,15 @@ const TreatmentDetail = () => {
                         </div>
 
                         <div className="relative group">
-                            {/* Main Image View - Improved for educational content */}
+                            {/* Main Image View */}
                             <div
                                 className="aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-border bg-card cursor-zoom-in relative"
-                                onClick={() => setIsZoomOpen(true)}
+                                onClick={() => { setActiveImage(0); setIsZoomOpen(true); }}
                             >
                                 <img
-                                    src={treatment.images[activeImage]}
+                                    src={treatment.image}
                                     alt={treatment.title}
-                                    className="w-full h-full object-contain p-4 md:p-8 transition-opacity duration-500 bg-white/5" // object-contain to avoid cropping educational text
+                                    className="w-full h-full object-cover p-0 transition-opacity duration-500"
                                 />
 
                                 {/* Zoom Hint */}
@@ -89,32 +144,6 @@ const TreatmentDetail = () => {
                                 </div>
                             </div>
 
-                            {treatment.images.length > 1 && (
-                                <>
-                                    <button
-                                        onClick={prevImage}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-card/80 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                    >
-                                        <ChevronLeft className="w-6 h-6 text-foreground" />
-                                    </button>
-                                    <button
-                                        onClick={nextImage}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-card/80 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                    >
-                                        <ChevronRight className="w-6 h-6 text-foreground" />
-                                    </button>
-                                    <div className="flex justify-center gap-2 mt-4">
-                                        {treatment.images.map((_, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => setActiveImage(i)}
-                                                className={`w-2 h-2 rounded-full transition-all ${i === activeImage ? 'bg-primary w-4' : 'bg-muted-foreground/30'}`}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-
                             <div className="absolute -bottom-6 -left-6 bg-card p-6 rounded-2xl shadow-xl border border-border hidden md:block max-w-[200px] z-20">
                                 <ShieldCheck className="w-8 h-8 text-primary mb-2" />
                                 <p className="text-sm font-medium">Procedimento seguro e especializado</p>
@@ -122,20 +151,63 @@ const TreatmentDetail = () => {
                         </div>
                     </div>
 
-                    {/* Education Gallery Section */}
-                    {treatment.images.length > 1 && (
-                        <div className="mb-20">
-                            <h2 className="text-3xl font-serif font-bold mb-8 text-center underline decoration-primary/30 underline-offset-8">Galeria Informativa</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {treatment.images.map((img, i) => (
-                                    <div
-                                        key={i}
-                                        className={`aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all bg-card ${i === activeImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                                        onClick={() => setActiveImage(i)}
-                                    >
-                                        <img src={img} alt={`Gallery ${i}`} className="w-full h-full object-contain p-2" />
+                    {/* Results Section - "Galeria de Resultados" */}
+                    {treatment.results && treatment.results.length > 0 && (
+                        <div className="mb-20 bg-secondary/10 rounded-3xl p-8 md:p-12">
+                            <h2 className="text-3xl font-serif font-bold mb-8 text-center underline decoration-primary/30 underline-offset-8">Resultados Reais</h2>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                                {/* Result Image */}
+                                <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/10 shadow-lg border border-border">
+                                    <img
+                                        src={treatment.results[activeResultIndex].image}
+                                        alt="Resultado"
+                                        className="w-full h-full object-contain"
+                                    />
+
+                                    {treatment.results.length > 1 && (
+                                        <>
+                                            <button
+                                                onClick={prevResult}
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                                            >
+                                                <ChevronLeft className="w-6 h-6" />
+                                            </button>
+                                            <button
+                                                onClick={nextResult}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                                            >
+                                                <ChevronRight className="w-6 h-6" />
+                                            </button>
+                                        </>
+                                    )}
+                                    <div className="absolute bottom-4 right-4 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
+                                        Caso {activeResultIndex + 1} / {treatment.results.length}
                                     </div>
-                                ))}
+                                </div>
+
+                                {/* Result Description */}
+                                <div className="space-y-6">
+                                    <h3 className="text-2xl font-bold flex items-center gap-3">
+                                        <Sparkles className="text-primary w-6 h-6" />
+                                        Detalhes do Caso
+                                    </h3>
+                                    <div className="p-6 bg-background rounded-2xl border border-border/50 shadow-sm relative">
+                                        <span className="text-6xl text-primary/10 absolute -top-4 -left-2 serif">“</span>
+                                        <p className="text-lg text-muted-foreground italic relative z-10 leading-relaxed">
+                                            {treatment.results[activeResultIndex].description}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2 justify-center lg:justify-start pt-4">
+                                        {treatment.results.map((_, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setActiveResultIndex(idx)}
+                                                className={`h-2 rounded-full transition-all duration-300 ${idx === activeResultIndex ? 'w-8 bg-primary' : 'w-2 bg-primary/20 hover:bg-primary/40'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -195,7 +267,7 @@ const TreatmentDetail = () => {
                 </div>
             </main>
 
-            {/* Zoom Modal */}
+            {/* Zoom Modal (Simplified for single main image) */}
             {isZoomOpen && (
                 <div
                     className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 animate-in fade-in zoom-in-95 duration-300"
@@ -209,16 +281,10 @@ const TreatmentDetail = () => {
                     </button>
 
                     <img
-                        src={treatment.images[activeImage]}
-                        alt="Zoomed educational content"
+                        src={treatment.image}
+                        alt="Zoomed content"
                         className="max-h-[85vh] max-w-full object-contain rounded-lg"
                     />
-
-                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-                        <p className="text-white text-sm font-medium tracking-wide">
-                            Imagem {activeImage + 1} de {treatment.images.length}
-                        </p>
-                    </div>
                 </div>
             )}
 

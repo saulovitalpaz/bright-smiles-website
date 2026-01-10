@@ -147,6 +147,107 @@ app.post('/admin/reset-database', async (req, res) => {
 });
 
 
+
+// Treatments API
+app.get('/treatments', async (req, res) => {
+    try {
+        const treatments = await prisma.treatment.findMany({
+            include: { results: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(treatments);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/treatments/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const treatment = await prisma.treatment.findUnique({
+            where: { slug },
+            include: { results: true }
+        });
+        if (!treatment) {
+            return res.status(404).json({ error: 'Treatment not found' });
+        }
+        res.json(treatment);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/treatments', async (req, res) => {
+    try {
+        // duration is expected to be a valid JSON object
+        const treatment = await prisma.treatment.create({
+            data: req.body
+        });
+        res.json(treatment);
+    } catch (error) {
+        // Only return detailed error if safe/needed, otherwise generic.
+        // For development, error.message is fine.
+        console.error(error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.put('/treatments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Exclude results from update data if accidentally sent, to avoid schema mismatch errors if not nested write
+        const { results, id: _id, createdAt, updatedAt, ...updateData } = req.body;
+
+        const treatment = await prisma.treatment.update({
+            where: { id: parseInt(id) },
+            data: updateData
+        });
+        res.json(treatment);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/treatments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.treatment.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Treatment deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Treatment Results API
+app.post('/treatments/:id/results', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await prisma.treatmentResult.create({
+            data: {
+                ...req.body,
+                treatmentId: parseInt(id)
+            }
+        });
+        res.json(result);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/treatment-results/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.treatmentResult.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Result deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });

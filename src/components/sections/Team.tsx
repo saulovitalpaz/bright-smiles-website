@@ -15,7 +15,7 @@ const team = [
   },
   {
     name: "Dra. Clara Lima de Souza",
-    cro: "CRO/MG 60.938",
+    cro: "CRO/MG 60.369",
     specialty: "Clínico e Cirúrgico Geral",
     description: "Foco integral em atendimento clínico e cirúrgico geral, priorizando a saúde bucal e o bem-estar dos pacientes com técnicas modernas e seguras.",
     phone: null,
