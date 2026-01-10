@@ -137,8 +137,8 @@ app.post('/admin/reset-database', async (req, res) => {
         // Note: In a real production app, this should be protected or disabled.
         await prisma.appointment.deleteMany({});
         await prisma.post.deleteMany({});
-        // Optional: Keep users or delete non-admins. For now, let's keep users to avoid locking out.
-        // await prisma.user.deleteMany({ where: { role: { not: 'admin' } } }); 
+        // Delete non-admin users to clean slate
+        await prisma.user.deleteMany({ where: { role: { not: 'admin' } } });
 
         res.json({ message: "Database reset successfully (appointments and posts cleared)." });
     } catch (error) {

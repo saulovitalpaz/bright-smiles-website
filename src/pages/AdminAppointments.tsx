@@ -260,6 +260,9 @@ const AdminAppointments = () => {
                                 </div>
                                 <div className="text-left">
                                     <DialogTitle className="text-2xl font-serif font-bold leading-none">{selectedRecord?.patientName}</DialogTitle>
+                                    <DialogDescription className="text-white/70 text-xs mt-1">
+                                        Edite os detalhes do atendimento abaixo.
+                                    </DialogDescription>
                                     <p className="text-xs font-bold text-white/70 uppercase tracking-widest mt-2">{selectedRecord?.procedure}</p>
                                 </div>
                             </div>

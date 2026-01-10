@@ -203,8 +203,6 @@ const AdminPrescription = () => {
                                 onInput={(e) => setPrescriptionContent(e.currentTarget.innerHTML)}
                                 data-placeholder="Escreva a prescrição aqui..."
                             >
-                                <p><strong>1. Medicamento X</strong> --- Tomar 1 comprimido de 12 em 12 horas por 5 dias.</p>
-                                <p><strong>2. Orientações:</strong> Repouso e hidratação.</p>
                             </div>
                         </div>
                     </Card>

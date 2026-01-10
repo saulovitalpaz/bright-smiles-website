@@ -61,8 +61,26 @@ const AdminDashboard = () => {
         );
     }
 
+    const handleReset = async () => {
+        if (!confirm("Tem certeza? Isso apagará todos os agendamentos e posts (Users mantidos).")) return;
+        try {
+            const res = await fetch(`${apiBaseUrl}/admin/reset-database`, { method: "POST" });
+            if (res.ok) {
+                alert("Sistema resetado com sucesso!");
+                window.location.reload();
+            } else {
+                alert("Erro ao resetar. Verifique se o backend foi reiniciado.");
+            }
+        } catch (e) {
+            alert("Erro de conexão. O backend está rodando?");
+        }
+    };
+
     return (
         <AdminLayout title="Dashboard">
+            <div className="mb-6 flex justify-end">
+                <button onClick={handleReset} className="text-xs text-red-500 underline">Resetar Sistema (Dev)</button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {statCards.map((stat) => (
                     <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
