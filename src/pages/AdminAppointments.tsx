@@ -39,43 +39,61 @@ const AdminAppointments = () => {
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional" };
 
-    const [appointments, setAppointments] = useState<AppointmentRecord[]>([
-        {
-            id: 1,
-            patientName: "João Silva",
-            cpf: "987.654.321-00",
-            date: "2023-10-24",
-            procedure: "Limpeza e Clareamento",
-            notes: "Paciente relatou sensibilidade. Aplicado dessensibilizante.",
-            professional: "Dra. Ana Karolina"
-        },
-        {
-            id: 2,
-            patientName: "Maria Oliveira",
-            cpf: "123.456.789-00",
-            date: "2023-10-23",
-            procedure: "Harmonização Facial - Preenchimento",
-            notes: "Retorno em 15 dias para avaliação.",
-            professional: "Dra. Clara Lima de Souza"
-        }
-    ]);
+    const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
 
-    const handleAddRecord = (e: React.FormEvent) => {
-        e.preventDefault();
-        const newRecord: AppointmentRecord = {
-            id: Date.now(),
-            patientName,
-            date: new Date().toISOString().split('T')[0],
-            procedure,
-            notes,
-            professional: currentUser.name
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+    // Fetch appointments on load
+    React.useEffect(() => {
+        const fetchAppointments = async () => {
+            try {
+                const res = await fetch(`${apiBaseUrl}/appointments`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAppointments(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch appointments:", error);
+                toast.error("Erro ao carregar atendimentos.");
+            }
         };
+        fetchAppointments();
+    }, []);
 
-        setAppointments([newRecord, ...appointments]);
-        setPatientName("");
-        setProcedure("");
-        setNotes("");
-        toast.success("Histórico de atendimento registrado!");
+    const handleAddRecord = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        try {
+            const newRecord = {
+                patientName,
+                // If patientName is not a full name, validation normally happens here. 
+                // For now we assume simle string.
+                date: new Date().toISOString(),
+                procedure,
+                notes,
+                professional: currentUser.name || "Profissional"
+            };
+
+            const res = await fetch(`${apiBaseUrl}/appointments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newRecord)
+            });
+
+            if (res.ok) {
+                const savedRecord = await res.json();
+                setAppointments([savedRecord, ...appointments]);
+                setPatientName("");
+                setProcedure("");
+                setNotes("");
+                toast.success("Histórico de atendimento registrado!");
+            } else {
+                toast.error("Erro ao salvar registro.");
+            }
+        } catch (error) {
+            console.error("Error saving appointment:", error);
+            toast.error("Erro de conexão ao salvar.");
+        }
     };
 
     const filteredAppointments = appointments.filter(record =>

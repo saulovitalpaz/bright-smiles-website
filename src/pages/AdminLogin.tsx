@@ -11,45 +11,28 @@ const AdminLogin = () => {
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const users = [
-            {
-                username: "admin",
-                password: "admin",
-                name: "Developer",
-                cro: "DEV-001",
-                role: "admin"
-            },
-            {
-                username: "Dra.Ana_Karolina@noeh.com.br",
-                password: "admin",
-                name: "Ana Karolina",
-                cro: "CRO/MG 60.514",
-                role: "admin"
-            },
-            {
-                username: "Dra.Clara_Lima@noeh.com.br",
-                password: "admin",
-                name: "Clara Lima de Souza",
-                cro: "CRO/MG 60.369",
-                role: "admin"
+        try {
+            const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+            const response = await fetch(`${apiBaseUrl}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+                localStorage.setItem("admin_user", JSON.stringify(user));
+                toast.success(`Bem-vinda, ${user.name}!`);
+                navigate("/admin/dashboard");
+            } else {
+                toast.error("Usuário ou senha inválidos.");
             }
-        ];
-
-        const user = users.find(u => u.username === username && u.password === password);
-
-        if (user) {
-            localStorage.setItem("admin_user", JSON.stringify({
-                name: user.name,
-                cro: user.cro,
-                username: user.username
-            }));
-            toast.success(`Bem-vinda, ${user.name}!`);
-            navigate("/admin/dashboard");
-        } else {
-            toast.error("Usuário ou senha inválidos.");
+        } catch (error) {
+            toast.error("Erro ao conectar com o servidor.");
+            console.error("Login error:", error);
         }
     };
 

@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String
+  cro       String?
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id         Int      @id @default(autoincrement())
+  slug       String   @unique
+  title      String
+  excerpt    String
+  content    String
+  category   String
+  date       DateTime
+  readTime   String
+  image      String
+  images     String[]
+  author     String
+  references Json?    
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Appointment {
+  id           Int      @id @default(autoincrement())
+  patientName  String
+  cpf          String?
+  date         DateTime
+  procedure    String
+  notes        String
+  professional String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
