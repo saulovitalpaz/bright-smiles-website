@@ -33,27 +33,10 @@ async function main() {
     });
     console.log(`✅ Created user: ${ana.username}`);
 
-    // 2. Create Initial Blog Posts (Sample Data)
-    const post1 = await prisma.post.upsert({
-        where: { slug: 'harmonizacao-facial-rejuvenescimento' },
-        update: {},
-        create: {
-            slug: "harmonizacao-facial-rejuvenescimento",
-            title: "Como a Harmonização Facial pode rejuvenescer seu sorriso",
-            excerpt: "Descubra como procedimentos como preenchimento labial e rinomodelação complementam os tratamentos odontológicos para um resultado natural.",
-            category: "Harmonização",
-            date: new Date("2026-01-08"),
-            readTime: "5 min",
-            image: "/images/botox/Botox (2).jpg",
-            images: [
-                "/images/botox/Botox (2).jpg",
-                "/images/botox/Botox (3).jpg"
-            ],
-            author: "Dra. Ana Karolina",
-            content: "A harmonização facial não é apenas sobre aplicar produtos...",
-        }
-    });
-    console.log(`✅ Created post: ${post1.title}`);
+    console.log(`✅ Created user: ${ana.username}`);
+
+    // 2. Mock data removed for production. 
+    // To add initial posts, uncomment or add them here.
 
     console.log('🏁 Seeding finished.');
 }
