@@ -3,16 +3,54 @@ const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
 const app = express();
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 
+// Configure Multer for local storage
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = 'public/uploads';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir)
+    },
+    filename: function (req, file, cb) {
+        // secure filename with timestamp
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+        cb(null, uniqueSuffix + path.extname(file.originalname))
+    }
+})
+
+const upload = multer({ storage: storage });
+
 app.use(cors());
 app.use(express.json());
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+app.post('/upload', upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).send('No file uploaded.');
+        }
+        // Return the full URL or relative path accessible via the static route
+        const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.get('/', (req, res) => {
     res.json({ message: 'Bright Smiles API is running!' });
 });
+
 
 app.get('/health', async (req, res) => {
     try {
@@ -243,6 +281,73 @@ app.delete('/treatment-results/:id', async (req, res) => {
             where: { id: parseInt(id) }
         });
         res.json({ message: 'Result deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Stories API
+app.get('/stories', async (req, res) => {
+    try {
+        const stories = await prisma.story.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(stories);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/stories', async (req, res) => {
+    try {
+        const story = await prisma.story.create({
+            data: {
+                ...req.body,
+                status: 'Ativo' // Default to Active/Ativo
+            }
+        });
+        res.json(story);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/stories/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.story.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Story deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Settings API
+app.get('/settings', async (req, res) => {
+    try {
+        const settings = await prisma.setting.findMany();
+        // Convert to a simple key-value object
+        const settingsMap = settings.reduce((acc, curr) => {
+            acc[curr.key] = curr.value;
+            return acc;
+        }, {});
+        res.json(settingsMap);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/settings', async (req, res) => {
+    const { key, value } = req.body;
+    try {
+        const setting = await prisma.setting.upsert({
+            where: { key },
+            update: { value },
+            create: { key, value }
+        });
+        res.json(setting);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

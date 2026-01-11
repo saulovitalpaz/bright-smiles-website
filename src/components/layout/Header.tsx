@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, X, Phone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+const API_URL = "http://localhost:3001";
 
 const Header = () => {
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await axios.get(`${API_URL}/settings`);
+      return res.data;
+    }
+  });
+
+  const logoUrl = settings?.site_logo || "/images/logo-oficial.png";
+  const clinicName = settings?.clinic_name || "Núcleo Odontológico";
+  const clinicSlogan = settings?.clinic_slogan || "Especializado & Harmonização";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
@@ -22,19 +37,20 @@ const Header = () => {
         <div className="flex items-center justify-between h-16 md:h-24 transition-all duration-300">
           {/* Logo with Image */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center overflow-hidden">
+            <div className="w-20 h-20 md:w-32 md:h-32 flex items-center justify-center overflow-hidden">
               <img
-                src="/images/logo oficial.png"
-                alt="Logo Núcleo Odontológico"
-                className="w-full h-full object-contain transition-transform group-hover:scale-105 rounded-full shadow-sm border border-border/50"
+                src={logoUrl}
+                alt={`Logo ${clinicName}`}
+                className="w-full h-full object-contain transition-transform group-hover:scale-105 drop-shadow-md"
+                onError={(e) => (e.target as HTMLImageElement).src = "/images/logo oficial.png"}
               />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg md:text-xl font-serif font-bold text-foreground leading-tight">
-                Núcleo Odontológico
+                {clinicName}
               </h1>
               <p className="text-xs md:text-sm text-foreground font-medium tracking-wider uppercase opacity-80">
-                Especializado & Harmonização
+                {clinicSlogan}
               </p>
             </div>
           </Link>

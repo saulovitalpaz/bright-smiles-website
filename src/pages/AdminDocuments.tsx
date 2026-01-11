@@ -150,7 +150,7 @@ const AdminDocuments = () => {
                     {/* Printable Version */}
                     <div className="print-only bg-white p-20 text-slate-900 absolute top-0 left-0 w-full min-h-screen">
                         <div className="flex flex-col items-center mb-16 text-center">
-                            <img src="/images/logo oficial.png" alt="Logo" className="w-32 h-32 object-contain mb-6" />
+                            <img src="/images/logo oficial.png" alt="Logo" className="w-48 h-48 object-contain mb-6" />
                             <h1 className="text-4xl font-serif font-black text-slate-900 tracking-widest uppercase">NOEH</h1>
                             <p className="text-primary font-black tracking-[0.4em] uppercase text-xs mt-2">Swiss Dental Clinic</p>
                         </div>

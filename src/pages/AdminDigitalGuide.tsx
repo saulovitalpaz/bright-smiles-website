@@ -117,7 +117,7 @@ const AdminDigitalGuide = () => {
                         </p>
                     </div>
                     <div className="w-full md:w-auto">
-                        <img src="/images/logo oficial.png" className="w-24 opacity-20 grayscale" alt="Logo faint" />
+                        <img src="/images/logo oficial.png" className="w-40 object-contain" alt="Logo" />
                     </div>
                 </div>
             </div>

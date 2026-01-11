@@ -215,8 +215,7 @@ const AdminPrescription = () => {
                 <div className="flex justify-between items-center pb-12 mb-8">
                     <div className="flex items-center gap-10">
                         <div className="relative">
-                            <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
-                            <img src="/images/logo oficial.png" alt="Logo" className="w-40 h-40 object-contain relative z-10" />
+                            <img src="/images/logo oficial.png" alt="Logo" className="w-56 h-56 object-contain relative z-10" />
                         </div>
                         <div>
                             <h1 className="text-5xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase">NOEH</h1>

@@ -14,9 +14,14 @@ import {
     ChevronLeft,
     Menu,
     FileSignature,
-    Sparkles
+    Sparkles,
+    Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+const API_URL = "http://localhost:3001";
 
 interface AdminLayoutProps {
     children: React.ReactNode;
@@ -27,6 +32,17 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isCollapsed, setIsCollapsed] = React.useState(false);
+
+    const { data: settings } = useQuery({
+        queryKey: ['settings'],
+        queryFn: async () => {
+            const res = await axios.get(`${API_URL}/settings`);
+            return res.data;
+        }
+    });
+
+    const logoUrl = settings?.site_logo || "/images/logo-oficial.png";
+    const clinicName = settings?.clinic_name || "Núcleo Odontológico";
 
     // Get user from localStorage
     const userStr = localStorage.getItem("admin_user");
@@ -47,12 +63,14 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             label: "Consultas", href: "/admin/consultas", icon: Stethoscope, subItems: [
                 { label: "Atendimentos", href: "/admin/consultas" },
                 { label: "Prescrição", href: "/admin/prescricao" },
-                { label: "Termos & Doc", href: "/admin/documentos" }
+                { label: "Termos & Doc", href: "/admin/documentos" },
+                { label: "Guia Digital", href: "/admin/digital-guide" }
             ]
         },
         { label: "Stories", href: "/admin/stories", icon: Play },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+        { label: "Configurações", href: "/admin/settings", icon: Settings },
     ];
 
     return (
@@ -61,20 +79,20 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             {/* Sidebar */}
             <aside className={`${isCollapsed ? "w-20" : "w-72"} bg-[hsl(30,15%,10%)] text-white flex flex-col fixed inset-y-0 shadow-2xl z-20 transition-all duration-300 no-print border-r border-[hsl(30,10%,15%)]`}>
                 {/* Branding & Logo */}
-                <div className={`relative p-6 border-b border-[hsl(30,10%,15%)] flex flex-col items-center justify-center transition-all ${isCollapsed ? "h-24" : "h-48"}`}>
-                    <div className={`${isCollapsed ? "w-10 h-10" : "w-24 h-24"} transition-all duration-500 relative z-10`}>
+                <div className={`relative p-6 border-b border-[hsl(30,10%,15%)] flex flex-col items-center justify-center transition-all ${isCollapsed ? "h-24" : "h-52"}`}>
+                    <div className={`${isCollapsed ? "w-12 h-12" : "w-32 h-32"} transition-all duration-500 relative z-10`}>
                         <img
-                            src="/images/logo oficial.png"
+                            src={logoUrl}
                             alt="Logo"
                             className="w-full h-full object-contain filter drop-shadow-xl"
+                            onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}
                         />
                     </div>
                     {!isCollapsed && (
                         <div className="mt-4 text-center relative z-10 animate-in fade-in zoom-in duration-500">
-                            <h2 className="font-serif font-bold text-lg text-white tracking-widest leading-tight mb-1">NOEH</h2>
+                            <h2 className="font-serif font-bold text-lg text-white tracking-widest leading-tight mb-1">{clinicName}</h2>
                             <div className="text-[9px] text-[hsl(43,74%,49%)] font-bold uppercase tracking-[0.15em] leading-relaxed">
-                                <p>Núcleo Odontológico</p>
-                                <p>Especializado & Harmonização</p>
+                                <p>{settings?.clinic_slogan || "Especializado & Harmonização"}</p>
                             </div>
                         </div>
                     )}

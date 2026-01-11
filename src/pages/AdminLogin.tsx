@@ -40,11 +40,11 @@ const AdminLogin = () => {
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
             <div className="max-w-md w-full">
                 <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white shadow-xl shadow-slate-200 border border-slate-50 mb-6 p-2 overflow-hidden">
+                    <div className="inline-flex items-center justify-center w-40 h-40 mb-2 overflow-hidden">
                         <img
-                            src="/images/logo oficial.png"
+                            src="/images/logo-oficial.png"
                             alt="Logo oficial"
-                            className="w-full h-full object-contain rounded-full"
+                            className="w-full h-full object-contain"
                         />
                     </div>
                     <h1 className="text-4xl font-serif font-bold text-slate-900 mb-2 tracking-tight">Painel Admin</h1>

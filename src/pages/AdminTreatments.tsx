@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Save, X, ImageIcon, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Save, X, ImageIcon, Loader2, Sparkles, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import axios from "axios";
 
 // API Base URL (adjust if needed via env or direct)
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 interface TreatmentResult {
     id: number;
@@ -48,8 +48,14 @@ const AdminTreatments = () => {
         category: "Odontologia",
         indications: [],
         benefits: [],
-        duration: { procedure: "", recovery: "", longevity: "" }
+        duration: { procedure: "", recovery: "", longevity: "" },
+        image: ""
     });
+
+    // State for file uploading status
+    const [isUploading, setIsUploading] = useState(false);
+    const coverInputRef = useRef<HTMLInputElement>(null);
+    const resultInputRef = useRef<HTMLInputElement>(null);
 
     const queryClient = useQueryClient();
 
@@ -71,7 +77,7 @@ const AdminTreatments = () => {
             setIsDialogOpen(false);
             resetForm();
         },
-        onError: (err) => toast.error("Erro ao criar tratamento: " + err.message)
+        onError: (err) => toast.error("Erro ao criar tratamento: " + (err as Error).message)
     });
 
     const updateMutation = useMutation({
@@ -82,7 +88,7 @@ const AdminTreatments = () => {
             setIsDialogOpen(false);
             resetForm();
         },
-        onError: (err) => toast.error("Erro ao atualizar tratamento: " + err.message)
+        onError: (err) => toast.error("Erro ao atualizar tratamento: " + (err as Error).message)
     });
 
     const deleteMutation = useMutation({
@@ -91,7 +97,7 @@ const AdminTreatments = () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Tratamento removido com sucesso!");
         },
-        onError: (err) => toast.error("Erro ao remover tratamento: " + err.message)
+        onError: (err) => toast.error("Erro ao remover tratamento: " + (err as Error).message)
     });
 
     // Result Mutations
@@ -101,7 +107,7 @@ const AdminTreatments = () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Resultado adicionado!");
         },
-        onError: (err) => toast.error("Erro ao adicionar resultado: " + err.message)
+        onError: (err) => toast.error("Erro ao adicionar resultado: " + (err as Error).message)
     });
 
     const deleteResultMutation = useMutation({
@@ -110,7 +116,7 @@ const AdminTreatments = () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Resultado removido!");
         },
-        onError: (err) => toast.error("Erro ao remover resultado: " + err.message)
+        onError: (err) => toast.error("Erro ao remover resultado: " + (err as Error).message)
     });
 
     const resetForm = () => {
@@ -119,7 +125,8 @@ const AdminTreatments = () => {
             category: "Odontologia",
             indications: [],
             benefits: [],
-            duration: { procedure: "", recovery: "", longevity: "" }
+            duration: { procedure: "", recovery: "", longevity: "" },
+            image: ""
         });
     };
 
@@ -149,17 +156,50 @@ const AdminTreatments = () => {
         }
     };
 
-    // Helper to handle array fields (indications/benefits)
     const handleArrayInput = (field: 'indications' | 'benefits', value: string) => {
-        // Split by new line for simple editing
         setFormData(prev => ({ ...prev, [field]: value.split('\n') }));
     };
 
-    // Result management inside the dialog
+    // File Upload Helper
+    const uploadFile = async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            setIsUploading(true);
+            const res = await axios.post(`${API_URL}/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            return res.data.url;
+        } catch (error) {
+            toast.error("Erro ao fazer upload: " + (error as Error).message);
+            return null;
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const url = await uploadFile(e.target.files[0]);
+            if (url) {
+                setFormData(prev => ({ ...prev, image: url }));
+            }
+        }
+    };
+
     const [newResult, setNewResult] = useState({ image: '', description: '' });
 
+    const handleResultImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const url = await uploadFile(e.target.files[0]);
+            if (url) {
+                setNewResult(prev => ({ ...prev, image: url }));
+            }
+        }
+    };
+
     const handleAddResult = () => {
-        if (!editingTreatment) return; // Can't add result to non-existing treatment yet
+        if (!editingTreatment) return;
         if (!newResult.image || !newResult.description) {
             toast.error("Preencha imagem e descrição do resultado.");
             return;
@@ -181,10 +221,8 @@ const AdminTreatments = () => {
                     </Button>
                 </div>
 
-                {/* Existing Data Loading State */}
                 {isLoading && <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary w-8 h-8" /></div>}
 
-                {/* Error State */}
                 {error && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
@@ -270,12 +308,25 @@ const AdminTreatments = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>URL da Imagem de Capa</Label>
-                                        <Input
-                                            value={formData.image || ''}
-                                            onChange={e => setFormData({ ...formData, image: e.target.value })}
-                                            placeholder="/images/example.jpg"
-                                        />
+                                        <Label>Imagem de Capa</Label>
+                                        <div className="flex gap-2 items-center">
+                                            <Input
+                                                value={formData.image || ''}
+                                                onChange={e => setFormData({ ...formData, image: e.target.value })}
+                                                placeholder="/images/example.jpg"
+                                                className="flex-1"
+                                            />
+                                            <input
+                                                type="file"
+                                                ref={coverInputRef}
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleCoverUpload}
+                                            />
+                                            <Button type="button" variant="outline" size="icon" onClick={() => coverInputRef.current?.click()} disabled={isUploading}>
+                                                {isUploading ? <Loader2 className="animate-spin w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -353,12 +404,25 @@ const AdminTreatments = () => {
                                                 <h4 className="font-bold mb-4 text-sm uppercase">Novo Resultado</h4>
                                                 <div className="grid grid-cols-[1fr,2fr,auto] gap-4 items-end">
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs">URL da Mídia (Img/Video)</Label>
-                                                        <Input
-                                                            value={newResult.image}
-                                                            onChange={e => setNewResult({ ...newResult, image: e.target.value })}
-                                                            placeholder="/images/result1.jpg"
-                                                        />
+                                                        <Label className="text-xs">Mídia (Img/Video)</Label>
+                                                        <div className="flex gap-2">
+                                                            <Input
+                                                                value={newResult.image}
+                                                                onChange={e => setNewResult({ ...newResult, image: e.target.value })}
+                                                                placeholder="/images/result1.jpg"
+                                                                className="flex-1"
+                                                            />
+                                                            <input
+                                                                type="file"
+                                                                ref={resultInputRef}
+                                                                className="hidden"
+                                                                accept="image/*,video/mp4"
+                                                                onChange={handleResultImageUpload}
+                                                            />
+                                                            <Button type="button" variant="outline" size="icon" onClick={() => resultInputRef.current?.click()} disabled={isUploading}>
+                                                                {isUploading ? <Loader2 className="animate-spin w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-1">
                                                         <Label className="text-xs">Descrição do Caso</Label>
@@ -368,7 +432,7 @@ const AdminTreatments = () => {
                                                             placeholder="Paciente jovem, buscando correção de..."
                                                         />
                                                     </div>
-                                                    <Button type="button" onClick={handleAddResult} disabled={!newResult.image}>
+                                                    <Button type="button" onClick={handleAddResult} disabled={!newResult.image || isUploading}>
                                                         <Plus size={16} /> Adicionar
                                                     </Button>
                                                 </div>

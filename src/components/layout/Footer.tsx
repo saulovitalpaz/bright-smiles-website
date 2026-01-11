@@ -1,7 +1,22 @@
 import { Link } from "react-router-dom";
 import { Heart } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+const API_URL = "http://localhost:3001";
 
 const Footer = () => {
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await axios.get(`${API_URL}/settings`);
+      return res.data;
+    }
+  });
+
+  const logoUrl = settings?.site_logo || "/images/logo-oficial.png";
+  const clinicName = settings?.clinic_name || "Núcleo Odontológico";
+  const clinicSlogan = settings?.clinic_slogan || "Especializado & Harmonização";
   const currentYear = new Date().getFullYear();
 
   return (
@@ -13,18 +28,19 @@ const Footer = () => {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-16 h-16 flex items-center justify-center overflow-hidden">
                 <img
-                  src="/images/logo oficial.png"
-                  alt="Logo Núcleo Odontológico"
-                  className="w-full h-full object-contain rounded-full shadow-sm border border-border/30"
+                  src={logoUrl}
+                  alt={`Logo ${clinicName}`}
+                  className="w-full h-full object-contain drop-shadow-md"
+                  onError={(e) => (e.target as HTMLImageElement).src = "/images/logo oficial.png"}
                 />
               </div>
               <div>
-                <h3 className="font-serif font-semibold text-foreground text-lg">Núcleo Odontológico</h3>
-                <p className="text-xs text-foreground font-medium uppercase tracking-wider opacity-80">Especializado & Harmonização</p>
+                <h3 className="font-serif font-semibold text-foreground text-lg">{clinicName}</h3>
+                <p className="text-xs text-foreground font-medium uppercase tracking-wider opacity-80">{clinicSlogan}</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Núcleo Odontológico Especializado & Harmonização.
+              {clinicName} {clinicSlogan}.
               Excelência no cuidado do seu sorriso.
             </p>
           </div>
@@ -73,7 +89,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} Núcleo Odontológico Especializado & Harmonização. Todos os direitos reservados.
+            © {currentYear} {clinicName} {clinicSlogan}. Todos os direitos reservados.
           </p>
           <p className="text-sm text-muted-foreground flex items-center gap-1">
             Feito com <Heart className="w-4 h-4 text-primary" /> para seu sorris🦷
