@@ -68,6 +68,20 @@ const AdminLeads = () => {
                                         {lead.status === 'new' ? 'Novo' : lead.status === 'contacted' ? 'Contatado' : 'Agendado'}
                                     </span>
                                 </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                                        <Mail size={12} />
+                                        {lead.email || "Sem e-mail"}
+                                    </span>
+                                    {lead.ageGroup && (
+                                        <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold uppercase">
+                                            {lead.ageGroup}
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-bold uppercase">
+                                        Origem: {lead.source || "Site"}
+                                    </span>
+                                </div>
                                 <div className="text-sm text-slate-600 mt-2">
                                     <p><strong>Tratamento:</strong> {lead.treatment || "Geral"}</p>
                                     <p><strong>Mensagem:</strong> {lead.message}</p>

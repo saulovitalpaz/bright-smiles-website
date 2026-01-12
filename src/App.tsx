@@ -24,6 +24,8 @@ import AdminDigitalGuide from "./pages/AdminDigitalGuide";
 import AdminDocuments from "./pages/AdminDocuments";
 import AdminSettings from "./pages/AdminSettings";
 
+import { AuthProvider, ProtectedRoute } from "./hooks/useAuth";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -32,28 +34,33 @@ const App = () => (
       <Toaster />
       <ToasterSonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/tratamentos" element={<TreatmentList />} />
-          <Route path="/tratamentos/:slug" element={<TreatmentDetail />} />
-          <Route path="/blog" element={<BlogList />} />
-          <Route path="/blog/:slug" element={<BlogPost />} />
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/blog" element={<AdminBlog />} />
-          <Route path="/admin/solicitacoes" element={<AdminLeads />} />
-          <Route path="/admin/comentarios" element={<AdminComments />} />
-          <Route path="/admin/tratamentos" element={<AdminTreatments />} />
-          <Route path="/admin/consultas" element={<AdminAppointments />} />
-          <Route path="/admin/stories" element={<AdminStories />} />
-          <Route path="/admin/finance" element={<AdminFinance />} />
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          <Route path="/admin/prescricao" element={<AdminPrescription />} />
-          <Route path="/admin/digital-guide" element={<AdminDigitalGuide />} />
-          <Route path="/admin/documentos" element={<AdminDocuments />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/tratamentos" element={<TreatmentList />} />
+            <Route path="/tratamentos/:slug" element={<TreatmentDetail />} />
+            <Route path="/blog" element={<BlogList />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/admin" element={<AdminLogin />} />
+
+            {/* Protected Admin Routes */}
+            <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/blog" element={<ProtectedRoute><AdminBlog /></ProtectedRoute>} />
+            <Route path="/admin/solicitacoes" element={<ProtectedRoute><AdminLeads /></ProtectedRoute>} />
+            <Route path="/admin/comentarios" element={<ProtectedRoute><AdminComments /></ProtectedRoute>} />
+            <Route path="/admin/tratamentos" element={<ProtectedRoute><AdminTreatments /></ProtectedRoute>} />
+            <Route path="/admin/consultas" element={<ProtectedRoute><AdminAppointments /></ProtectedRoute>} />
+            <Route path="/admin/stories" element={<ProtectedRoute><AdminStories /></ProtectedRoute>} />
+            <Route path="/admin/finance" element={<ProtectedRoute><AdminFinance /></ProtectedRoute>} />
+            <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
+            <Route path="/admin/prescricao" element={<ProtectedRoute><AdminPrescription /></ProtectedRoute>} />
+            <Route path="/admin/digital-guide" element={<ProtectedRoute><AdminDigitalGuide /></ProtectedRoute>} />
+            <Route path="/admin/documentos" element={<ProtectedRoute><AdminDocuments /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

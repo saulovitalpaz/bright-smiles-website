@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageCircle, Loader2 } from "lucide-react";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
@@ -18,6 +19,9 @@ interface LeadCaptureDialogProps {
 export function LeadCaptureDialog({ open, onOpenChange, defaultMessage = "Olá, gostaria de agendar uma consulta." }: LeadCaptureDialogProps) {
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
+    const [email, setEmail] = useState("");
+    const [ageGroup, setAgeGroup] = useState("");
+    const [treatment, setTreatment] = useState("");
     const [message, setMessage] = useState(defaultMessage);
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -38,6 +42,9 @@ export function LeadCaptureDialog({ open, onOpenChange, defaultMessage = "Olá, 
                 body: JSON.stringify({
                     name,
                     phone,
+                    email,
+                    ageGroup,
+                    treatment,
                     message,
                     source
                 })
@@ -56,6 +63,9 @@ export function LeadCaptureDialog({ open, onOpenChange, defaultMessage = "Olá, 
                     setSubmitted(false);
                     setName("");
                     setPhone("");
+                    setEmail("");
+                    setAgeGroup("");
+                    setTreatment("");
                 }, 300);
             }, 3000);
 
@@ -69,31 +79,71 @@ export function LeadCaptureDialog({ open, onOpenChange, defaultMessage = "Olá, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[500px] overflow-y-auto max-h-[90vh]">
                 {!submitted ? (
                     <>
                         <DialogHeader>
                             <DialogTitle>Solicitar Agendamento</DialogTitle>
                             <DialogDescription>
-                                Preencha seus dados e nossa equipe entrará em contato em breve.
+                                Preencha seus dados para uma experiência personalizada.
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nome Completo</Label>
-                                <Input id="name" required value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nome Completo *</Label>
+                                    <Input id="name" required value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Telefone / WhatsApp *</Label>
+                                    <Input id="phone" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="(33) 99999-9999" />
+                                </div>
                             </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Telefone / WhatsApp</Label>
-                                <Input id="phone" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="(33) 99999-9999" />
+                                <Label htmlFor="email">E-mail</Label>
+                                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Faixa Etária</Label>
+                                    <Select onValueChange={setAgeGroup} value={ageGroup}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="KIDS">Infantil (Kids)</SelectItem>
+                                            <SelectItem value="TEEN">Adolescente</SelectItem>
+                                            <SelectItem value="ADULT">Adulto</SelectItem>
+                                            <SelectItem value="SENIOR">Melhor Idade</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Tratamento de Interesse</Label>
+                                    <Select onValueChange={setTreatment} value={treatment}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ODONTO_GERAL">Odontologia Geral</SelectItem>
+                                            <SelectItem value="HARMONIZACAO">Harmonização Facial</SelectItem>
+                                            <SelectItem value="ORTODONTIA">Aparelhos / Ortodontia</SelectItem>
+                                            <SelectItem value="IMPLANTES">Implantes</SelectItem>
+                                            <SelectItem value="ESTETICA">Estética Dental</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="message">Mensagem (Opcional)</Label>
+                                <Label htmlFor="message">Mensagem ou Dúvida</Label>
                                 <Textarea id="message" value={message} onChange={e => setMessage(e.target.value)} />
                             </div>
-                            <Button type="submit" className="w-full gap-2 bg-primary hover:bg-primary/90 text-white" disabled={loading}>
+                            <Button type="submit" className="w-full gap-2 bg-primary hover:bg-primary/90 text-white h-12 text-lg font-bold" disabled={loading}>
                                 {loading ? <Loader2 className="animate-spin" /> : <MessageCircle size={18} />}
-                                Enviar Solicitação
+                                Solicitar Atendimento
                             </Button>
                         </form>
                     </>

@@ -124,6 +124,7 @@ model Lead {
   name      String
   phone     String
   email     String?
+  ageGroup  String?  // Kids, Teen, Adult, Senior
   treatment String?
   message   String?
   status    String   @default("new") // new, contacted, scheduled

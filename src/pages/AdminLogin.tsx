@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,11 @@ import { toast } from "sonner";
 
 import { API_URL } from "@/lib/api";
 
-const AdminLogin = () => {
+export const AdminLogin = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,7 +27,8 @@ const AdminLogin = () => {
 
             if (response.ok) {
                 const user = await response.json();
-                localStorage.setItem("admin_user", JSON.stringify(user));
+                // Pass password to the context login for persistence
+                await login(password);
                 toast.success(`Bem-vinda, ${user.name}!`);
                 navigate("/admin/dashboard");
             } else {
