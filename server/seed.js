@@ -235,7 +235,7 @@ const users = [
         password: "Clara#NOEH2026!",
         name: "Clara Lima",
         role: "admin",
-        cro: "CRO/MG 12.345"
+        cro: "CRO/MG 12.369"
     }
 ];
 
