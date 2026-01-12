@@ -217,22 +217,22 @@ const blogPosts = [
 
 const users = [
     {
-        username: "admin",
-        password: "admin", // Em produção, altere a senha!
-        name: "Developer Mode",
+        username: "Suporte Admin",
+        password: "Support@NOEH2026!",
+        name: "Suporte Técnico",
         role: "admin",
         cro: "DEV-001"
     },
     {
-        username: "Dra.Ana_Karolina@noeh.com.br",
-        password: "admin", // Altere a senha no primeiro acesso
+        username: "Dra. Ana Karolina",
+        password: "Ana#NOEH2026!",
         name: "Ana Karolina",
         role: "admin",
         cro: "CRO/MG 60.514"
     },
     {
-        username: "Dra.Clara_Lima@noeh.com.br",
-        password: "admin", // Altere a senha no primeiro acesso
+        username: "Dra. Clara Lima",
+        password: "Clara#NOEH2026!",
         name: "Clara Lima",
         role: "admin",
         cro: "CRO/MG 12.345"
@@ -278,7 +278,7 @@ async function main() {
     for (const u of users) {
         await prisma.user.upsert({
             where: { username: u.username },
-            update: {}, // Não altera se já existir
+            update: u, // Agora força a atualização dos dados (incluindo senha) se o username já existir
             create: u
         });
     }
