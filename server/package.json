@@ -4,7 +4,7 @@
     "description": "Backend API for Bright Smiles",
     "main": "index.js",
     "scripts": {
-        "start": "npx prisma migrate deploy && node prisma/seed.js && node index.js",
+        "start": "npx prisma generate && npx prisma migrate deploy && node prisma/seed.js && node index.js",
         "dev": "nodemon index.js"
     },
     "dependencies": {
