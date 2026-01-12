@@ -34,8 +34,7 @@ app.use(cors({
     origin: [
         'https://www.odontoeharmonizacao.com.br',
         'https://odontoeharmonizacao.com.br',
-        'https://bright-smiles-website-production.up.railway.app',
-        'https://backend-production-e175.up.railway.app'
+        /https:\/\/.*\.up\.railway\.app$/
     ],
     credentials: true
 }));
