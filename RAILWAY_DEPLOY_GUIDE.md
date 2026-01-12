@@ -23,12 +23,11 @@ Make sure all your latest changes (including the new `server` folder, `docker-co
     *   Go to the **Variables** tab.
     *   Add `DATABASE_URL`.
     *   For the value, **do not paste it manually**. Type `$` and select the PostgreSQL variable reference (e.g., `${PostgreSQL.DATABASE_URL}`). This links them securely.
-    *   Add `PORT` = `3001`.
-5.  **Deploy:** The service should restart. Check the **Deployments** logs. You should see "Applying migration..." and then "Server running on port 3001".
+    *   Add `PORT` = `3001`. (O Railway gerencia a porta internamente)
+5.  **Deploy:** O serviço deve reiniciar. Verifique os logs em **Deployments**. Você deve ver "Server running on port...".
 6.  **Public URL:**
-    *   Go to **Settings** -> **Networking**.
-    *   Click **"Generate Domain"**.
-    *   Copy this URL (e.g., `https://backend-production.up.railway.app`). **You will need it for the frontend.**
+    *   Vá em **Settings** -> **Networking**.
+    *   Certifique-se de que o domínio aponta para: `https://backend-production-e175.up.railway.app`. **Você precisará dele para o frontend.**
 
 ## 4. Deploy the Frontend (Website)
 1.  Add **Another Service** from the same GitHub Repo. (Yes, you add the repo a second time).

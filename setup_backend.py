@@ -11,7 +11,7 @@ def setup_environment():
 
     # Exemplo de configuração de variáveis
     config = {
-        "VITE_API_URL": "http://localhost:3001", # Alterar para URL do Railway no deploy
+        "VITE_API_URL": "https://backend-production-e175.up.railway.app", # URL do Railway de produção
         "DB_HOST": "google_cloud_ip",
         "DATABASE_NAME": "bright_smiles_db",
         "ADMIN_SECRET": "gerar_chave_aleatoria_aqui"

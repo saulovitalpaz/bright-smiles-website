@@ -306,7 +306,7 @@ const max_leads = 100;
 
 ```bash
 # Desenvolvimento
-npm run dev              # Inicia servidor local (localhost:3000)
+npm run dev              # Inicia servidor local para desenvolvimento
 
 # Banco de Dados
 npx prisma migrate dev   # Cria/aplica migrações
