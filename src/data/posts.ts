@@ -28,12 +28,11 @@ export const blogPosts: Post[] = [
         category: "Harmonização",
         date: "08 Jan 2026",
         readTime: "5 min",
-        image: "/images/botox/Botox (2).jpg",
+        image: "/images/botox/Botox (2).png",
         images: [
-            "/images/botox/Botox (2).jpg",
-            "/images/botox/Botox (3).jpg",
-            "/images/preenchimento/preenchimento - hialuronico (10).jpg",
-            "/images/preenchimento/preenchimento - hialuronico (11).jpg"
+            "/images/botox/Botox (2).png",
+            "/images/preenchimento/preenchimento - hialuronico (1).png",
+            "/images/bioestimulador/Bioestimulador (1).jpg"
         ],
         author: "Dra. Ana Karolina",
         content: "A harmonização facial não é apenas sobre aplicar produtos, mas sobre entender a simetria e a beleza única de cada rosto. Quando combinamos procedimentos como toxina botulínica e preenchimento com ácido hialurônico, conseguimos suavizar linhas de expressão e realçar traços naturais, criando um sorriso muito mais harmônico e uma aparência descansada.",

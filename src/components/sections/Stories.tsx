@@ -16,7 +16,7 @@ const mockStories: Story[] = [
     {
         id: 1,
         userName: "Dra. Ana Karolina",
-        userImage: "/images/logo oficial.png",
+        userImage: "/images/logo-oficial.png",
         mediaUrl: "https://images.unsplash.com/photo-1588776814546-1ffce47267a5?auto=format&fit=crop&q=80&w=800",
         type: "image",
         timestamp: "2h atrás"
@@ -24,7 +24,7 @@ const mockStories: Story[] = [
     {
         id: 2,
         userName: "Dra. Clara Lima",
-        userImage: "/images/logo oficial.png",
+        userImage: "/images/logo-oficial.png",
         mediaUrl: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=800",
         type: "image",
         timestamp: "5h atrás"
@@ -32,7 +32,7 @@ const mockStories: Story[] = [
     {
         id: 3,
         userName: "Clínica NOEH",
-        userImage: "/images/logo oficial.png",
+        userImage: "/images/logo-oficial.png",
         mediaUrl: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=800",
         type: "image",
         timestamp: "8h atrás"
