@@ -221,7 +221,7 @@ const users = [
         password: "Support@NOEH2026!",
         name: "Suporte Técnico",
         role: "admin",
-        cro: "DEV-001"
+        cro: "Saulo"
     },
     {
         username: "Dra. Ana Karolina",
@@ -235,7 +235,7 @@ const users = [
         password: "Clara#NOEH2026!",
         name: "Clara Lima",
         role: "admin",
-        cro: "CRO/MG 12.369"
+        cro: "CRO/MG 60.369"
     }
 ];
 
