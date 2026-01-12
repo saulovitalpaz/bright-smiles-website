@@ -30,7 +30,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        'https://www.odontoeharmonizacao.com.br',
+        'https://odontoeharmonizacao.com.br',
+        'https://bright-smiles-website-production.up.railway.app'
+    ],
+    credentials: true
+}));
 app.use(express.json());
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
