@@ -43,6 +43,8 @@ model Appointment {
   procedure    String
   notes        String
   professional String
+  patientId    Int?
+  patient      Patient? @relation(fields: [patientId], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -89,3 +91,27 @@ model Setting {
   key   String @unique
   value String @db.Text
 }
+
+model Patient {
+  id            Int            @id @default(autoincrement())
+  name          String
+  cpf           String         @unique
+  phone         String?
+  address       String?
+  history       String?        @db.Text
+  appointments  Appointment[]
+  prescriptions Prescription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Prescription {
+  id        Int      @id @default(autoincrement())
+  content   String   @db.Text
+  date      DateTime @default(now())
+  patientId Int
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

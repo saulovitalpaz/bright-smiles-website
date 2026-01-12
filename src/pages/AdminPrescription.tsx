@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { API_URL } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,36 +21,64 @@ import {
     Type,
     Save,
     QrCode,
-    ExternalLink
+    ExternalLink,
+    Search
 } from "lucide-react";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog";
-
-// Mock data for search
-const mockPatients = [];
+import { Link, useSearchParams } from "react-router-dom";
 
 const AdminPrescription = () => {
+    const [searchParams] = useSearchParams();
+    const urlCpf = searchParams.get("cpf");
+
     const [patientData, setPatientData] = useState({
+        id: null as number | null,
         name: "",
         cpf: "",
         address: "",
         phone: ""
     });
 
-    const [prescriptionHistory, setPrescriptionHistory] = useState([]);
-
+    const [prescriptionHistory, setPrescriptionHistory] = useState<any[]>([]);
     const [prescriptionContent, setPrescriptionContent] = useState("");
     const editorRef = useRef<HTMLDivElement>(null);
 
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Dra. Karol Paz", cro: "CRO/MG 60.369" };
+
+    useEffect(() => {
+        if (urlCpf) {
+            fetchPatient(urlCpf);
+        }
+    }, [urlCpf]);
+
+    const fetchPatient = async (cpf: string) => {
+        try {
+            const res = await fetch(`${API_URL}/patients/${cpf}`);
+            if (res.ok) {
+                const data = await res.json();
+                setPatientData({
+                    id: data.id,
+                    name: data.name,
+                    cpf: data.cpf,
+                    address: data.address || "",
+                    phone: data.phone || ""
+                });
+                toast.success("Paciente encontrado!");
+                // Load history if needed
+                if (data.prescriptions) {
+                    setPrescriptionHistory(data.prescriptions.map((p: any) => ({
+                        id: p.id,
+                        patient: data.name,
+                        date: new Date(p.date).toLocaleDateString(),
+                        preview: "Receita registrada" // Simplified preview
+                    })));
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const handleFormat = (command: string, value: string = "") => {
         document.execCommand(command, false, value);
@@ -57,28 +86,67 @@ const AdminPrescription = () => {
 
     const handleCpfChange = (val: string) => {
         setPatientData(prev => ({ ...prev, cpf: val }));
-        const found = mockPatients.find(p => p.cpf === val);
-        if (found) {
-            setPatientData(found);
-            toast.success("Paciente encontrado!");
+        if (val.length >= 11) { // Simple debounce/trigger
+            fetchPatient(val);
         }
     };
 
-    const handleSave = () => {
-        if (!patientData.name) return toast.error("Preencha o nome do paciente");
-        const newEntry = {
-            id: Date.now(),
-            patient: patientData.name,
-            date: new Date().toISOString().split('T')[0],
-            preview: editorRef.current?.innerText.substring(0, 30) + "..."
-        };
-        setPrescriptionHistory([newEntry, ...prescriptionHistory]);
-        toast.success("Receita salva no histórico");
+    const handleSave = async () => {
+        if (!patientData.name || !patientData.cpf) return toast.error("Preencha nome e CPF");
+
+        try {
+            // 1. Upsert Patient
+            const patientRes = await fetch(`${API_URL}/patients`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: patientData.name,
+                    cpf: patientData.cpf,
+                    address: patientData.address,
+                    phone: patientData.phone
+                })
+            });
+
+            if (!patientRes.ok) throw new Error("Falha ao salvar paciente");
+            const savedPatient = await patientRes.json();
+            setPatientData(prev => ({ ...prev, id: savedPatient.id }));
+
+            // 2. Save Prescription
+            const content = editorRef.current?.innerHTML || "";
+            const presRes = await fetch(`${API_URL}/prescriptions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    content,
+                    patientId: savedPatient.id
+                })
+            });
+
+            if (presRes.ok) {
+                const savedPres = await presRes.json();
+                setPrescriptionHistory([
+                    {
+                        id: savedPres.id,
+                        patient: savedPatient.name,
+                        date: new Date().toLocaleDateString(),
+                        preview: "Nova receita salva"
+                    },
+                    ...prescriptionHistory
+                ]);
+                toast.success("Receita salva no banco de dados!");
+            } else {
+                toast.error("Erro ao salvar receita");
+            }
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro de conexão");
+        }
     };
 
-    const handlePrint = () => {
-        handleSave();
-        window.print();
+    const handlePrint = async () => {
+        await handleSave();
+        setTimeout(() => window.print(), 500);
     };
 
     return (
@@ -96,12 +164,17 @@ const AdminPrescription = () => {
                                 <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
                                     <CreditCard size={14} /> CPF (Auto-busca)
                                 </Label>
-                                <Input
-                                    placeholder="000.000.000-00"
-                                    value={patientData.cpf}
-                                    onChange={(e) => handleCpfChange(e.target.value)}
-                                    className="border-primary/20 focus:border-primary shadow-sm"
-                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="000.000.000-00"
+                                        value={patientData.cpf}
+                                        onChange={(e) => handleCpfChange(e.target.value)}
+                                        className="border-primary/20 focus:border-primary shadow-sm"
+                                    />
+                                    <Button size="icon" variant="outline" onClick={() => fetchPatient(patientData.cpf)}>
+                                        <Search size={14} />
+                                    </Button>
+                                </div>
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
@@ -142,15 +215,19 @@ const AdminPrescription = () => {
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
-                                {prescriptionHistory.map(item => (
-                                    <div key={item.id} className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
-                                            <span className="text-[10px] text-slate-400">{item.date}</span>
+                                {prescriptionHistory.length > 0 ? (
+                                    prescriptionHistory.map(item => (
+                                        <div key={item.id} className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
+                                                <span className="text-[10px] text-slate-400">{item.date}</span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 line-clamp-1">{item.preview}</p>
                                         </div>
-                                        <p className="text-[10px] text-slate-500 line-clamp-1">{item.preview}</p>
-                                    </div>
-                                ))}
+                                    ))
+                                ) : (
+                                    <div className="p-4 text-center text-xs text-slate-400 italic">Nenhum histórico encontrado</div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -188,10 +265,10 @@ const AdminPrescription = () => {
                             <Button variant="ghost" size="sm" onClick={() => handleFormat('fontSize', '4')} title="Aumentar Fonte"><Type size={16} /></Button>
                             <div className="ml-auto flex gap-2">
                                 <Button onClick={handleSave} variant="outline" className="gap-2 border-slate-200 text-slate-600">
-                                    <Save size={18} /> Apenas Salvar
+                                    <Save size={18} /> Salvar no Histórico
                                 </Button>
                                 <Button onClick={handlePrint} className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
-                                    <Printer size={18} /> Imprimir PDF
+                                    <Printer size={18} /> Salvar & Imprimir
                                 </Button>
                             </div>
                         </div>
@@ -228,7 +305,7 @@ const AdminPrescription = () => {
                 </div>
 
                 {/* Patient Info Block */}
-                <div className="bg-slate-50/50 p-8 rounded-[2rem] mb-12 border border-slate-100 shadow-sm print:shadow-none print:border-slate-100">
+                <div className="bg-slate-50/50 p-8 rounded-[2.5rem] mb-12 border border-slate-100 shadow-sm print:shadow-none print:border-slate-100">
                     <div className="grid grid-cols-3 gap-10">
                         <div className="col-span-2">
                             <p className="text-[9px] uppercase font-black text-primary tracking-widest mb-2">Paciente</p>
@@ -292,7 +369,6 @@ const AdminPrescription = () => {
                     color: #94a3b8;
                 }
             `}</style>
-
         </AdminLayout>
     );
 };

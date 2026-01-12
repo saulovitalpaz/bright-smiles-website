@@ -12,21 +12,24 @@ app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 
-// Configure Multer for local storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = 'public/uploads';
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir)
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: 'drvylmywu',
+    api_key: '958317597149665',
+    api_secret: 'atOr40x95JejT5Ru5AmgqWyz3_4'
+});
+
+// Configure Multer for Cloudinary
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'bright-smiles',
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
     },
-    filename: function (req, file, cb) {
-        // secure filename with timestamp
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-        cb(null, uniqueSuffix + path.extname(file.originalname))
-    }
-})
+});
 
 const upload = multer({ storage: storage });
 
@@ -39,18 +42,17 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
+// Cloudinary Upload Endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).send('No file uploaded.');
         }
-        // Return the full URL or relative path accessible via the static route
-        const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl });
+        // Cloudinary returns the URL in req.file.path
+        res.json({ url: req.file.path });
     } catch (error) {
+        console.error("Upload error:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -345,6 +347,81 @@ app.post('/settings', async (req, res) => {
         res.json(setting);
     } catch (error) {
         res.status(400).json({ error: error.message });
+    }
+});
+
+
+// Patients API
+app.get('/patients', async (req, res) => {
+    const { search } = req.query;
+    try {
+        const where = search ? {
+            OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { cpf: { contains: search } }
+            ]
+        } : {};
+        const patients = await prisma.patient.findMany({
+            where,
+            orderBy: { name: 'asc' }
+        });
+        res.json(patients);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/patients/:cpf', async (req, res) => {
+    try {
+        const { cpf } = req.params;
+        const patient = await prisma.patient.findUnique({
+            where: { cpf },
+            include: { appointments: true, prescriptions: true }
+        });
+        if (!patient) return res.status(404).json({ error: 'Patient not found' });
+        res.json(patient);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/patients', async (req, res) => {
+    try {
+        const { cpf } = req.body;
+        // Upsert ensures we don't create duplicates and reuse the ID
+        const patient = await prisma.patient.upsert({
+            where: { cpf },
+            update: req.body,
+            create: req.body
+        });
+        res.json(patient);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Prescriptions API
+app.post('/prescriptions', async (req, res) => {
+    try {
+        const item = await prisma.prescription.create({
+            data: req.body
+        });
+        res.json(item);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.get('/prescriptions/patient/:patientId', async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        const list = await prisma.prescription.findMany({
+            where: { patientId: parseInt(patientId) },
+            orderBy: { date: 'desc' }
+        });
+        res.json(list);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
