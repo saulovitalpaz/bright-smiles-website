@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { MapPin, Phone, Clock, Instagram, MessageCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LeadCaptureDialog } from "@/components/LeadCaptureDialog";
 
 const Contact = () => {
+  const [open, setOpen] = useState(false);
   const whatsappNumber = "5533991219695";
   const whatsappMessage = encodeURIComponent("Olá! Gostaria de agendar uma consulta no Núcleo Odontológico Especializado.");
   const mapUrl = "https://maps.app.goo.gl/chx7grgranKEyPhP8";
@@ -25,14 +28,13 @@ const Contact = () => {
             </p>
 
             {/* WhatsApp CTA */}
-            <Button
-              size="lg"
-              className="gap-2 mb-8"
-              onClick={() => window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank')}
-            >
-              <MessageCircle className="w-5 h-5" />
-              Chamar no WhatsApp
-            </Button>
+            <div onClick={() => setOpen(true)}>
+              <Button size="lg" className="gap-2 mb-8">
+                <MessageCircle className="w-5 h-5" />
+                Agendar / Dúvidas
+              </Button>
+            </div>
+            <LeadCaptureDialog open={open} onOpenChange={setOpen} />
 
             {/* Contact Info */}
             <div className="space-y-4">

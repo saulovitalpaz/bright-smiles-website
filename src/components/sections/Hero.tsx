@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-clinic.jpg";
+import { LeadCaptureDialog } from "@/components/LeadCaptureDialog";
 
 const Hero = () => {
+  const [open, setOpen] = useState(false);
   return (
     <section id="inicio" className="relative min-h-[90vh] flex items-center">
       {/* Background Image with Overlay */}
@@ -39,14 +42,16 @@ const Hero = () => {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button
-              size="lg"
-              className="gap-2 text-base px-8 py-6"
-              onClick={() => document.getElementById('agendamento')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Agendar Consulta
-              <ArrowRight className="w-5 h-5" />
-            </Button>
+            <div onClick={() => setOpen(true)}>
+              <Button
+                size="lg"
+                className="gap-2 text-base px-8 py-6"
+              >
+                Agendar Consulta
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+            </div>
+            <LeadCaptureDialog open={open} onOpenChange={setOpen} />
             <Link to="/tratamentos">
               <Button
                 variant="outline"

@@ -110,8 +110,14 @@ app.post('/login', async (req, res) => {
 
 // Posts API
 app.get('/posts', async (req, res) => {
-    const posts = await prisma.post.findMany();
-    res.json(posts);
+    try {
+        const posts = await prisma.post.findMany({
+            orderBy: { date: 'desc' }
+        });
+        res.json(posts);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.post('/posts', async (req, res) => {
@@ -125,14 +131,95 @@ app.post('/posts', async (req, res) => {
     }
 });
 
-// Appointments API
-app.get('/appointments', async (req, res) => {
-    const appointments = await prisma.appointment.findMany({
-        orderBy: { date: 'desc' }
-    });
-    res.json(appointments);
+app.put('/posts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { id: _id, createdAt, updatedAt, ...data } = req.body;
+        const post = await prisma.post.update({
+            where: { id: parseInt(id) },
+            data: data
+        });
+        res.json(post);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
 });
 
+app.delete('/posts/:id', async (req, res) => {
+    try {
+        await prisma.post.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Post deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/posts/:id/view', async (req, res) => {
+    try {
+        // Increment views
+        const post = await prisma.post.update({
+            where: { id: parseInt(req.params.id) },
+            data: { views: { increment: 1 } }
+        });
+        res.json({ views: post.views });
+    } catch (error) {
+        res.status(200).send("OK"); // Fail silently
+    }
+});
+
+// ... Appointments ...
+
+// Stories API
+app.get('/stories', async (req, res) => {
+    try {
+        const stories = await prisma.story.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(stories);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/stories', async (req, res) => {
+    try {
+        const story = await prisma.story.create({
+            data: {
+                ...req.body,
+                status: 'active'
+            }
+        });
+        res.json(story);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/stories/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.story.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Story deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/stories/:id/view', async (req, res) => {
+    try {
+        await prisma.story.update({
+            where: { id: parseInt(req.params.id) },
+            data: { views: { increment: 1 } }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(200).send("OK");
+    }
+});
 app.post('/appointments', async (req, res) => {
     try {
         const appointment = await prisma.appointment.create({
@@ -630,6 +717,18 @@ app.get('/patient-documents/:patientId', async (req, res) => {
 app.post('/patient-documents', async (req, res) => {
     try {
         const doc = await prisma.patientDocument.create({
+            data: req.body
+        });
+        res.json(doc);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.put('/patient-documents/:id', async (req, res) => {
+    try {
+        const doc = await prisma.patientDocument.update({
+            where: { id: parseInt(req.params.id) },
             data: req.body
         });
         res.json(doc);

@@ -18,6 +18,8 @@ const AdminBlog = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
 
+    const [editingPost, setEditingPost] = useState<any>(null);
+
     // Form State
     const [formData, setFormData] = useState({
         title: "",
@@ -42,23 +44,32 @@ const AdminBlog = () => {
             const slug = data.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
             const readTime = Math.max(1, Math.ceil(data.content.split(' ').length / 200)) + " min de leitura";
 
-            await axios.post(`${API_URL}/posts`, {
-                ...data,
-                slug: slug + '-' + Date.now(), // Ensure uniqueness
-                excerpt: data.content.substring(0, 150) + "...",
-                date: new Date().toISOString(),
-                readTime,
-                images: [],
-                references: {}
-            });
+            if (editingPost) {
+                // Update
+                await axios.put(`${API_URL}/posts/${editingPost.id}`, {
+                    ...data,
+                    readTime,
+                    // keep slug stable or update if needed? usually stable for SEO, but here we update
+                });
+            } else {
+                // Create
+                await axios.post(`${API_URL}/posts`, {
+                    ...data,
+                    slug: slug + '-' + Date.now(),
+                    excerpt: data.content.substring(0, 150) + "...",
+                    date: new Date().toISOString(),
+                    readTime,
+                    images: [],
+                    references: {}
+                });
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['posts'] });
-            toast.success("Post publicado com sucesso!");
-            setIsDialogOpen(false);
-            setFormData({ title: "", content: "", category: "Dicas de Saúde", author: "Dra. Ana Karolina", image: "" });
+            toast.success(editingPost ? "Post atualizado!" : "Post publicado com sucesso!");
+            handleClose();
         },
-        onError: () => toast.error("Erro ao publicar post.")
+        onError: () => toast.error("Erro ao salvar post.")
     });
 
     const deleteMutation = useMutation({
@@ -71,6 +82,24 @@ const AdminBlog = () => {
         },
         onError: () => toast.error("Erro ao remover.")
     });
+
+    const handleClose = () => {
+        setIsDialogOpen(false);
+        setEditingPost(null);
+        setFormData({ title: "", content: "", category: "Dicas de Saúde", author: "Dra. Ana Karolina", image: "" });
+    }
+
+    const handleEdit = (post: any) => {
+        setEditingPost(post);
+        setFormData({
+            title: post.title,
+            content: post.content,
+            category: post.category,
+            author: post.author,
+            image: post.image
+        });
+        setIsDialogOpen(true);
+    };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -155,6 +184,9 @@ const AdminBlog = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-primary" onClick={() => handleEdit(post)}>
+                                                <Edit2 size={16} />
+                                            </Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => deleteMutation.mutate(post.id)}>
                                                 <Trash2 size={16} />
                                             </Button>
@@ -167,11 +199,15 @@ const AdminBlog = () => {
                 </div>
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                if (!open) handleClose();
+                else setIsDialogOpen(true);
+            }}>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Novo Artigo</DialogTitle>
+                        <DialogTitle>{editingPost ? "Editar Artigo" : "Novo Artigo"}</DialogTitle>
                     </DialogHeader>
+
                     <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">

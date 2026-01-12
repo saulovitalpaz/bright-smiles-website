@@ -190,3 +190,52 @@
     @apply max-w-5xl mx-auto;
   }
 }
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide everything by default */
+  body > * {
+    display: none !important;
+  }
+
+  /* Only show the root app wrapper */
+  #root {
+    display: block !important;
+  }
+
+  /* Hide common UI elements globally */
+  header, footer, nav, aside, .no-print, button, input, textarea, select {
+    display: none !important;
+  }
+
+  /* Specific Admin Layout Fixes */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Allow specific print-only elements to be visible */
+  .print-only {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: white !important;
+    z-index: 9999 !important;
+  }
+}

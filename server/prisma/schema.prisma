@@ -30,6 +30,7 @@ model Post {
   image      String
   images     String[]
   author     String
+  views      Int      @default(0)
   references Json?    
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -164,6 +165,7 @@ model PatientDocument {
   title     String
   content   String   @db.Text
   date      DateTime @default(now())
+  pdfUrl    String? // URL for the signed/uploaded PDF
   patientId Int
   patient   Patient  @relation(fields: [patientId], references: [id])
   createdAt DateTime @default(now())

@@ -7,6 +7,7 @@ import Stories from "@/components/sections/Stories";
 import AppointmentForm from "@/components/sections/AppointmentForm";
 import Contact from "@/components/sections/Contact";
 import Feedback from "@/components/sections/Feedback";
+import TestimonialsCarousel from "@/components/sections/TestimonialsCarousel";
 import Footer from "@/components/layout/Footer";
 
 const Index = () => {
@@ -23,6 +24,7 @@ const Index = () => {
           <AppointmentForm />
           <Contact />
         </div>
+        <TestimonialsCarousel />
         <Feedback />
       </main>
       <Footer />

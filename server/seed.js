@@ -283,6 +283,86 @@ async function main() {
         }
     });
 
+    console.log('Seeding Document Templates...');
+    const templates = [
+        {
+            title: "Contrato de Prestação de Serviços Odontológicos",
+            content: `CONTRATO DE PRESTAÇÃO DE SERVIÇOS ODONTOLÓGICOS
+
+CONTRATADA: NOEH - NÚCLEO ODONTOLÓGICO ESPECIALIZADO & HARMONIZAÇÃO
+CONTRATANTE: #NOME, portador(a) do CPF #CPF.
+
+CLÁUSULA 1ª: DO OBJETO
+O presente contrato tem por objeto a prestação de serviços odontológicos pela CONTRATADA ao CONTRATANTE, especificamente para a realização do procedimento de: #PROCEDIMENTO.
+
+CLÁUSULA 2ª: DAS OBRIGAÇÕES
+A CONTRATADA compromete-se a utilizar as técnicas e materiais adequados, observando os preceitos éticos e técnicos da Odontologia.
+O CONTRATANTE compromete-se a seguir rigorosamente as orientações pré e pós-operatórias.
+
+CLÁUSULA 3ª: DOS RISCOS
+O CONTRATANTE declara ter sido informado sobre os riscos inerentes a qualquer procedimento de saúde, bem como sobre os resultados esperados, que podem variar de acordo com a resposta biológica de cada organismo.
+
+Data: #DATA
+
+__________________________________________
+#NOME
+(Assinatura do Paciente)
+
+__________________________________________
+#PROFISSIONAL
+(Assinatura do Profissional)`
+        },
+        {
+            title: "TCLE - Termo de Consentimento Livre e Esclarecido",
+            content: `TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO
+
+Eu, #NOME, portador(a) do CPF #CPF, declaro que fui devidamente esclarecido(a) pela equipe da NOEH sobre o procedimento de #PROCEDIMENTO.
+
+1. Entendi a natureza, a finalidade e os benefícios do procedimento.
+2. Fui informado(a) sobre os riscos, complicações e efeitos adversos possíveis (inchaço, hematoma, desconforto, etc.).
+3. Tive a oportunidade de fazer perguntas e todas foram respondidas satisfatoriamente.
+4. Autorizo a realização de registros fotográficos para acompanhamento clínico.
+
+Por ser verdade, firmo o presente.
+
+Governador Valadares, #DATA
+
+__________________________________________
+#NOME
+(Assinatura do Paciente)`
+        },
+        {
+            title: "Recomendações Pós-Operatórias",
+            content: `RECOMENDAÇÕES PÓS-OPERATÓRIAS
+Procedimento: #PROCEDIMENTO
+Paciente: #NOME
+
+Para garantir o sucesso do seu tratamento e uma recuperação tranquila, siga as orientações abaixo:
+
+1. EVITAR esforço físico intenso por 24-48 horas.
+2. NÃO massagear a área tratada, salvo orientação expressa.
+3. EVITAR exposição direta ao sol ou calor excessivo (sauna, banho muito quente) enquanto houver inchaço ou hematoma.
+4. MANTER a higienização local com suavidade.
+5. Em caso de dor, usar a medicação prescrita. NÃO SE AUTOMEDIQUE.
+
+MEDICAÇÃO PRESCRITA:
+(Preencher se necessário)
+__________________________________________________________________
+
+Em caso de dúvidas ou urgência, entre em contato conosco imediatamente.
+
+Atenciosamente,
+#PROFISSIONAL
+NOEH - Núcleo Odontológico`
+        }
+    ];
+
+    for (const t of templates) {
+        await prisma.documentTemplate.create({
+            data: t
+        });
+    }
+
     console.log('Seeding users...');
     for (const u of users) {
         await prisma.user.upsert({
