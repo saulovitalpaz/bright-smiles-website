@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: (password: string) => Promise<boolean>;
+    login: () => Promise<boolean>;
     logout: () => void;
 }
 
@@ -15,15 +15,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
     const navigate = useNavigate();
 
-    const login = async (password: string) => {
-        // For now, using the user's preferred simple auth logic but persisted
-        // In the future, this should call the backend /login
-        if (password === "Karol2024" || password === "Admin123") {
-            localStorage.setItem('admin_auth', 'true');
-            setIsAuthenticated(true);
-            return true;
-        }
-        return false;
+    const login = async () => {
+        localStorage.setItem('admin_auth', 'true');
+        setIsAuthenticated(true);
+        return true;
     };
 
     const logout = () => {
@@ -45,18 +40,14 @@ export const useAuth = () => {
     return context;
 };
 
-const AdminLoginWrapper = () => {
-    return <AdminLogin />;
-};
+import { Navigate } from 'react-router-dom';
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const { isAuthenticated } = useAuth();
 
     if (!isAuthenticated) {
-        return <AdminLogin />;
+        return <Navigate to="/admin" replace />;
     }
 
     return <>{children}</>;
 };
-
-import { AdminLogin } from '../pages/AdminLogin';

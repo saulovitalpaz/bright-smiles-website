@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,13 @@ export const AdminLogin = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, isAuthenticated } = useAuth();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate("/admin/dashboard");
+        }
+    }, [isAuthenticated, navigate]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,7 +34,7 @@ export const AdminLogin = () => {
             if (response.ok) {
                 const user = await response.json();
                 // Pass password to the context login for persistence
-                await login(password);
+                await login();
                 toast.success(`Bem-vinda, ${user.name}!`);
                 navigate("/admin/dashboard");
             } else {

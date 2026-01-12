@@ -47,8 +47,8 @@ const AdminDashboard = () => {
     }, []);
 
     const statCards = [
-        { label: "Solicitações (Leads)", value: stats.leads.toString(), icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
-        { label: "Novos Comentários", value: stats.testimonials.toString(), icon: MessageSquare, color: "text-green-600", bg: "bg-green-100" },
+        { label: "Solicitações (Leads)", value: (stats?.leads || 0).toString(), icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
+        { label: "Novos Comentários", value: (stats?.testimonials || 0).toString(), icon: MessageSquare, color: "text-green-600", bg: "bg-green-100" },
     ];
 
     if (loading) {
@@ -88,7 +88,7 @@ const AdminDashboard = () => {
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <h3 className="font-serif font-bold text-xl mb-6">Solicitações Recentes (Início)</h3>
                     <div className="space-y-4">
-                        {stats.recentLeads.length > 0 ? (
+                        {(stats?.recentLeads?.length || 0) > 0 ? (
                             stats.recentLeads.map((lead: any) => (
                                 <div key={lead.id} className="flex items-center gap-4 p-4 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors">
                                     <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
@@ -118,7 +118,7 @@ const AdminDashboard = () => {
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <h3 className="font-serif font-bold text-xl mb-6">Últimos Atendimentos</h3>
                     <div className="space-y-4">
-                        {stats.recentAppointments.length > 0 ? (
+                        {(stats?.recentAppointments?.length || 0) > 0 ? (
                             stats.recentAppointments.map((app: any) => (
                                 <div key={app.id} className="flex items-center gap-4 p-4 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors">
                                     <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
