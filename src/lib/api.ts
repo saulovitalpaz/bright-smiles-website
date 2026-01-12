@@ -10,8 +10,8 @@ const getApiUrl = () => {
     // 2. Check for environment variable (Vite approach)
     if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
 
-    // 3. Local development fallback
-    return "http://localhost:3001";
+    // 3. Produção como fallback final (removido localhost)
+    return "https://backend-production-e175.up.railway.app";
 };
 
 export const API_URL = getApiUrl();
