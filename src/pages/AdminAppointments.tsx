@@ -100,8 +100,23 @@ const AdminAppointments = () => {
     };
 
     const filteredAppointments = appointments.filter(record =>
-        record.patientName.toLowerCase().includes(searchTerm.toLowerCase())
+        record.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (record.cpf && record.cpf.includes(searchTerm))
     );
+
+    const formatDate = (dateStr: string) => {
+        try {
+            return new Date(dateStr).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     return (
         <AdminLayout title="Atendimentos & Consultas">
@@ -206,7 +221,7 @@ const AdminAppointments = () => {
                                                     <div className="flex items-center gap-3 mt-1">
                                                         <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                                                             <History size={12} />
-                                                            {record.date}
+                                                            {formatDate(record.date)}
                                                         </span>
                                                         <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-slate-200">
                                                             {record.professional}

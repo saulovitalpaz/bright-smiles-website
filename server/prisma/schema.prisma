@@ -127,6 +127,8 @@ model Lead {
   treatment String?
   message   String?
   status    String   @default("new") // new, contacted, scheduled
+  source    String?  // Instagram, Google, etc.
+  location  String?  // City/Region
   createdAt DateTime @default(now())
 }
 
@@ -178,5 +180,7 @@ model AnalyticsEvent {
   path      String
   ip        String?
   userAgent String?
+  source    String?
+  location  String?
   date      DateTime @default(now())
 }

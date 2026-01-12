@@ -512,266 +512,323 @@ app.get('/prescriptions/patient/:patientId', async (req, res) => {
             orderBy: { date: 'desc' }
         });
         res.json(list);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+        // Dashboard Stats API
+        app.get('/dashboard/stats', async (req, res) => {
+            try {
+                const [users, posts, appointments, leads, testimonials] = await Promise.all([
+                    prisma.user.count(),
+                    prisma.post.count(),
+                    prisma.appointment.count(),
+                    prisma.lead.count(),
+                    prisma.testimonial.count()
+                ]);
 
-// Leads API
-app.post('/leads', async (req, res) => {
-    try {
-        const lead = await prisma.lead.create({
-            data: req.body
-        });
-        res.json(lead);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
+                const recentAppointments = await prisma.appointment.findMany({
+                    take: 5,
+                    orderBy: { date: 'desc' }
+                });
 
-app.get('/leads', async (req, res) => {
-    try {
-        const leads = await prisma.lead.findMany({
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json(leads);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+                const recentLeads = await prisma.lead.findMany({
+                    take: 5,
+                    orderBy: { createdAt: 'desc' }
+                });
 
-// Testimonials API
-app.post('/testimonials', async (req, res) => {
-    try {
-        const testimonial = await prisma.testimonial.create({
-            data: req.body
-        });
-        res.json(testimonial);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.get('/testimonials', async (req, res) => {
-    try {
-        const { approved } = req.query;
-        const where = approved ? { approved: approved === 'true' } : {};
-        const testimonials = await prisma.testimonial.findMany({
-            where,
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json(testimonials);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Leads API (continued)
-app.put('/leads/:id', async (req, res) => {
-    try {
-        const lead = await prisma.lead.update({
-            where: { id: parseInt(req.params.id) },
-            data: req.body
-        });
-        res.json(lead);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.delete('/leads/:id', async (req, res) => {
-    try {
-        await prisma.lead.delete({
-            where: { id: parseInt(req.params.id) }
-        });
-        res.json({ message: 'Lead deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// Testimonials API (continued)
-app.put('/testimonials/:id', async (req, res) => {
-    try {
-        const testimonial = await prisma.testimonial.update({
-            where: { id: parseInt(req.params.id) },
-            data: req.body
-        });
-        res.json(testimonial);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.delete('/testimonials/:id', async (req, res) => {
-    try {
-        await prisma.testimonial.delete({
-            where: { id: parseInt(req.params.id) }
-        });
-        res.json({ message: 'Testimonial deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// Finance API
-app.get('/finance', async (req, res) => {
-    try {
-        const transactions = await prisma.financeTransaction.findMany({
-            include: { patient: { select: { name: true } } },
-            orderBy: { date: 'desc' }
-        });
-        res.json(transactions);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/finance', async (req, res) => {
-    try {
-        const transaction = await prisma.financeTransaction.create({
-            data: req.body
-        });
-        res.json(transaction);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.delete('/finance/:id', async (req, res) => {
-    try {
-        await prisma.financeTransaction.delete({
-            where: { id: parseInt(req.params.id) }
-        });
-        res.json({ message: 'Transaction deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.get('/finance/stats', async (req, res) => {
-    try {
-        const income = await prisma.financeTransaction.aggregate({
-            where: { type: 'income' },
-            _sum: { amount: true }
-        });
-        const expense = await prisma.financeTransaction.aggregate({
-            where: { type: 'expense' },
-            _sum: { amount: true }
-        });
-        res.json({
-            income: income._sum.amount || 0,
-            expense: expense._sum.amount || 0,
-            balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Document Templates API
-app.get('/document-templates', async (req, res) => {
-    try {
-        const templates = await prisma.documentTemplate.findMany();
-        res.json(templates);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/document-templates', async (req, res) => {
-    try {
-        const template = await prisma.documentTemplate.create({
-            data: req.body
-        });
-        res.json(template);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.delete('/document-templates/:id', async (req, res) => {
-    try {
-        await prisma.documentTemplate.delete({
-            where: { id: parseInt(req.params.id) }
-        });
-        res.json({ message: 'Template deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// Patient Documents API (History)
-app.get('/patient-documents/:patientId', async (req, res) => {
-    try {
-        const docs = await prisma.patientDocument.findMany({
-            where: { patientId: parseInt(req.params.patientId) },
-            orderBy: { date: 'desc' }
-        });
-        res.json(docs);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/patient-documents', async (req, res) => {
-    try {
-        const doc = await prisma.patientDocument.create({
-            data: req.body
-        });
-        res.json(doc);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.put('/patient-documents/:id', async (req, res) => {
-    try {
-        const doc = await prisma.patientDocument.update({
-            where: { id: parseInt(req.params.id) },
-            data: req.body
-        });
-        res.json(doc);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// Analytics API
-app.post('/analytics', async (req, res) => {
-    try {
-        const event = await prisma.analyticsEvent.create({
-            data: {
-                ...req.body,
-                ip: req.ip // Express trust proxy is on
+                res.json({
+                    users,
+                    posts,
+                    appointments,
+                    leads,
+                    testimonials,
+                    recentAppointments,
+                    recentLeads
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
             }
         });
-        res.json(event);
-    } catch (error) {
-        // Analytics should fail silently in production usually, but we log here
-        console.error("Analytics Error:", error);
-        res.status(200).json({ status: 'ignored' });
-    }
-});
 
-app.get('/analytics/stats', async (req, res) => {
-    try {
-        const totalVisits = await prisma.analyticsEvent.count({
-            where: { type: 'pageview' }
+        // Leads API
+        app.post('/leads', async (req, res) => {
+            try {
+                const { source, ...rest } = req.body;
+
+                // Simple IP to City mock/lookup (in a real app we'd use a geoip library)
+                const location = "Governador Valadares"; // Default for clinic local area
+
+                const lead = await prisma.lead.create({
+                    data: {
+                        ...rest,
+                        source: source || "Site",
+                        location: location
+                    }
+                });
+                res.json(lead);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
         });
-        // Simple day grouping (Postgres specific, or simplified JS)
-        // For now, return raw stats
-        const recentEvents = await prisma.analyticsEvent.findMany({
-            take: 50,
-            orderBy: { date: 'desc' }
+
+        app.get('/leads', async (req, res) => {
+            try {
+                const leads = await prisma.lead.findMany({
+                    orderBy: { createdAt: 'desc' }
+                });
+                res.json(leads);
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
         });
-        res.json({ totalVisits, recentEvents });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+        // Testimonials API
+        app.post('/testimonials', async (req, res) => {
+            try {
+                const testimonial = await prisma.testimonial.create({
+                    data: req.body
+                });
+                res.json(testimonial);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
 
+        app.get('/testimonials', async (req, res) => {
+            try {
+                const { approved } = req.query;
+                const where = approved ? { approved: approved === 'true' } : {};
+                const testimonials = await prisma.testimonial.findMany({
+                    where,
+                    orderBy: { createdAt: 'desc' }
+                });
+                res.json(testimonials);
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Leads API (continued)
+        app.put('/leads/:id', async (req, res) => {
+            try {
+                const lead = await prisma.lead.update({
+                    where: { id: parseInt(req.params.id) },
+                    data: req.body
+                });
+                res.json(lead);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.delete('/leads/:id', async (req, res) => {
+            try {
+                await prisma.lead.delete({
+                    where: { id: parseInt(req.params.id) }
+                });
+                res.json({ message: 'Lead deleted' });
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        // Testimonials API (continued)
+        app.put('/testimonials/:id', async (req, res) => {
+            try {
+                const testimonial = await prisma.testimonial.update({
+                    where: { id: parseInt(req.params.id) },
+                    data: req.body
+                });
+                res.json(testimonial);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.delete('/testimonials/:id', async (req, res) => {
+            try {
+                await prisma.testimonial.delete({
+                    where: { id: parseInt(req.params.id) }
+                });
+                res.json({ message: 'Testimonial deleted' });
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        // Finance API
+        app.get('/finance', async (req, res) => {
+            try {
+                const transactions = await prisma.financeTransaction.findMany({
+                    include: { patient: { select: { name: true } } },
+                    orderBy: { date: 'desc' }
+                });
+                res.json(transactions);
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        app.post('/finance', async (req, res) => {
+            try {
+                const transaction = await prisma.financeTransaction.create({
+                    data: req.body
+                });
+                res.json(transaction);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.delete('/finance/:id', async (req, res) => {
+            try {
+                await prisma.financeTransaction.delete({
+                    where: { id: parseInt(req.params.id) }
+                });
+                res.json({ message: 'Transaction deleted' });
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.get('/finance/stats', async (req, res) => {
+            try {
+                const income = await prisma.financeTransaction.aggregate({
+                    where: { type: 'income' },
+                    _sum: { amount: true }
+                });
+                const expense = await prisma.financeTransaction.aggregate({
+                    where: { type: 'expense' },
+                    _sum: { amount: true }
+                });
+                res.json({
+                    income: income._sum.amount || 0,
+                    expense: expense._sum.amount || 0,
+                    balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Document Templates API
+        app.get('/document-templates', async (req, res) => {
+            try {
+                const templates = await prisma.documentTemplate.findMany();
+                res.json(templates);
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        app.post('/document-templates', async (req, res) => {
+            try {
+                const template = await prisma.documentTemplate.create({
+                    data: req.body
+                });
+                res.json(template);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.delete('/document-templates/:id', async (req, res) => {
+            try {
+                await prisma.documentTemplate.delete({
+                    where: { id: parseInt(req.params.id) }
+                });
+                res.json({ message: 'Template deleted' });
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        // Patient Documents API (History)
+        app.get('/patient-documents/:patientId', async (req, res) => {
+            try {
+                const docs = await prisma.patientDocument.findMany({
+                    where: { patientId: parseInt(req.params.patientId) },
+                    orderBy: { date: 'desc' }
+                });
+                res.json(docs);
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        app.post('/patient-documents', async (req, res) => {
+            try {
+                const doc = await prisma.patientDocument.create({
+                    data: req.body
+                });
+                res.json(doc);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.put('/patient-documents/:id', async (req, res) => {
+            try {
+                const doc = await prisma.patientDocument.update({
+                    where: { id: parseInt(req.params.id) },
+                    data: req.body
+                });
+                res.json(doc);
+            } catch (error) {
+                // Analytics API
+                app.post('/analytics', async (req, res) => {
+                    try {
+                        const { source, path, type } = req.body;
+
+                        // Mock Geo-IP for Demo/Clinic area
+                        const location = "Governador Valadares";
+
+                        const event = await prisma.analyticsEvent.create({
+                            data: {
+                                type: type || 'pageview',
+                                path: path || '/',
+                                source: source || 'Direto',
+                                location: location,
+                                ip: req.ip,
+                                userAgent: req.headers['user-agent']
+                            }
+                        });
+                        res.json(event);
+                    } catch (error) {
+                        console.error("Analytics Error:", error);
+                        res.status(200).json({ status: 'ignored' });
+                    }
+                });
+
+                app.get('/analytics/stats', async (req, res) => {
+                    try {
+                        const events = await prisma.analyticsEvent.findMany({
+                            orderBy: { date: 'desc' }
+                        });
+
+                        const totalVisits = events.filter(e => e.type === 'pageview').length;
+
+                        // Group by Source
+                        const sources = events.reduce((acc, e) => {
+                            const s = e.source || 'Direto';
+                            acc[s] = (acc[s] || 0) + 1;
+                            return acc;
+                        }, {});
+
+                        // Group by Location
+                        const locations = events.reduce((acc, e) => {
+                            const loc = e.location || 'Brasil';
+                            acc[loc] = (acc[loc] || 0) + 1;
+                            return acc;
+                        }, {});
+
+                        res.json({
+                            totalVisits,
+                            sources,
+                            locations,
+                            recentEvents: events.slice(0, 20)
+                        });
+                    } catch (error) {
+                        res.status(500).json({ error: error.message });
+                    }
+                });
+                app.listen(port, () => {
+                    console.log(`Server running on port ${port}`);
+                });

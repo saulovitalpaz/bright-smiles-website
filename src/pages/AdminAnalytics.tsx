@@ -21,44 +21,82 @@ const AdminAnalytics = () => {
         visits: 0,
         posts: 0,
         comments: 0,
-        appointments: 0,
-        topPosts: []
+        leads: 0,
+        topPosts: [],
+        sources: [] as { name: string, count: number, percentage: number }[],
+        locations: [] as { name: string, count: number, percentage: number }[]
     });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadStats = async () => {
             try {
-                // Fetch basic counts
-                const [dashStats, postsRes] = await Promise.all([
+                const [dashStats, postsRes, leadsRes] = await Promise.all([
                     axios.get(`${API_URL}/dashboard/stats`),
-                    axios.get(`${API_URL}/posts`) // To calculate views
+                    axios.get(`${API_URL}/posts`),
+                    axios.get(`${API_URL}/leads`)
                 ]);
 
                 const posts = postsRes.data;
+                const leads = leadsRes.data;
                 const totalPostViews = posts.reduce((acc: number, p: any) => acc + (p.views || 0), 0);
                 const topPosts = posts.sort((a: any, b: any) => (b.views || 0) - (a.views || 0)).slice(0, 5);
 
+                // Calculate Sources from Leads
+                const sourceCounts: any = {};
+                leads.forEach((l: any) => {
+                    const s = l.source || "Desconhecido";
+                    sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+                });
+                const sources = Object.entries(sourceCounts).map(([name, count]: [string, any]) => ({
+                    name,
+                    count,
+                    percentage: Math.round((count / leads.length) * 100)
+                })).sort((a, b) => b.count - a.count);
+
+                // Calculate Locations from Leads
+                const locCounts: any = {};
+                leads.forEach((l: any) => {
+                    const loc = l.location || "Presencial/Direto";
+                    locCounts[loc] = (locCounts[loc] || 0) + 1;
+                });
+                const locations = Object.entries(locCounts).map(([name, count]: [string, any]) => ({
+                    name,
+                    count,
+                    percentage: Math.round((count / leads.length) * 100)
+                })).sort((a, b) => b.count - a.count);
+
                 setStats({
-                    visits: totalPostViews, // Using post views as proxy
+                    visits: totalPostViews,
                     posts: dashStats.data.posts,
                     comments: dashStats.data.testimonials,
-                    appointments: dashStats.data.leads || dashStats.data.appointments,
-                    topPosts
+                    leads: leads.length,
+                    topPosts,
+                    sources,
+                    locations
                 });
 
             } catch (e) {
                 console.error(e);
+            } finally {
+                setLoading(false);
             }
         };
         loadStats();
     }, []);
 
     const cards = [
-        { label: "Solicitações (Leads)", value: stats.appointments, icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
+        { label: "Solicitações (Leads)", value: stats.leads, icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
         { label: "Comentários", value: stats.comments, icon: MessageSquare, color: "text-green-600", bg: "bg-green-100" },
-        { label: "Minutos de Leitura", value: "N/A", icon: Users, color: "text-orange-600", bg: "bg-orange-100" },
+        { label: "Posts Publicados", value: stats.posts, icon: TrendingUp, color: "text-orange-600", bg: "bg-orange-100" },
         { label: "Visualizações Blog", value: stats.visits, icon: Eye, color: "text-indigo-600", bg: "bg-indigo-100" },
     ];
+
+    if (loading) return (
+        <AdminLayout title="Análise de Dados">
+            <div className="p-12 text-center text-slate-500 italic">Carregando métricas...</div>
+        </AdminLayout>
+    );
 
     return (
         <AdminLayout title="Análise de Dados">
@@ -82,13 +120,13 @@ const AdminAnalytics = () => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <Card className="border-slate-200 shadow-sm">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                {/* TOP POSTS */}
+                <Card className="border-slate-200 shadow-sm lg:col-span-1">
                     <CardHeader>
                         <CardTitle className="text-xl font-serif flex items-center gap-2">
                             <TrendingUp size={20} className="text-primary" /> Posts Mais Lidos
                         </CardTitle>
-                        <CardDescription>Artigos com maior engajamento.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -97,52 +135,83 @@ const AdminAnalytics = () => {
                                     <div key={post.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
                                         <span className="font-bold text-slate-300 text-lg w-6">#{i + 1}</span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-slate-900 truncate">{post.title}</p>
-                                            <p className="text-xs text-slate-500">{new Date(post.date).toLocaleDateString()}</p>
+                                            <p className="font-semibold text-slate-900 truncate text-sm">{post.title}</p>
                                         </div>
-                                        <div className="flex items-center gap-1 text-slate-600 font-medium text-sm">
-                                            <Eye size={14} />
+                                        <div className="flex items-center gap-1 text-slate-600 font-medium text-xs">
+                                            <Eye size={12} />
                                             {post.views || 0}
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-slate-500 italic text-sm text-center py-8">Nenhum post visualizado ainda.</p>
+                                <p className="text-slate-500 italic text-sm text-center py-8">Nenhum post visualizado.</p>
                             )}
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 shadow-sm">
+                {/* ORIGEM (LEADS) */}
+                <Card className="border-slate-200 shadow-sm lg:col-span-1">
                     <CardHeader>
                         <CardTitle className="text-xl font-serif flex items-center gap-2">
-                            <Target size={20} className="text-orange-500" /> Origem
+                            <Target size={20} className="text-orange-500" /> Origem dos Leads
                         </CardTitle>
-                        <CardDescription>De onde vêm seus visitantes (Simulado).</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium flex items-center gap-2"><Globe size={16} /> Google Orgânico</span>
-                                <div className="h-2 flex-1 mx-4 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 w-[65%]"></div>
-                                </div>
-                                <span className="text-sm font-bold">65%</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium flex items-center gap-2"><Users size={16} /> Instagram</span>
-                                <div className="h-2 flex-1 mx-4 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-purple-500 w-[25%]"></div>
-                                </div>
-                                <span className="text-sm font-bold">25%</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium flex items-center gap-2"><MessageSquare size={16} /> WhatsApp</span>
-                                <div className="h-2 flex-1 mx-4 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-[10%]"></div>
-                                </div>
-                                <span className="text-sm font-bold">10%</span>
-                            </div>
+                        <div className="space-y-6">
+                            {stats.sources.length > 0 ? (
+                                stats.sources.map((s, i) => (
+                                    <div key={s.name} className="flex items-center justify-between group">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-sm font-medium text-slate-700">{s.name}</span>
+                                                <span className="text-sm font-bold text-slate-900">{s.percentage}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary transition-all duration-1000"
+                                                    style={{ width: `${s.percentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-slate-500 italic text-sm text-center py-8">Dados de origem insuficientes.</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* LOCALIZAÇÃO (LEADS) */}
+                <Card className="border-slate-200 shadow-sm lg:col-span-1">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-serif flex items-center gap-2">
+                            <MapPin size={20} className="text-emerald-500" /> Região/Localização
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-6">
+                            {stats.locations.length > 0 ? (
+                                stats.locations.map((l, i) => (
+                                    <div key={l.name} className="flex items-center justify-between group">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-sm font-medium text-slate-700">{l.name}</span>
+                                                <span className="text-sm font-bold text-slate-900">{l.percentage}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-emerald-500 transition-all duration-1000"
+                                                    style={{ width: `${l.percentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-slate-500 italic text-sm text-center py-8">Aguardando dados geográficos.</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
