@@ -274,6 +274,15 @@ async function main() {
         });
     }
 
+    console.log('Cleaning up old zombie users...');
+    // Remove old usernames that were replaced by professional names
+    const zombieUsernames = ["admin", "Dra.Ana_Karolina@noeh.com.br"];
+    await prisma.user.deleteMany({
+        where: {
+            username: { in: zombieUsernames }
+        }
+    });
+
     console.log('Seeding users...');
     for (const u of users) {
         await prisma.user.upsert({

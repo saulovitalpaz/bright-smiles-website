@@ -177,20 +177,7 @@ app.get('/dashboard/stats', async (req, res) => {
     }
 });
 
-app.post('/admin/reset-database', async (req, res) => {
-    try {
-        // Delete all data except admin users (safeguard)
-        // Note: In a real production app, this should be protected or disabled.
-        await prisma.appointment.deleteMany({});
-        await prisma.post.deleteMany({});
-        // Delete non-admin users to clean slate
-        await prisma.user.deleteMany({ where: { role: { not: 'admin' } } });
-
-        res.json({ message: "Database reset successfully (appointments and posts cleared)." });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// [REMOVED FOR SECURITY] - /admin/reset-database endpoint was deleted to prevent accidental data loss in production.
 
 
 
