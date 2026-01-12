@@ -215,6 +215,30 @@ const blogPosts = [
     }
 ];
 
+const users = [
+    {
+        username: "admin",
+        password: "admin", // Em produção, altere a senha!
+        name: "Developer Mode",
+        role: "admin",
+        cro: "DEV-001"
+    },
+    {
+        username: "Dra.Ana_Karolina@noeh.com.br",
+        password: "admin", // Altere a senha no primeiro acesso
+        name: "Ana Karolina",
+        role: "admin",
+        cro: "CRO/MG 60.514"
+    },
+    {
+        username: "Dra.Clara_Lima@noeh.com.br",
+        password: "admin", // Altere a senha no primeiro acesso
+        name: "Clara Lima",
+        role: "admin",
+        cro: "CRO/MG 12.345"
+    }
+];
+
 async function main() {
     console.log('Seeding database...');
 
@@ -222,6 +246,9 @@ async function main() {
     await prisma.treatmentResult.deleteMany({});
     await prisma.treatment.deleteMany({});
     await prisma.post.deleteMany({});
+    // Não deletamos usuários admin para evitar bloqueio, mas podemos garantir que eles existam
+    // Se quiser resetar users também: await prisma.user.deleteMany({});
+
 
     for (const t of treatments) {
         const { results, ...treatmentData } = t;
@@ -244,6 +271,15 @@ async function main() {
     for (const post of blogPosts) {
         await prisma.post.create({
             data: post
+        });
+    }
+
+    console.log('Seeding users...');
+    for (const u of users) {
+        await prisma.user.upsert({
+            where: { username: u.username },
+            update: {}, // Não altera se já existir
+            create: u
         });
     }
 

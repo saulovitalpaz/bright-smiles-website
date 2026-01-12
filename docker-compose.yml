@@ -9,7 +9,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:3001
+      - VITE_API_URL=https://backend-production-e175.up.railway.app
     depends_on:
       - backend
 
@@ -22,25 +22,8 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - DATABASE_URL=postgresql://user:password@db:5432/brightsmiles
-    depends_on:
-      - db
+      # Railway Production Database (Public URL for external access)
+      - DATABASE_URL=postgresql://postgres:jcURnVFNSgiDczpbHTDdyWCvuGBwQPgW@caboose.proxy.rlwy.net:10718/railway
     volumes:
       - ./server:/app
       - /app/node_modules
-
-  # Database Service (PostgreSQL)
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=brightsmiles
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
