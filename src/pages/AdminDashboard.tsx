@@ -9,6 +9,8 @@ import {
     ArrowUpRight
 } from "lucide-react";
 
+import { API_URL } from "@/lib/api";
+
 interface DashboardStats {
     users: number;
     posts: number;
@@ -25,12 +27,10 @@ const AdminDashboard = () => {
     });
     const [loading, setLoading] = useState(true);
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await fetch(`${apiBaseUrl}/dashboard/stats`);
+                const res = await fetch(`${API_URL}/dashboard/stats`);
                 if (res.ok) {
                     const data = await res.json();
                     setStats(data);
@@ -64,7 +64,7 @@ const AdminDashboard = () => {
     const handleReset = async () => {
         if (!confirm("Tem certeza? Isso apagará todos os agendamentos e posts (Users mantidos).")) return;
         try {
-            const res = await fetch(`${apiBaseUrl}/admin/reset-database`, { method: "POST" });
+            const res = await fetch(`${API_URL}/admin/reset-database`, { method: "POST" });
             if (res.ok) {
                 alert("Sistema resetado com sucesso!");
                 window.location.reload();

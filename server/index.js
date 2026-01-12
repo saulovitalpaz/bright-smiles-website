@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
+app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 

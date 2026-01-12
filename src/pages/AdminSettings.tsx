@@ -8,7 +8,7 @@ import { Image as ImageIcon, Loader2, Save, Upload, AlertCircle } from "lucide-r
 import { toast } from "sonner";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
+import { API_URL } from "@/lib/api";
 
 const AdminSettings = () => {
     const [settings, setSettings] = useState<Record<string, string>>({});

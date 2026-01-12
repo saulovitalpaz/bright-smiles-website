@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
+import { API_URL } from "@/lib/api";
 
 const Header = () => {
   const { data: settings } = useQuery({
@@ -42,7 +42,7 @@ const Header = () => {
                 src={logoUrl}
                 alt={`Logo ${clinicName}`}
                 className="w-full h-full object-contain transition-transform group-hover:scale-105 drop-shadow-md"
-                onError={(e) => (e.target as HTMLImageElement).src = "/images/logo oficial.png"}
+                onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}
               />
             </div>
             <div className="hidden sm:block">

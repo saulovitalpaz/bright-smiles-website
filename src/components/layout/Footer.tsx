@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
+import { API_URL } from "@/lib/api";
 
 const Footer = () => {
   const { data: settings } = useQuery({
@@ -31,7 +31,7 @@ const Footer = () => {
                   src={logoUrl}
                   alt={`Logo ${clinicName}`}
                   className="w-full h-full object-contain drop-shadow-md"
-                  onError={(e) => (e.target as HTMLImageElement).src = "/images/logo oficial.png"}
+                  onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}
                 />
               </div>
               <div>

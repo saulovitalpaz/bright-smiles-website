@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import axios from "axios";
 
 // API Base URL (adjust if needed via env or direct)
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+import { API_URL } from "@/lib/api";
 
 interface TreatmentResult {
     id: number;

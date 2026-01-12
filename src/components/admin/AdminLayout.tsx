@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
+import { API_URL } from "@/lib/api";
 
 interface AdminLayoutProps {
     children: React.ReactNode;

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { API_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,13 +44,13 @@ const AdminAppointments = () => {
 
     const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 
     // Fetch appointments on load
     React.useEffect(() => {
         const fetchAppointments = async () => {
             try {
-                const res = await fetch(`${apiBaseUrl}/appointments`);
+                const res = await fetch(`${API_URL}/appointments`);
                 if (res.ok) {
                     const data = await res.json();
                     setAppointments(data);
@@ -76,7 +77,7 @@ const AdminAppointments = () => {
                 professional: currentUser.name || "Profissional"
             };
 
-            const res = await fetch(`${apiBaseUrl}/appointments`, {
+            const res = await fetch(`${API_URL}/appointments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(newRecord)
@@ -343,7 +344,7 @@ const AdminAppointments = () => {
                                 <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold" size="sm" onClick={async () => {
                                     if (!selectedRecord) return;
                                     try {
-                                        const res = await fetch(`${apiBaseUrl}/appointments/${selectedRecord.id}`, {
+                                        const res = await fetch(`${API_URL}/appointments/${selectedRecord.id}`, {
                                             method: "PUT",
                                             headers: { "Content-Type": "application/json" },
                                             body: JSON.stringify({

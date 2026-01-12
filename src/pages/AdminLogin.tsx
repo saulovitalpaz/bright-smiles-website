@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Lock, User } from "lucide-react";
 import { toast } from "sonner";
 
+import { API_URL } from "@/lib/api";
+
 const AdminLogin = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -15,8 +17,7 @@ const AdminLogin = () => {
         e.preventDefault();
 
         try {
-            const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
-            const response = await fetch(`${apiBaseUrl}/login`, {
+            const response = await fetch(`${API_URL}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
