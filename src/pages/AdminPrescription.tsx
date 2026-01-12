@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
+import { PatientPicker } from "@/components/admin/PatientPicker";
 
 const AdminPrescription = () => {
     const [searchParams] = useSearchParams();
@@ -71,12 +72,23 @@ const AdminPrescription = () => {
                         id: p.id,
                         patient: data.name,
                         date: new Date(p.date).toLocaleDateString(),
-                        preview: "Receita registrada" // Simplified preview
+                        preview: "Receita registrada",
+                        content: p.content
                     })));
                 }
             }
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const loadPrescription = (content: string) => {
+        if (window.confirm("Carregar esta receita substituirá o conteúdo atual. Continuar?")) {
+            setPrescriptionContent(content);
+            if (editorRef.current) {
+                editorRef.current.innerHTML = content;
+            }
+            toast.success("Receita carregada!");
         }
     };
 
@@ -129,7 +141,8 @@ const AdminPrescription = () => {
                         id: savedPres.id,
                         patient: savedPatient.name,
                         date: new Date().toLocaleDateString(),
-                        preview: "Nova receita salva"
+                        preview: "Nova receita salva",
+                        content: content
                     },
                     ...prescriptionHistory
                 ]);
@@ -157,25 +170,36 @@ const AdminPrescription = () => {
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Dados do Paciente</CardTitle>
-                            <CardDescription>Informações obrigatórias para o receituário.</CardDescription>
+                            <CardDescription>Busque pelo nome ou CPF para preencher.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
-                                    <CreditCard size={14} /> CPF (Auto-busca)
+                                    <Search size={14} /> Buscar Paciente
                                 </Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="000.000.000-00"
-                                        value={patientData.cpf}
-                                        onChange={(e) => handleCpfChange(e.target.value)}
-                                        className="border-primary/20 focus:border-primary shadow-sm"
-                                    />
-                                    <Button size="icon" variant="outline" onClick={() => fetchPatient(patientData.cpf)}>
-                                        <Search size={14} />
-                                    </Button>
+                                <PatientPicker
+                                    onSelect={(p) => {
+                                        setPatientData({
+                                            id: p.id,
+                                            name: p.name,
+                                            cpf: p.cpf,
+                                            address: p.address || "",
+                                            phone: p.phone || ""
+                                        });
+                                        fetchPatient(p.cpf); // Load history
+                                    }}
+                                />
+                            </div>
+
+                            <div className="relative py-2">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-white px-2 text-muted-foreground">Ou edite manualmente</span>
                                 </div>
                             </div>
+
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
                                     <User size={14} /> Nome Completo
@@ -184,6 +208,16 @@ const AdminPrescription = () => {
                                     placeholder="Ex: João da Silva"
                                     value={patientData.name}
                                     onChange={(e) => setPatientData({ ...patientData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                                    <CreditCard size={14} /> CPF
+                                </Label>
+                                <Input
+                                    placeholder="000.000.000-00"
+                                    value={patientData.cpf}
+                                    onChange={(e) => handleCpfChange(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -217,12 +251,17 @@ const AdminPrescription = () => {
                             <div className="divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
                                 {prescriptionHistory.length > 0 ? (
                                     prescriptionHistory.map(item => (
-                                        <div key={item.id} className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group">
+                                        <div
+                                            key={item.id}
+                                            className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group"
+                                            onClick={() => loadPrescription(item.content)}
+                                            title="Clique para carregar esta receita"
+                                        >
                                             <div className="flex justify-between items-start mb-1">
                                                 <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
                                                 <span className="text-[10px] text-slate-400">{item.date}</span>
                                             </div>
-                                            <p className="text-[10px] text-slate-500 line-clamp-1">{item.preview}</p>
+                                            <p className="text-[10px] text-slate-500 line-clamp-1">Clique para ver/imprimir</p>
                                         </div>
                                     ))
                                 ) : (

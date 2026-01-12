@@ -101,6 +101,8 @@ model Patient {
   history       String?        @db.Text
   appointments  Appointment[]
   prescriptions Prescription[]
+  finance       FinanceTransaction[]
+  documents     PatientDocument[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -115,3 +117,64 @@ model Prescription {
   updatedAt DateTime @updatedAt
 }
 
+
+model Lead {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String
+  email     String?
+  treatment String?
+  message   String?
+  status    String   @default("new") // new, contacted, scheduled
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id        Int      @id @default(autoincrement())
+  name      String? // Optional if anonymous
+  rating    Int
+  comment   String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model FinanceTransaction {
+  id          Int      @id @default(autoincrement())
+  type        String   // "income" or "expense"
+  amount      Float
+  category    String
+  description String
+  date        DateTime @default(now())
+  patientId   Int?
+  patient     Patient? @relation(fields: [patientId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DocumentTemplate {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PatientDocument {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  date      DateTime @default(now())
+  patientId Int
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AnalyticsEvent {
+  id        Int      @id @default(autoincrement())
+  type      String   @default("pageview")
+  path      String
+  ip        String?
+  userAgent String?
+  date      DateTime @default(now())
+}

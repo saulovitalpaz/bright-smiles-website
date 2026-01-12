@@ -27,7 +27,8 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'bright-smiles',
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'mp4', 'mov', 'webm'],
+        resource_type: 'auto', // Important for video support
     },
 });
 
@@ -158,10 +159,12 @@ app.put('/appointments/:id', async (req, res) => {
 
 app.get('/dashboard/stats', async (req, res) => {
     try {
-        const [usersCount, postsCount, appointmentsCount, recentAppointments] = await Promise.all([
+        const [usersCount, postsCount, appointmentsCount, leadsCount, testimonialsCount, recentAppointments] = await Promise.all([
             prisma.user.count(),
             prisma.post.count(),
             prisma.appointment.count(),
+            prisma.lead.count(),
+            prisma.testimonial.count(),
             prisma.appointment.findMany({
                 take: 5,
                 orderBy: { date: 'desc' }
@@ -172,6 +175,8 @@ app.get('/dashboard/stats', async (req, res) => {
             users: usersCount,
             posts: postsCount,
             appointments: appointmentsCount,
+            leads: leadsCount,
+            testimonials: testimonialsCount,
             recentAppointments
         });
     } catch (error) {
@@ -300,7 +305,7 @@ app.post('/stories', async (req, res) => {
         const story = await prisma.story.create({
             data: {
                 ...req.body,
-                status: 'Ativo' // Default to Active/Ativo
+                status: 'active' // Default to active
             }
         });
         res.json(story);
@@ -420,6 +425,248 @@ app.get('/prescriptions/patient/:patientId', async (req, res) => {
             orderBy: { date: 'desc' }
         });
         res.json(list);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Leads API
+app.post('/leads', async (req, res) => {
+    try {
+        const lead = await prisma.lead.create({
+            data: req.body
+        });
+        res.json(lead);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.get('/leads', async (req, res) => {
+    try {
+        const leads = await prisma.lead.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(leads);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Testimonials API
+app.post('/testimonials', async (req, res) => {
+    try {
+        const testimonial = await prisma.testimonial.create({
+            data: req.body
+        });
+        res.json(testimonial);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.get('/testimonials', async (req, res) => {
+    try {
+        const { approved } = req.query;
+        const where = approved ? { approved: approved === 'true' } : {};
+        const testimonials = await prisma.testimonial.findMany({
+            where,
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(testimonials);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Leads API (continued)
+app.put('/leads/:id', async (req, res) => {
+    try {
+        const lead = await prisma.lead.update({
+            where: { id: parseInt(req.params.id) },
+            data: req.body
+        });
+        res.json(lead);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/leads/:id', async (req, res) => {
+    try {
+        await prisma.lead.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Lead deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Testimonials API (continued)
+app.put('/testimonials/:id', async (req, res) => {
+    try {
+        const testimonial = await prisma.testimonial.update({
+            where: { id: parseInt(req.params.id) },
+            data: req.body
+        });
+        res.json(testimonial);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/testimonials/:id', async (req, res) => {
+    try {
+        await prisma.testimonial.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Testimonial deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Finance API
+app.get('/finance', async (req, res) => {
+    try {
+        const transactions = await prisma.financeTransaction.findMany({
+            include: { patient: { select: { name: true } } },
+            orderBy: { date: 'desc' }
+        });
+        res.json(transactions);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/finance', async (req, res) => {
+    try {
+        const transaction = await prisma.financeTransaction.create({
+            data: req.body
+        });
+        res.json(transaction);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/finance/:id', async (req, res) => {
+    try {
+        await prisma.financeTransaction.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Transaction deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.get('/finance/stats', async (req, res) => {
+    try {
+        const income = await prisma.financeTransaction.aggregate({
+            where: { type: 'income' },
+            _sum: { amount: true }
+        });
+        const expense = await prisma.financeTransaction.aggregate({
+            where: { type: 'expense' },
+            _sum: { amount: true }
+        });
+        res.json({
+            income: income._sum.amount || 0,
+            expense: expense._sum.amount || 0,
+            balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Document Templates API
+app.get('/document-templates', async (req, res) => {
+    try {
+        const templates = await prisma.documentTemplate.findMany();
+        res.json(templates);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/document-templates', async (req, res) => {
+    try {
+        const template = await prisma.documentTemplate.create({
+            data: req.body
+        });
+        res.json(template);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/document-templates/:id', async (req, res) => {
+    try {
+        await prisma.documentTemplate.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Template deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Patient Documents API (History)
+app.get('/patient-documents/:patientId', async (req, res) => {
+    try {
+        const docs = await prisma.patientDocument.findMany({
+            where: { patientId: parseInt(req.params.patientId) },
+            orderBy: { date: 'desc' }
+        });
+        res.json(docs);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/patient-documents', async (req, res) => {
+    try {
+        const doc = await prisma.patientDocument.create({
+            data: req.body
+        });
+        res.json(doc);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Analytics API
+app.post('/analytics', async (req, res) => {
+    try {
+        const event = await prisma.analyticsEvent.create({
+            data: {
+                ...req.body,
+                ip: req.ip // Express trust proxy is on
+            }
+        });
+        res.json(event);
+    } catch (error) {
+        // Analytics should fail silently in production usually, but we log here
+        console.error("Analytics Error:", error);
+        res.status(200).json({ status: 'ignored' });
+    }
+});
+
+app.get('/analytics/stats', async (req, res) => {
+    try {
+        const totalVisits = await prisma.analyticsEvent.count({
+            where: { type: 'pageview' }
+        });
+        // Simple day grouping (Postgres specific, or simplified JS)
+        // For now, return raw stats
+        const recentEvents = await prisma.analyticsEvent.findMany({
+            take: 50,
+            orderBy: { date: 'desc' }
+        });
+        res.json({ totalVisits, recentEvents });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

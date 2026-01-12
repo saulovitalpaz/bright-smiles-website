@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/api";
 
 const Feedback = () => {
     const [rating, setRating] = useState(0);
@@ -20,18 +21,52 @@ const Feedback = () => {
         { icon: Award, label: "Impecável", value: "wow", color: "text-primary" },
     ];
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+        const form = e.target as HTMLFormElement;
+        const formData = new FormData(form);
+        const nameInput = formData.get("subject") as string; // Reused input for 'subject' as name/topic??
+        // Wait, input placeholder says "Assunto". Let's assume it is comment title/subject.
+        // Actually the backend Testimonial model has 'name', 'rating', 'comment'.
+        // The form has "Assunto" and "Comentario". I will map Assunto -> Name (or add a Name field).
+        // The user likely wants to be anonymous or provide name.
+        // Let's check the form fields:
+        // Input placeholder="Assunto (ex: Atendimento, Limpeza)"
+        // Textarea placeholder="Escreva seu comentário..."
+        // I should probably add a Name field if I can, but to avoid UI churn, I'll send Assunto as 'name' (topic) or just modify the form to ask for Name.
+        // BETTER: Change "Assunto" to "Nome (Opcional)" or just "Seu Nome".
+        // BUT, keeping to minimal changes: I will treat the first input as "Subject/Context" and append to comment, and send "Anônimo" or ask user.
+        // Actually, let's just use the Input for "Name/Subject".
 
-        // Simulate API call
-        setTimeout(() => {
-            toast.success("Obrigado pelo seu feedback! Sua opinião é muito importante para nós.");
-            setRating(0);
-            setEmojiRating(null);
+        const subject = (form.elements.namedItem('subject') as HTMLInputElement).value;
+        const comment = (form.elements.namedItem('comment') as HTMLTextAreaElement).value;
+
+        try {
+            const res = await fetch(`${API_URL}/testimonials`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: subject, // Using subject as Name/Title identifier
+                    rating: rating || (emojiRating ? 5 : 0), // Fallback
+                    comment: comment,
+                    approved: false
+                })
+            });
+
+            if (res.ok) {
+                toast.success("Obrigado pelo seu feedback! Sua opinião é muito importante para nós.");
+                setRating(0);
+                setEmojiRating(null);
+                form.reset();
+            } else {
+                toast.error("Erro ao enviar feedback.");
+            }
+        } catch (error) {
+            toast.error("Erro de conexão.");
+        } finally {
             setIsSubmitting(false);
-            (e.target as HTMLFormElement).reset();
-        }, 1500);
+        }
     };
 
     return (
@@ -112,13 +147,15 @@ const Feedback = () => {
                                     <div className="grid gap-4">
                                         <div className="grid gap-2">
                                             <Input
-                                                placeholder="Assunto (ex: Atendimento, Limpeza)"
+                                                name="subject"
+                                                placeholder="Seu Nome (Opcional)"
                                                 className="bg-background/50 border-primary/10 focus-visible:ring-primary h-12"
                                                 required
                                             />
                                         </div>
                                         <div className="grid gap-2">
                                             <Textarea
+                                                name="comment"
                                                 placeholder="Escreva seu comentário aqui..."
                                                 className="min-h-[140px] bg-background/50 border-primary/10 focus-visible:ring-primary resize-none text-base"
                                                 required

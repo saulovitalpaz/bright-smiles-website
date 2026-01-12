@@ -1,12 +1,32 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { blogPosts } from "@/data/posts";
+import { API_URL } from "@/lib/api";
 
 const Blog = () => {
-  // Show only first 3 posts on homepage
-  const displayedPosts = blogPosts.slice(0, 3);
+  const [displayedPosts, setDisplayedPosts] = useState([]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/posts`);
+      if (res.ok) {
+        const data = await res.json();
+        // Sort by date desc and take 3
+        const sorted = data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setDisplayedPosts(sorted.slice(0, 3));
+      }
+    } catch (error) {
+      console.error("Failed to fetch posts", error);
+    }
+  };
+
+  if (displayedPosts.length === 0) return null; // Or return loading state, or existing static section with "No posts key"
 
   return (
     <section id="blog" className="section-padding bg-secondary/30">
@@ -27,7 +47,7 @@ const Blog = () => {
 
         {/* Blog Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {displayedPosts.map((post) => (
+          {displayedPosts.map((post: any) => (
             <Link key={post.slug} to={`/blog/${post.slug}`} className="group h-full">
               <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-300 flex flex-col">
                 <div className="aspect-[16/10] overflow-hidden bg-secondary/5">
@@ -54,7 +74,7 @@ const Blog = () => {
                   <div className="flex items-center justify-between mt-auto">
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
-                      {post.date}
+                      {new Date(post.date).toLocaleDateString('pt-BR')}
                     </div>
                     <span className="text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
                       Ler <ArrowRight className="w-4 h-4" />

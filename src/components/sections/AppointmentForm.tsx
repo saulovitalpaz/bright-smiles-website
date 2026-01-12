@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/lib/api";
 
 const treatments = [
   "Harmonização Facial",
@@ -16,6 +17,7 @@ const treatments = [
   "Implantes Dentários",
   "Clareamento Dental",
   "Outro",
+  "Restauração" // Added requested item
 ];
 
 const AppointmentForm = () => {
@@ -42,7 +44,6 @@ const AppointmentForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
     if (!formData.name.trim() || !formData.phone.trim()) {
       toast({
         title: "Campos obrigatórios",
@@ -54,38 +55,53 @@ const AppointmentForm = () => {
 
     setIsSubmitting(true);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // 1. Save to Backend (Lead)
+      await fetch(`${API_URL}/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
 
-    // Create WhatsApp message with form data
-    const whatsappMessage = encodeURIComponent(
-      `Olá! Gostaria de agendar uma consulta.\n\n` +
-      `*Nome:* ${formData.name.trim()}\n` +
-      `*Telefone:* ${formData.phone.trim()}\n` +
-      `*E-mail:* ${formData.email.trim() || "Não informado"}\n` +
-      `*Tratamento:* ${formData.treatment || "Não especificado"}\n` +
-      `*Mensagem:* ${formData.message.trim() || "Sem mensagem adicional"}`
-    );
+      // 2. Open WhatsApp
+      const whatsappMessage = encodeURIComponent(
+        `Olá! Gostaria de agendar uma consulta.\n\n` +
+        `*Nome:* ${formData.name.trim()}\n` +
+        `*Telefone:* ${formData.phone.trim()}\n` +
+        `*E-mail:* ${formData.email.trim() || "Não informado"}\n` +
+        `*Tratamento:* ${formData.treatment || "Não especificado"}\n` +
+        `*Mensagem:* ${formData.message.trim() || "Sem mensagem adicional"}`
+      );
 
-    // Open WhatsApp with pre-filled message
-    window.open(`https://wa.me/5533991219695?text=${whatsappMessage}`, "_blank");
+      window.open(`https://wa.me/5533991219695?text=${whatsappMessage}`, "_blank");
 
-    toast({
-      title: "Redirecionando para WhatsApp!",
-      description: "Complete seu agendamento pelo WhatsApp.",
-    });
+      toast({
+        title: "Solicitação Recebida!",
+        description: "Seus dados foram salvos e você será redirecionado para o WhatsApp.",
+      });
 
-    setIsSubmitting(false);
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      treatment: "",
-      message: "",
-      ageRange: "",
-      gender: "",
-      location: ""
-    });
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        treatment: "",
+        message: "",
+        ageRange: "",
+        gender: "",
+        location: ""
+      });
+
+    } catch (error) {
+      console.error("Erro ao salvar lead", error);
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível salvar seu pedido, mas tente pelo WhatsApp direto.",
+        variant: "destructive"
+      });
+      // Still open WhatsApp as fallback
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

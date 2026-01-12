@@ -15,6 +15,8 @@ interface DashboardStats {
     users: number;
     posts: number;
     appointments: number;
+    leads: number;
+    testimonials: number;
     recentAppointments: any[];
 }
 
@@ -23,6 +25,8 @@ const AdminDashboard = () => {
         users: 0,
         posts: 0,
         appointments: 0,
+        leads: 0,
+        testimonials: 0,
         recentAppointments: []
     });
     const [loading, setLoading] = useState(true);
@@ -45,8 +49,8 @@ const AdminDashboard = () => {
     }, []);
 
     const statCards = [
-        { label: "Atendimentos", value: stats.appointments.toString(), icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
-        { label: "Comentários", value: "0", icon: MessageSquare, color: "text-green-600", bg: "bg-green-100" }, // No comments table yet
+        { label: "Agendamentos", value: stats.leads.toString(), icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
+        { label: "Comentários", value: stats.testimonials.toString(), icon: MessageSquare, color: "text-green-600", bg: "bg-green-100" },
         { label: "Posts no Blog", value: stats.posts.toString(), icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-100" },
         { label: "Usuários", value: stats.users.toString(), icon: Users, color: "text-orange-600", bg: "bg-orange-100" },
     ];
