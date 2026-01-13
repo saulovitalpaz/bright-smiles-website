@@ -6,7 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, History, User, Stethoscope, Search, CreditCard, Calendar } from "lucide-react";
+import {
+    Calendar, Search, User, History, MoreVertical, Edit, Trash2, X, Plus, Clock,
+    FileText, CheckCircle, Save, Printer, FileSignature, ArrowRight, Stethoscope, CreditCard
+} from "lucide-react";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -17,7 +20,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Link, useNavigate } from "react-router-dom";
-import { FileSignature, ArrowRight } from "lucide-react";
+import { PatientPicker } from "@/components/admin/PatientPicker";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AppointmentRecord {
     id: number;
@@ -27,10 +31,16 @@ interface AppointmentRecord {
     procedure: string;
     notes: string;
     professional: string;
+    patient?: {
+        name: string;
+        cpf: string;
+    };
 }
 
 const AdminAppointments = () => {
     const [patientName, setPatientName] = useState("");
+    const [patientCpf, setPatientCpf] = useState("");
+    const [patientId, setPatientId] = useState<number | null>(null);
     const [procedure, setProcedure] = useState("");
     const [notes, setNotes] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
@@ -69,8 +79,8 @@ const AdminAppointments = () => {
         try {
             const newRecord = {
                 patientName,
-                // If patientName is not a full name, validation normally happens here. 
-                // For now we assume simle string.
+                cpf: patientCpf,
+                patientId: patientId,
                 date: new Date().toISOString(),
                 procedure,
                 notes,
@@ -87,6 +97,8 @@ const AdminAppointments = () => {
                 const savedRecord = await res.json();
                 setAppointments([savedRecord, ...appointments]);
                 setPatientName("");
+                setPatientCpf("");
+                setPatientId(null);
                 setProcedure("");
                 setNotes("");
                 toast.success("Histórico de atendimento registrado!");
@@ -99,10 +111,12 @@ const AdminAppointments = () => {
         }
     };
 
-    const filteredAppointments = appointments.filter(record =>
-        record.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (record.cpf && record.cpf.includes(searchTerm))
-    );
+    const filteredAppointments = appointments.filter(record => {
+        const name = (record.patientName || record.patient?.name || "").toLowerCase();
+        const cpf = (record.cpf || record.patient?.cpf || "");
+        const term = searchTerm.toLowerCase();
+        return name.includes(term) || cpf.includes(searchTerm);
+    });
 
     const formatDate = (dateStr: string) => {
         try {
@@ -148,14 +162,18 @@ const AdminAppointments = () => {
                             <form onSubmit={handleAddRecord} className="space-y-4">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="patient" className="text-xs font-bold uppercase text-slate-500">Paciente</Label>
-                                    <Input
-                                        id="patient"
-                                        placeholder="Nome completo"
-                                        className="h-9 text-sm"
-                                        value={patientName}
-                                        onChange={(e) => setPatientName(e.target.value)}
-                                        required
+                                    <PatientPicker
+                                        onSelect={(p) => {
+                                            setPatientName(p.name);
+                                            setPatientCpf(p.cpf);
+                                            setPatientId(p.id);
+                                        }}
                                     />
+                                    {patientName && (
+                                        <div className="mt-2 p-2 bg-slate-50 rounded text-[10px] text-slate-500 border border-slate-100">
+                                            Selecionado: <span className="font-bold">{patientName}</span> ({patientCpf})
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="procedure" className="text-xs font-bold uppercase text-slate-500">Procedimento</Label>
@@ -217,8 +235,14 @@ const AdminAppointments = () => {
                                                     <User size={24} />
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-bold text-slate-900 text-lg leading-tight">{record.patientName}</h3>
+                                                    <h3 className="font-bold text-slate-900 text-lg leading-tight">
+                                                        {record.patientName || record.patient?.name}
+                                                    </h3>
                                                     <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-xs text-slate-500 font-mono">
+                                                            {record.cpf || record.patient?.cpf}
+                                                        </span>
+                                                        <span className="text-xs text-slate-300">|</span>
                                                         <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                                                             <History size={12} />
                                                             {formatDate(record.date)}

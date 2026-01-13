@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
     LayoutDashboard,
     FileText,
@@ -29,6 +30,7 @@ interface AdminLayoutProps {
 }
 
 const AdminLayout = ({ children, title }: AdminLayoutProps) => {
+    const { logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -164,7 +166,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     <Button
                         variant="ghost"
                         className={`w-full text-slate-500 hover:text-red-400 hover:bg-red-500/10 gap-3 rounded-xl ${isCollapsed ? "justify-center" : "justify-start"}`}
-                        onClick={() => navigate("/")}
+                        onClick={logout}
                     >
                         <LogOut size={20} />
                         {!isCollapsed && <span className="text-xs font-bold uppercase tracking-widest">Sair</span>}

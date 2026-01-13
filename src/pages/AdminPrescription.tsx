@@ -22,7 +22,8 @@ import {
     Save,
     QrCode,
     ExternalLink,
-    Search
+    Search,
+    Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
@@ -92,6 +93,19 @@ const AdminPrescription = () => {
         }
     };
 
+    const handleDelete = async (id: number) => {
+        if (!window.confirm("Excluir esta receita do histórico?")) return;
+        try {
+            const res = await fetch(`${API_URL}/prescriptions/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setPrescriptionHistory(prev => prev.filter(p => p.id !== id));
+                toast.success("Receita excluída!");
+            }
+        } catch (e) {
+            toast.error("Erro ao excluir");
+        }
+    };
+
     const handleFormat = (command: string, value: string = "") => {
         document.execCommand(command, false, value);
     };
@@ -157,9 +171,11 @@ const AdminPrescription = () => {
         }
     };
 
-    const handlePrint = async () => {
-        await handleSave();
-        setTimeout(() => window.print(), 500);
+    const handlePrint = () => {
+        if (!prescriptionContent && !editorRef.current?.innerHTML) {
+            return toast.error("Escreva o conteúdo da receita antes de imprimir.");
+        }
+        window.print();
     };
 
     return (
@@ -253,15 +269,21 @@ const AdminPrescription = () => {
                                     prescriptionHistory.map(item => (
                                         <div
                                             key={item.id}
-                                            className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group"
-                                            onClick={() => loadPrescription(item.content)}
-                                            title="Clique para carregar esta receita"
+                                            className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group flex justify-between items-center"
                                         >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
-                                                <span className="text-[10px] text-slate-400">{item.date}</span>
+                                            <div className="flex-1" onClick={() => loadPrescription(item.content)}>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
+                                                    <span className="text-[10px] text-slate-400">{item.date}</span>
+                                                </div>
+                                                <p className="text-[10px] text-slate-500 line-clamp-1">Clique para carregar</p>
                                             </div>
-                                            <p className="text-[10px] text-slate-500 line-clamp-1">Clique para ver/imprimir</p>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-red-500 transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     ))
                                 ) : (
@@ -307,7 +329,7 @@ const AdminPrescription = () => {
                                     <Save size={18} /> Salvar no Histórico
                                 </Button>
                                 <Button onClick={handlePrint} className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
-                                    <Printer size={18} /> Salvar & Imprimir
+                                    <Printer size={18} /> Apenas Imprimir
                                 </Button>
                             </div>
                         </div>
@@ -331,7 +353,7 @@ const AdminPrescription = () => {
                 <div className="flex justify-between items-center pb-12 mb-8">
                     <div className="flex items-center gap-10">
                         <div className="relative">
-                            <img src="/images/logo oficial.png" alt="Logo" className="w-56 h-56 object-contain relative z-10" />
+                            <img src="/images/logo-oficial.png" alt="Logo" className="w-56 h-56 object-contain relative z-10" />
                         </div>
                         <div>
                             <h1 className="text-5xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase">NOEH</h1>

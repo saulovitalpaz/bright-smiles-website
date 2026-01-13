@@ -171,55 +171,19 @@ app.post('/posts/:id/view', async (req, res) => {
 
 // ... Appointments ...
 
-// Stories API
-app.get('/stories', async (req, res) => {
+
+// Appointments API
+app.get('/appointments', async (req, res) => {
     try {
-        const stories = await prisma.story.findMany({
-            orderBy: { createdAt: 'desc' }
+        const list = await prisma.appointment.findMany({
+            orderBy: { date: 'desc' }
         });
-        res.json(stories);
+        res.json(list);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.post('/stories', async (req, res) => {
-    try {
-        const story = await prisma.story.create({
-            data: {
-                ...req.body,
-                status: 'active'
-            }
-        });
-        res.json(story);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.delete('/stories/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await prisma.story.delete({
-            where: { id: parseInt(id) }
-        });
-        res.json({ message: 'Story deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/stories/:id/view', async (req, res) => {
-    try {
-        await prisma.story.update({
-            where: { id: parseInt(req.params.id) },
-            data: { views: { increment: 1 } }
-        });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(200).send("OK");
-    }
-});
 app.post('/appointments', async (req, res) => {
     try {
         const appointment = await prisma.appointment.create({
@@ -244,32 +208,8 @@ app.put('/appointments/:id', async (req, res) => {
     }
 });
 
-app.get('/dashboard/stats', async (req, res) => {
-    try {
-        const [usersCount, postsCount, appointmentsCount, leadsCount, testimonialsCount, recentAppointments] = await Promise.all([
-            prisma.user.count(),
-            prisma.post.count(),
-            prisma.appointment.count(),
-            prisma.lead.count(),
-            prisma.testimonial.count(),
-            prisma.appointment.findMany({
-                take: 5,
-                orderBy: { date: 'desc' }
-            })
-        ]);
 
-        res.json({
-            users: usersCount,
-            posts: postsCount,
-            appointments: appointmentsCount,
-            leads: leadsCount,
-            testimonials: testimonialsCount,
-            recentAppointments
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// Treatments API
 
 // [REMOVED FOR SECURITY] - /admin/reset-database endpoint was deleted to prevent accidental data loss in production.
 
@@ -514,6 +454,17 @@ app.get('/prescriptions/patient/:patientId', async (req, res) => {
         res.json(list);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/prescriptions/:id', async (req, res) => {
+    try {
+        await prisma.prescription.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Prescription deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -774,6 +725,17 @@ app.put('/patient-documents/:id', async (req, res) => {
             data: req.body
         });
         res.json(doc);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/patient-documents/:id', async (req, res) => {
+    try {
+        await prisma.patientDocument.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Document deleted' });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

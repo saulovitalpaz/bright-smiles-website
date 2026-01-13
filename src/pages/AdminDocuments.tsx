@@ -124,13 +124,25 @@ const AdminDocuments = () => {
                 })
             });
             if (res.ok) {
-                toast.success("Salvo no histórico! Agora imprima e colete a assinatura.");
-                // Refresh history
+                toast.success("Salvo no histórico!");
                 const saved = await res.json();
                 setHistory([saved, ...history]);
             }
         } catch (e) {
             toast.error("Erro ao salvar.");
+        }
+    };
+
+    const handleDeleteHistory = async (id: number) => {
+        if (!window.confirm("Excluir este documento do histórico?")) return;
+        try {
+            const res = await fetch(`${API_URL}/patient-documents/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setHistory(prev => prev.filter(h => h.id !== id));
+                toast.success("Documento excluído!");
+            }
+        } catch (e) {
+            toast.error("Erro ao excluir");
         }
     };
 
@@ -259,27 +271,35 @@ const AdminDocuments = () => {
                             </CardHeader>
                             <CardContent className="p-0 max-h-[300px] overflow-y-auto">
                                 {history.map(doc => (
-                                    <div key={doc.id} className="p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                    <div key={doc.id} className="p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="text-xs font-bold text-slate-800">{doc.title}</span>
                                             <span className="text-[10px] text-slate-400">{new Date(doc.date).toLocaleDateString()}</span>
                                         </div>
-                                        <div className="flex gap-2 mt-2">
-                                            {doc.pdfUrl ? (
-                                                <a href={doc.pdfUrl} target="_blank" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
-                                                    <FileCheck size={12} /> Assinado
-                                                </a>
-                                            ) : (
-                                                <label className="text-[10px] flex items-center gap-1 text-slate-500 bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 cursor-pointer">
-                                                    <Upload size={12} /> Anexar PDF
-                                                    <input
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="application/pdf"
-                                                        onChange={(e) => e.target.files?.[0] && handleUploadSigned(doc.id, e.target.files[0])}
-                                                    />
-                                                </label>
-                                            )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            <div className="flex gap-2">
+                                                {doc.pdfUrl ? (
+                                                    <a href={doc.pdfUrl} target="_blank" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
+                                                        <FileCheck size={12} /> Assinado
+                                                    </a>
+                                                ) : (
+                                                    <label className="text-[10px] flex items-center gap-1 text-slate-500 bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 cursor-pointer">
+                                                        <Upload size={12} /> Anexar PDF
+                                                        <input
+                                                            type="file"
+                                                            className="hidden"
+                                                            accept="application/pdf"
+                                                            onChange={(e) => e.target.files?.[0] && handleUploadSigned(doc.id, e.target.files[0])}
+                                                        />
+                                                    </label>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteHistory(doc.id)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -302,10 +322,10 @@ const AdminDocuments = () => {
                             </div>
                             <div className="flex gap-2">
                                 <Button onClick={handleSaveHistory} variant="outline" className="gap-2 border-slate-200 text-slate-600">
-                                    <Save size={18} /> Salvar (Pré-Impressão)
+                                    <Save size={18} /> Salvar no Histórico
                                 </Button>
                                 <Button onClick={() => window.print()} className="bg-primary text-white hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20">
-                                    <Printer size={18} /> Imprimir / PDF
+                                    <Printer size={18} /> Apenas Imprimir
                                 </Button>
                             </div>
                         </div>
@@ -322,7 +342,7 @@ const AdminDocuments = () => {
                     {/* Print Preview (Hidden normally, Visible on Print) */}
                     <div className="print-only bg-white p-12 text-slate-900 fixed top-0 left-0 w-full h-full z-[9999]">
                         <div className="flex flex-col items-center mb-12 text-center border-b border-slate-200 pb-8">
-                            <img src="/images/logo oficial.png" alt="Logo" className="w-32 h-32 object-contain mb-4" />
+                            <img src="/images/logo-oficial.png" alt="Logo" className="w-32 h-32 object-contain mb-4" />
                             <h1 className="text-2xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
                             <p className="text-slate-500 font-medium text-xs uppercase tracking-[0.2em] mt-2">Dra. Ana Karolina - CRO/MG 53738</p>
                         </div>
