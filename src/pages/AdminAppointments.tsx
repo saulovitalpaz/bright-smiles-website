@@ -94,10 +94,25 @@ const AdminAppointments = () => {
                         const leads = await res.json();
                         const lead = leads.find((l: any) => l.id === parseInt(leadId));
                         if (lead) {
-                            setPatientName(lead.name || "");
-                            setProcedure(lead.treatment || "");
-                            setNotes(lead.message || "");
-                            toast.info(`Dados carregados da solicitação de ${lead.name}`);
+                            // Create a draft record to open in the expanded view
+                            const draft: AppointmentRecord = {
+                                id: 0, // Using 0 to indicate a new record from lead
+                                patientName: lead.name || "",
+                                procedure: lead.treatment || "",
+                                notes: lead.message || "",
+                                date: new Date().toISOString(),
+                                professional: currentUser.name || "Dra"
+                            };
+                            setSelectedRecord(draft);
+                            setEditCpf("");
+                            setEditNotes(lead.message || "");
+                            setEditWeight("");
+                            setEditMaterials("");
+                            setEditComplications("");
+                            setEditReturnDate("");
+
+                            toast.info(`Iniciando atendimento para ${lead.name}`);
+                            setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
                         }
                     }
                 } catch (error) {
@@ -533,26 +548,69 @@ const AdminAppointments = () => {
                                             <Button
                                                 onClick={async () => {
                                                     try {
-                                                        const res = await fetch(`${API_URL}/appointments/${selectedRecord.id}`, {
-                                                            method: "PUT",
+                                                        const isNew = selectedRecord.id === 0;
+                                                        const url = isNew ? `${API_URL}/appointments` : `${API_URL}/appointments/${selectedRecord.id}`;
+                                                        const method = isNew ? "POST" : "PUT";
+
+                                                        // For NEW records, we need to create the patient if necessary
+                                                        let finalPatientId = isNew ? null : (selectedRecord as any).patientId;
+                                                        if (isNew && !finalPatientId && selectedRecord.patientName && editCpf) {
+                                                            const pRes = await fetch(`${API_URL}/patients`, {
+                                                                method: "POST",
+                                                                headers: { "Content-Type": "application/json" },
+                                                                body: JSON.stringify({ name: selectedRecord.patientName, cpf: editCpf })
+                                                            });
+                                                            if (pRes.ok) {
+                                                                const newPatient = await pRes.json();
+                                                                finalPatientId = newPatient.id;
+                                                            }
+                                                        }
+
+                                                        const payload = isNew ? {
+                                                            patientName: selectedRecord.patientName,
+                                                            cpf: editCpf,
+                                                            patientId: finalPatientId,
+                                                            date: new Date().toISOString(),
+                                                            procedure: selectedRecord.procedure,
+                                                            notes: editNotes,
+                                                            weight: editWeight,
+                                                            materials: editMaterials,
+                                                            complications: editComplications,
+                                                            returnDate: editReturnDate,
+                                                            professional: currentUser.name || "Dra"
+                                                        } : {
+                                                            cpf: editCpf,
+                                                            notes: editNotes,
+                                                            weight: editWeight,
+                                                            materials: editMaterials,
+                                                            complications: editComplications,
+                                                            returnDate: editReturnDate
+                                                        };
+
+                                                        const res = await fetch(url, {
+                                                            method: method,
                                                             headers: { "Content-Type": "application/json" },
-                                                            body: JSON.stringify({
-                                                                cpf: editCpf,
-                                                                notes: editNotes,
-                                                                weight: editWeight,
-                                                                materials: editMaterials,
-                                                                complications: editComplications,
-                                                                returnDate: editReturnDate
-                                                            })
+                                                            body: JSON.stringify(payload)
                                                         });
 
                                                         if (res.ok) {
-                                                            const updated = await res.json();
-                                                            setAppointments(prev => prev.map(p => p.id === updated.id ? updated : p));
-                                                            setSelectedRecord(updated);
-                                                            toast.success("Prontuário atualizado com sucesso!");
-                                                            // Optional: hide after save
-                                                            // setSelectedRecord(null);
+                                                            const saved = await res.json();
+                                                            if (isNew) {
+                                                                setAppointments(prev => [saved, ...prev]);
+                                                                // Sync Lead to COMPLETED
+                                                                if (leadId) {
+                                                                    await fetch(`${API_URL}/leads/${leadId}`, {
+                                                                        method: "PUT",
+                                                                        headers: { "Content-Type": "application/json" },
+                                                                        body: JSON.stringify({ status: 'completed' })
+                                                                    });
+                                                                    window.history.replaceState({}, '', '/admin/consultas');
+                                                                }
+                                                            } else {
+                                                                setAppointments(prev => prev.map(p => p.id === saved.id ? saved : p));
+                                                            }
+                                                            setSelectedRecord(saved);
+                                                            toast.success(isNew ? "Atendimento registrado com sucesso!" : "Prontuário atualizado com sucesso!");
                                                         } else {
                                                             toast.error("Erro ao salvar alterações.");
                                                         }
@@ -563,7 +621,7 @@ const AdminAppointments = () => {
                                                 }}
                                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 px-10 rounded-xl shadow-lg shadow-emerald-200"
                                             >
-                                                Salvar Atendimento
+                                                {selectedRecord.id === 0 ? "Finalizar e Registrar" : "Salvar Atendimento"}
                                             </Button>
                                         </div>
                                     </div>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Users,
     MessageSquare,
@@ -9,7 +8,6 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
 import { API_URL } from "@/lib/api";
 
 interface DashboardStats {
@@ -25,10 +23,12 @@ interface DashboardStats {
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<DashboardStats>({
+        users: 0,
+        posts: 0,
+        appointments: 0,
         leads: 0,
         testimonials: 0,
-        appointments: 0,
         recentLeads: [],
         recentAppointments: [],
         recentTestimonials: []
@@ -52,16 +52,14 @@ const AdminDashboard = () => {
         fetchStats();
     }, []);
 
-    const statCards = [
-        { label: "Atendimentos Realizados", value: (stats?.appointments || 0).toString(), icon: Users, color: "text-emerald-600", bg: "bg-emerald-100" },
-        { label: "Solicitações Pendentes", value: (stats?.recentLeads?.filter((l: any) => l.status !== 'scheduled').length || 0).toString(), icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
-    ];
+    const pendingLeads = stats?.recentLeads?.filter((l: any) => l.status === 'new' || l.status === 'contacted') || [];
+    const pendingCount = pendingLeads.length;
 
     if (loading) {
         return (
             <AdminLayout title="Dashboard">
                 <div className="flex items-center justify-center h-64">
-                    <p className="text-slate-500">Carregando dados...</p>
+                    <p className="p-4 text-slate-500 animate-pulse font-medium">Carregando painel...</p>
                 </div>
             </AdminLayout>
         );
@@ -69,73 +67,87 @@ const AdminDashboard = () => {
 
     return (
         <AdminLayout title="Dashboard">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {statCards.map((stat) => (
-                    <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className={`p-4 rounded-xl ${stat.bg} ${stat.color}`}>
-                                <stat.icon size={32} />
-                            </div>
-                            <div>
-                                <h3 className="text-slate-500 text-sm font-medium">{stat.label}</h3>
-                                <p className="text-3xl font-bold text-slate-900 mt-1">{stat.value}</p>
-                            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {/* SMALL PENDING LEADS CARD */}
+                <div
+                    onClick={() => navigate('/admin/solicitacoes')}
+                    className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden relative"
+                >
+                    <div className="relative z-10 flex items-center gap-4">
+                        <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                            <Calendar size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Solicitações Pendentes</h3>
+                            <p className="text-2xl font-black text-slate-900 mt-0.5">{pendingCount}</p>
                         </div>
                     </div>
-                ))}
+                    <ArrowUpRight size={18} className="text-slate-200 group-hover:text-blue-500 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all z-10" />
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-50/30 rounded-full blur-2xl group-hover:bg-blue-100/50 transition-colors" />
+                </div>
 
                 {/* LATEST TESTIMONIAL PREVIEW */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
-                    <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <MessageSquare size={14} /> Último Comentário
-                    </h3>
-                    {(stats as any).recentTestimonials?.length > 0 ? (
-                        <div>
-                            <p className="text-slate-900 font-bold text-sm line-clamp-1">{(stats as any).recentTestimonials[0].name}</p>
-                            <p className="text-slate-500 text-xs italic line-clamp-1 mt-1">"{(stats as any).recentTestimonials[0].content}"</p>
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-center md:col-span-2 relative overflow-hidden group">
+                    <div className="flex items-start justify-between relative z-10 w-full">
+                        <div className="flex-1">
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <MessageSquare size={14} className="text-emerald-500" /> Último Comentário de Paciente
+                            </h3>
+                            {stats.recentTestimonials?.length > 0 ? (
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center font-bold shadow-lg shadow-emerald-100">
+                                        {stats.recentTestimonials[0].name.charAt(0)}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-slate-900 font-bold text-sm leading-tight text-ellipsis overflow-hidden">{stats.recentTestimonials[0].name}</p>
+                                        <p className="text-slate-500 text-xs italic mt-1 line-clamp-1">"{stats.recentTestimonials[0].comment || stats.recentTestimonials[0].content}"</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-slate-400 text-xs italic">Nenhum novo registro técnico ou comentário encontrado.</p>
+                            )}
                         </div>
-                    ) : (
-                        <p className="text-slate-400 text-xs italic">Nenhum comentário novo.</p>
-                    )}
+                        <div className="hidden lg:block">
+                            <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-bold">Feedback Ativo</span>
+                        </div>
+                    </div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/20 rounded-full blur-3xl opacity-50" />
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* SOLICITAÇÕES RECENTES */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <h3 className="font-serif font-bold text-xl mb-6 flex items-center justify-between">
-                        Solicitações Recentes (Início)
-                        <TrendingUp size={20} className="text-blue-500" />
-                    </h3>
+                {/* AGENDAMENTOS CONFIRMADOS */}
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="font-serif font-black text-2xl text-slate-900">Agendamentos confirmados</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-2">Prontos para conversão clínica</p>
+                        </div>
+                        <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner">
+                            <TrendingUp size={24} />
+                        </div>
+                    </div>
+
                     <div className="space-y-4">
-                        {(stats?.recentLeads?.length || 0) > 0 ? (
-                            stats.recentLeads.map((lead: any) => (
-                                <div key={lead.id} className="flex items-center gap-4 p-4 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors group">
-                                    <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                        {stats?.recentLeads?.filter((l: any) => l.status === 'scheduled').length > 0 ? (
+                            stats.recentLeads.filter((l: any) => l.status === 'scheduled').map((lead: any) => (
+                                <div key={lead.id} className="flex items-center gap-4 p-5 rounded-3xl border border-slate-50 hover:bg-slate-50 transition-all group hover:border-blue-100/50">
+                                    <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
                                         {lead.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-slate-900 truncate">{lead.name}</p>
-                                            {lead.status === 'scheduled' && (
-                                                <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">Agendado</span>
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-slate-500 truncate">{lead.treatment || "Consulta Geral"}</p>
+                                        <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{lead.name}</p>
+                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{lead.treatment || "Procedimento Geral"}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        {lead.status !== 'scheduled' ? (
-                                            <button
-                                                onClick={() => navigate(`/admin/consultas?leadId=${lead.id}`)}
-                                                className="opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-primary/90"
-                                            >
-                                                Iniciar Atendimento
-                                            </button>
-                                        ) : (
-                                            <span className="text-[10px] text-slate-400 font-medium">Finalizado</span>
-                                        )}
-                                        <div className="text-right whitespace-nowrap hidden sm:block">
-                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold uppercase mb-1 block">
+                                        <button
+                                            onClick={() => navigate(`/admin/consultas?leadId=${lead.id}`)}
+                                            className="opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 bg-primary text-white text-[10px] font-black px-5 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
+                                        >
+                                            Iniciar Atendimento
+                                        </button>
+                                        <div className="hidden sm:flex flex-col items-end whitespace-nowrap">
+                                            <span className="text-[9px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold uppercase">
                                                 {lead.source || "Site"}
                                             </span>
                                         </div>
@@ -143,40 +155,52 @@ const AdminDashboard = () => {
                                 </div>
                             ))
                         ) : (
-                            <p className="text-slate-500 text-sm italic">Nenhuma solicitação recente.</p>
+                            <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-50/30 rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <Calendar size={40} className="text-slate-200 mb-3" />
+                                <p className="text-slate-400 text-sm font-semibold">Sem novos agendamentos para hoje.</p>
+                                <p className="text-slate-300 text-[10px] mt-2 uppercase tracking-widest">Aguardando confirmações em solicitações</p>
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {/* ÚLTIMOS ATENDIMENTOS */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <h3 className="font-serif font-bold text-xl mb-6 flex items-center justify-between">
-                        Últimos Atendimentos
-                        <TrendingUp size={20} className="text-emerald-500" />
-                    </h3>
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="font-serif font-black text-2xl text-slate-900">Últimos Atendimentos</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-2">Registros de prontuário concluídos</p>
+                        </div>
+                        <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner">
+                            <Users size={24} />
+                        </div>
+                    </div>
+
                     <div className="space-y-4">
                         {(stats?.recentAppointments?.length || 0) > 0 ? (
                             stats.recentAppointments.map((app: any) => (
-                                <div key={app.id} className="flex items-center gap-4 p-4 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors">
-                                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                                        <Users size={20} />
+                                <div key={app.id} className="flex items-center gap-4 p-5 rounded-3xl border border-slate-50 hover:bg-emerald-50/30 transition-all hover:border-emerald-100/50">
+                                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-sm">
+                                        <Users size={24} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-slate-900 truncate">{app.patientName}</p>
-                                        <p className="text-xs text-slate-500 truncate">{app.procedure}</p>
+                                        <p className="font-bold text-slate-900 truncate">{app.patientName}</p>
+                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{app.procedure}</p>
                                     </div>
                                     <div className="text-right whitespace-nowrap">
-                                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase mb-1 block">
-                                            {app.professional?.split(' ')[0] || "Dra"}
-                                        </span>
-                                        <span className="text-[10px] text-slate-400">
-                                            {new Date(app.date).toLocaleDateString()}
-                                        </span>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-black uppercase mb-1">
+                                                {app.professional?.split(' ')[0] || "Dra"}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 font-bold">
+                                                {new Date(app.date).toLocaleDateString()}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <p className="text-slate-500 text-sm italic">Nenhum atendimento realizado ainda.</p>
+                            <p className="text-slate-400 text-sm italic text-center py-16">Nenhum atendimento processado no histórico recente.</p>
                         )}
                     </div>
                 </div>
