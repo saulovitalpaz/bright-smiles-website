@@ -23,8 +23,8 @@ jobs:
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
       - name: Upload Backup Artifact
-        uses: actions/upload-artifact{
-          name: db-backup-${{ env.TIMESTAMP }},
-          path: backup_${{ env.TIMESTAMP }}.sql,
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.TIMESTAMP }}
+          path: backup_${{ env.TIMESTAMP }}.sql
           retention-days: 90
-        }
