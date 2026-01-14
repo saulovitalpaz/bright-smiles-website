@@ -112,15 +112,18 @@ const Stories = () => {
             if (selectedStoryIndex < stories.length - 1) {
                 setSelectedStoryIndex(selectedStoryIndex + 1);
                 setProgress(0);
+                setIsPaused(false);
             } else {
                 setSelectedStoryIndex(null);
                 setProgress(0);
+                setIsPaused(false);
             }
         }
     };
 
     const handlePrev = () => {
         if (selectedStoryIndex !== null) {
+            setIsPaused(false);
             if (selectedStoryIndex > 0) {
                 setSelectedStoryIndex(selectedStoryIndex - 1);
                 setProgress(0);
@@ -236,6 +239,7 @@ const Stories = () => {
                                             src={stories[selectedStoryIndex].url}
                                             className="w-full h-full object-cover"
                                             playsInline
+                                            autoPlay
                                             onClick={(e) => e.stopPropagation()} // Let container handle pause toggle
                                         />
                                     ) : (

@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 const AdminPrescription = () => {
     const [searchParams] = useSearchParams();
@@ -106,9 +107,10 @@ const AdminPrescription = () => {
         }
     };
 
-    const handleFormat = (command: string, value: string = "") => {
-        document.execCommand(command, false, value);
-    };
+    // handleFormat is no longer needed as RichTextEditor handles formatting internally
+    // const handleFormat = (command: string, value: string = "") => {
+    //     document.execCommand(command, false, value);
+    // };
 
     const handleCpfChange = (val: string) => {
         setPatientData(prev => ({ ...prev, cpf: val }));
@@ -138,7 +140,8 @@ const AdminPrescription = () => {
             setPatientData(prev => ({ ...prev, id: savedPatient.id }));
 
             // 2. Save Prescription
-            const content = editorRef.current?.innerHTML || "";
+            // Use prescriptionContent state directly
+            const content = prescriptionContent || "";
             const presRes = await fetch(`${API_URL}/prescriptions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -172,7 +175,8 @@ const AdminPrescription = () => {
     };
 
     const handlePrint = () => {
-        if (!prescriptionContent && !editorRef.current?.innerHTML) {
+        // Check prescriptionContent state directly
+        if (!prescriptionContent) {
             return toast.error("Escreva o conteúdo da receita antes de imprimir.");
         }
         window.print();
@@ -313,77 +317,58 @@ const AdminPrescription = () => {
                 {/* Editor Area */}
                 <div className="lg:col-span-2">
                     <Card className="border-slate-200 shadow-sm flex flex-col h-full min-h-[600px]">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-1 overflow-x-auto">
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('bold')} title="Negrito"><Bold size={16} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('italic')} title="Itálico"><Italic size={16} /></Button>
-                            <Separator orientation="vertical" className="mx-1 h-6" />
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('justifyLeft')} title="Alinhar Esquerda"><AlignLeft size={16} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('justifyCenter')} title="Centralizar"><AlignCenter size={16} /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('justifyRight')} title="Alinhar Direita"><AlignRight size={16} /></Button>
-                            <Separator orientation="vertical" className="mx-1 h-6" />
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('insertUnorderedList')} title="Lista"><List size={16} /></Button>
-                            <Separator orientation="vertical" className="mx-1 h-6" />
-                            <Button variant="ghost" size="sm" onClick={() => handleFormat('fontSize', '4')} title="Aumentar Fonte"><Type size={16} /></Button>
-                            <div className="ml-auto flex gap-2">
-                                <Button onClick={handleSave} variant="outline" className="gap-2 border-slate-200 text-slate-600">
-                                    <Save size={18} /> Salvar no Histórico
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
+                            <p className="text-xs font-bold uppercase text-slate-500">Conteúdo da Prescrição</p>
+                            <div className="flex gap-2">
+                                <Button onClick={handleSave} variant="outline" size="sm" className="gap-2 border-slate-200 text-slate-600">
+                                    <Save size={16} /> Salvar no Histórico
                                 </Button>
-                                <Button onClick={handlePrint} className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
-                                    <Printer size={18} /> Apenas Imprimir
+                                <Button onClick={handlePrint} size="sm" className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
+                                    <Printer size={16} /> Imprimir
                                 </Button>
                             </div>
                         </div>
-                        <div className="p-8 flex-1 bg-white">
-                            <div
-                                ref={editorRef}
-                                contentEditable
-                                className="w-full h-full min-h-[400px] outline-none prose prose-slate max-w-none text-xl leading-relaxed text-slate-800"
-                                onInput={(e) => setPrescriptionContent(e.currentTarget.innerHTML)}
-                                data-placeholder="Escreva a prescrição aqui..."
-                            >
-                            </div>
-                        </div>
+                        <RichTextEditor
+                            content={prescriptionContent}
+                            onChange={(content) => setPrescriptionContent(content)}
+                            placeholder="Escreva a prescrição aqui..."
+                            className="border-none shadow-none rounded-none flex-1"
+                        />
                     </Card>
                 </div>
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className="print-only bg-white text-slate-900 absolute top-0 left-0 w-full min-h-screen flex flex-col" id="printable-recipe">
-                {/* Header - Reduced size */}
-                <div className="flex justify-between items-center pb-6 mb-4 border-b border-slate-100">
-                    <div className="flex items-center gap-6">
-                        <img src="/images/logo-oficial.png" alt="Logo" className="w-32 h-32 object-contain" />
-                        <div>
-                            <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase">NOEH</h1>
-                            <div className="text-primary font-bold uppercase tracking-[0.25em] text-[10px] mt-2 leading-relaxed">
-                                <p>Núcleo Odontológico</p>
-                                <p>Especializado & Harmonização</p>
-                            </div>
-                        </div>
-                    </div>
+            <div className="print-only bg-white p-4 text-slate-900 absolute top-0 left-0 w-full min-h-screen flex flex-col" id="printable-recipe">
+                {/* Header - Centered Style like Documents */}
+                <div className="flex flex-col items-center mb-10 text-center border-b border-slate-100 pb-8">
+                    <img src="/images/logo-oficial.png" alt="Logo" className="w-28 h-28 object-contain mb-4" />
+                    <h1 className="text-2xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
+                    <p className="text-slate-500 font-medium text-[10px] uppercase tracking-[0.2em] mt-1">Especializado & Harmonização</p>
                 </div>
 
-                {/* Patient Info Block - Reduced size and added info */}
-                <div className="bg-slate-50/50 p-6 rounded-3xl mb-6 border border-slate-100">
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="col-span-1">
-                            <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">Paciente</p>
-                            <p className="text-xl font-serif font-bold text-slate-900">{patientData.name || "________________________________"}</p>
+                {/* Patient Info Block - Refined Proportions */}
+                <div className="bg-slate-50/40 p-5 rounded-2xl mb-8 border border-slate-100/60 shadow-sm print:shadow-none">
+                    <div className="grid grid-cols-12 gap-5">
+                        <div className="col-span-8">
+                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Nome do Paciente</p>
+                            <p className="text-lg font-serif font-bold text-slate-900 tracking-tight">{patientData.name || "________________________________"}</p>
                         </div>
-                        <div className="col-span-1">
-                            <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">CPF</p>
-                            <p className="text-lg font-mono font-medium text-slate-600 tracking-tight">{patientData.cpf || "____.____.____-____"}</p>
+                        <div className="col-span-4">
+                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Documento CPF</p>
+                            <p className="text-sm font-mono font-bold text-slate-700">{patientData.cpf || "____.____.____-____"}</p>
                         </div>
-                        {patientData.address && (
-                            <div className="col-span-1">
-                                <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">Endereço</p>
-                                <p className="text-xs text-slate-600 italic leading-tight">{patientData.address}</p>
-                            </div>
-                        )}
-                        {patientData.phone && (
-                            <div className="col-span-1">
-                                <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">Telefone</p>
-                                <p className="text-xs text-slate-600 font-mono italic">{patientData.phone}</p>
+
+                        {(patientData.address || patientData.phone) && (
+                            <div className="col-span-12 grid grid-cols-12 gap-5 border-t border-slate-200/50 pt-4 mt-1">
+                                <div className="col-span-9">
+                                    <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Endereço Residencial</p>
+                                    <p className="text-[10px] text-slate-600 font-medium leading-relaxed italic">{patientData.address || "Não informado"}</p>
+                                </div>
+                                <div className="col-span-3 text-right">
+                                    <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Contato</p>
+                                    <p className="text-[10px] text-slate-600 font-mono font-bold">{patientData.phone || "Não informado"}</p>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -425,7 +410,7 @@ const AdminPrescription = () => {
             <style>{`
                 @media print {
                     @page { 
-                        margin: 15mm; 
+                        margin: 15mm 20mm; 
                         size: A4;
                     }
                     .no-print { display: none !important; }
@@ -441,6 +426,17 @@ const AdminPrescription = () => {
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
                 .print-only { display: none; }
+                .pdf-footer {
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    padding-top: 20px;
+                    background: white;
+                }
+                #printable-recipe {
+                    padding-bottom: 120px;
+                }
                 [contenteditable]:empty:before {
                     content: attr(data-placeholder);
                     color: #94a3b8;

@@ -213,9 +213,16 @@ app.post('/appointments', async (req, res) => {
 app.put('/appointments/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
+
+        // Handle returnDate if sent as string
+        if (data.returnDate) {
+            data.returnDate = new Date(data.returnDate);
+        }
+
         const appointment = await prisma.appointment.update({
             where: { id: parseInt(id) },
-            data: req.body
+            data: data
         });
         res.json(appointment);
     } catch (error) {
@@ -368,6 +375,18 @@ app.delete('/stories/:id', async (req, res) => {
     }
 });
 
+app.post('/stories/:id/view', async (req, res) => {
+    try {
+        const story = await prisma.story.update({
+            where: { id: parseInt(req.params.id) },
+            data: { views: { increment: 1 } }
+        });
+        res.json({ views: story.views });
+    } catch (error) {
+        res.status(200).send("OK"); // Fail silently
+    }
+});
+
 // Settings API
 app.get('/settings', async (req, res) => {
     try {
@@ -504,6 +523,11 @@ app.get('/dashboard/stats', async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
+        const recentTestimonials = await prisma.testimonial.findMany({
+            take: 5,
+            orderBy: { createdAt: 'desc' }
+        });
+
         res.json({
             users,
             posts,
@@ -511,7 +535,8 @@ app.get('/dashboard/stats', async (req, res) => {
             leads,
             testimonials,
             recentAppointments,
-            recentLeads
+            recentLeads,
+            recentTestimonials
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -522,9 +547,22 @@ app.get('/dashboard/stats', async (req, res) => {
 app.post('/leads', async (req, res) => {
     try {
         const { source, ...rest } = req.body;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-        // Simple IP to City mock/lookup (in a real app we'd use a geoip library)
-        const location = "Governador Valadares"; // Default for clinic local area
+        // Detailed Location Lookup
+        let location = "Desconhecido";
+        try {
+            const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '';
+            if (cleanIp) {
+                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}`);
+                const geoData = await geoRes.json();
+                if (geoData.status === 'success') {
+                    location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+                }
+            }
+        } catch (geoErr) {
+            console.error("Geo lookup failed for lead:", geoErr);
+        }
 
         const lead = await prisma.lead.create({
             data: {
@@ -772,9 +810,21 @@ app.delete('/patient-documents/:id', async (req, res) => {
 app.post('/analytics', async (req, res) => {
     try {
         const { source, path, type } = req.body;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-        // Mock Geo-IP for Demo/Clinic area
-        const location = "Governador Valadares";
+        // Detailed Location Lookup
+        let location = "Desconhecido";
+        try {
+            const cleanIp = ip.split(',')[0].trim();
+            // Using ip-api.com (free for non-commercial use, 45 requests/min)
+            const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}`);
+            const geoData = await geoRes.json();
+            if (geoData.status === 'success') {
+                location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+            }
+        } catch (geoErr) {
+            console.error("Geo lookup failed:", geoErr);
+        }
 
         const event = await prisma.analyticsEvent.create({
             data: {
@@ -782,7 +832,7 @@ app.post('/analytics', async (req, res) => {
                 path: path || '/',
                 source: source || 'Direto',
                 location: location,
-                ip: req.ip,
+                ip: typeof ip === 'string' ? ip.substring(0, 45) : 'unknown',
                 userAgent: req.headers['user-agent']
             }
         });

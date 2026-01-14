@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, CheckCircle, Clock, Trash2 } from "lucide-react";
+import { Phone, Mail, CheckCircle, Clock, Trash2, UserPlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
 
 const AdminLeads = () => {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
     const { data: leads, isLoading } = useQuery({
         queryKey: ['leads'],
@@ -108,6 +110,17 @@ const AdminLeads = () => {
                                     <CheckCircle size={16} />
                                     {lead.status === 'scheduled' ? 'Agendado' : 'Marcar Agendado'}
                                 </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="default"
+                                    className="gap-2 h-9 bg-primary"
+                                    onClick={() => navigate(`/admin/consultas?leadId=${lead.id}`)}
+                                >
+                                    <UserPlus size={16} />
+                                    Iniciar Atendimento
+                                </Button>
+
                                 <Button variant="ghost" size="icon" className="h-9 w-9 text-red-400 hover:text-red-500" onClick={() => deleteMutation.mutate(lead.id)}>
                                     <Trash2 size={16} />
                                 </Button>

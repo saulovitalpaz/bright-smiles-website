@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 const AdminBlog = () => {
     const queryClient = useQueryClient();
@@ -265,10 +266,10 @@ const AdminBlog = () => {
                                     <Eye size={16} className="text-primary" />
                                     Referências Técnicas
                                 </Label>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm" 
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => setReferences([...references, { title: "", url: "", authors: "", journal: "", year: "" }])}
                                 >
                                     <Plus size={14} className="mr-1" /> Adicionar Ref
@@ -278,7 +279,7 @@ const AdminBlog = () => {
                             {references.map((ref, idx) => (
                                 <div key={idx} className="p-4 bg-slate-50 rounded-xl space-y-3 relative group/ref">
                                     {references.length > 1 && (
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => setReferences(references.filter((_, i) => i !== idx))}
                                             className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover/ref:opacity-100 transition-opacity"
@@ -287,18 +288,18 @@ const AdminBlog = () => {
                                         </button>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <Input 
-                                            placeholder="Título da Referência" 
-                                            value={ref.title} 
+                                        <Input
+                                            placeholder="Título da Referência"
+                                            value={ref.title}
                                             onChange={e => {
                                                 const newRefs = [...references];
                                                 newRefs[idx].title = e.target.value;
                                                 setReferences(newRefs);
                                             }}
                                         />
-                                        <Input 
-                                            placeholder="URL (Link)" 
-                                            value={ref.url} 
+                                        <Input
+                                            placeholder="URL (Link)"
+                                            value={ref.url}
                                             onChange={e => {
                                                 const newRefs = [...references];
                                                 newRefs[idx].url = e.target.value;
@@ -307,28 +308,28 @@ const AdminBlog = () => {
                                         />
                                     </div>
                                     <div className="grid grid-cols-3 gap-3">
-                                        <Input 
-                                            placeholder="Autores" 
+                                        <Input
+                                            placeholder="Autores"
                                             className="col-span-1"
-                                            value={ref.authors} 
+                                            value={ref.authors}
                                             onChange={e => {
                                                 const newRefs = [...references];
                                                 newRefs[idx].authors = e.target.value;
                                                 setReferences(newRefs);
                                             }}
                                         />
-                                        <Input 
-                                            placeholder="Revista/Journal" 
-                                            value={ref.journal} 
+                                        <Input
+                                            placeholder="Revista/Journal"
+                                            value={ref.journal}
                                             onChange={e => {
                                                 const newRefs = [...references];
                                                 newRefs[idx].journal = e.target.value;
                                                 setReferences(newRefs);
                                             }}
                                         />
-                                        <Input 
-                                            placeholder="Ano" 
-                                            value={ref.year} 
+                                        <Input
+                                            placeholder="Ano"
+                                            value={ref.year}
                                             onChange={e => {
                                                 const newRefs = [...references];
                                                 newRefs[idx].year = e.target.value;
@@ -342,11 +343,11 @@ const AdminBlog = () => {
 
                         <div className="space-y-2">
                             <Label>Conteúdo</Label>
-                            <Textarea
-                                className="min-h-[200px]"
-                                value={formData.content}
-                                onChange={e => setFormData({ ...formData, content: e.target.value })}
+                            <RichTextEditor
+                                content={formData.content}
+                                onChange={(content) => setFormData({ ...formData, content })}
                                 placeholder="Escreva seu artigo aqui..."
+                                className="min-h-[400px]"
                             />
                         </div>
 

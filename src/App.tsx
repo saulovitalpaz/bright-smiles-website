@@ -23,6 +23,7 @@ import AdminPrescription from "./pages/AdminPrescription";
 import AdminDigitalGuide from "./pages/AdminDigitalGuide";
 import AdminDocuments from "./pages/AdminDocuments";
 import AdminSettings from "./pages/AdminSettings";
+import PageTracker from "./components/PageTracker";
 
 import { AuthProvider, ProtectedRoute } from "./hooks/useAuth";
 
@@ -34,6 +35,7 @@ const App = () => (
       <Toaster />
       <ToasterSonner />
       <BrowserRouter>
+        <PageTracker />
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />

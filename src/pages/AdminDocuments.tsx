@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { API_URL } from "@/lib/api";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 const AdminDocuments = () => {
     const [patientData, setPatientData] = useState({
@@ -217,28 +218,25 @@ const AdminDocuments = () => {
                                             <DialogDescription>Use tags como #NOME, #CPF, #DATA, #PROFISSIONAL para auto-preenchimento.</DialogDescription>
                                         </DialogHeader>
                                         <div className="space-y-4 py-4">
-                                            <Input
-                                                placeholder="Título do Modelo (ex: Contrato Botox)"
-                                                value={newTemplate.title}
-                                                onChange={e => setNewTemplate({ ...newTemplate, title: e.target.value })}
-                                            />
-                                            <div className="flex gap-4">
-                                                <div className="flex-1">
-                                                    <Textarea
-                                                        placeholder="Conteúdo do contrato..."
-                                                        className="h-[300px] font-mono text-sm"
-                                                        value={newTemplate.content}
-                                                        onChange={e => setNewTemplate({ ...newTemplate, content: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div className="w-48 text-xs space-y-2 text-slate-500 bg-slate-50 p-3 rounded h-fit">
-                                                    <p className="font-bold text-slate-700">Legenda de Tags:</p>
-                                                    <p><code className="bg-white px-1 border rounded">#NOME</code> - Nome Paciente</p>
-                                                    <p><code className="bg-white px-1 border rounded">#CPF</code> - CPF Paciente</p>
-                                                    <p><code className="bg-white px-1 border rounded">#DATA</code> - Data Atual</p>
-                                                    <p><code className="bg-white px-1 border rounded">#PROCEDIMENTO</code> - Procedimento</p>
-                                                    <p><code className="bg-white px-1 border rounded">#PROFISSIONAL</code> - Seu Nome/CRO</p>
-                                                </div>
+                                            <div className="space-y-2">
+                                                <Label>Título do Modelo</Label>
+                                                <Input
+                                                    value={newTemplate.title}
+                                                    onChange={(e) => setNewTemplate({ ...newTemplate, title: e.target.value })}
+                                                    placeholder="Ex: Termo de Consentimento - Botox"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Conteúdo do Documento</Label>
+                                                <RichTextEditor
+                                                    content={newTemplate.content}
+                                                    onChange={(content) => setNewTemplate({ ...newTemplate, content })}
+                                                    placeholder="Use #NOME, #CPF, #PROCEDIMENTO, #DATA e #PROFISSIONAL como variáveis."
+                                                />
+                                            </div>
+                                            <div className="w-full text-xs space-y-2 text-slate-500 bg-slate-50 p-3 rounded h-fit">
+                                                <p className="font-bold text-slate-700">Legenda de Tags:</p>
+                                                <p><code className="bg-white px-1 border rounded">#NOME</code> - Nome Paciente | <code className="bg-white px-1 border rounded">#CPF</code> - CPF Paciente | <code className="bg-white px-1 border rounded">#DATA</code> - Data Atual | <code className="bg-white px-1 border rounded">#PROCEDIMENTO</code> - Procedimento | <code className="bg-white px-1 border rounded">#PROFISSIONAL</code> - Seu Nome/CRO</p>
                                             </div>
                                             <Button onClick={handleCreateTemplate} className="w-full">Salvar Modelo</Button>
                                         </div>
@@ -377,7 +375,7 @@ const AdminDocuments = () => {
             <style>{`
                 @media print {
                     @page { 
-                        margin: 20mm; 
+                        margin: 15mm 20mm; 
                         size: A4; 
                     }
                     .no-print { display: none !important; }
@@ -394,7 +392,7 @@ const AdminDocuments = () => {
                 }
                 .print-only { display: none; }
             `}</style>
-        </AdminLayout>
+        </AdminLayout >
     );
 };
 export default AdminDocuments;

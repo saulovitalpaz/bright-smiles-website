@@ -43,6 +43,10 @@ model Appointment {
   date         DateTime
   procedure    String
   notes        String
+  weight       String?
+  materials    String?
+  complications String?
+  returnDate   DateTime?
   professional String
   patientId    Int?
   patient      Patient? @relation(fields: [patientId], references: [id])

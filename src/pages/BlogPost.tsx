@@ -20,6 +20,10 @@ const BlogPost = () => {
                 .then(data => {
                     setPost(data);
                     setIsLoading(false);
+                    // Increment views
+                    if (data.id) {
+                        fetch(`${API_URL}/posts/${data.id}/view`, { method: 'POST' }).catch(() => { });
+                    }
                 })
                 .catch(err => {
                     console.error(err);
