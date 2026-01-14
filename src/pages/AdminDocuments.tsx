@@ -105,7 +105,7 @@ const AdminDocuments = () => {
             .replace(/#CPF/g, patientData.cpf || "_________________")
             .replace(/#PROCEDIMENTO/g, patientData.procedure || "_________________")
             .replace(/#DATA/g, patientData.date)
-            .replace(/#PROFISSIONAL/g, team.name || "," team.cro || "_________________");
+            .replace(/#PROFISSIONAL/g, "Dra. Karol Paz - CRO/MG 60.369");
 
         setDocumentContent(processed);
         setSelectedTemplate(template);
