@@ -348,26 +348,26 @@ const AdminPrescription = () => {
                 </div>
 
                 {/* Patient Info Block - Refined Proportions */}
-                <div className="bg-slate-50/40 p-5 rounded-2xl mb-8 border border-slate-100/60 shadow-sm print:shadow-none">
-                    <div className="grid grid-cols-12 gap-5">
+                <div className="bg-slate-50/40 p-3 rounded-xl mb-4 border border-slate-100/60 shadow-sm print:shadow-none">
+                    <div className="grid grid-cols-12 gap-3">
                         <div className="col-span-8">
-                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Nome do Paciente</p>
-                            <p className="text-lg font-serif font-bold text-slate-900 tracking-tight">{patientData.name || "________________________________"}</p>
+                            <p className="text-[6px] uppercase font-black text-primary tracking-[0.2em] mb-0.5 opacity-70">Nome do Paciente</p>
+                            <p className="text-base font-serif font-bold text-slate-900 tracking-tight">{patientData.name || "________________________________"}</p>
                         </div>
                         <div className="col-span-4">
-                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Documento CPF</p>
-                            <p className="text-sm font-mono font-bold text-slate-700">{patientData.cpf || "____.____.____-____"}</p>
+                            <p className="text-[6px] uppercase font-black text-primary tracking-[0.2em] mb-0.5 opacity-70">Documento CPF</p>
+                            <p className="text-xs font-mono font-bold text-slate-700">{patientData.cpf || "____.____.____-____"}</p>
                         </div>
 
                         {(patientData.address || patientData.phone) && (
-                            <div className="col-span-12 grid grid-cols-12 gap-5 border-t border-slate-200/50 pt-4 mt-1">
+                            <div className="col-span-12 grid grid-cols-12 gap-3 border-t border-slate-200/50 pt-2 mt-0.5">
                                 <div className="col-span-9">
-                                    <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Endereço Residencial</p>
-                                    <p className="text-[10px] text-slate-600 font-medium leading-relaxed italic">{patientData.address || "Não informado"}</p>
+                                    <p className="text-[6px] uppercase font-black text-primary tracking-[0.2em] mb-0.5 opacity-70">Endereço Residencial</p>
+                                    <p className="text-[9px] text-slate-600 font-medium leading-tight italic truncate">{patientData.address || "Não informado"}</p>
                                 </div>
                                 <div className="col-span-3 text-right">
-                                    <p className="text-[7px] uppercase font-black text-primary tracking-[0.2em] mb-1 opacity-70">Contato</p>
-                                    <p className="text-[10px] text-slate-600 font-mono font-bold">{patientData.phone || "Não informado"}</p>
+                                    <p className="text-[6px] uppercase font-black text-primary tracking-[0.2em] mb-0.5 opacity-70">Contato</p>
+                                    <p className="text-[9px] text-slate-600 font-mono font-bold">{patientData.phone || "Não informado"}</p>
                                 </div>
                             </div>
                         )}
@@ -375,7 +375,7 @@ const AdminPrescription = () => {
                 </div>
 
                 {/* Prescription Body */}
-                <div className="flex-1 p-6 rounded-3xl border border-dotted border-slate-200 mb-6 font-serif text-xl leading-relaxed text-slate-800">
+                <div className="flex-1 p-4 rounded-2xl border border-dotted border-slate-200 mb-4 font-serif text-lg leading-relaxed text-slate-800">
                     <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
                 </div>
 
@@ -410,7 +410,7 @@ const AdminPrescription = () => {
             <style>{`
                 @media print {
                     @page { 
-                        margin: 15mm 20mm; 
+                        margin: 10mm 15mm; 
                         size: A4;
                     }
                     .no-print { display: none !important; }

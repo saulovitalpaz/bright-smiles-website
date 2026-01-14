@@ -341,18 +341,18 @@ const AdminDocuments = () => {
                     </Card>
 
                     {/* Print Preview (Hidden normally, Visible on Print) */}
-                    <div className="print-only bg-white p-12 text-slate-900 fixed top-0 left-0 w-full h-full z-[9999]">
-                        <div className="flex flex-col items-center mb-12 text-center border-b border-slate-200 pb-8">
-                            <img src="/images/logo-oficial.png" alt="Logo" className="w-32 h-32 object-contain mb-4" />
-                            <h1 className="text-2xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
-                            <p className="text-slate-500 font-medium text-xs uppercase tracking-[0.2em] mt-2">Especializado & Harmonização</p>
+                    <div className="print-only bg-white text-slate-900 fixed top-0 left-0 w-full h-full z-[9999]">
+                        <div className="flex flex-col items-center mb-6 text-center border-b border-slate-100 pb-4">
+                            <img src="/images/logo-oficial.png" alt="Logo" className="w-20 h-20 object-contain mb-2" />
+                            <h1 className="text-xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
+                            <p className="text-slate-500 font-medium text-[9px] uppercase tracking-[0.2em] mt-1">Especializado & Harmonização</p>
                         </div>
 
-                        <div className="whitespace-pre-wrap font-serif text-lg leading-[2] text-justify text-slate-800 px-8">
+                        <div className="whitespace-pre-wrap font-serif text-base leading-[1.6] text-justify text-slate-800 px-4">
                             {documentContent}
                         </div>
 
-                        <div className="mt-32 pt-12 border-t border-slate-300 grid grid-cols-2 gap-16 text-center">
+                        <div className="mt-20 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 text-center">
                             <div>
                                 <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
                                 <p className="font-bold uppercase text-[10px]">Assinatura do Paciente</p>
@@ -375,7 +375,7 @@ const AdminDocuments = () => {
             <style>{`
                 @media print {
                     @page { 
-                        margin: 15mm 20mm; 
+                        margin: 10mm 15mm; 
                         size: A4; 
                     }
                     .no-print { display: none !important; }
