@@ -47,11 +47,20 @@ const BlogPost = () => {
     }
 
     const nextImage = () => {
+        if (!post.images || post.images.length === 0) return;
         setActiveImage((prev) => (prev + 1) % post.images.length);
     };
 
     const prevImage = () => {
+        if (!post.images || post.images.length === 0) return;
         setActiveImage((prev) => (prev - 1 + post.images.length) % post.images.length);
+    };
+
+    const getPostImageUrl = () => {
+        if (post.images && post.images.length > 0 && post.images[activeImage]) {
+            return post.images[activeImage];
+        }
+        return post.image || "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200";
     };
 
     return (
@@ -115,7 +124,7 @@ const BlogPost = () => {
                                 onClick={() => setIsZoomOpen(true)}
                             >
                                 <img
-                                    src={post.images[activeImage]}
+                                    src={getPostImageUrl()}
                                     alt={post.title}
                                     className="w-full h-full object-contain p-4 md:p-10 transition-all duration-500 bg-white/5" // Changed to contain to avoid cropping
                                 />
@@ -126,7 +135,7 @@ const BlogPost = () => {
                                 </div>
                             </div>
 
-                            {post.images.length > 1 && (
+                            {post.images?.length > 1 && (
                                 <>
                                     <button
                                         onClick={prevImage}
@@ -142,7 +151,7 @@ const BlogPost = () => {
                                     </button>
 
                                     <div className="flex flex-wrap justify-center gap-3 mt-8">
-                                        {post.images.map((img, i) => (
+                                        {post.images?.map((img: string, i: number) => (
                                             <button
                                                 key={i}
                                                 onClick={() => setActiveImage(i)}
@@ -235,7 +244,7 @@ const BlogPost = () => {
                     </button>
 
                     <img
-                        src={post.images[activeImage]}
+                        src={getPostImageUrl()}
                         alt="Zoomed educational content"
                         className="max-h-[85vh] max-w-full object-contain rounded-lg"
                     />

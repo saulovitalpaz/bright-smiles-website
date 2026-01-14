@@ -29,6 +29,10 @@ const AdminBlog = () => {
         image: ""
     });
 
+    const [references, setReferences] = useState<any[]>([
+        { title: "", url: "", authors: "", journal: "", year: "" }
+    ]);
+
     const categories = ["Dicas de Saúde", "Harmonização", "Institucional", "Tratamentos", "Novidades"];
 
     const { data: blogPosts, isLoading } = useQuery({
@@ -49,7 +53,8 @@ const AdminBlog = () => {
                 await axios.put(`${API_URL}/posts/${editingPost.id}`, {
                     ...data,
                     readTime,
-                    // keep slug stable or update if needed? usually stable for SEO, but here we update
+                    images: data.image ? [data.image] : [],
+                    references: references.filter(r => r.title && r.url)
                 });
             } else {
                 // Create
@@ -59,8 +64,8 @@ const AdminBlog = () => {
                     excerpt: data.content.substring(0, 150) + "...",
                     date: new Date().toISOString(),
                     readTime,
-                    images: [],
-                    references: {}
+                    images: data.image ? [data.image] : [],
+                    references: references.filter(r => r.title && r.url)
                 });
             }
         },
@@ -87,6 +92,7 @@ const AdminBlog = () => {
         setIsDialogOpen(false);
         setEditingPost(null);
         setFormData({ title: "", content: "", category: "Dicas de Saúde", author: "Dra. Ana Karolina", image: "" });
+        setReferences([{ title: "", url: "", authors: "", journal: "", year: "" }]);
     }
 
     const handleEdit = (post: any) => {
@@ -98,6 +104,7 @@ const AdminBlog = () => {
             author: post.author,
             image: post.image
         });
+        setReferences(post.references?.length > 0 ? post.references : [{ title: "", url: "", authors: "", journal: "", year: "" }]);
         setIsDialogOpen(true);
     };
 
@@ -250,6 +257,87 @@ const AdminBlog = () => {
                                     {uploading ? "Enviando..." : "Carregar Imagem"}
                                 </Button>
                             </div>
+                        </div>
+
+                        <div className="space-y-4 pt-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-sm font-bold flex items-center gap-2">
+                                    <Eye size={16} className="text-primary" />
+                                    Referências Técnicas
+                                </Label>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setReferences([...references, { title: "", url: "", authors: "", journal: "", year: "" }])}
+                                >
+                                    <Plus size={14} className="mr-1" /> Adicionar Ref
+                                </Button>
+                            </div>
+
+                            {references.map((ref, idx) => (
+                                <div key={idx} className="p-4 bg-slate-50 rounded-xl space-y-3 relative group/ref">
+                                    {references.length > 1 && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => setReferences(references.filter((_, i) => i !== idx))}
+                                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover/ref:opacity-100 transition-opacity"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <Input 
+                                            placeholder="Título da Referência" 
+                                            value={ref.title} 
+                                            onChange={e => {
+                                                const newRefs = [...references];
+                                                newRefs[idx].title = e.target.value;
+                                                setReferences(newRefs);
+                                            }}
+                                        />
+                                        <Input 
+                                            placeholder="URL (Link)" 
+                                            value={ref.url} 
+                                            onChange={e => {
+                                                const newRefs = [...references];
+                                                newRefs[idx].url = e.target.value;
+                                                setReferences(newRefs);
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <Input 
+                                            placeholder="Autores" 
+                                            className="col-span-1"
+                                            value={ref.authors} 
+                                            onChange={e => {
+                                                const newRefs = [...references];
+                                                newRefs[idx].authors = e.target.value;
+                                                setReferences(newRefs);
+                                            }}
+                                        />
+                                        <Input 
+                                            placeholder="Revista/Journal" 
+                                            value={ref.journal} 
+                                            onChange={e => {
+                                                const newRefs = [...references];
+                                                newRefs[idx].journal = e.target.value;
+                                                setReferences(newRefs);
+                                            }}
+                                        />
+                                        <Input 
+                                            placeholder="Ano" 
+                                            value={ref.year} 
+                                            onChange={e => {
+                                                const newRefs = [...references];
+                                                newRefs[idx].year = e.target.value;
+                                                setReferences(newRefs);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="space-y-2">

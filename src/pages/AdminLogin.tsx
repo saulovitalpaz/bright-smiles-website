@@ -33,8 +33,8 @@ export const AdminLogin = () => {
 
             if (response.ok) {
                 const user = await response.json();
-                // Pass password to the context login for persistence
-                await login();
+                // Pass user data to the context login for persistence
+                await login(user);
                 toast.success(`Bem-vinda, ${user.name}!`);
                 navigate("/admin/dashboard");
             } else {

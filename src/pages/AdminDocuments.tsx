@@ -46,7 +46,7 @@ const AdminDocuments = () => {
     const [newTemplate, setNewTemplate] = useState({ title: "", content: "" });
 
     const userStr = localStorage.getItem("admin_user");
-    const currentUser = userStr ? JSON.parse(userStr) : { name: "Dra. Karol Paz", cro: "CRO/MG 60.369" };
+    const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional", cro: "", username: "admin" };
 
     // Load Templates
     const loadTemplates = () => {

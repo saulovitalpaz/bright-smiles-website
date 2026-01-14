@@ -46,7 +46,7 @@ const AdminPrescription = () => {
     const editorRef = useRef<HTMLDivElement>(null);
 
     const userStr = localStorage.getItem("admin_user");
-    const currentUser = userStr ? JSON.parse(userStr) : { name: team.name, cro: team.cro };
+    const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional", cro: "", username: "admin" };
 
     useEffect(() => {
         if (urlCpf) {

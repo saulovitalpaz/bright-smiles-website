@@ -15,14 +15,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
     const navigate = useNavigate();
 
-    const login = async () => {
+    const login = async (userData: any) => {
         localStorage.setItem('admin_auth', 'true');
+        localStorage.setItem('admin_user', JSON.stringify(userData));
         setIsAuthenticated(true);
         return true;
     };
 
     const logout = () => {
         localStorage.removeItem('admin_auth');
+        localStorage.removeItem('admin_user');
         setIsAuthenticated(false);
         navigate('/admin');
     };
