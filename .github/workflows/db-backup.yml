@@ -1,0 +1,30 @@
+name: Weekly Database Backup
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at 00:00
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run Backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          pg_dump $DATABASE_URL > backup_$TIMESTAMP.sql
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact{
+          name: db-backup-${{ env.TIMESTAMP }},
+          path: backup_${{ env.TIMESTAMP }}.sql,
+          retention-days: 90
+        }

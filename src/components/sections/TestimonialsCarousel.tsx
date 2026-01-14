@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Star, ChevronLeft, ChevronRight, Quote } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, Quote, Smile, Frown, Meh, Heart, Award } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { API_URL } from "@/lib/api";
 
@@ -56,24 +56,42 @@ const TestimonialsCarousel = () => {
                         className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory no-scrollbar"
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {testimonials.map((t: any) => (
-                            <Card key={t.id} className="min-w-[300px] md:min-w-[350px] snap-center border-none shadow-sm hover:shadow-md transition-shadow">
-                                <CardContent className="p-8 flex flex-col items-center text-center">
-                                    <div className="bg-primary/10 p-3 rounded-full mb-6 text-primary">
-                                        <Quote size={24} fill="currentColor" className="opacity-50" />
-                                    </div>
-                                    <p className="text-slate-600 italic mb-6 leading-relaxed">"{t.comment}"</p>
-                                    <div className="mt-auto">
-                                        <h4 className="font-bold text-slate-900">{t.name || "Paciente"}</h4>
-                                        <div className="flex gap-1 justify-center mt-2 text-yellow-400">
-                                            {[...Array(5)].map((_, i) => (
-                                                <Star key={i} size={14} fill={i < t.rating ? "currentColor" : "none"} className={i < t.rating ? "" : "text-slate-200"} />
-                                            ))}
+                        {testimonials.map((t: any) => {
+                            const FeelingIcon = {
+                                sad: Frown,
+                                neutral: Meh,
+                                happy: Smile,
+                                love: Heart,
+                                wow: Award
+                            }[t.feeling as string] || Quote;
+
+                            const feelingColor = {
+                                sad: "text-red-400",
+                                neutral: "text-yellow-400",
+                                happy: "text-green-400",
+                                love: "text-pink-400",
+                                wow: "text-primary"
+                            }[t.feeling as string] || "text-primary";
+
+                            return (
+                                <Card key={t.id} className="min-w-[300px] md:min-w-[350px] snap-center border-none shadow-sm hover:shadow-md transition-shadow">
+                                    <CardContent className="p-8 flex flex-col items-center text-center">
+                                        <div className={`p-3 rounded-full mb-6 ${t.feeling ? 'bg-slate-50' : 'bg-primary/10 text-primary'}`}>
+                                            <FeelingIcon size={32} className={t.feeling ? feelingColor : "opacity-50"} fill={t.feeling ? "none" : "currentColor"} />
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                        <p className="text-slate-600 italic mb-6 leading-relaxed">"{t.comment}"</p>
+                                        <div className="mt-auto">
+                                            <h4 className="font-bold text-slate-900">{t.name || "Paciente"}</h4>
+                                            <div className="flex gap-1 justify-center mt-2 text-yellow-400">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} size={14} fill={i < t.rating ? "currentColor" : "none"} className={i < t.rating ? "" : "text-slate-200"} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
                     </div>
 
                     <button

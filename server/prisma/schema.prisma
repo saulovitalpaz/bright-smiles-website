@@ -138,6 +138,7 @@ model Testimonial {
   name      String? // Optional if anonymous
   rating    Int
   comment   String
+  feeling   String?  // emoji feeling: happy, neutral, sad, love, wow
   approved  Boolean  @default(false)
   createdAt DateTime @default(now())
 }

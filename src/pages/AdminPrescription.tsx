@@ -348,16 +348,14 @@ const AdminPrescription = () => {
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className="print-only bg-white p-16 text-slate-900 absolute top-0 left-0 w-full min-h-screen flex flex-col" id="printable-recipe">
-                {/* Header */}
-                <div className="flex justify-between items-center pb-12 mb-8">
-                    <div className="flex items-center gap-10">
-                        <div className="relative">
-                            <img src="/images/logo-oficial.png" alt="Logo" className="w-56 h-56 object-contain relative z-10" />
-                        </div>
+            <div className="print-only bg-white text-slate-900 absolute top-0 left-0 w-full min-h-screen flex flex-col" id="printable-recipe">
+                {/* Header - Reduced size */}
+                <div className="flex justify-between items-center pb-6 mb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-6">
+                        <img src="/images/logo-oficial.png" alt="Logo" className="w-32 h-32 object-contain" />
                         <div>
-                            <h1 className="text-5xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase">NOEH</h1>
-                            <div className="text-primary font-bold uppercase tracking-[0.25em] text-xs mt-3 leading-relaxed">
+                            <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase">NOEH</h1>
+                            <div className="text-primary font-bold uppercase tracking-[0.25em] text-[10px] mt-2 leading-relaxed">
                                 <p>Núcleo Odontológico</p>
                                 <p>Especializado & Harmonização</p>
                             </div>
@@ -365,49 +363,59 @@ const AdminPrescription = () => {
                     </div>
                 </div>
 
-                {/* Patient Info Block */}
-                <div className="bg-slate-50/50 p-8 rounded-[2.5rem] mb-12 border border-slate-100 shadow-sm print:shadow-none print:border-slate-100">
-                    <div className="grid grid-cols-3 gap-10">
-                        <div className="col-span-2">
-                            <p className="text-[9px] uppercase font-black text-primary tracking-widest mb-2">Paciente</p>
-                            <p className="text-3xl font-serif font-bold text-slate-900">{patientData.name || "________________________________"}</p>
+                {/* Patient Info Block - Reduced size and added info */}
+                <div className="bg-slate-50/50 p-6 rounded-3xl mb-6 border border-slate-100">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="col-span-1">
+                            <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">Paciente</p>
+                            <p className="text-xl font-serif font-bold text-slate-900">{patientData.name || "________________________________"}</p>
                         </div>
-                        <div>
-                            <p className="text-[9px] uppercase font-black text-primary tracking-widest mb-2">CPF</p>
-                            <p className="text-2xl font-mono font-medium text-slate-600 tracking-tight">{patientData.cpf || "____.____.____-____"}</p>
+                        <div className="col-span-1">
+                            <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">CPF</p>
+                            <p className="text-lg font-mono font-medium text-slate-600 tracking-tight">{patientData.cpf || "____.____.____-____"}</p>
                         </div>
+                        {patientData.address && (
+                            <div className="col-span-1">
+                                <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">Endereço</p>
+                                <p className="text-xs text-slate-600 italic leading-tight">{patientData.address}</p>
+                            </div>
+                        )}
+                        {patientData.phone && (
+                            <div className="col-span-1">
+                                <p className="text-[8px] uppercase font-black text-primary tracking-widest mb-1">Telefone</p>
+                                <p className="text-xs text-slate-600 font-mono italic">{patientData.phone}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* Prescription Body */}
-                <div className="flex-1 min-h-[500px] p-10 rounded-[2.5rem] border border-slate-100/60 shadow-[0_0_50px_-12px_rgba(0,0,0,0.05)] mb-12 content-preview font-serif text-2xl leading-[1.8] text-slate-800 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-[100%] -z-10"></div>
+                <div className="flex-1 p-6 rounded-3xl border border-dotted border-slate-200 mb-6 font-serif text-xl leading-relaxed text-slate-800">
                     <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
                 </div>
 
-                {/* Footer Clinical Details */}
-                <div className="mt-auto">
-                    <div className="flex justify-between items-end pt-10 text-slate-500 relative">
-                        {/* Decorative Line */}
-                        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+                {/* Footer Clinical Details - Fixed at bottom for every page */}
+                <div className="mt-auto pdf-footer">
+                    <div className="flex justify-between items-end pt-6 text-slate-500 relative">
+                        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
 
-                        <div className="text-[10px] space-y-1.5">
-                            <p className="font-black text-slate-900 uppercase tracking-widest mb-3 text-xs">Unidade de Atendimento</p>
-                            <p className="font-bold text-slate-600 text-[11px]">Governador Valadares - MG</p>
+                        <div className="text-[9px] space-y-1">
+                            <p className="font-black text-slate-900 uppercase tracking-widest mb-2 text-[10px]">Unidade de Atendimento</p>
+                            <p className="font-bold text-slate-600 text-[10px]">Governador Valadares - MG</p>
                             <p>Rua Barão do Rio Branco, 461 - Sala 206 - Centro</p>
                             <p>CNPJ: 00.000.000/0001-00 | Razão Social: Karol Paz Me.</p>
                         </div>
-                        <div className="text-center pb-2">
-                            <div className="mt-6 flex flex-col items-center">
-                                <div className="w-80 border-b border-slate-900/10 mb-2"></div>
-                                <p className="font-bold text-slate-900 text-lg leading-tight">{currentUser.name}</p>
-                                <p className="text-[10px] uppercase font-black text-primary tracking-[0.2em] mt-1">{currentUser.cro}</p>
-                                <p className="text-[8px] font-bold text-slate-300 uppercase mt-4 tracking-widest">Assinatura Digital / Carimbo</p>
+                        <div className="text-center">
+                            <div className="flex flex-col items-center">
+                                <div className="w-64 border-b border-slate-900/10 mb-2"></div>
+                                <p className="font-bold text-slate-900 text-sm leading-tight">{currentUser.name}</p>
+                                <p className="text-[9px] uppercase font-black text-primary tracking-[0.2em] mt-1">{currentUser.cro}</p>
+                                <p className="text-[7px] font-bold text-slate-300 uppercase mt-2 tracking-widest">Assinatura Digital / Carimbo</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-12 flex justify-between items-center text-[8px] text-slate-300 font-bold uppercase tracking-[0.3em] pt-4">
+                    <div className="mt-6 flex justify-between items-center text-[7px] text-slate-300 font-bold uppercase tracking-[0.3em] pt-4">
                         <p>Documento Oficial NOEH</p>
                         <p>{new Date().toLocaleDateString('pt-BR')} • {new Date().toLocaleTimeString('pt-BR')}</p>
                     </div>
@@ -416,12 +424,20 @@ const AdminPrescription = () => {
 
             <style>{`
                 @media print {
+                    @page { 
+                        margin: 15mm; 
+                        size: A4;
+                    }
                     .no-print { display: none !important; }
-                    .print-only { display: block !important; }
+                    .print-only { 
+                        display: flex !important; 
+                        flex-direction: column;
+                        min-height: 100%;
+                        background: white !important;
+                    }
                     body { background: white !important; }
                     main { margin-left: 0 !important; padding: 0 !important; }
                     .prose { max-width: none; }
-                    /* Force background graphics */
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
                 .print-only { display: none; }

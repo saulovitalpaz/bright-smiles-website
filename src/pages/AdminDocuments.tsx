@@ -105,7 +105,7 @@ const AdminDocuments = () => {
             .replace(/#CPF/g, patientData.cpf || "_________________")
             .replace(/#PROCEDIMENTO/g, patientData.procedure || "_________________")
             .replace(/#DATA/g, patientData.date)
-            .replace(/#PROFISSIONAL/g, "Dra. Ana Karolina - CRO/MG 53738");
+            .replace(/#PROFISSIONAL/g, "Dra. Karol Paz - CRO/MG 60.369");
 
         setDocumentContent(processed);
         setSelectedTemplate(template);
@@ -344,7 +344,7 @@ const AdminDocuments = () => {
                         <div className="flex flex-col items-center mb-12 text-center border-b border-slate-200 pb-8">
                             <img src="/images/logo-oficial.png" alt="Logo" className="w-32 h-32 object-contain mb-4" />
                             <h1 className="text-2xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
-                            <p className="text-slate-500 font-medium text-xs uppercase tracking-[0.2em] mt-2">Dra. Ana Karolina - CRO/MG 53738</p>
+                            <p className="text-slate-500 font-medium text-xs uppercase tracking-[0.2em] mt-2">Especializado & Harmonização</p>
                         </div>
 
                         <div className="whitespace-pre-wrap font-serif text-lg leading-[2] text-justify text-slate-800 px-8">
@@ -366,9 +366,19 @@ const AdminDocuments = () => {
 
             <style>{`
                 @media print {
-                    @page { margin: 0; size: auto; }
+                    @page { 
+                        margin: 20mm; 
+                        size: A4; 
+                    }
                     .no-print { display: none !important; }
-                    .print-only { display: block !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; }
+                    .print-only { 
+                        display: block !important; 
+                        position: static !important;
+                        width: 100%; 
+                        height: auto; 
+                        background: white; 
+                        padding: 0 !important;
+                    }
                     body { background: white !important; overflow: visible !important; }
                     #root { overflow: visible !important; }
                 }

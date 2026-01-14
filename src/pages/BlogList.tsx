@@ -3,15 +3,30 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Search } from "lucide-react";
 import { Link } from "react-router-dom";
-import { blogPosts } from "@/data/posts";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
 
 const BlogList = () => {
     const [searchQuery, setSearchQuery] = useState("");
+    const [posts, setPosts] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const filteredPosts = blogPosts.filter(post =>
+    useEffect(() => {
+        fetch(`${API_URL}/posts`)
+            .then(res => res.json())
+            .then(data => {
+                setPosts(data);
+                setIsLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setIsLoading(false);
+            });
+    }, []);
+
+    const filteredPosts = posts.filter(post =>
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.category.toLowerCase().includes(searchQuery.toLowerCase())
     );

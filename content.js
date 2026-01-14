@@ -1029,7 +1029,7 @@ const DOCS_DATA = {
                         <div class="collapsible-content">
                             <div class="collapsible-inner">
                                 <strong>Middleware:</strong> O arquivo <code>src/middleware.ts</code> intercepta todas as requisições para <code>/admin/*</code>.<br><br>
-                                <strong>Verificação:</strong> Se não houver sessão válida (usuário logado), redireciona para <code>/login</code>.<br><br>
+                                <strong>Verificação:</strong> Se não houver sessão válida (usuário logado), redireciona para <code>/admin</code>.<br><br>
                                 <strong>Níveis de acesso:</strong> Apenas usuários com role <code>ADMIN</code> ou <code>EDITOR</code> podem modificar conteúdo.
                             </div>
                         </div>

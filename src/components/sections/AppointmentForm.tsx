@@ -111,10 +111,10 @@ const AppointmentForm = () => {
           <Card className="border-primary/20">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl md:text-3xl font-serif">
-                Agende sua consulta
+                Dúvidas?
               </CardTitle>
               <CardDescription className="text-base">
-                Preencha o formulário abaixo e entraremos em contato para confirmar seu agendamento.
+                Entre em contato para esclarecer suas dúvidas
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -223,7 +223,7 @@ const AppointmentForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="message">Mensagem (opcional)</Label>
+                  <Label htmlFor="message">Mensagem</Label>
                   <Textarea
                     id="message"
                     name="message"
@@ -255,7 +255,7 @@ const AppointmentForm = () => {
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
-                  Ao enviar, você será redirecionado para o WhatsApp para confirmar o agendamento.
+                  Ao enviar, você será redirecionado para o WhatsApp.
                 </p>
               </form>
             </CardContent>

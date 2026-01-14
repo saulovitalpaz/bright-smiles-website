@@ -50,6 +50,7 @@ const Feedback = () => {
                     name: subject, // Using subject as Name/Title identifier
                     rating: rating || (emojiRating ? 5 : 0), // Fallback
                     comment: comment,
+                    feeling: emojiRating,
                     approved: false
                 })
             });

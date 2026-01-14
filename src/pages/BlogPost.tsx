@@ -3,14 +3,39 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Clock, Share2, ChevronLeft, ChevronRight, Maximize2, X, BookOpen, ExternalLink } from "lucide-react";
-import { blogPosts } from "@/data/posts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/lib/api";
 
 const BlogPost = () => {
     const { slug } = useParams();
-    const post = blogPosts.find(p => p.slug === slug);
+    const [post, setPost] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
     const [isZoomOpen, setIsZoomOpen] = useState(false);
+
+    useEffect(() => {
+        if (slug) {
+            fetch(`${API_URL}/posts/${slug}`)
+                .then(res => res.json())
+                .then(data => {
+                    setPost(data);
+                    setIsLoading(false);
+                })
+                .catch(err => {
+                    console.error(err);
+                    setIsLoading(false);
+                });
+        }
+    }, [slug]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-slate-500">Carregando artigo...</p>
+            </div>
+        );
+    }
 
     if (!post) {
         return (

@@ -120,6 +120,21 @@ app.get('/posts', async (req, res) => {
     }
 });
 
+app.get('/posts/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const post = await prisma.post.findUnique({
+            where: { slug }
+        });
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/posts', async (req, res) => {
     try {
         const post = await prisma.post.create({
@@ -556,6 +571,18 @@ app.get('/testimonials', async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
         res.json(testimonials);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/testimonials/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const item = await prisma.testimonial.findUnique({
+            where: { id: parseInt(id) }
+        });
+        res.json(item);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

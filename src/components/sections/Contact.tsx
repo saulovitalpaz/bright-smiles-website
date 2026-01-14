@@ -23,15 +23,14 @@ const Contact = () => {
               Venha nos conhecer
             </h2>
             <p className="text-accent-foreground/80 mb-8 max-w-md">
-              Estamos prontos para cuidar do seu sorriso. Entre em contato pelo
-              WhatsApp para um atendimento rápido e personalizado.
-            </p>
+              Estamos prontos para cuidar do seu sorriso.</p>
+            <p>Agende seu atendimento de forma rápida e personalizada.</p>
 
             {/* WhatsApp CTA */}
             <div onClick={() => setOpen(true)}>
               <Button size="lg" className="gap-2 mb-8">
                 <MessageCircle className="w-5 h-5" />
-                Agendar / Dúvidas
+                Agendar
               </Button>
             </div>
             <LeadCaptureDialog open={open} onOpenChange={setOpen} />
