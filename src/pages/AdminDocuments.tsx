@@ -45,6 +45,9 @@ const AdminDocuments = () => {
     const [isManageOpen, setIsManageOpen] = useState(false);
     const [newTemplate, setNewTemplate] = useState({ title: "", content: "" });
 
+    const userStr = localStorage.getItem("admin_user");
+    const currentUser = userStr ? JSON.parse(userStr) : { name: "Dra. Karol Paz", cro: "CRO/MG 60.369" };
+
     // Load Templates
     const loadTemplates = () => {
         fetch(`${API_URL}/document-templates`)
@@ -105,7 +108,7 @@ const AdminDocuments = () => {
             .replace(/#CPF/g, patientData.cpf || "_________________")
             .replace(/#PROCEDIMENTO/g, patientData.procedure || "_________________")
             .replace(/#DATA/g, patientData.date)
-            .replace(/#PROFISSIONAL/g, "Dra. Karol Paz - CRO/MG 60.369");
+            .replace(/#PROFISSIONAL/g, `${currentUser.name} - ${currentUser.cro}`);
 
         setDocumentContent(processed);
         setSelectedTemplate(template);
@@ -351,15 +354,22 @@ const AdminDocuments = () => {
                             {documentContent}
                         </div>
 
-                        <div className="mt-32 pt-8 border-t border-slate-300 text-center">
-                            <div className="w-64 mx-auto border-b border-slate-900 mb-2"></div>
-                            <p className="font-bold uppercase text-sm">Assinatura do Paciente</p>
-                            <p className="text-xs text-slate-500 mt-1">{patientData.name} - {patientData.cpf}</p>
-
-                            <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-widest">
-                                Governador Valadares, {patientData.date}
-                            </p>
+                        <div className="mt-32 pt-12 border-t border-slate-300 grid grid-cols-2 gap-16 text-center">
+                            <div>
+                                <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
+                                <p className="font-bold uppercase text-[10px]">Assinatura do Paciente</p>
+                                <p className="text-[9px] text-slate-500 mt-1">{patientData.name} - {patientData.cpf}</p>
+                            </div>
+                            <div>
+                                <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
+                                <p className="font-bold uppercase text-[10px]">{currentUser.name}</p>
+                                <p className="text-[9px] text-slate-500 mt-1">{currentUser.cro}</p>
+                            </div>
                         </div>
+
+                        <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-widest text-center">
+                            Governador Valadares, {patientData.date}
+                        </p>
                     </div>
                 </div>
             </div>
