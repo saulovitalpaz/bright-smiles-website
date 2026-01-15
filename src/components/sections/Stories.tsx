@@ -136,9 +136,22 @@ const Stories = () => {
     if (stories.length === 0) return null;
 
     return (
-        <section className="py-8 bg-white border-b border-slate-100 overflow-hidden">
-            <div className="container mx-auto">
-                <div className="flex items-center gap-6 px-4 overflow-x-auto no-scrollbar py-2">
+        <section id="stories" className="py-6 sm:py-8 bg-white border-b border-slate-100 overflow-hidden">
+            <div className="container mx-auto px-4">
+                {/* Section Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground">
+                            Destaques
+                        </h2>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                            Momentos e novidades da clínica
+                        </p>
+                    </div>
+                </div>
+                
+                {/* Stories Row */}
+                <div className="flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar py-2">
                     {stories.map((story, index) => (
                         <button
                             key={story.id}
@@ -149,15 +162,15 @@ const Stories = () => {
                             }}
                             className="flex flex-col items-center gap-2 group shrink-0 transition-transform hover:scale-105"
                         >
-                            <div className="relative p-[3px] rounded-full bg-gradient-to-tr from-gold via-yellow-400 to-amber-500 shadow-sm">
+                            <div className="relative p-[2px] sm:p-[3px] rounded-full bg-gradient-to-tr from-gold via-yellow-400 to-amber-500 shadow-sm">
                                 <div className="p-[2px] bg-white rounded-full">
                                     {story.type === 'video' ? (
-                                        <video src={story.url} className="w-20 h-20 rounded-full object-cover border border-slate-100" />
+                                        <video src={story.url} className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-100" />
                                     ) : (
                                         <img
                                             src={story.url}
                                             alt={story.title}
-                                            className="w-20 h-20 rounded-full object-cover border border-slate-100"
+                                            className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-100"
                                         />
                                     )}
                                 </div>

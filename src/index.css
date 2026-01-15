@@ -183,11 +183,37 @@
 
 @layer components {
   .section-padding {
-    @apply px-4 py-16 md:px-8 md:py-24 lg:py-32;
+    @apply px-4 py-12 sm:py-16 md:px-8 md:py-24 lg:py-32;
   }
 
   .container-narrow {
     @apply max-w-5xl mx-auto;
+  }
+
+  /* Prevent zoom on input focus (iOS Safari) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Hide scrollbar but allow scrolling */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mobile touch improvements */
+  @media (max-width: 640px) {
+    .section-padding {
+      @apply px-4 py-10;
+    }
+    
+    /* Ensure buttons don't overflow */
+    button, .button {
+      max-width: 100%;
+    }
   }
 }
 

@@ -30,18 +30,11 @@ const Team = () => {
 
   return (
     <section id="equipe" className="section-padding relative overflow-hidden bg-background">
-      {/* Background Image with Transparency - Imagem da Equipe */}
+      {/* Background Image with Transparency - Mobile-optimized */}
       <div
-        className="absolute inset-0 z-0 pointer-events-none"
+        className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat opacity-15 bg-top md:bg-[center_20%] bg-scroll md:bg-fixed"
         style={{
           backgroundImage: 'url("/images/profissionais/Ana Karolina e Clara.jpg")',
-          backgroundSize: 'cover',
-          // Mobile: top positioning to avoid cutting heads when section is tall
-          // Desktop: 20% from top for better framing
-          backgroundPosition: typeof window !== 'undefined' && window.innerWidth > 768 ? 'center 20%' : 'center top',
-          opacity: 0.15,
-          // Fixed background can be buggy on mobile, so we only apply it to larger screens
-          backgroundAttachment: typeof window !== 'undefined' && window.innerWidth > 768 ? 'fixed' : 'scroll',
         }}
         aria-hidden="true"
       />

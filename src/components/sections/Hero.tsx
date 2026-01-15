@@ -41,14 +41,14 @@ const Hero = () => {
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div onClick={() => setOpen(true)}>
               <Button
                 size="lg"
-                className="gap-2 text-base px-8 py-6"
+                className="w-full sm:w-auto gap-2 text-sm sm:text-base px-6 sm:px-8 py-4 sm:py-6"
               >
                 Agendar Consulta
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </div>
             <LeadCaptureDialog open={open} onOpenChange={setOpen} />
@@ -56,7 +56,7 @@ const Hero = () => {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto text-base px-8 py-6"
+                className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-4 sm:py-6"
               >
                 Conhecer Tratamentos
               </Button>
