@@ -34,7 +34,7 @@ const Services = () => {
 
   return (
     <section id="tratamentos" className="section-padding bg-card">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-3 sm:px-4">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 md:mb-12">
           <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
