@@ -44,25 +44,25 @@ const Team = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-sm font-medium text-primary uppercase tracking-wider">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 md:mb-12">
+          <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
             Nossa Equipe
           </span>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mt-2 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-foreground mt-2 mb-3 sm:mb-4">
             Especialistas dedicadas ao seu sorriso
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Conheça as profissionais do Núcleo Odontológico Especializado,
             comprometidas com a excelência técnica e o cuidado personalizado.
           </p>
         </div>
 
         {/* Team Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8 max-w-5xl mx-auto">
           {team.map((member, index) => (
             <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/95 backdrop-blur-md shadow-lg border-border/50">
               <div
-                className="aspect-[3/4] bg-muted relative overflow-hidden cursor-pointer"
+                className="aspect-[4/3] sm:aspect-[3/4] bg-muted relative overflow-hidden cursor-pointer"
                 onClick={() => setSelectedImage(member.image)}
               >
                 <img
@@ -79,20 +79,20 @@ const Team = () => {
                 </div>
               </div>
 
-              <CardContent className="p-5 lg:p-6">
-                <div className="flex items-start justify-between gap-3 mb-3">
+              <CardContent className="p-4 sm:p-5 lg:p-6">
+                <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <div className="min-w-0">
-                    <h3 className="font-serif text-lg lg:text-xl font-semibold text-foreground truncate">
+                    <h3 className="font-serif text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">
                       {member.name}
                     </h3>
-                    <p className="text-sm text-primary font-medium">{member.specialty}</p>
+                    <p className="text-xs sm:text-sm text-primary font-medium">{member.specialty}</p>
                   </div>
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 flex-shrink-0">
-                    <Award className="w-3 h-3 text-primary" />
-                    <span className="text-[10px] font-bold text-primary whitespace-nowrap">{member.cro}</span>
+                  <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-primary/10 border border-primary/20 flex-shrink-0">
+                    <Award className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-primary" />
+                    <span className="text-[9px] sm:text-[10px] font-bold text-primary whitespace-nowrap">{member.cro}</span>
                   </div>
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed mb-5 line-clamp-3">
+                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 md:mb-5 line-clamp-3">
                   {member.description}
                 </p>
 
@@ -101,20 +101,20 @@ const Team = () => {
                     <Button
                       variant="default"
                       size="sm"
-                      className="gap-1 flex-1 font-semibold"
+                      className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-8 sm:h-9"
                       onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${member.phone}`, '_blank'); }}
                     >
-                      <Phone className="w-4 h-4" />
+                      <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       WhatsApp
                     </Button>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1 flex-1 font-semibold"
+                    className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-8 sm:h-9"
                     onClick={(e) => { e.stopPropagation(); window.open(member.instagram, '_blank'); }}
                   >
-                    <Instagram className="w-4 h-4" />
+                    <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     Instagram
                   </Button>
                 </div>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: () => Promise<boolean>;
+    login: (userData: any) => Promise<boolean>;
     logout: () => void;
 }
 
