@@ -46,38 +46,38 @@ const Blog = () => {
         </div>
 
         {/* Blog Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
           {displayedPosts.map((post: any) => (
             <Link key={post.slug} to={`/blog/${post.slug}`} className="group h-full">
-              <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-300 flex flex-col">
-                <div className="aspect-[16/9] sm:aspect-[16/10] overflow-hidden bg-secondary/5">
+              <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 flex flex-col">
+                <div className="aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-secondary/5">
                   <img
                     src={post.image}
                     alt={post.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-                <CardContent className="p-4 sm:p-5 flex flex-col flex-grow">
-                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-3">
+                <CardContent className="p-2.5 sm:p-4 flex flex-col flex-grow">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[8px] sm:text-[10px] text-muted-foreground mb-1 sm:mb-2">
                     <span className="text-primary font-semibold uppercase tracking-wider">
                       {post.category}
                     </span>
-                    <span className="w-1 h-1 rounded-full bg-border" />
-                    <span>{post.readTime}</span>
+                    <span className="hidden sm:inline w-1 h-1 rounded-full bg-border" />
+                    <span className="hidden sm:inline">{post.readTime}</span>
                   </div>
-                  <h3 className="font-serif text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                  <h3 className="font-serif text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
                     {post.title}
                   </h3>
-                  <p className="text-muted-foreground text-xs sm:text-sm line-clamp-2 mb-3 sm:mb-4 flex-grow">
+                  <p className="text-muted-foreground text-[10px] sm:text-xs line-clamp-2 mb-2 sm:mb-3 flex-grow hidden sm:block">
                     {post.excerpt}
                   </p>
                   <div className="flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+                    <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Calendar className="w-3 h-3" />
                       {new Date(post.date).toLocaleDateString('pt-BR')}
                     </div>
-                    <span className="text-xs sm:text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
-                      Ler <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="text-[10px] sm:text-xs font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+                      Ler <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     </span>
                   </div>
                 </CardContent>

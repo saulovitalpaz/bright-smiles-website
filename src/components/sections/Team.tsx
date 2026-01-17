@@ -62,14 +62,13 @@ const Team = () => {
           {team.map((member, index) => (
             <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/95 backdrop-blur-md shadow-lg border-border/50">
               <div
-                className="aspect-[4/3] sm:aspect-[3/4] bg-muted relative overflow-hidden cursor-pointer"
+                className="aspect-[1/1] sm:aspect-[4/5] bg-muted relative overflow-hidden cursor-pointer"
                 onClick={() => setSelectedImage(member.image)}
               >
                 <img
                   src={member.image}
                   alt={member.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  style={{ objectPosition: member.objectPosition || 'center' }}
+                  className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-70" />
 

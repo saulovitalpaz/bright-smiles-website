@@ -50,7 +50,7 @@ const Services = () => {
         </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
           {isLoading && (
             <div className="col-span-full flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -65,8 +65,8 @@ const Services = () => {
 
           {displayedTreatments.map((service: Treatment) => (
             <Link key={service.id} to={`/tratamentos/${service.slug}`} className="group h-full">
-              <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-300 flex flex-col">
-                <div className="aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-secondary/5">
+              <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 flex flex-col">
+                <div className="aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-secondary/5">
                   {service.image ? (
                     <img
                       src={service.image}
@@ -80,18 +80,18 @@ const Services = () => {
                     </div>
                   )}
                 </div>
-                <CardContent className="p-4 sm:p-5 flex flex-col flex-grow">
-                  <span className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1.5 sm:mb-2">
+                <CardContent className="p-2.5 sm:p-4 flex flex-col flex-grow">
+                  <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-primary font-bold mb-1">
                     {service.category}
                   </span>
-                  <h3 className="font-serif text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-serif text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
                     {service.title}
                   </h3>
-                  <p className="text-muted-foreground text-xs sm:text-sm line-clamp-2 mb-3 sm:mb-4 flex-grow">
+                  <p className="text-muted-foreground text-[10px] sm:text-xs line-clamp-2 mb-2 sm:mb-3 flex-grow hidden sm:block">
                     {service.description}
                   </p>
-                  <span className="text-xs sm:text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
-                    Saiba mais <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="text-[10px] sm:text-xs font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+                    Saiba mais <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   </span>
                 </CardContent>
               </Card>
