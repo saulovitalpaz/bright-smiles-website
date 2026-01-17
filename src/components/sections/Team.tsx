@@ -42,7 +42,7 @@ const Team = () => {
       {/* Subtle Gradient Overlay for Mobile readability */}
       <div className="absolute inset-0 z-0 bg-gradient-to-b from-background/50 via-transparent to-background/50 pointer-events-none md:hidden" />
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="container mx-auto px-3 sm:px-4 relative z-10">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 md:mb-12">
           <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">

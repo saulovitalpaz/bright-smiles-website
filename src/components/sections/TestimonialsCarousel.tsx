@@ -43,13 +43,13 @@ const TestimonialsCarousel = () => {
                     </h2>
                 </div>
 
-                <div className="relative max-w-6xl mx-auto">
+                <div className="relative max-w-6xl mx-auto px-2 sm:px-0">
                     <button
                         onClick={() => scroll('left')}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 sm:-translate-x-4 md:-translate-x-12 z-10 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-600 hover:text-primary transition-colors"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-600 hover:text-primary transition-colors"
                     >
-                        <ChevronLeft size={20} className="sm:hidden" />
-                        <ChevronLeft size={24} className="hidden sm:block" />
+                        <ChevronLeft size={18} className="sm:hidden" />
+                        <ChevronLeft size={22} className="hidden sm:block" />
                     </button>
 
                     <div
@@ -101,10 +101,10 @@ const TestimonialsCarousel = () => {
 
                     <button
                         onClick={() => scroll('right')}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 sm:translate-x-4 md:translate-x-12 z-10 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-600 hover:text-primary transition-colors"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-600 hover:text-primary transition-colors"
                     >
-                        <ChevronRight size={20} className="sm:hidden" />
-                        <ChevronRight size={24} className="hidden sm:block" />
+                        <ChevronRight size={18} className="sm:hidden" />
+                        <ChevronRight size={22} className="hidden sm:block" />
                     </button>
                 </div>
             </div>
