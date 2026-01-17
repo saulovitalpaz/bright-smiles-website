@@ -72,24 +72,24 @@ const Feedback = () => {
 
     return (
         <section className="section-padding bg-secondary/10">
-            <div className="container mx-auto max-w-5xl">
+            <div className="container mx-auto max-w-5xl px-4">
                 <Card className="border-primary/10 shadow-xl overflow-hidden backdrop-blur-sm bg-card/50">
-                    <CardHeader className="text-center bg-gradient-to-r from-primary/5 via-transparent to-primary/5 pb-8">
-                        <CardTitle className="font-serif text-3xl font-bold">Sua opinião importa</CardTitle>
-                        <CardDescription className="text-base">
+                    <CardHeader className="text-center bg-gradient-to-r from-primary/5 via-transparent to-primary/5 pb-4 sm:pb-6 md:pb-8 px-4 sm:px-6">
+                        <CardTitle className="font-serif text-xl sm:text-2xl md:text-3xl font-bold">Sua opinião importa</CardTitle>
+                        <CardDescription className="text-sm sm:text-base">
                             Compartilhe sua experiência no Núcleo Odontológico.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-8">
-                        <form onSubmit={handleSubmit} className="space-y-8">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                                <div className="space-y-10">
+                    <CardContent className="pt-4 sm:pt-6 md:pt-8 px-4 sm:px-6">
+                        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-start">
+                                <div className="space-y-6 sm:space-y-8 md:space-y-10">
                                     {/* Star Rating */}
-                                    <div className="flex flex-col items-center lg:items-start gap-4">
-                                        <span className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+                                    <div className="flex flex-col items-center lg:items-start gap-3 sm:gap-4">
+                                        <span className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-widest">
                                             Avaliação Geral
                                         </span>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1.5 sm:gap-2">
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
                                                     key={star}
@@ -100,7 +100,7 @@ const Feedback = () => {
                                                     className="transition-transform hover:scale-125 focus:outline-none"
                                                 >
                                                     <Star
-                                                        className={`w-10 h-10 transition-colors ${star <= (hoverRating || rating)
+                                                        className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors ${star <= (hoverRating || rating)
                                                             ? "fill-primary text-primary"
                                                             : "text-muted-foreground/30"
                                                             }`}
@@ -111,11 +111,11 @@ const Feedback = () => {
                                     </div>
 
                                     {/* Emoji/Ludic Rating */}
-                                    <div className="flex flex-col items-center lg:items-start gap-5">
-                                        <span className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+                                    <div className="flex flex-col items-center lg:items-start gap-3 sm:gap-4 md:gap-5">
+                                        <span className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-widest">
                                             Como você se sentiu?
                                         </span>
-                                        <div className="flex justify-between w-full max-w-sm">
+                                        <div className="flex justify-between w-full max-w-xs sm:max-w-sm">
                                             {emojis.map((emoji) => {
                                                 const Icon = emoji.icon;
                                                 const isActive = emojiRating === emoji.value;
@@ -124,15 +124,15 @@ const Feedback = () => {
                                                         key={emoji.value}
                                                         type="button"
                                                         onClick={() => setEmojiRating(emoji.value)}
-                                                        className={`flex flex-col items-center gap-2 group transition-all ${isActive ? "scale-110" : "opacity-40 hover:opacity-100"
+                                                        className={`flex flex-col items-center gap-1 sm:gap-2 group transition-all ${isActive ? "scale-110" : "opacity-40 hover:opacity-100"
                                                             }`}
                                                         title={emoji.label}
                                                     >
-                                                        <div className={`p-3 rounded-2xl transition-colors ${isActive ? "bg-primary/20" : "bg-card group-hover:bg-secondary"
+                                                        <div className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl transition-colors ${isActive ? "bg-primary/20" : "bg-card group-hover:bg-secondary"
                                                             }`}>
-                                                            <Icon className={`w-8 h-8 ${isActive ? emoji.color : "text-muted-foreground"}`} />
+                                                            <Icon className={`w-6 h-6 sm:w-8 sm:h-8 ${isActive ? emoji.color : "text-muted-foreground"}`} />
                                                         </div>
-                                                        <span className={`text-[10px] font-bold uppercase tracking-tight transition-opacity ${isActive ? "opacity-100 text-primary" : "opacity-0"
+                                                        <span className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-tight transition-opacity ${isActive ? "opacity-100 text-primary" : "opacity-0"
                                                             }`}>
                                                             {emoji.label}
                                                         </span>
@@ -143,14 +143,14 @@ const Feedback = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-6">
+                                <div className="space-y-4 sm:space-y-5 md:space-y-6">
                                     {/* Text Fields */}
-                                    <div className="grid gap-4">
+                                    <div className="grid gap-3 sm:gap-4">
                                         <div className="grid gap-2">
                                             <Input
                                                 name="subject"
                                                 placeholder="Seu Nome (Opcional)"
-                                                className="bg-background/50 border-primary/10 focus-visible:ring-primary h-12"
+                                                className="bg-background/50 border-primary/10 focus-visible:ring-primary h-10 sm:h-11 md:h-12 text-sm sm:text-base"
                                                 required
                                             />
                                         </div>
@@ -158,7 +158,7 @@ const Feedback = () => {
                                             <Textarea
                                                 name="comment"
                                                 placeholder="Escreva seu comentário aqui..."
-                                                className="min-h-[140px] bg-background/50 border-primary/10 focus-visible:ring-primary resize-none text-base"
+                                                className="min-h-[100px] sm:min-h-[120px] md:min-h-[140px] bg-background/50 border-primary/10 focus-visible:ring-primary resize-none text-sm sm:text-base"
                                                 required
                                             />
                                         </div>
@@ -166,7 +166,7 @@ const Feedback = () => {
 
                                     <Button
                                         type="submit"
-                                        className="w-full h-14 text-lg font-serif transition-all hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] shadow-lg"
+                                        className="w-full h-11 sm:h-12 md:h-14 text-sm sm:text-base md:text-lg font-serif transition-all hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] shadow-lg"
                                         disabled={isSubmitting || rating === 0}
                                     >
                                         {isSubmitting ? (
@@ -176,7 +176,7 @@ const Feedback = () => {
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2">
-                                                <Send className="w-5 h-5" />
+                                                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                                                 Enviar Avaliação
                                             </div>
                                         )}

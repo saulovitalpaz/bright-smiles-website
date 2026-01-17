@@ -12,72 +12,72 @@ const Contact = () => {
 
   return (
     <section id="contato" className="section-padding bg-accent text-accent-foreground">
-      <div className="container mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="container mx-auto px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center">
           {/* Left Content */}
           <div>
-            <span className="text-sm font-medium text-primary uppercase tracking-wider">
+            <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
               Entre em Contato
             </span>
-            <h2 className="text-3xl md:text-4xl font-serif font-bold mt-2 mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold mt-2 mb-3 sm:mb-4">
               Venha nos conhecer
             </h2>
-            <p className="text-accent-foreground/80 mb-8 max-w-md">
-              Estamos prontos para cuidar do seu sorriso.</p>
-            <p>Agende seu atendimento de forma rápida e personalizada.</p>
+            <p className="text-sm sm:text-base text-accent-foreground/80 mb-4 sm:mb-6 md:mb-8 max-w-md">
+              Estamos prontos para cuidar do seu sorriso. Agende seu atendimento de forma rápida e personalizada.
+            </p>
 
             {/* WhatsApp CTA */}
             <div onClick={() => setOpen(true)}>
-              <Button size="lg" className="gap-2 mb-8">
-                <MessageCircle className="w-5 h-5" />
+              <Button size="lg" className="gap-2 mb-6 sm:mb-8 text-sm sm:text-base h-10 sm:h-11">
+                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                 Agendar
               </Button>
             </div>
             <LeadCaptureDialog open={open} onOpenChange={setOpen} />
 
             {/* Contact Info */}
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-5 h-5 text-primary" />
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-accent-foreground">Localização</h4>
-                  <p className="text-sm text-accent-foreground/70">
+                  <h4 className="text-sm sm:text-base font-medium text-accent-foreground">Localização</h4>
+                  <p className="text-xs sm:text-sm text-accent-foreground/70">
                     Rua Barão do Rio Branco, 461 - Sala 206
                   </p>
                   <Button
                     variant="link"
                     size="sm"
-                    className="h-auto p-0 text-primary gap-1"
+                    className="h-auto p-0 text-primary gap-1 text-xs sm:text-sm"
                     onClick={() => window.open(mapUrl, '_blank')}
                   >
                     Ver no Google Maps
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   </Button>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-5 h-5 text-primary" />
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-accent-foreground">Horário de Atendimento</h4>
-                  <p className="text-sm text-accent-foreground/70">
+                  <h4 className="text-sm sm:text-base font-medium text-accent-foreground">Horário de Atendimento</h4>
+                  <p className="text-xs sm:text-sm text-accent-foreground/70">
                     Segunda a Sexta: 8h às 18h<br />
                     Sábado: 8h às 12h
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-5 h-5 text-primary" />
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-accent-foreground">WhatsApp</h4>
-                  <p className="text-sm text-accent-foreground/70">
+                  <h4 className="text-sm sm:text-base font-medium text-accent-foreground">WhatsApp</h4>
+                  <p className="text-xs sm:text-sm text-accent-foreground/70">
                     (33) 99121-9695
                   </p>
                 </div>
@@ -86,11 +86,11 @@ const Contact = () => {
           </div>
 
           {/* Right Content - Map & Social */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 {/* Map Embed */}
-                <div className="aspect-video relative">
+                <div className="aspect-[16/10] sm:aspect-video relative">
                   <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3750.8!2d-41.5!3d-18.8!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTjCsDQ4JzAwLjAiUyA0McKwMzAnMDAuMCJX!5e0!3m2!1spt-BR!2sbr!4v1"
                     width="100%"
@@ -124,21 +124,21 @@ const Contact = () => {
             </Card>
 
             {/* Social Links */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <Button
                 variant="outline"
-                className="gap-2"
+                className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-10"
                 onClick={() => window.open('https://www.instagram.com/anav_paz', '_blank')}
               >
-                <Instagram className="w-5 h-5" />
+                <Instagram className="w-4 h-4 sm:w-5 sm:h-5" />
                 @anav_paz
               </Button>
               <Button
                 variant="outline"
-                className="gap-2"
+                className="gap-1.5 sm:gap-2 text-xs sm:text-sm h-9 sm:h-10"
                 onClick={() => window.open('https://www.instagram.com/claraslima', '_blank')}
               >
-                <Instagram className="w-5 h-5" />
+                <Instagram className="w-4 h-4 sm:w-5 sm:h-5" />
                 @claraslima
               </Button>
             </div>

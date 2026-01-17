@@ -35,10 +35,10 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 md:h-24 transition-all duration-300">
+        <div className="flex items-center justify-between h-14 sm:h-16 md:h-20 lg:h-24 transition-all duration-300">
           {/* Logo with Image */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-20 h-20 md:w-32 md:h-32 flex items-center justify-center overflow-hidden">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 flex items-center justify-center overflow-hidden">
               <img
                 src={logoUrl}
                 alt={`Logo ${clinicName}`}
@@ -47,10 +47,10 @@ const Header = () => {
               />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg md:text-xl font-serif font-bold text-foreground leading-tight">
+              <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-serif font-bold text-foreground leading-tight">
                 {clinicName}
               </h1>
-              <p className="text-xs md:text-sm text-foreground font-medium tracking-wider uppercase opacity-80">
+              <p className="text-[10px] sm:text-xs md:text-sm text-foreground font-medium tracking-wider uppercase opacity-80">
                 {clinicSlogan}
               </p>
             </div>
@@ -110,14 +110,14 @@ const Header = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="lg:hidden py-6 border-t border-border bg-background animate-in slide-in-from-top-4 duration-300">
-            <nav className="flex flex-col gap-6 ">
+          <div className="lg:hidden py-4 sm:py-6 border-t border-border bg-background animate-in slide-in-from-top-4 duration-300">
+            <nav className="flex flex-col gap-4 sm:gap-5">
               {navItems.map((item) => (
                 item.href.startsWith('/') ? (
                   <Link
                     key={item.label}
                     to={item.href}
-                    className="text-lg font-bold text-foreground hover:text-primary transition-colors uppercase tracking-widest px-4"
+                    className="text-base sm:text-lg font-bold text-foreground hover:text-primary transition-colors uppercase tracking-widest px-4"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.label}
@@ -126,7 +126,7 @@ const Header = () => {
                   <a
                     key={item.label}
                     href={item.href}
-                    className="text-lg font-bold text-foreground hover:text-primary transition-colors uppercase tracking-widest px-4"
+                    className="text-base sm:text-lg font-bold text-foreground hover:text-primary transition-colors uppercase tracking-widest px-4"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.label}
@@ -136,7 +136,7 @@ const Header = () => {
               <div className="px-4">
                 <Button
                   variant="default"
-                  className="w-full gap-2 h-12 text-lg font-bold"
+                  className="w-full gap-2 h-10 sm:h-12 text-base sm:text-lg font-bold"
                   onClick={() => {
                     setIsMenuOpen(false);
                     if (isHome) {
@@ -146,7 +146,7 @@ const Header = () => {
                     }
                   }}
                 >
-                  <Phone className="w-5 h-5" />
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                   Agendar Consulta
                 </Button>
               </div>

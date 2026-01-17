@@ -36,21 +36,21 @@ const Services = () => {
     <section id="tratamentos" className="section-padding bg-card">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-sm font-medium text-primary uppercase tracking-wider">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 md:mb-12">
+          <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
             Nossos Tratamentos
           </span>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mt-2 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-foreground mt-2 mb-3 sm:mb-4">
             Especialidades que transformam
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Oferecemos tratamentos odontológicos completos e procedimentos de
             harmonização facial realizados por profissionais experientes.
           </p>
         </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
           {isLoading && (
             <div className="col-span-full flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -66,7 +66,7 @@ const Services = () => {
           {displayedTreatments.map((service: Treatment) => (
             <Link key={service.id} to={`/tratamentos/${service.slug}`} className="group h-full">
               <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-300 flex flex-col">
-                <div className="aspect-[4/3] overflow-hidden bg-secondary/5">
+                <div className="aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-secondary/5">
                   {service.image ? (
                     <img
                       src={service.image}
@@ -80,18 +80,18 @@ const Services = () => {
                     </div>
                   )}
                 </div>
-                <CardContent className="p-5 flex flex-col flex-grow">
-                  <span className="text-[10px] uppercase tracking-widest text-primary font-bold mb-2">
+                <CardContent className="p-4 sm:p-5 flex flex-col flex-grow">
+                  <span className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1.5 sm:mb-2">
                     {service.category}
                   </span>
-                  <h3 className="font-serif text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-serif text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2 group-hover:text-primary transition-colors">
                     {service.title}
                   </h3>
-                  <p className="text-muted-foreground text-sm line-clamp-2 mb-4 flex-grow">
+                  <p className="text-muted-foreground text-xs sm:text-sm line-clamp-2 mb-3 sm:mb-4 flex-grow">
                     {service.description}
                   </p>
-                  <span className="text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
-                    Saiba mais <ArrowRight className="w-4 h-4" />
+                  <span className="text-xs sm:text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+                    Saiba mais <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </span>
                 </CardContent>
               </Card>
@@ -100,9 +100,9 @@ const Services = () => {
         </div>
 
         {/* CTA */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-8 sm:mt-10 md:mt-12">
           <Link to="/tratamentos">
-            <Button variant="outline" size="lg" className="gap-2">
+            <Button variant="outline" size="lg" className="gap-2 text-sm sm:text-base">
               Ver todos os tratamentos
               <ArrowRight className="w-4 h-4" />
             </Button>

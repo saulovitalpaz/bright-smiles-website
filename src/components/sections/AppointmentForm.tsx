@@ -106,20 +106,20 @@ const AppointmentForm = () => {
 
   return (
     <section id="agendamento" className="section-padding">
-      <div className="container mx-auto">
+      <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
           <Card className="border-primary/20">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl md:text-3xl font-serif">
+            <CardHeader className="text-center px-4 sm:px-6 pt-4 sm:pt-6 pb-2 sm:pb-4">
+              <CardTitle className="text-xl sm:text-2xl md:text-3xl font-serif">
                 Dúvidas?
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="text-sm sm:text-base">
                 Entre em contato para esclarecer suas dúvidas
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo *</Label>
                     <Input
@@ -147,8 +147,8 @@ const AppointmentForm = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="email" className="text-sm">E-mail</Label>
                   <Input
                     id="email"
                     name="email"
@@ -160,7 +160,7 @@ const AppointmentForm = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="ageRange">Faixa Etária</Label>
                     <Select
