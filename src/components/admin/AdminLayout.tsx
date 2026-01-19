@@ -182,7 +182,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                         <div className="flex items-center gap-2 mt-2">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
-                                {currentUser.username === 'admin' ? 'Acesso Global Developer' : `Logado como: Dra. ${currentUser.name}`}
+                                {currentUser.username === 'admin' ? 'Acesso Global Developer' : `Logado como: ${currentUser.name}`}
                             </p>
                         </div>
                     </div>
