@@ -184,7 +184,7 @@ const AdminPrescription = () => {
 
     return (
         <AdminLayout title="Prescrição Clínica">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-20 no-print">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-20 no-print">
                 {/* Patient Info Form */}
                 <div className="lg:col-span-1 space-y-6">
                     <Card className="border-slate-200 shadow-sm">
@@ -316,7 +316,7 @@ const AdminPrescription = () => {
 
                 {/* Editor Area */}
                 <div className="lg:col-span-2">
-                    <Card className="border-slate-200 shadow-sm flex flex-col h-full min-h-[600px]">
+                    <Card className="border-slate-200 shadow-sm flex flex-col h-full min-h-[500px] md:min-h-[600px]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Conteúdo da Prescrição</p>
                             <div className="flex gap-2">

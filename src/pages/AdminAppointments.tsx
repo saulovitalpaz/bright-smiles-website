@@ -233,7 +233,7 @@ const AdminAppointments = () => {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-8">
                 {/* Form to add new record */}
                 <div className="lg:col-span-1">
                     <Card className="border-slate-200 shadow-sm">
@@ -309,13 +309,13 @@ const AdminAppointments = () => {
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <div>
-                                <h2 className="text-2xl font-serif font-bold text-slate-900">Histórico de Atendimentos</h2>
-                                <p className="text-sm text-slate-500">Consulte e filtre registros anteriores.</p>
+                                <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900">Histórico</h2>
+                                <p className="text-sm text-slate-500">Consulte e filtre registros.</p>
                             </div>
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <Input
-                                    placeholder="Pesquisar por nome..."
+                                    placeholder="Pesquisar..."
                                     className="pl-10 h-10 border-slate-200 focus:ring-primary/20"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -326,27 +326,24 @@ const AdminAppointments = () => {
                         <div className="divide-y divide-slate-100">
                             {filteredAppointments.length > 0 ? (
                                 filteredAppointments.map((record) => (
-                                    <div key={record.id} className="py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-4 -mx-4">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
-                                                    <User size={24} />
+                                    <div key={record.id} className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:mb-4 gap-3 sm:gap-0">
+                                            <div className="flex items-center gap-3 md:gap-4 w-full sm:w-auto">
+                                                <div className="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
+                                                    <User size={20} className="md:w-6 md:h-6" />
                                                 </div>
-                                                <div>
-                                                    <h3 className="font-bold text-slate-900 text-lg leading-tight">
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="font-bold text-slate-900 text-base md:text-lg leading-tight truncate">
                                                         {record.patientName || record.patient?.name}
                                                     </h3>
-                                                    <div className="flex items-center gap-3 mt-1">
-                                                        <span className="text-xs text-slate-500 font-mono">
+                                                    <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1">
+                                                        <span className="text-xs text-slate-500 font-mono hidden sm:inline">
                                                             {record.cpf || record.patient?.cpf}
                                                         </span>
-                                                        <span className="text-xs text-slate-300">|</span>
-                                                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                                                        <span className="text-xs text-slate-300 hidden sm:inline">|</span>
+                                                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium whitespace-nowrap">
                                                             <History size={12} />
                                                             {formatDate(record.date)}
-                                                        </span>
-                                                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-slate-200">
-                                                            {record.professional}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -354,7 +351,7 @@ const AdminAppointments = () => {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-xs font-bold text-primary hover:text-primary hover:bg-primary/5"
+                                                className="w-full sm:w-auto text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 bg-primary/5 sm:bg-transparent"
                                                 onClick={() => {
                                                     setSelectedRecord(record);
                                                     setEditCpf(record.cpf || "");
@@ -369,7 +366,7 @@ const AdminAppointments = () => {
                                                 Ver Detalhes
                                             </Button>
                                         </div>
-                                        <div className="bg-[#fcfdfd] p-5 rounded-2xl border border-slate-100 ml-16 cursor-pointer hover:border-primary/20 transition-all" onClick={() => {
+                                        <div className="bg-[#fcfdfd] p-4 md:p-5 rounded-2xl border border-slate-100 md:ml-16 cursor-pointer hover:border-primary/20 transition-all" onClick={() => {
                                             setSelectedRecord(record);
                                             setEditCpf(record.cpf || "");
                                             setEditNotes(record.notes || "");
@@ -380,7 +377,7 @@ const AdminAppointments = () => {
                                             setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                                         }}>
                                             <p className="text-xs font-bold text-primary mb-2 uppercase tracking-widest">{record.procedure}</p>
-                                            <p className="text-slate-600 leading-relaxed text-sm italic">"{record.notes}"</p>
+                                            <p className="text-slate-600 leading-relaxed text-sm italic line-clamp-2 md:line-clamp-none">"{record.notes}"</p>
                                         </div>
                                     </div>
                                 ))
@@ -400,21 +397,21 @@ const AdminAppointments = () => {
             {/* Expanded Details Section */}
             <div ref={detailsRef} className={`transition-all duration-500 overflow-hidden ${selectedRecord ? 'max-h-[2000px] opacity-100 mb-20' : 'max-h-0 opacity-0'}`}>
                 {selectedRecord && (
-                    <Card className="border-slate-200 shadow-2xl rounded-[2.5rem] overflow-hidden">
-                        <div className="bg-[#0f172a] p-8 text-white relative">
+                    <Card className="border-slate-200 shadow-2xl rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden">
+                        <div className="bg-[#0f172a] p-6 md:p-8 text-white relative">
                             <button
                                 onClick={() => setSelectedRecord(null)}
-                                className="absolute top-8 right-8 p-2 hover:bg-white/10 rounded-full transition-colors"
+                                className="absolute top-4 right-4 md:top-8 md:right-8 p-2 hover:bg-white/10 rounded-full transition-colors"
                             >
                                 <X size={24} />
                             </button>
-                            <div className="flex items-center gap-6">
-                                <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6 text-center md:text-left">
+                                <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0">
                                     <User size={32} />
                                 </div>
-                                <div className="text-left">
-                                    <h3 className="text-3xl font-serif font-bold leading-none">{selectedRecord.patientName}</h3>
-                                    <div className="flex items-center gap-4 mt-3">
+                                <div className="min-w-0">
+                                    <h3 className="text-2xl md:text-3xl font-serif font-bold leading-none truncate max-w-[250px] md:max-w-none">{selectedRecord.patientName}</h3>
+                                    <div className="flex flex-wrap justify-center md:justify-start items-center gap-3 md:gap-4 mt-3">
                                         <span className="text-white/60 text-xs font-bold uppercase tracking-widest bg-white/5 py-1 px-3 rounded-full border border-white/10">
                                             {selectedRecord.procedure}
                                         </span>

@@ -180,7 +180,7 @@ const AdminDocuments = () => {
 
     return (
         <AdminLayout title="Termos & Documentos">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-20">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-20">
                 {/* Left Sidebar */}
                 <div className="lg:col-span-1 space-y-6 no-print">
 
@@ -311,8 +311,8 @@ const AdminDocuments = () => {
 
                 {/* Main Editor */}
                 <div className="lg:col-span-3">
-                    <Card className="border-slate-200 shadow-sm h-full min-h-[800px] flex flex-col no-print">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                    <Card className="border-slate-200 shadow-sm h-full min-h-[600px] lg:min-h-[800px] flex flex-col no-print">
+                        <div className="p-3 md:p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                     <FileText size={18} />
@@ -321,22 +321,23 @@ const AdminDocuments = () => {
                                     {selectedTemplate?.title || "Novo Documento"}
                                 </span>
                             </div>
-                            <div className="flex gap-2">
-                                <Button onClick={handleSaveHistory} variant="outline" className="gap-2 border-slate-200 text-slate-600">
-                                    <Save size={18} /> Salvar no Histórico
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <Button onClick={handleSaveHistory} variant="outline" className="flex-1 sm:flex-none gap-2 border-slate-200 text-slate-600">
+                                    <Save size={18} /> <span className="sm:hidden">Salvar</span><span className="hidden sm:inline">Salvar no Histórico</span>
                                 </Button>
-                                <Button onClick={() => window.print()} className="bg-primary text-white hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20">
-                                    <Printer size={18} /> Apenas Imprimir
+                                <Button onClick={() => window.print()} className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20">
+                                    <Printer size={18} /> <span className="sm:hidden">Imprimir</span><span className="hidden sm:inline">Apenas Imprimir</span>
                                 </Button>
                             </div>
                         </div>
-                        <div className="flex-1 p-8 bg-white overflow-auto">
+                        <div className="flex-1 p-4 md:p-8 bg-white overflow-auto">
                             <Textarea
                                 value={documentContent}
                                 onChange={(e) => setDocumentContent(e.target.value)}
-                                className="w-full h-full min-h-[600px] border-none shadow-none focus-visible:ring-0 font-serif text-lg leading-relaxed text-slate-800 p-8"
+                                className="w-full h-full min-h-[400px] md:min-h-[600px] border-none shadow-none focus-visible:ring-0 font-serif text-base md:text-lg leading-relaxed text-slate-800 p-2 md:p-8"
                                 placeholder="Selecione um modelo ou comece a digitar..."
                             />
+
                         </div>
                     </Card>
 
@@ -370,7 +371,7 @@ const AdminDocuments = () => {
                         </p>
                     </div>
                 </div>
-            </div>
+            </div >
 
             <style>{`
                 @media print {
