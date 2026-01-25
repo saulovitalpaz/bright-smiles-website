@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Lock, User } from "lucide-react";
 import { toast } from "sonner";
 
-import { API_URL } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 
 export const AdminLogin = () => {
     const [username, setUsername] = useState("");
@@ -25,9 +25,8 @@ export const AdminLogin = () => {
         e.preventDefault();
 
         try {
-            const response = await fetch(`${API_URL}/login`, {
+            const response = await fetchClient(`/login`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
             });
 

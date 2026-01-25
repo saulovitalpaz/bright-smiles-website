@@ -7,10 +7,21 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
+const { encrypt, decrypt } = require('./utils/encryption');
+const auditLogger = require('./middleware/auditLogger');
+const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
+const { notificationQueue, scheduleReminders } = require('./workers/whatsappWorker');
+
 const app = express();
 app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_should_be_in_env';
+
+// Start scheduler
+setInterval(scheduleReminders, 1000 * 60 * 60); // Check every hour
 
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -43,9 +54,34 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
+app.use(auditLogger);
+
+// Auth Middleware
+const authenticateToken = (req, res, next) => {
+    const token = req.cookies.token;
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+// RBAC Middleware
+const authorizeRole = (roles) => {
+    return (req, res, next) => {
+        if (!req.user) return res.sendStatus(401);
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ error: 'Access denied: Insufficient permissions' });
+        }
+        next();
+    };
+};
 
 // Cloudinary Upload Endpoint
-app.post('/upload', upload.single('file'), (req, res) => {
+app.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).send('No file uploaded.');
@@ -90,15 +126,26 @@ app.post('/users', async (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    const result = loginSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
+    const { username, password } = result.data;
     try {
         const user = await prisma.user.findUnique({
             where: { username }
         });
 
         if (user && user.password === password) {
-            // In a real app, you would issue a JWT here
             const { password, ...userWithoutPassword } = user;
+            const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
+
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 12 * 60 * 60 * 1000 // 12 hours
+            });
+
             res.json(userWithoutPassword);
         } else {
             res.status(401).json({ error: 'Invalid credentials' });
@@ -107,6 +154,15 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+app.post('/logout', (req, res) => {
+    res.clearCookie('token');
+    res.json({ message: 'Logged out' });
+});
+
+// Protect all API routes below if needed. For now, applying selectively or globally?
+// User asked for "Hardened Session Management".
+// Let's protect sensitive routes.
 
 // Posts API
 app.get('/posts', async (req, res) => {
@@ -199,11 +255,18 @@ app.get('/appointments', async (req, res) => {
     }
 });
 
-app.post('/appointments', async (req, res) => {
+app.post('/appointments', authenticateToken, async (req, res) => {
+    const result = appointmentSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
     try {
         const appointment = await prisma.appointment.create({
-            data: req.body
+            data: result.data
         });
+
+        // Trigger generic reminder check or queue specific (optional)
+        // await notificationQueue.add('appointmentReminder', { appointmentId: appointment.id }, { delay: ... });
+
         res.json(appointment);
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -388,7 +451,7 @@ app.post('/stories/:id/view', async (req, res) => {
 });
 
 // Settings API
-app.get('/settings', async (req, res) => {
+app.get('/settings', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const settings = await prisma.setting.findMany();
         // Convert to a simple key-value object
@@ -418,20 +481,32 @@ app.post('/settings', async (req, res) => {
 
 
 // Patients API
-app.get('/patients', async (req, res) => {
+app.get('/patients', authenticateToken, async (req, res) => {
     const { search } = req.query;
     try {
-        const where = search ? {
-            OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { cpf: { contains: search } }
-            ]
-        } : {};
         const patients = await prisma.patient.findMany({
-            where,
             orderBy: { name: 'asc' }
         });
-        res.json(patients);
+
+        // Decrypt data
+        const decryptedPatients = patients.map(p => ({
+            ...p,
+            cpf: decrypt(p.cpf),
+            history: decrypt(p.history)
+        }));
+
+        // Filter in memory if search is provided (since we can't search encrypted securely with current design)
+        // Note: For large datasets, this needs deterministic encryption for CPF to search in DB.
+        let result = decryptedPatients;
+        if (search) {
+            const lowerSearch = search.toLowerCase();
+            result = decryptedPatients.filter(p =>
+                p.name.toLowerCase().includes(lowerSearch) ||
+                (p.cpf && p.cpf.includes(search))
+            );
+        }
+
+        res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -440,29 +515,87 @@ app.get('/patients', async (req, res) => {
 app.get('/patients/:cpf', async (req, res) => {
     try {
         const { cpf } = req.params;
-        const patient = await prisma.patient.findUnique({
-            where: { cpf },
+        const patient = await prisma.patient.findMany(); // We need to scan all to find matching encrypted CPF if deterministic isn't perfectly trusted or if we search by ID.
+        // Wait, route is /patients/:cpf.
+        // If we use deterministic encryption for CPF, we can search directly.
+
+        const encryptedCpf = encrypt(cpf, true); // Re-derive deterministic
+        const patientByCpf = await prisma.patient.findUnique({
+            where: { cpf: encryptedCpf },
             include: { appointments: true, prescriptions: true }
         });
-        if (!patient) return res.status(404).json({ error: 'Patient not found' });
-        res.json(patient);
+
+        if (!patientByCpf) return res.status(404).json({ error: 'Patient not found' });
+
+        res.json({
+            ...patientByCpf,
+            cpf: decrypt(patientByCpf.cpf),
+            history: decrypt(patientByCpf.history)
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.post('/patients', async (req, res) => {
+app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    const result = patientSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
     try {
-        const { cpf } = req.body;
-        // Upsert ensures we don't create duplicates and reuse the ID
+        const { cpf, history, ...rest } = result.data;
+
+        // Encrypt Sensitive Data
+        // Use deterministic for CPF to allow duplicate check if needed (though we rely on catch error for unique constraint)
+        const encryptedCpf = encrypt(cpf, true);
+        const encryptedHistory = encrypt(history);
+
         const patient = await prisma.patient.upsert({
-            where: { cpf },
-            update: req.body,
-            create: req.body
+            where: { cpf: encryptedCpf },
+            update: { ...rest, history: encryptedHistory },
+            create: { ...rest, cpf: encryptedCpf, history: encryptedHistory }
         });
-        res.json(patient);
+
+        res.json({ ...patient, cpf, history });
     } catch (error) {
         res.status(400).json({ error: error.message });
+    }
+});
+
+// Consent API
+app.post('/patients/:cpf/consent', authenticateToken, async (req, res) => {
+    try {
+        const { cpf } = req.params;
+        const encryptedCpf = encrypt(cpf, true);
+
+        // Ensure patient exists
+        const patient = await prisma.patient.findUnique({
+            where: { cpf: encryptedCpf }
+        });
+
+        if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+        const updated = await prisma.patient.update({
+            where: { cpf: encryptedCpf },
+            data: {
+                consent: true,
+                consentDate: new Date()
+            }
+        });
+
+        // Log this significant event
+        await prisma.auditLog.create({
+            data: {
+                userId: req.user.id,
+                action: 'CONSENT_SIGNED',
+                resource: 'Patient',
+                details: `Consent signed for patient ${patient.id}`,
+                ip: req.socket.remoteAddress
+            }
+        });
+
+        res.json({ message: 'Consent recorded successfully', consentDate: updated.consentDate });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -673,7 +806,7 @@ app.delete('/testimonials/:id', async (req, res) => {
 });
 
 // Finance API
-app.get('/finance', async (req, res) => {
+app.get('/finance', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const transactions = await prisma.financeTransaction.findMany({
             include: { patient: { select: { name: true } } },

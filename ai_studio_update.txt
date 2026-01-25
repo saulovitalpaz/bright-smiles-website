@@ -1,0 +1,51 @@
+[
+  {
+    "category": "Security & Privacy",
+    "task": "Implement Field-Level Encryption (FLE) for PII",
+    "description": "Sensitive patient data such as CPF, health history, and contact details should be encrypted at the application level before reaching the PostgreSQL database. Use a library like 'crypto' in the Node.js backend to ensure that even in the event of a database leak, medical records remain unreadable without the environment's master key.",
+    "priority": "High",
+    "antigravity_level": "Advanced"
+  },
+  {
+    "category": "Security & Privacy",
+    "task": "Develop a Comprehensive Audit Trail Middleware",
+    "description": "Create an Express middleware that logs every 'read' and 'write' operation on medical records. In a medical context, it is critical to know exactly who (User ID) accessed a specific patient's data and when. This ensures compliance with regulations like LGPD (Brazil) and provides accountability for the 'odonto users'.",
+    "priority": "High",
+    "antigravity_level": "Advanced"
+  },
+  {
+    "category": "Functionality",
+    "task": "Automated WhatsApp CRM Integration",
+    "description": "Develop a background worker (using BullMQ or a similar task queue) that connects to the appointment database. It should automatically trigger personalized WhatsApp reminders 24 hours before an appointment and follow-up messages for leads that haven't converted, significantly reducing no-show rates for the clinic.",
+    "priority": "Medium",
+    "antigravity_level": "Pro"
+  },
+  {
+    "category": "Functionality",
+    "task": "Dynamic PDF Prescription Generator with Digital Signature",
+    "description": "Expand the current prescription logic to allow 'odonto users' to generate PDF prescriptions directly from the patient dashboard. Integrate a digital signature service (or a custom cryptographic signature) to make the document legally valid and professional, including automatic header/footer branding.",
+    "priority": "Medium",
+    "antigravity_level": "Pro"
+  },
+  {
+    "category": "Infrastructure",
+    "task": "Hardened Session Management with HttpOnly & Rotation",
+    "description": "Move authentication from LocalStorage (if currently used) to HttpOnly, Secure, and SameSite=Strict cookies. Implement Refresh Token rotation to mitigate the impact of session hijacking, ensuring that only active clinical staff can maintain access to the administrative panel.",
+    "priority": "High",
+    "antigravity_level": "Structural"
+  },
+  {
+    "category": "UX/Functional",
+    "task": "Interactive Dental Charting (Odontogram)",
+    "description": "Add a React-based interactive canvas (SVG/Canvas) representing a human set of teeth. This allow dentists to visually mark treatments (cavities, implants, extractions) per tooth, providing a much more specialized medical experience compared to simple text-based notes.",
+    "priority": "Low",
+    "antigravity_level": "High Impact"
+  },
+  {
+    "category": "Security",
+    "task": "SQL Injection & Prisma Guardrails",
+    "description": "Audit all 'server/src' routes to ensure no raw SQL queries are being used ($queryRaw). Implement Zod schema validation for all incoming request bodies to ensure data integrity and prevent malicious payloads before they hit the Prisma ORM layer.",
+    "priority": "High",
+    "antigravity_level": "Essential"
+  }
+]

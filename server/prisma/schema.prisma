@@ -104,6 +104,9 @@ model Patient {
   phone         String?
   address       String?
   history       String?        @db.Text
+  odontogram    Json?
+  consent       Boolean        @default(false)
+  consentDate   DateTime?
   appointments  Appointment[]
   prescriptions Prescription[]
   finance       FinanceTransaction[]
@@ -189,4 +192,14 @@ model AnalyticsEvent {
   source    String?
   location  String?
   date      DateTime @default(now())
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     // Nullable if system action or unauthenticated
+  action    String   // READ, WRITE, DELETE, LOGIN, etc.
+  resource  String   // Patient, Appointment, etc.
+  details   String?  @db.Text
+  ip        String?
+  timestamp DateTime @default(now())
 }

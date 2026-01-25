@@ -8,7 +8,7 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { API_URL } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 
 interface DashboardStats {
     users: number;
@@ -38,7 +38,7 @@ const AdminDashboard = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await fetch(`${API_URL}/dashboard/stats`);
+                const res = await fetchClient(`/dashboard/stats`);
                 if (res.ok) {
                     const data = await res.json();
                     setStats(data);

@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { API_URL } from "@/lib/api";
+import { API_URL, fetchClient } from "@/lib/api";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Odontogram } from "@/components/Odontogram";
+import { DownloadPrescriptionButton } from "@/components/PrescriptionGenerator";
+import { ConsentDialog } from "@/components/ConsentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,11 +43,15 @@ const AdminPrescription = () => {
         name: "",
         cpf: "",
         address: "",
-        phone: ""
+        phone: "",
+        odontogram: {}
     });
 
     const [prescriptionHistory, setPrescriptionHistory] = useState<any[]>([]);
     const [prescriptionContent, setPrescriptionContent] = useState("");
+    const [showConsentDialog, setShowConsentDialog] = useState(false);
+    const [patientConsent, setPatientConsent] = useState(false);
+
     const editorRef = useRef<HTMLDivElement>(null);
 
     const userStr = localStorage.getItem("admin_user");
@@ -57,7 +65,7 @@ const AdminPrescription = () => {
 
     const fetchPatient = async (cpf: string) => {
         try {
-            const res = await fetch(`${API_URL}/patients/${cpf}`);
+            const res = await fetchClient(`/patients/${cpf}`);
             if (res.ok) {
                 const data = await res.json();
                 setPatientData({
@@ -65,8 +73,16 @@ const AdminPrescription = () => {
                     name: data.name,
                     cpf: data.cpf,
                     address: data.address || "",
-                    phone: data.phone || ""
+                    phone: data.phone || "",
+                    odontogram: data.odontogram || {}
                 });
+
+                setPatientConsent(!!data.consent);
+                if (!data.consent) {
+                    // Suggest consent signature if not present
+                    // setShowConsentDialog(true); // Optional: auto-open
+                }
+
                 toast.success("Paciente encontrado!");
                 // Load history if needed
                 if (data.prescriptions) {
@@ -97,7 +113,7 @@ const AdminPrescription = () => {
     const handleDelete = async (id: number) => {
         if (!window.confirm("Excluir esta receita do histórico?")) return;
         try {
-            const res = await fetch(`${API_URL}/prescriptions/${id}`, { method: "DELETE" });
+            const res = await fetchClient(`/prescriptions/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setPrescriptionHistory(prev => prev.filter(p => p.id !== id));
                 toast.success("Receita excluída!");
@@ -123,15 +139,15 @@ const AdminPrescription = () => {
         if (!patientData.name || !patientData.cpf) return toast.error("Preencha nome e CPF");
 
         try {
-            // 1. Upsert Patient
-            const patientRes = await fetch(`${API_URL}/patients`, {
+            // 1. Upsert Patient (with Odontogram)
+            const patientRes = await fetchClient(`/patients`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: patientData.name,
                     cpf: patientData.cpf,
                     address: patientData.address,
-                    phone: patientData.phone
+                    phone: patientData.phone,
+                    odontogram: patientData.odontogram
                 })
             });
 
@@ -139,33 +155,32 @@ const AdminPrescription = () => {
             const savedPatient = await patientRes.json();
             setPatientData(prev => ({ ...prev, id: savedPatient.id }));
 
-            // 2. Save Prescription
-            // Use prescriptionContent state directly
-            const content = prescriptionContent || "";
-            const presRes = await fetch(`${API_URL}/prescriptions`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    content,
-                    patientId: savedPatient.id
-                })
-            });
+            // 2. Save Prescription (only if content exists)
+            if (prescriptionContent) {
+                const presRes = await fetchClient(`/prescriptions`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        content: prescriptionContent,
+                        patientId: savedPatient.id
+                    })
+                });
 
-            if (presRes.ok) {
-                const savedPres = await presRes.json();
-                setPrescriptionHistory([
-                    {
-                        id: savedPres.id,
-                        patient: savedPatient.name,
-                        date: new Date().toLocaleDateString(),
-                        preview: "Nova receita salva",
-                        content: content
-                    },
-                    ...prescriptionHistory
-                ]);
-                toast.success("Receita salva no banco de dados!");
+                if (presRes.ok) {
+                    const savedPres = await presRes.json();
+                    setPrescriptionHistory([
+                        {
+                            id: savedPres.id,
+                            patient: savedPatient.name,
+                            date: new Date().toLocaleDateString(),
+                            preview: "Nova receita salva",
+                            content: prescriptionContent
+                        },
+                        ...prescriptionHistory
+                    ]);
+                    toast.success("Receita salva!");
+                }
             } else {
-                toast.error("Erro ao salvar receita");
+                toast.success("Dados do paciente atualizados!");
             }
 
         } catch (error) {
@@ -204,7 +219,8 @@ const AdminPrescription = () => {
                                             name: p.name,
                                             cpf: p.cpf,
                                             address: p.address || "",
-                                            phone: p.phone || ""
+                                            phone: p.phone || "",
+                                            odontogram: {}
                                         });
                                         fetchPatient(p.cpf); // Load history
                                     }}
@@ -318,22 +334,63 @@ const AdminPrescription = () => {
                 <div className="lg:col-span-2">
                     <Card className="border-slate-200 shadow-sm flex flex-col h-full min-h-[500px] md:min-h-[600px]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
-                            <p className="text-xs font-bold uppercase text-slate-500">Conteúdo da Prescrição</p>
+                            <p className="text-xs font-bold uppercase text-slate-500">Área de Trabalho</p>
                             <div className="flex gap-2">
                                 <Button onClick={handleSave} variant="outline" size="sm" className="gap-2 border-slate-200 text-slate-600">
-                                    <Save size={16} /> Salvar no Histórico
+                                    <Save size={16} /> Salvar Tudo
                                 </Button>
-                                <Button onClick={handlePrint} size="sm" className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
-                                    <Printer size={16} /> Imprimir
+                                <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
+                                    <Printer size={16} /> Print Rápido
                                 </Button>
+                                {/* PDF Button */}
+                                {(patientData.name && prescriptionContent) && (
+                                    <>
+                                        {!patientConsent ? (
+                                            <Button size="sm" onClick={() => setShowConsentDialog(true)} className="gap-2 bg-amber-500 text-white hover:bg-amber-600">
+                                                <QrCode size={16} /> Assinar Termo LGPD
+                                            </Button>
+                                        ) : (
+                                            <Button asChild size="sm" className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
+                                                <DownloadPrescriptionButton
+                                                    data={{
+                                                        name: patientData.name,
+                                                        cpf: patientData.cpf,
+                                                        professionalName: currentUser.name,
+                                                        professionalCro: currentUser.cro
+                                                    }}
+                                                    content={prescriptionContent}
+                                                />
+                                            </Button>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
-                        <RichTextEditor
-                            content={prescriptionContent}
-                            onChange={(content) => setPrescriptionContent(content)}
-                            placeholder="Escreva a prescrição aqui..."
-                            className="border-none shadow-none rounded-none flex-1"
-                        />
+
+                        <Tabs defaultValue="prescription" className="flex-1 flex flex-col">
+                            <div className="px-4 pt-2 border-b border-slate-100 bg-white">
+                                <TabsList>
+                                    <TabsTrigger value="prescription">Prescrição</TabsTrigger>
+                                    <TabsTrigger value="odontogram">Odontograma</TabsTrigger>
+                                </TabsList>
+                            </div>
+
+                            <TabsContent value="prescription" className="flex-1 p-0 m-0 relative">
+                                <RichTextEditor
+                                    content={prescriptionContent}
+                                    onChange={(content) => setPrescriptionContent(content)}
+                                    placeholder="Escreva a prescrição aqui..."
+                                    className="border-none shadow-none rounded-none w-full h-full absolute inset-0"
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="odontogram" className="p-4 bg-slate-50/50 flex-1 overflow-auto">
+                                <Odontogram
+                                    initialData={patientData.odontogram || {}}
+                                    onUpdate={(newData) => setPatientData(prev => ({ ...prev, odontogram: newData }))}
+                                />
+                            </TabsContent>
+                        </Tabs>
                     </Card>
                 </div>
             </div>
@@ -406,6 +463,20 @@ const AdminPrescription = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Consent Dialog */}
+            {patientData.cpf && (
+                <ConsentDialog
+                    open={showConsentDialog}
+                    onOpenChange={setShowConsentDialog}
+                    patientName={patientData.name}
+                    patientCpf={patientData.cpf}
+                    onConsentSigned={() => {
+                        setPatientConsent(true);
+                        // Refetch or update state locally is fine
+                    }}
+                />
+            )}
 
             <style>{`
                 @media print {
