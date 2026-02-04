@@ -58,17 +58,17 @@ const Team = () => {
         </div>
 
         {/* Team Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8 max-w-5xl mx-auto">
+        <div className="flex overflow-x-auto pb-6 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8 max-w-5xl mx-auto snap-x snap-mandatory no-scrollbar">
           {team.map((member, index) => (
-            <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/95 backdrop-blur-md shadow-lg border-border/50">
+            <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/95 backdrop-blur-md shadow-lg border-border/50 min-w-[280px] sm:min-w-0 snap-center h-full">
               <div
-                className="aspect-[1/1] sm:aspect-[4/5] bg-muted relative overflow-hidden cursor-pointer"
+                className="aspect-[4/5] bg-muted relative overflow-hidden cursor-pointer"
                 onClick={() => setSelectedImage(member.image)}
               >
                 <img
                   src={member.image}
                   alt={member.name}
-                  className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                  className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${member.objectPosition ? `object-${member.objectPosition}` : 'object-top'}`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-70" />
 
@@ -78,42 +78,42 @@ const Team = () => {
                 </div>
               </div>
 
-              <CardContent className="p-4 sm:p-5 lg:p-6">
-                <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <CardContent className="p-5 lg:p-6 flex flex-col h-auto">
+                <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <h3 className="font-serif text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">
+                    <h3 className="font-serif text-lg lg:text-xl font-semibold text-foreground truncate">
                       {member.name}
                     </h3>
-                    <p className="text-xs sm:text-sm text-primary font-medium">{member.specialty}</p>
+                    <p className="text-sm text-primary font-medium">{member.specialty}</p>
                   </div>
-                  <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-primary/10 border border-primary/20 flex-shrink-0">
-                    <Award className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-primary" />
-                    <span className="text-[9px] sm:text-[10px] font-bold text-primary whitespace-nowrap">{member.cro}</span>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 flex-shrink-0">
+                    <Award className="w-3 h-3 text-primary" />
+                    <span className="text-[10px] font-bold text-primary whitespace-nowrap">{member.cro}</span>
                   </div>
                 </div>
-                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 md:mb-5 line-clamp-3">
+                <p className="text-muted-foreground text-sm leading-relaxed mb-5 line-clamp-4 flex-grow">
                   {member.description}
                 </p>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-auto">
                   {member.phone && (
                     <Button
                       variant="default"
                       size="sm"
-                      className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-8 sm:h-9"
+                      className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-9"
                       onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${member.phone}`, '_blank'); }}
                     >
-                      <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <Phone className="w-4 h-4" />
                       WhatsApp
                     </Button>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-8 sm:h-9"
+                    className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-9"
                     onClick={(e) => { e.stopPropagation(); window.open(member.instagram, '_blank'); }}
                   >
-                    <Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <Instagram className="w-4 h-4" />
                     Instagram
                   </Button>
                 </div>

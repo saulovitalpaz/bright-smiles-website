@@ -271,14 +271,14 @@ const AdminTreatments = () => {
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
                         <DialogHeader>
                             <DialogTitle>{editingTreatment ? "Editar Tratamento" : "Novo Tratamento"}</DialogTitle>
                         </DialogHeader>
 
                         <form id="treatment-form" onSubmit={handleSubmit} className="space-y-6 py-4">
                             <Tabs defaultValue="info" className="w-full">
-                                <TabsList>
+                                <TabsList className="w-full justify-start overflow-x-auto">
                                     <TabsTrigger value="info">Informações Básicas</TabsTrigger>
                                     <TabsTrigger value="details">Detalhes & Benefícios</TabsTrigger>
                                     <TabsTrigger value="results" disabled={!editingTreatment}>Galeria de Resultados</TabsTrigger>

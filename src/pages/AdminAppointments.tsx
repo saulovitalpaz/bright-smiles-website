@@ -235,74 +235,76 @@ const AdminAppointments = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-8">
                 {/* Form to add new record */}
-                <div className="lg:col-span-1">
-                    <Card className="border-slate-200 shadow-sm">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-xl font-serif">Novo Registro</CardTitle>
-                            <CardDescription className="text-xs">Insira os detalhes do atendimento.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handleAddRecord} className="space-y-4">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="patient" className="text-xs font-bold uppercase text-slate-500">Paciente</Label>
-                                    <PatientPicker
-                                        onSelect={(p) => {
-                                            setPatientName(p.name);
-                                            setPatientCpf(p.cpf);
-                                            setPatientId(p.id);
-                                        }}
-                                    />
-                                    <div className="grid grid-cols-1 gap-3 pt-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-slate-400">Nome do Paciente</Label>
-                                            <Input
-                                                value={patientName}
-                                                onChange={(e) => setPatientName(e.target.value)}
-                                                placeholder="Nome completo"
-                                                className="h-8 text-xs font-bold"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-slate-400">CPF (Obrigatório para novo cadastro)</Label>
-                                            <Input
-                                                value={patientCpf}
-                                                onChange={(e) => setPatientCpf(e.target.value)}
-                                                placeholder="000.000.000-00"
-                                                className="h-8 text-xs font-mono"
-                                            />
+                {currentUser.role !== 'manager' && (
+                    <div className="lg:col-span-1">
+                        <Card className="border-slate-200 shadow-sm">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-xl font-serif">Novo Registro</CardTitle>
+                                <CardDescription className="text-xs">Insira os detalhes do atendimento.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handleAddRecord} className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="patient" className="text-xs font-bold uppercase text-slate-500">Paciente</Label>
+                                        <PatientPicker
+                                            onSelect={(p) => {
+                                                setPatientName(p.name);
+                                                setPatientCpf(p.cpf);
+                                                setPatientId(p.id);
+                                            }}
+                                        />
+                                        <div className="grid grid-cols-1 gap-3 pt-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] text-slate-400">Nome do Paciente</Label>
+                                                <Input
+                                                    value={patientName}
+                                                    onChange={(e) => setPatientName(e.target.value)}
+                                                    placeholder="Nome completo"
+                                                    className="h-8 text-xs font-bold"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] text-slate-400">CPF (Obrigatório para novo cadastro)</Label>
+                                                <Input
+                                                    value={patientCpf}
+                                                    onChange={(e) => setPatientCpf(e.target.value)}
+                                                    placeholder="000.000.000-00"
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="procedure" className="text-xs font-bold uppercase text-slate-500">Procedimento</Label>
-                                    <Input
-                                        id="procedure"
-                                        placeholder="Ex: Harmonização"
-                                        className="h-9 text-sm"
-                                        value={procedure}
-                                        onChange={(e) => setProcedure(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="notes" className="text-xs font-bold uppercase text-slate-500">Notas Clínicas</Label>
-                                    <Textarea
-                                        id="notes"
-                                        placeholder="Detalhes técnicos..."
-                                        className="min-h-[100px] text-sm"
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <Button type="submit" className="w-full gap-2 h-9 text-sm font-bold">
-                                    <Plus size={16} />
-                                    Registrar
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
-                </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="procedure" className="text-xs font-bold uppercase text-slate-500">Procedimento</Label>
+                                        <Input
+                                            id="procedure"
+                                            placeholder="Ex: Harmonização"
+                                            className="h-9 text-sm"
+                                            value={procedure}
+                                            onChange={(e) => setProcedure(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="notes" className="text-xs font-bold uppercase text-slate-500">Notas Clínicas</Label>
+                                        <Textarea
+                                            id="notes"
+                                            placeholder="Detalhes técnicos..."
+                                            className="min-h-[100px] text-sm"
+                                            value={notes}
+                                            onChange={(e) => setNotes(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <Button type="submit" className="w-full gap-2 h-9 text-sm font-bold">
+                                        <Plus size={16} />
+                                        Registrar
+                                    </Button>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
 
                 {/* Main History Area */}
                 <div className="lg:col-span-3 space-y-6">
@@ -398,7 +400,7 @@ const AdminAppointments = () => {
             <div ref={detailsRef} className={`transition-all duration-500 overflow-hidden ${selectedRecord ? 'max-h-[2000px] opacity-100 mb-20' : 'max-h-0 opacity-0'}`}>
                 {selectedRecord && (
                     <Card className="border-slate-200 shadow-2xl rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden">
-                        <div className="bg-[#0f172a] p-6 md:p-8 text-white relative">
+                        <div className="bg-[#0f172a] p-5 md:p-8 text-white relative">
                             <button
                                 onClick={() => setSelectedRecord(null)}
                                 className="absolute top-4 right-4 md:top-8 md:right-8 p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -424,7 +426,7 @@ const AdminAppointments = () => {
                             </div>
                         </div>
 
-                        <CardContent className="p-8 md:p-12">
+                        <CardContent className="p-5 md:p-12">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                                 {/* Left Column: Basic Info & Health */}
                                 <div className="space-y-8">
@@ -475,6 +477,7 @@ const AdminAppointments = () => {
                                         <Button
                                             onClick={() => navigate(`/admin/prescricao?cpf=${editCpf}`)}
                                             className="h-14 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl gap-3 shadow-lg shadow-primary/20"
+                                            disabled={currentUser.role === 'manager'}
                                         >
                                             <FileSignature size={20} />
                                             Emitir Receita
@@ -502,6 +505,7 @@ const AdminAppointments = () => {
                                                 onChange={(e) => setEditNotes(e.target.value)}
                                                 className="min-h-[150px] bg-slate-50 border-slate-100 rounded-2xl p-6 italic text-slate-600 leading-relaxed transition-all focus:bg-white focus:shadow-inner"
                                                 placeholder="Descreva a evolução clínica..."
+                                                disabled={currentUser.role === 'manager'}
                                             />
                                         </div>
                                         <div className="space-y-3">
@@ -513,6 +517,7 @@ const AdminAppointments = () => {
                                                 onChange={(e) => setEditMaterials(e.target.value)}
                                                 className="min-h-[150px] bg-slate-50 border-slate-100 rounded-2xl p-6 text-sm text-slate-600 leading-relaxed transition-all focus:bg-white focus:shadow-inner"
                                                 placeholder="Ex: Toxina Botulínica 50U, Ácido Hialurônico 1ml..."
+                                                disabled={currentUser.role === 'manager'}
                                             />
                                         </div>
                                     </div>
@@ -526,6 +531,7 @@ const AdminAppointments = () => {
                                             onChange={(e) => setEditComplications(e.target.value)}
                                             className="min-h-[100px] bg-red-50/30 border-red-100 rounded-2xl p-6 text-sm text-slate-600 leading-relaxed transition-all focus:bg-white focus:border-red-200"
                                             placeholder="Nenhuma intercorrência registrada..."
+                                            disabled={currentUser.role === 'manager'}
                                         />
                                     </div>
 
@@ -629,7 +635,7 @@ const AdminAppointments = () => {
                 )}
             </div>
 
-        </AdminLayout>
+        </AdminLayout >
     );
 };
 

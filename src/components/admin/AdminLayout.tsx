@@ -77,6 +77,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         },
         { label: "Stories", href: "/admin/stories", icon: Play },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
+        ...(currentUser.role === 'manager' || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
         { label: "Configurações", href: "/admin/settings", icon: Settings },
     ];
@@ -85,9 +86,9 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         <div className="flex min-h-screen bg-[#f1f5f9]">
             {/* Mobile Header Toggle (Visible only on mobile) */}
             <div className="lg:hidden fixed top-4 left-4 z-50">
-                <Button 
-                    size="icon" 
-                    variant="outline" 
+                <Button
+                    size="icon"
+                    variant="outline"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="bg-white shadow-md border-slate-200 text-slate-700"
                 >
@@ -97,7 +98,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
 
             {/* Mobile Backdrop */}
             {isMobileMenuOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden animate-in fade-in duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
@@ -139,9 +140,9 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     >
                         {isCollapsed ? <ChevronRight size={14} fill="currentColor" /> : <ChevronLeft size={14} fill="currentColor" />}
                     </button>
-                    
+
                     {/* Mobile Close Button */}
-                    <button 
+                    <button
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="lg:hidden absolute top-4 right-4 text-white/50 hover:text-white"
                     >
@@ -172,7 +173,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                                         </div>
                                         {/* Full Menu Mode (Mobile) - Since sidebar is full width on mobile even if collapsed state is true */}
                                         <div className="lg:hidden">
-                                             <Link
+                                            <Link
                                                 to={item.href}
                                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
                                                     ? "bg-primary text-white shadow-lg shadow-primary/20"
@@ -244,13 +245,13 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                         onClick={logout}
                     >
                         <LogOut size={20} />
-                        {( !isCollapsed || window.innerWidth < 1024) && <span className={`text-xs font-bold uppercase tracking-widest ${isCollapsed ? "lg:hidden" : ""}`}>Sair</span>}
+                        {(!isCollapsed || window.innerWidth < 1024) && <span className={`text-xs font-bold uppercase tracking-widest ${isCollapsed ? "lg:hidden" : ""}`}>Sair</span>}
                     </Button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className={`flex-1 transition-all duration-300 min-h-screen bg-[#f8fafc] flex flex-col w-full
+            <main className={`flex-1 transition-all duration-300 min-h-screen bg-[#f8fafc] flex flex-col w-full max-w-[100vw] overflow-x-hidden
                 ${isCollapsed ? "lg:ml-20" : "lg:ml-72"} 
                 ml-0
             `}>
