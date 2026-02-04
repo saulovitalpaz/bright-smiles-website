@@ -805,6 +805,44 @@ app.delete('/testimonials/:id', async (req, res) => {
     }
 });
 
+// Personal Finance API
+app.get('/personal-finance', authenticateToken, async (req, res) => {
+    try {
+        const list = await prisma.personalTransaction.findMany({
+            where: { userId: req.user.id },
+            orderBy: { date: 'desc' }
+        });
+        res.json(list);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/personal-finance', authenticateToken, async (req, res) => {
+    try {
+        const item = await prisma.personalTransaction.create({
+            data: {
+                ...req.body,
+                userId: req.user.id
+            }
+        });
+        res.json(item);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/personal-finance/:id', authenticateToken, async (req, res) => {
+    try {
+        await prisma.personalTransaction.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Transaction deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Finance API
 app.get('/finance', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {

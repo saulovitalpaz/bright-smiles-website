@@ -236,6 +236,13 @@ const users = [
         name: "Clara Lima",
         role: "admin",
         cro: "CRO/MG 60.369"
+    },
+    {
+        username: "Neli Vital",
+        password: "Natan2021",
+        name: "Neli Vital",
+        role: "manager", // Role manager for restricted access
+        cro: "Gerência"
     }
 ];
 

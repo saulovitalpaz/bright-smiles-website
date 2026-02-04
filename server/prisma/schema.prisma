@@ -203,3 +203,17 @@ model AuditLog {
   ip        String?
   timestamp DateTime @default(now())
 }
+
+model PersonalTransaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  description String
+  amount      Float
+  type        String   // "income" or "expense"
+  category    String
+  date        DateTime @default(now())
+  receiptUrl  String?
+  status      String   @default("pending") // "pending", "paid"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
