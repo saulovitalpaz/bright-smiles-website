@@ -61,26 +61,35 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    const menuItems = [
+    const isManager = currentUser.role === 'manager';
+
+    const allMenuItems = [
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-        { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar },
+        { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
         { label: "Comentários", href: "/admin/comentarios", icon: MessageSquare },
-        { label: "Tratamentos", href: "/admin/tratamentos", icon: Sparkles },
-        { label: "Blog", href: "/admin/blog", icon: FileText },
+        { label: "Tratamentos", href: "/admin/tratamentos", icon: Sparkles, adminOnly: true },
+        { label: "Blog", href: "/admin/blog", icon: FileText, adminOnly: true },
         {
-            label: "Consultas", href: "/admin/consultas", icon: Stethoscope, subItems: [
+            label: "Consultas", href: "/admin/consultas", icon: Stethoscope, adminOnly: true, subItems: [
                 { label: "Atendimentos", href: "/admin/consultas" },
                 { label: "Prescrição", href: "/admin/prescricao" },
                 { label: "Termos & Doc", href: "/admin/documentos" },
                 { label: "Guia Digital", href: "/admin/digital-guide" }
             ]
         },
+        // Termos & Doc as standalone for manager (since Consultas group is hidden)
+        ...(isManager ? [{ label: "Termos & Doc", href: "/admin/documentos", icon: FileSignature }] : []),
         { label: "Stories", href: "/admin/stories", icon: Play },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
-        ...(currentUser.role === 'manager' || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
+        ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-        { label: "Configurações", href: "/admin/settings", icon: Settings },
+        { label: "Configurações", href: "/admin/settings", icon: Settings, adminOnly: true },
     ];
+
+    // Filter: manager only sees items without adminOnly flag
+    const menuItems = isManager
+        ? allMenuItems.filter(item => !item.adminOnly)
+        : allMenuItems;
 
     return (
         <div className="flex min-h-screen bg-[#f1f5f9]">

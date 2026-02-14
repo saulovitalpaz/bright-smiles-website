@@ -23,6 +23,9 @@ interface DashboardStats {
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const userStr = localStorage.getItem('admin_user');
+    const currentUser = userStr ? JSON.parse(userStr) : { role: 'admin' };
+    const isManager = currentUser.role === 'manager';
     const [stats, setStats] = useState<DashboardStats>({
         users: 0,
         posts: 0,
@@ -68,23 +71,35 @@ const AdminDashboard = () => {
     return (
         <AdminLayout title="Dashboard">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-                {/* SMALL PENDING LEADS CARD */}
-                <div
-                    onClick={() => navigate('/admin/solicitacoes')}
-                    className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden relative"
-                >
-                    <div className="relative z-10 flex items-center gap-4">
-                        <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                {/* SMALL PENDING LEADS CARD - hidden for managers */}
+                {!isManager ? (
+                    <div
+                        onClick={() => navigate('/admin/solicitacoes')}
+                        className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden relative"
+                    >
+                        <div className="relative z-10 flex items-center gap-4">
+                            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                                <Calendar size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Solicitações</h3>
+                                <p className="text-2xl font-black text-slate-900 mt-0.5">{pendingCount}</p>
+                            </div>
+                        </div>
+                        <ArrowUpRight size={18} className="text-slate-200 group-hover:text-blue-500 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all z-10" />
+                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-50/30 rounded-full blur-2xl group-hover:bg-blue-100/50 transition-colors" />
+                    </div>
+                ) : (
+                    <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4 overflow-hidden relative">
+                        <div className="p-3 rounded-2xl bg-primary/10 text-primary">
                             <Calendar size={24} />
                         </div>
                         <div>
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Solicitações</h3>
-                            <p className="text-2xl font-black text-slate-900 mt-0.5">{pendingCount}</p>
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Painel Gerencial</h3>
+                            <p className="text-sm font-bold text-slate-900 mt-0.5">Olá, {currentUser.name?.split(' ')[0]}!</p>
                         </div>
                     </div>
-                    <ArrowUpRight size={18} className="text-slate-200 group-hover:text-blue-500 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all z-10" />
-                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-50/30 rounded-full blur-2xl group-hover:bg-blue-100/50 transition-colors" />
-                </div>
+                )}
 
                 {/* LATEST TESTIMONIAL PREVIEW */}
                 <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-center md:col-span-2 relative overflow-hidden group">
@@ -148,12 +163,14 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div className="flex items-center gap-3 w-full sm:w-auto justify-end mt-2 sm:mt-0">
-                                        <button
-                                            onClick={() => navigate(`/admin/consultas?leadId=${lead.id}`)}
-                                            className="w-full sm:w-auto opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all sm:translate-x-4 group-hover:translate-x-0 bg-primary text-white text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
-                                        >
-                                            Atender
-                                        </button>
+                                        {!isManager && (
+                                            <button
+                                                onClick={() => navigate(`/admin/consultas?leadId=${lead.id}`)}
+                                                className="w-full sm:w-auto opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all sm:translate-x-4 group-hover:translate-x-0 bg-primary text-white text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
+                                            >
+                                                Atender
+                                            </button>
+                                        )}
                                         <div className="hidden sm:flex flex-col items-end whitespace-nowrap">
                                             <span className="text-[9px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold uppercase">
                                                 {lead.source || "Site"}

@@ -23,9 +23,10 @@ import AdminPrescription from "./pages/AdminPrescription";
 import AdminDigitalGuide from "./pages/AdminDigitalGuide";
 import AdminDocuments from "./pages/AdminDocuments";
 import AdminSettings from "./pages/AdminSettings";
+import AdminPersonalFinance from "./pages/AdminPersonalFinance";
 import PageTracker from "./components/PageTracker";
 
-import { AuthProvider, ProtectedRoute } from "./hooks/useAuth";
+import { AuthProvider, ProtectedRoute, RoleProtectedRoute } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
 
@@ -46,19 +47,23 @@ const App = () => (
             <Route path="/admin" element={<AdminLogin />} />
 
             {/* Protected Admin Routes */}
+            {/* Open to all authenticated users */}
             <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/blog" element={<ProtectedRoute><AdminBlog /></ProtectedRoute>} />
-            <Route path="/admin/solicitacoes" element={<ProtectedRoute><AdminLeads /></ProtectedRoute>} />
             <Route path="/admin/comentarios" element={<ProtectedRoute><AdminComments /></ProtectedRoute>} />
-            <Route path="/admin/tratamentos" element={<ProtectedRoute><AdminTreatments /></ProtectedRoute>} />
-            <Route path="/admin/consultas" element={<ProtectedRoute><AdminAppointments /></ProtectedRoute>} />
             <Route path="/admin/stories" element={<ProtectedRoute><AdminStories /></ProtectedRoute>} />
             <Route path="/admin/finance" element={<ProtectedRoute><AdminFinance /></ProtectedRoute>} />
+            <Route path="/admin/personal-finance" element={<ProtectedRoute><AdminPersonalFinance /></ProtectedRoute>} />
             <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
-            <Route path="/admin/prescricao" element={<ProtectedRoute><AdminPrescription /></ProtectedRoute>} />
-            <Route path="/admin/digital-guide" element={<ProtectedRoute><AdminDigitalGuide /></ProtectedRoute>} />
             <Route path="/admin/documentos" element={<ProtectedRoute><AdminDocuments /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+
+            {/* Restricted: admin-only (manager gets redirected to dashboard) */}
+            <Route path="/admin/blog" element={<RoleProtectedRoute><AdminBlog /></RoleProtectedRoute>} />
+            <Route path="/admin/solicitacoes" element={<RoleProtectedRoute><AdminLeads /></RoleProtectedRoute>} />
+            <Route path="/admin/tratamentos" element={<RoleProtectedRoute><AdminTreatments /></RoleProtectedRoute>} />
+            <Route path="/admin/consultas" element={<RoleProtectedRoute><AdminAppointments /></RoleProtectedRoute>} />
+            <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
+            <Route path="/admin/digital-guide" element={<RoleProtectedRoute><AdminDigitalGuide /></RoleProtectedRoute>} />
+            <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

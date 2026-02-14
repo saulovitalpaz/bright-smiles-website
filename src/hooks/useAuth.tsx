@@ -53,3 +53,35 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
     return <>{children}</>;
 };
+
+// Routes the 'manager' role is allowed to access
+const MANAGER_ALLOWED_ROUTES = [
+    '/admin/dashboard',
+    '/admin/comentarios',
+    '/admin/stories',
+    '/admin/finance',
+    '/admin/personal-finance',
+    '/admin/analytics',
+    '/admin/documentos',
+];
+
+export const RoleProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+    const { isAuthenticated } = useAuth();
+    const location = useLocation();
+
+    if (!isAuthenticated) {
+        return <Navigate to="/admin" replace />;
+    }
+
+    const userStr = localStorage.getItem('admin_user');
+    const currentUser = userStr ? JSON.parse(userStr) : null;
+
+    if (currentUser?.role === 'manager') {
+        const isAllowed = MANAGER_ALLOWED_ROUTES.some(route => location.pathname.startsWith(route));
+        if (!isAllowed) {
+            return <Navigate to="/admin/dashboard" replace />;
+        }
+    }
+
+    return <>{children}</>;
+};
