@@ -6,8 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchClient, API_URL } from "@/lib/api";
 import { toast } from "sonner";
-import { Plus, Trash2, Receipt, Upload, Loader2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { 
+    Plus, 
+    Trash2, 
+    Receipt, 
+    Upload, 
+    Loader2, 
+    ArrowUpCircle, 
+    ArrowDownCircle,
+    Filter,
+    Calendar as CalendarIcon,
+    CheckCircle2,
+    Clock,
+    DollarSign
+} from "lucide-react";
 import axios from "axios";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 interface Transaction {
     id: number;
@@ -20,6 +35,16 @@ interface Transaction {
     status: string;
 }
 
+const CATEGORIES = [
+    "Uber/Transporte",
+    "Alimentação",
+    "Boletos/Contas",
+    "Lazer",
+    "Saúde",
+    "Investimentos",
+    "Outros"
+];
+
 const AdminPersonalFinance = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -29,7 +54,8 @@ const AdminPersonalFinance = () => {
     const [desc, setDesc] = useState("");
     const [amount, setAmount] = useState("");
     const [type, setType] = useState<"income" | "expense">("expense");
-    const [category, setCategory] = useState("Contas");
+    const [category, setCategory] = useState("Uber/Transporte");
+    const [status, setStatus] = useState("paid");
     const [receiptUrl, setReceiptUrl] = useState("");
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -58,12 +84,6 @@ const AdminPersonalFinance = () => {
             const formData = new FormData();
             formData.append('file', e.target.files[0]);
             try {
-                // Using axios for upload convenience or fetchClient if configured for multipart
-                // Assuming direct upload endpoint usage for simplicity with axios usually, 
-                // but checking index.js it uses 'authenticateToken' so we need credentials.
-                // fetchClient handles credentials but FormData needs care.
-                // Let's use axios with credentials manually or a helper if available.
-                // Assuming API_URL is imported from lib/api
                 const res = await axios.post(`${API_URL}/upload`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     withCredentials: true
@@ -90,7 +110,7 @@ const AdminPersonalFinance = () => {
                     type,
                     category,
                     receiptUrl,
-                    status: 'paid'
+                    status
                 })
             });
             if (res.ok) {
@@ -123,112 +143,160 @@ const AdminPersonalFinance = () => {
     const balance = income - expense;
 
     return (
-        <AdminLayout title="Minhas Finanças (Pessoal)">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <Card>
-                    <CardContent className="p-6 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-slate-500 font-bold uppercase">Entradas</p>
-                            <p className="text-2xl font-black text-emerald-600">R$ {income.toFixed(2)}</p>
+        <AdminLayout title="Caixa Pessoal - Neli Vital">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <Card className="bg-white border-slate-100 shadow-sm">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <ArrowUpCircle size={24} />
                         </div>
-                        <ArrowUpCircle className="text-emerald-100" size={40} />
+                        <div>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Entradas</p>
+                            <p className="text-xl font-bold text-slate-900">R$ {income.toFixed(2)}</p>
+                        </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardContent className="p-6 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-slate-500 font-bold uppercase">Saídas</p>
-                            <p className="text-2xl font-black text-rose-600">R$ {expense.toFixed(2)}</p>
+                <Card className="bg-white border-slate-100 shadow-sm">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <ArrowDownCircle size={24} />
                         </div>
-                        <ArrowDownCircle className="text-rose-100" size={40} />
+                        <div>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saídas</p>
+                            <p className="text-xl font-bold text-slate-900">R$ {expense.toFixed(2)}</p>
+                        </div>
                     </CardContent>
                 </Card>
-                <Card className={balance >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"}>
-                    <CardContent className="p-6 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-slate-500 font-bold uppercase">Saldo Atual</p>
-                            <p className={`text-2xl font-black ${balance >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>R$ {balance.toFixed(2)}</p>
+                <Card className={`bg-white border-2 shadow-md ${balance >= 0 ? "border-emerald-100" : "border-rose-100"}`}>
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${balance >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                            <DollarSign size={24} />
                         </div>
-                        <Receipt className={balance >= 0 ? "text-emerald-200" : "text-rose-200"} size={40} />
+                        <div>
+                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saldo</p>
+                            <p className={`text-xl font-black ${balance >= 0 ? "text-emerald-700" : "text-rose-700"}`}>R$ {balance.toFixed(2)}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-slate-900 text-white border-none shadow-xl">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                            <Clock size={24} className="text-amber-400" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Pendentes</p>
+                            <p className="text-xl font-bold">R$ {transactions.filter(t => t.status === 'pending').reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
-                    <Card className="border-slate-200 shadow-sm">
-                        <CardHeader>
-                            <CardTitle>Novo Registro</CardTitle>
-                            <CardDescription>Adicione contas, Uber ou recebimentos.</CardDescription>
+                    <Card className="border-slate-200 shadow-lg sticky top-24">
+                        <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                            <CardTitle className="text-lg font-serif">Lançamento de Caixa</CardTitle>
+                            <CardDescription className="text-xs">Gestão de gastos e recebimentos pessoais.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                        <CardContent className="pt-6">
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                <div className="flex p-1 bg-slate-100 rounded-xl">
                                     <button
                                         type="button"
                                         onClick={() => setType('expense')}
-                                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${type === 'expense' ? 'bg-white shadow text-rose-600' : 'text-slate-500'}`}
+                                        className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-all ${type === 'expense' ? 'bg-white shadow text-rose-600' : 'text-slate-400'}`}
                                     >
                                         Despesa
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setType('income')}
-                                        className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${type === 'income' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}
+                                        className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-all ${type === 'income' ? 'bg-white shadow text-emerald-600' : 'text-slate-400'}`}
                                     >
                                         Receita
                                     </button>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Descrição</Label>
-                                    <Input
-                                        value={desc}
-                                        onChange={e => setDesc(e.target.value)}
-                                        placeholder={type === 'expense' ? "Ex: Uber para clínica" : "Ex: Pix Recebido"}
-                                        required
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">Descrição do Item</Label>
+                                    <Input 
+                                        value={desc} 
+                                        onChange={e => setDesc(e.target.value)} 
+                                        placeholder="Ex: Uber Clínica, Almoço..." 
+                                        className="h-11 font-medium bg-slate-50/50 border-slate-200"
+                                        required 
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Valor (R$)</Label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={amount}
-                                        onChange={e => setAmount(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Comprovante (Opcional)</Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full border-dashed"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploading}
-                                        >
-                                            {uploading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-                                            {receiptUrl ? "Alterar Arquivo" : "Enviar Foto/PDF"}
-                                        </Button>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            className="hidden"
-                                            accept="image/*,application/pdf"
-                                            onChange={handleUpload}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-slate-400">Valor (R$)</Label>
+                                        <Input 
+                                            type="number" 
+                                            step="0.01" 
+                                            value={amount} 
+                                            onChange={e => setAmount(e.target.value)} 
+                                            className="h-11 font-bold bg-slate-50/50 border-slate-200"
+                                            required 
                                         />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-slate-400">Status</Label>
+                                        <Select value={status} onValueChange={setStatus}>
+                                            <SelectTrigger className="h-11 font-medium bg-slate-50/50">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="paid">Pago</SelectItem>
+                                                <SelectItem value="pending">Pendente</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">Categoria</Label>
+                                    <Select value={category} onValueChange={setCategory}>
+                                        <SelectTrigger className="h-11 font-medium bg-slate-50/50">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CATEGORIES.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">Anexo de Comprovante</Label>
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        className="w-full h-11 border-dashed border-2 hover:bg-slate-50 transition-all gap-2"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? <Loader2 className="animate-spin w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                                        {receiptUrl ? "Substituir Arquivo" : "Enviar Foto / PDF"}
+                                    </Button>
+                                    <input 
+                                        ref={fileInputRef} 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept="image/*,application/pdf"
+                                        onChange={handleUpload}
+                                    />
                                     {receiptUrl && (
-                                        <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                                            <Receipt size={12} /> Comprovante anexado
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                            <CheckCircle2 size={14} className="text-emerald-600" />
+                                            <span className="text-[10px] font-bold text-emerald-700 uppercase">Documento Vinculado</span>
+                                        </div>
                                     )}
                                 </div>
 
-                                <Button type="submit" className="w-full gap-2 font-bold" disabled={uploading}>
-                                    <Plus size={18} /> Salvar
+                                <Button type="submit" className="w-full h-12 gap-2 font-black uppercase tracking-widest text-[11px] shadow-lg shadow-primary/20" disabled={uploading}>
+                                    <Plus size={18} /> Confirmar Lançamento
                                 </Button>
                             </form>
                         </CardContent>
@@ -236,43 +304,70 @@ const AdminPersonalFinance = () => {
                 </div>
 
                 <div className="lg:col-span-2">
-                    <Card className="border-slate-200 shadow-sm h-full">
-                        <CardHeader>
-                            <CardTitle>Histórico</CardTitle>
+                    <Card className="border-slate-200 shadow-sm min-h-[600px]">
+                        <CardHeader className="flex flex-row items-center justify-between bg-white border-b border-slate-100">
+                            <div>
+                                <CardTitle className="text-xl font-serif">Fluxo de Caixa Histórico</CardTitle>
+                                <CardDescription className="text-xs">Listagem detalhada de movimentações.</CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" className="gap-2 font-bold text-xs">
+                                <Filter size={14} /> Filtros
+                            </Button>
                         </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-slate-50">
                                 {loading ? (
-                                    <div className="text-center py-10"><Loader2 className="animate-spin mx-auto text-primary" /></div>
+                                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                        <Loader2 className="animate-spin text-primary" size={32} />
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Carregando dados...</p>
+                                    </div>
                                 ) : transactions.length === 0 ? (
-                                    <p className="text-center text-slate-400 py-10 italic">Nenhum registro pessoal encontrado.</p>
+                                    <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                                        <Receipt size={48} className="mb-4 opacity-20" />
+                                        <p className="font-serif italic text-lg">Nenhuma movimentação registrada.</p>
+                                    </div>
                                 ) : (
                                     transactions.map(t => (
-                                        <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors group">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                                                    {t.type === 'income' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
+                                        <div key={t.id} className="flex items-center justify-between p-5 hover:bg-slate-50/50 transition-all group border-l-4 border-transparent hover:border-primary">
+                                            <div className="flex items-center gap-5">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                    {t.type === 'income' ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-800">{t.description}</p>
-                                                    <p className="text-xs text-slate-500">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-slate-900">{t.description}</p>
+                                                        <Badge variant={t.status === 'paid' ? "outline" : "secondary"} className={`text-[9px] h-4 uppercase ${t.status === 'paid' ? "text-emerald-600 bg-emerald-50" : "text-amber-600 bg-amber-50"}`}>
+                                                            {t.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                        <span className="flex items-center gap-1"><CalendarIcon size={12} /> {new Date(t.date).toLocaleDateString()}</span>
+                                                        <span>•</span>
+                                                        <span className="text-primary/70">{t.category}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className={`font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                    {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
-                                                </span>
-                                                {t.receiptUrl && (
-                                                    <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="p-2 text-primary hover:bg-white rounded-full transition-colors" title="Ver Comprovante">
-                                                        <Receipt size={16} />
-                                                    </a>
-                                                )}
-                                                <button
-                                                    onClick={() => handleDelete(t.id)}
-                                                    className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                            <div className="flex items-center gap-6">
+                                                <div className="text-right">
+                                                    <p className={`text-lg font-black ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                        {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
+                                                    </p>
+                                                    {t.receiptUrl && (
+                                                        <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-black text-primary uppercase hover:underline">
+                                                            <Receipt size={10} /> Ver Recibo
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleDelete(t.id)}
+                                                        className="h-9 w-9 text-slate-300 hover:text-red-500 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))

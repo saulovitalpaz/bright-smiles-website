@@ -335,9 +335,14 @@ const AdminAppointments = () => {
                                                     <User size={20} className="md:w-6 md:h-6" />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <h3 className="font-bold text-slate-900 text-base md:text-lg leading-tight truncate">
-                                                        {record.patientName || record.patient?.name}
-                                                    </h3>
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-bold text-slate-900 text-base md:text-lg leading-tight truncate">
+                                                            {record.patientName || record.patient?.name}
+                                                        </h3>
+                                                        {currentUser.role === 'manager' && (
+                                                            <Badge variant="outline" className="text-[8px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-100">Controle Fluxo</Badge>
+                                                        )}
+                                                    </div>
                                                     <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1">
                                                         <span className="text-xs text-slate-500 font-mono hidden sm:inline">
                                                             {record.cpf || record.patient?.cpf}
@@ -365,7 +370,7 @@ const AdminAppointments = () => {
                                                     setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                                                 }}
                                             >
-                                                Ver Detalhes
+                                                {currentUser.role === 'manager' ? "Visualizar Prontuário" : "Ver Detalhes"}
                                             </Button>
                                         </div>
                                         <div className="bg-[#fcfdfd] p-4 md:p-5 rounded-2xl border border-slate-100 md:ml-16 cursor-pointer hover:border-primary/20 transition-all" onClick={() => {

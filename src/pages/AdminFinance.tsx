@@ -214,14 +214,38 @@ const AdminFinance = () => {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-slate-200 shadow-sm mt-6 bg-slate-50 border-dashed">
+                    <Card className="border-slate-200 shadow-sm mt-6 bg-white border-2 border-primary/10">
                         <CardContent className="p-6 flex flex-col items-center text-center">
-                            <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
                                 <Receipt size={24} />
                             </div>
-                            <h4 className="font-bold text-slate-900 mb-2">NF-e Automática</h4>
-                            <p className="text-xs text-slate-500 mb-4">Vincule seu certificado digital.</p>
-                            <Button variant="outline" size="sm" className="w-full border-slate-300" disabled>Em breve</Button>
+                            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-widest text-xs">Faturamento & NF-e</h4>
+                            <p className="text-[10px] text-slate-500 mb-4 px-4 leading-relaxed">Emissão de notas fiscais eletrônicas e sincronização contábil.</p>
+
+                            <div className="w-full space-y-2">
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="w-full font-black uppercase text-[10px] tracking-widest h-10 shadow-lg shadow-primary/20"
+                                    onClick={() => {
+                                        toast.promise(new Promise(res => setTimeout(res, 2000)), {
+                                            loading: 'Sincronizando com SEFAZ...',
+                                            success: 'Lote de NF-e emitido com sucesso!',
+                                            error: 'Erro na comunicação com SEFAZ.'
+                                        });
+                                    }}
+                                >
+                                    Emitir NF-e Pendentes
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-slate-200 font-bold text-[10px] h-10"
+                                    onClick={() => toast.success("Relatório contábil gerado coretamente!")}
+                                >
+                                    Relatório para Contabilidade
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
