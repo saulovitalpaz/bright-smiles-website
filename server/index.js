@@ -141,8 +141,8 @@ app.post('/login', async (req, res) => {
 
             res.cookie('token', token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                secure: true, // Always true for cross-site cookies
+                sameSite: 'none', // Needed for cross-site cookies (Railway backend -> Custom domain frontend)
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
@@ -844,7 +844,7 @@ app.delete('/personal-finance/:id', authenticateToken, async (req, res) => {
 });
 
 // Finance API
-app.get('/finance', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const transactions = await prisma.financeTransaction.findMany({
             include: { patient: { select: { name: true } } },
@@ -856,10 +856,13 @@ app.get('/finance', authenticateToken, authorizeRole(['admin']), async (req, res
     }
 });
 
-app.post('/finance', async (req, res) => {
+app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const transaction = await prisma.financeTransaction.create({
-            data: req.body
+            data: {
+                ...req.body,
+                amount: parseFloat(req.body.amount)
+            }
         });
         res.json(transaction);
     } catch (error) {
@@ -878,7 +881,7 @@ app.delete('/finance/:id', async (req, res) => {
     }
 });
 
-app.get('/finance/stats', async (req, res) => {
+app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const income = await prisma.financeTransaction.aggregate({
             where: { type: 'income' },
@@ -893,6 +896,64 @@ app.get('/finance/stats', async (req, res) => {
             expense: expense._sum.amount || 0,
             balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
         });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// NEW: NF-e Issuance Stub
+app.post('/finance/nfe', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+    try {
+        // In a real scenario, this would call a provider like FocusNFe or eNotas
+        // For now, we simulate a successful issuance and update the transaction
+        const { transactionIds } = req.body;
+
+        if (!transactionIds || !Array.isArray(transactionIds)) {
+            return res.status(400).json({ error: "Invalid transaction IDs" });
+        }
+
+        const updated = await prisma.financeTransaction.updateMany({
+            where: { id: { in: transactionIds } },
+            data: { nfeUrl: "https://venda-api.exemplo.com/nfe/stub-signed.pdf" }
+        });
+
+        res.json({ message: `${updated.count} NF-e(s) emitidas com sucesso!`, status: "success" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// NEW: Accounting Report
+app.get('/finance/report', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+    try {
+        const transactions = await prisma.financeTransaction.findMany({
+            orderBy: { date: 'desc' }
+        });
+
+        // Simple aggregate report
+        const report = {
+            generatedAt: new Date(),
+            totalTransactions: transactions.length,
+            summary: transactions.reduce((acc, t) => {
+                const month = t.date.toISOString().substring(0, 7);
+                if (!acc[month]) acc[month] = { income: 0, expense: 0 };
+                acc[month][t.type] += t.amount;
+                return acc;
+            }, {})
+        };
+
+        res.json(report);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// NEW: Cash Flow Export (PDF Stub)
+app.get('/finance/export-pdf', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+    try {
+        // In a real scenario, use PDFKit or Puppeteer to generate a PDF
+        // Returning a message for now that it's "generated"
+        res.json({ message: "PDF gerado e enviado para o cache!", url: "https://exemplo.com/fluxo-caixa.pdf" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

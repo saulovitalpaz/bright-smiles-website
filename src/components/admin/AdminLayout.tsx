@@ -92,7 +92,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         : allMenuItems;
 
     return (
-        <div className="flex min-h-screen bg-[#f1f5f9]">
+        <div className="min-h-screen bg-[#f1f5f9]">
             {/* Mobile Header Toggle (Visible only on mobile) */}
             <div className="lg:hidden fixed top-4 left-4 z-50">
                 <Button
@@ -113,12 +113,11 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 />
             )}
 
-            {/* Sidebar */}
-            {/* Sidebar - Mobile: Fixed Drawer | Desktop: Sticky Side */}
+            {/* Sidebar - Always fixed position */}
             <aside className={`
-                fixed inset-y-0 left-0 z-40 bg-[hsl(30,15%,10%)] text-white shadow-2xl transition-transform duration-300 ease-in-out border-r border-[hsl(30,10%,15%)] no-print
+                fixed inset-y-0 left-0 z-40 bg-[hsl(30,15%,10%)] text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-[hsl(30,10%,15%)] no-print
                 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} 
-                lg:translate-x-0 lg:sticky lg:top-0 h-screen flex flex-col
+                lg:translate-x-0 h-screen flex flex-col
                 ${isCollapsed ? "lg:w-20" : "lg:w-72"}
                 w-72
             `}>
@@ -259,8 +258,8 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className={`flex-1 transition-all duration-300 min-h-screen bg-[#f8fafc] flex flex-col w-full max-w-[100vw] overflow-x-hidden
+            {/* Main Content - offset by sidebar width on desktop */}
+            <main className={`min-h-screen bg-[#f8fafc] flex flex-col transition-all duration-300 overflow-x-hidden
                 ${isCollapsed ? "lg:ml-20" : "lg:ml-72"} 
                 ml-0
             `}>
@@ -289,6 +288,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     {children}
                 </div>
             </main>
+
 
             <style>{`
                 @media print {

@@ -30,33 +30,33 @@ model Post {
   image      String
   images     String[]
   author     String
-  views      Int      @default(0)
-  references Json?    
+  references Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  views      Int      @default(0)
 }
 
 model Appointment {
-  id           Int      @id @default(autoincrement())
-  patientName  String
-  cpf          String?
-  date         DateTime
-  procedure    String
-  notes        String
-  weight       String?
-  materials    String?
+  id            Int       @id @default(autoincrement())
+  patientName   String
+  cpf           String?
+  date          DateTime
+  procedure     String
+  notes         String
+  professional  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  patientId     Int?
   complications String?
-  returnDate   DateTime?
-  professional String
-  patientId    Int?
-  patient      Patient? @relation(fields: [patientId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  materials     String?
+  returnDate    DateTime?
+  weight        String?
+  patient       Patient?  @relation(fields: [patientId], references: [id])
 }
 
 model Treatment {
-  id          Int      @id @default(autoincrement())
-  slug        String   @unique
+  id          Int               @id @default(autoincrement())
+  slug        String            @unique
   title       String
   description String
   category    String
@@ -64,109 +64,110 @@ model Treatment {
   content     String
   indications String[]
   benefits    String[]
-  duration    Json     // Stores { procedure: string, recovery: string, longevity: string }
+  duration    Json
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   results     TreatmentResult[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model TreatmentResult {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   treatmentId Int
-  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
   image       String
   description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
 }
 
 model Story {
-  id          Int      @id @default(autoincrement())
-  type        String   // "image" or "video"
-  url         String
-  title       String?
-  status      String   @default("active") // "active" or "expired"
-  views       Int      @default(0)
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime?
+  id        Int       @id @default(autoincrement())
+  type      String
+  url       String
+  title     String?
+  status    String    @default("active")
+  views     Int       @default(0)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
 }
 
 model Setting {
   id    Int    @id @default(autoincrement())
   key   String @unique
-  value String @db.Text
+  value String
 }
 
 model Patient {
-  id            Int            @id @default(autoincrement())
+  id            Int                  @id @default(autoincrement())
   name          String
-  cpf           String         @unique
+  cpf           String               @unique
   phone         String?
   address       String?
-  history       String?        @db.Text
-  odontogram    Json?
-  consent       Boolean        @default(false)
+  history       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  consent       Boolean              @default(false)
   consentDate   DateTime?
+  odontogram    Json?
   appointments  Appointment[]
-  prescriptions Prescription[]
   finance       FinanceTransaction[]
   documents     PatientDocument[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  prescriptions Prescription[]
 }
 
 model Prescription {
   id        Int      @id @default(autoincrement())
-  content   String   @db.Text
+  content   String
   date      DateTime @default(now())
   patientId Int
-  patient   Patient  @relation(fields: [patientId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id])
 }
-
 
 model Lead {
   id        Int      @id @default(autoincrement())
   name      String
   phone     String
   email     String?
-  ageGroup  String?  // Kids, Teen, Adult, Senior
   treatment String?
   message   String?
-  status    String   @default("new") // new, contacted, scheduled
-  source    String?  // Instagram, Google, etc.
-  location  String?  // City/Region
+  status    String   @default("new")
   createdAt DateTime @default(now())
+  location  String?
+  source    String?
+  ageGroup  String?
 }
 
 model Testimonial {
   id        Int      @id @default(autoincrement())
-  name      String? // Optional if anonymous
+  name      String?
   rating    Int
   comment   String
-  feeling   String?  // emoji feeling: happy, neutral, sad, love, wow
   approved  Boolean  @default(false)
   createdAt DateTime @default(now())
+  feeling   String?
 }
 
 model FinanceTransaction {
   id          Int      @id @default(autoincrement())
-  type        String   // "income" or "expense"
+  type        String
   amount      Float
   category    String
   description String
   date        DateTime @default(now())
   patientId   Int?
-  patient     Patient? @relation(fields: [patientId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  patient     Patient? @relation(fields: [patientId], references: [id])
+  receiptUrl  String?
+  nfeUrl      String?
 }
 
 model DocumentTemplate {
   id        Int      @id @default(autoincrement())
   title     String
-  content   String   @db.Text
+  content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -174,13 +175,13 @@ model DocumentTemplate {
 model PatientDocument {
   id        Int      @id @default(autoincrement())
   title     String
-  content   String   @db.Text
+  content   String
   date      DateTime @default(now())
-  pdfUrl    String? // URL for the signed/uploaded PDF
   patientId Int
-  patient   Patient  @relation(fields: [patientId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  pdfUrl    String?
+  patient   Patient  @relation(fields: [patientId], references: [id])
 }
 
 model AnalyticsEvent {
@@ -189,17 +190,17 @@ model AnalyticsEvent {
   path      String
   ip        String?
   userAgent String?
-  source    String?
-  location  String?
   date      DateTime @default(now())
+  location  String?
+  source    String?
 }
 
 model AuditLog {
   id        Int      @id @default(autoincrement())
-  userId    Int?     // Nullable if system action or unauthenticated
-  action    String   // READ, WRITE, DELETE, LOGIN, etc.
-  resource  String   // Patient, Appointment, etc.
-  details   String?  @db.Text
+  userId    Int?
+  action    String
+  resource  String
+  details   String?
   ip        String?
   timestamp DateTime @default(now())
 }
@@ -209,11 +210,11 @@ model PersonalTransaction {
   userId      Int
   description String
   amount      Float
-  type        String   // "income" or "expense"
+  type        String
   category    String
   date        DateTime @default(now())
   receiptUrl  String?
-  status      String   @default("pending") // "pending", "paid"
+  status      String   @default("pending")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

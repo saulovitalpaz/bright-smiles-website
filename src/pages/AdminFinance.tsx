@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PatientPicker } from "@/components/admin/PatientPicker";
-import { API_URL } from "@/lib/api";
+import { fetchClient, API_URL } from "@/lib/api";
+import axios from "axios";
 import {
     TrendingUp,
     ArrowUpRight,
@@ -18,6 +19,7 @@ import {
     Trash2
 } from "lucide-react";
 import { toast } from "sonner";
+import { Loader2, Upload, CheckCircle2 } from "lucide-react";
 
 interface Transaction {
     id: number;
@@ -38,6 +40,9 @@ const AdminFinance = () => {
     const [newAmount, setNewAmount] = useState("");
     const [newType, setNewType] = useState<"income" | "expense">("income");
     const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [receiptUrl, setReceiptUrl] = useState("");
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchTransactions();
@@ -46,8 +51,8 @@ const AdminFinance = () => {
     const fetchTransactions = async () => {
         try {
             const [txRes, statsRes] = await Promise.all([
-                fetch(`${API_URL}/finance`),
-                fetch(`${API_URL}/finance/stats`)
+                fetchClient("/finance"),
+                fetchClient("/finance/stats")
             ]);
 
             if (txRes.ok) setTransactions(await txRes.json());
@@ -57,18 +62,39 @@ const AdminFinance = () => {
         }
     };
 
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setUploading(true);
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            try {
+                const res = await axios.post(`${API_URL}/upload`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    withCredentials: true
+                });
+                setReceiptUrl(res.data.url);
+                toast.success("Comprovante anexado!");
+            } catch (error) {
+                console.error(error);
+                toast.error("Erro no upload");
+            } finally {
+                setUploading(false);
+            }
+        }
+    };
+
     const handleAddTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_URL}/finance`, {
+            const res = await fetchClient("/finance", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     type: newType,
                     description: newDesc,
                     amount: parseFloat(newAmount),
                     category: "Geral",
-                    patientId: newType === 'income' ? selectedPatientId : undefined
+                    patientId: newType === 'income' ? selectedPatientId : undefined,
+                    receiptUrl: receiptUrl || undefined
                 })
             });
 
@@ -77,6 +103,7 @@ const AdminFinance = () => {
                 setNewDesc("");
                 setNewAmount("");
                 setSelectedPatientId(null);
+                setReceiptUrl("");
                 fetchTransactions(); // Refresh
             } else {
                 toast.error("Erro ao salvar transação");
@@ -90,7 +117,7 @@ const AdminFinance = () => {
     const handleDelete = async (id: number) => {
         if (!window.confirm("Tem certeza que deseja excluir?")) return;
         try {
-            await fetch(`${API_URL}/finance/${id}`, { method: "DELETE" });
+            await fetchClient(`/finance/${id}`, { method: "DELETE" });
             toast.success("Transação excluída");
             fetchTransactions();
         } catch (error) {
@@ -196,6 +223,7 @@ const AdminFinance = () => {
                                         required
                                     />
                                 </div>
+
                                 <div className="space-y-2">
                                     <Label htmlFor="amount">Valor (R$)</Label>
                                     <Input
@@ -207,7 +235,35 @@ const AdminFinance = () => {
                                         required
                                     />
                                 </div>
-                                <Button type="submit" className="w-full gap-2 mt-4">
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">Anexo de Comprovante</Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full h-11 border-dashed border-2 hover:bg-slate-50 transition-all gap-2"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? <Loader2 className="animate-spin w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                                        {receiptUrl ? "Substituir Comprovante" : "Anexar Foto / PDF"}
+                                    </Button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,application/pdf"
+                                        onChange={handleUpload}
+                                    />
+                                    {receiptUrl && (
+                                        <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                            <CheckCircle2 size={14} className="text-emerald-600" />
+                                            <span className="text-[10px] font-bold text-emerald-700 uppercase">Documento Vinculado</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Button type="submit" className="w-full gap-2 mt-2" disabled={uploading}>
                                     <Plus size={18} /> Registrar
                                 </Button>
                             </form>
@@ -228,11 +284,17 @@ const AdminFinance = () => {
                                     size="sm"
                                     className="w-full font-black uppercase text-[10px] tracking-widest h-10 shadow-lg shadow-primary/20"
                                     onClick={() => {
-                                        toast.promise(new Promise(res => setTimeout(res, 2000)), {
-                                            loading: 'Sincronizando com SEFAZ...',
-                                            success: 'Lote de NF-e emitido com sucesso!',
-                                            error: 'Erro na comunicação com SEFAZ.'
-                                        });
+                                        toast.promise(
+                                            fetchClient("/finance/nfe", {
+                                                method: "POST",
+                                                body: JSON.stringify({ transactionIds: transactions.map(t => t.id) })
+                                            }),
+                                            {
+                                                loading: 'Sincronizando com SEFAZ...',
+                                                success: 'Lote de NF-e emitido com sucesso!',
+                                                error: 'Erro na comunicação com SEFAZ.'
+                                            }
+                                        );
                                     }}
                                 >
                                     Emitir NF-e Pendentes
@@ -241,7 +303,14 @@ const AdminFinance = () => {
                                     variant="outline"
                                     size="sm"
                                     className="w-full border-slate-200 font-bold text-[10px] h-10"
-                                    onClick={() => toast.success("Relatório contábil gerado coretamente!")}
+                                    onClick={async () => {
+                                        const res = await fetchClient("/finance/report");
+                                        if (res.ok) {
+                                            toast.success("Relatório contábil gerado coretamente!");
+                                        } else {
+                                            toast.error("Erro ao gerar relatório");
+                                        }
+                                    }}
                                 >
                                     Relatório para Contabilidade
                                 </Button>
@@ -257,7 +326,19 @@ const AdminFinance = () => {
                                 <CardTitle className="text-xl font-serif">Fluxo de Caixa</CardTitle>
                                 <CardDescription>Últimas movimentações financeiras.</CardDescription>
                             </div>
-                            <Button variant="ghost" size="sm" className="text-primary font-bold">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-primary font-bold"
+                                onClick={async () => {
+                                    const res = await fetchClient("/finance/export-pdf");
+                                    if (res.ok) {
+                                        const data = await res.json();
+                                        window.open(data.url, '_blank');
+                                        toast.success("PDF gerado!");
+                                    }
+                                }}
+                            >
                                 <FileText size={16} className="mr-2" /> Exportar PDF
                             </Button>
                         </CardHeader>
@@ -278,11 +359,25 @@ const AdminFinance = () => {
                                             <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
                                                 <td className="py-4 text-slate-500 font-mono text-xs">{new Date(t.date).toLocaleDateString()}</td>
                                                 <td className="py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                            {t.type === 'income' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                                {t.type === 'income' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                                            </div>
+                                                            <span className="font-medium text-slate-900">{t.description}</span>
                                                         </div>
-                                                        <span className="font-medium text-slate-900">{t.description}</span>
+                                                        <div className="flex gap-2 mt-1 ml-11">
+                                                            {t.receiptUrl && (
+                                                                <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-primary uppercase hover:underline flex items-center gap-1">
+                                                                    <Receipt size={10} /> Recibo
+                                                                </a>
+                                                            )}
+                                                            {t.nfeUrl && (
+                                                                <a href={t.nfeUrl} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-emerald-600 uppercase hover:underline flex items-center gap-1">
+                                                                    <FileText size={10} /> NF-e
+                                                                </a>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="py-4">
@@ -309,7 +404,7 @@ const AdminFinance = () => {
                     </Card>
                 </div>
             </div>
-        </AdminLayout>
+        </AdminLayout >
     );
 };
 
