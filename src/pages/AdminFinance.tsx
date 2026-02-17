@@ -128,6 +128,62 @@ const AdminFinance = () => {
         }
     };
 
+    const getDailyTransactions = () => {
+        const today = new Date().toLocaleDateString('pt-BR');
+        return transactions.filter(t => new Date(t.date).toLocaleDateString('pt-BR') === today);
+    };
+
+    const getMonthlyTransactions = () => {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        return transactions.filter(t => {
+            const d = new Date(t.date);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+    };
+
+    const downloadCSV = () => {
+        const monthlyData = getMonthlyTransactions();
+        if (monthlyData.length === 0) {
+            toast.error("Nenhuma transação neste mês para exportar.");
+            return;
+        }
+
+        const headers = ["Data", "Tipo", "Descrição", "Categoria", "Valor", "Paciente", "Recibo"];
+        const rows = monthlyData.map(t => [
+            new Date(t.date).toLocaleDateString('pt-BR'),
+            t.type === 'income' ? 'Receita' : 'Despesa',
+            `"${t.description.replace(/"/g, '""')}"`,
+            t.category,
+            t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }).replace(/\./g, '').replace(',', '.'),
+            t.patient?.name || "-",
+            t.receiptUrl || "-"
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+            + headers.join(";") + "\n"
+            + rows.map(e => e.join(";")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `relatorio_contabil_${new Date().toISOString().slice(0, 7)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Relatório CSV gerado!");
+    };
+
+    const dailyTransactions = getDailyTransactions();
+    const dailyStats = {
+        // Recalculate stats for daily view
+        income: dailyTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
+        expense: dailyTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+        balance: 0
+    };
+    dailyStats.balance = dailyStats.income - dailyStats.expense;
+
     return (
         <AdminLayout title="Gestão Financeira">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -305,17 +361,16 @@ const AdminFinance = () => {
                                 >
                                     Emitir NF-e Pendentes
                                 </Button>
-                                {null}
                                 <div className="w-full">
-                                    <DownloadFinanceReportButton
-                                        transactions={transactions}
-                                        stats={stats}
-                                        label={
-                                            <Button variant="outline" size="sm" className="w-full border-slate-200 font-bold text-[10px] h-10">
-                                                Relatório para Contabilidade
-                                            </Button>
-                                        }
-                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full border-slate-200 font-bold text-[10px] h-10 hover:bg-slate-50 text-slate-700"
+                                        onClick={downloadCSV}
+                                    >
+                                        <FileText size={14} className="mr-2" />
+                                        Exportar Relatório Contábil (.csv)
+                                    </Button>
                                 </div>
                             </div>
                         </CardContent>
@@ -330,11 +385,12 @@ const AdminFinance = () => {
                                 <CardDescription>Últimas movimentações financeiras.</CardDescription>
                             </div>
                             <DownloadFinanceReportButton
-                                transactions={transactions}
-                                stats={stats}
+                                transactions={dailyTransactions}
+                                stats={dailyStats}
+                                reportTitle={`Relatório Diário - ${new Date().toLocaleDateString('pt-BR')}`}
                                 label={
                                     <Button variant="ghost" size="sm" className="text-primary font-bold">
-                                        <FileText size={16} className="mr-2" /> Exportar PDF
+                                        <FileText size={16} className="mr-2" /> Exportar PDF (Do Dia)
                                     </Button>
                                 }
                             />

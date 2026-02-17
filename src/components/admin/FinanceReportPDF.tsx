@@ -140,12 +140,18 @@ export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Rela
     <Document>
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
-                <Text style={styles.logoText}>Núcleo Odontológico</Text>
-                <Text style={styles.subLogoText}>Especializado & Harmonização</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                    {/* Logo Image - assuming public path */}
+                    <Image src="/images/logo-oficial.png" style={{ width: 50, height: 50, marginRight: 10 }} />
+                    <View>
+                        <Text style={{ ...styles.logoText, fontSize: 16 }}>Núcleo Odontológico</Text>
+                        <Text style={styles.subLogoText}>Especializado & Harmonização</Text>
+                    </View>
+                </View>
             </View>
 
-            <Text style={styles.title}>{reportTitle}</Text>
-            <Text style={{ fontSize: 10, textAlign: 'center', marginBottom: 20, color: '#64748b' }}>
+            <Text style={{ ...styles.title, fontSize: 14 }}>{reportTitle}</Text>
+            <Text style={{ fontSize: 9, textAlign: 'center', marginBottom: 15, color: '#64748b' }}>
                 Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}
             </Text>
 
@@ -216,9 +222,9 @@ export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Rela
     </Document>
 );
 
-export const DownloadFinanceReportButton = ({ transactions, stats, label = "Exportar PDF" }: any) => (
+export const DownloadFinanceReportButton = ({ transactions, stats, label = "Exportar PDF", reportTitle }: any) => (
     <PDFDownloadLink
-        document={<FinanceReportDocument transactions={transactions} stats={stats} />}
+        document={<FinanceReportDocument transactions={transactions} stats={stats} reportTitle={reportTitle} />}
         fileName={`relatorio-financeiro-${new Date().toISOString().split('T')[0]}.pdf`}
         className="w-full"
         style={{ textDecoration: 'none' }}
