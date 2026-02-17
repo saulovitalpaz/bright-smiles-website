@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle2 } from "lucide-react";
+import { DownloadFinanceReportButton } from "@/components/admin/FinanceReportPDF";
 
 interface Transaction {
     id: number;
@@ -304,21 +305,18 @@ const AdminFinance = () => {
                                 >
                                     Emitir NF-e Pendentes
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full border-slate-200 font-bold text-[10px] h-10"
-                                    onClick={async () => {
-                                        const res = await fetchClient("/finance/report");
-                                        if (res.ok) {
-                                            toast.success("Relatório contábil gerado coretamente!");
-                                        } else {
-                                            toast.error("Erro ao gerar relatório");
+                                {null}
+                                <div className="w-full">
+                                    <DownloadFinanceReportButton
+                                        transactions={transactions}
+                                        stats={stats}
+                                        label={
+                                            <Button variant="outline" size="sm" className="w-full border-slate-200 font-bold text-[10px] h-10">
+                                                Relatório para Contabilidade
+                                            </Button>
                                         }
-                                    }}
-                                >
-                                    Relatório para Contabilidade
-                                </Button>
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -331,21 +329,15 @@ const AdminFinance = () => {
                                 <CardTitle className="text-xl font-serif">Fluxo de Caixa</CardTitle>
                                 <CardDescription>Últimas movimentações financeiras.</CardDescription>
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-primary font-bold"
-                                onClick={async () => {
-                                    const res = await fetchClient("/finance/export-pdf");
-                                    if (res.ok) {
-                                        const data = await res.json();
-                                        window.open(data.url, '_blank');
-                                        toast.success("PDF gerado!");
-                                    }
-                                }}
-                            >
-                                <FileText size={16} className="mr-2" /> Exportar PDF
-                            </Button>
+                            <DownloadFinanceReportButton
+                                transactions={transactions}
+                                stats={stats}
+                                label={
+                                    <Button variant="ghost" size="sm" className="text-primary font-bold">
+                                        <FileText size={16} className="mr-2" /> Exportar PDF
+                                    </Button>
+                                }
+                            />
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">

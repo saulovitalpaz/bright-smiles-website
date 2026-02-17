@@ -806,7 +806,7 @@ app.delete('/testimonials/:id', async (req, res) => {
 });
 
 // Personal Finance API
-app.get('/personal-finance', authenticateToken, async (req, res) => {
+app.get('/personal-finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const list = await prisma.personalTransaction.findMany({
             where: { userId: req.user.id },
@@ -818,7 +818,7 @@ app.get('/personal-finance', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/personal-finance', authenticateToken, async (req, res) => {
+app.post('/personal-finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const item = await prisma.personalTransaction.create({
             data: {
@@ -832,7 +832,7 @@ app.post('/personal-finance', authenticateToken, async (req, res) => {
     }
 });
 
-app.delete('/personal-finance/:id', authenticateToken, async (req, res) => {
+app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         await prisma.personalTransaction.delete({
             where: { id: parseInt(req.params.id) }
