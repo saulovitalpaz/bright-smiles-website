@@ -15,7 +15,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { API_URL } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 
 interface Patient {
     id: number;
@@ -45,7 +45,7 @@ export function PatientPicker({ onSelect, className }: PatientPickerProps) {
             }
             setLoading(true);
             try {
-                const res = await fetch(`${API_URL}/patients?search=${query}`);
+                const res = await fetchClient(`/patients?search=${encodeURIComponent(query)}`);
                 if (res.ok) {
                     const data = await res.json();
                     setPatients(data);
@@ -60,6 +60,7 @@ export function PatientPicker({ onSelect, className }: PatientPickerProps) {
         const timeoutId = setTimeout(fetchPatients, 300);
         return () => clearTimeout(timeoutId);
     }, [query]);
+
 
     return (
         <Popover open={open} onOpenChange={setOpen}>

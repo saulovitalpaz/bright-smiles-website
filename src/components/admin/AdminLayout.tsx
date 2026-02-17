@@ -44,7 +44,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     const { data: settings } = useQuery({
         queryKey: ['settings'],
         queryFn: async () => {
-            const res = await axios.get(`${API_URL}/settings`);
+            const res = await axios.get(`${API_URL}/settings`, { withCredentials: true });
             return res.data;
         }
     });

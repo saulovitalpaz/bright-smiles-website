@@ -29,6 +29,8 @@ interface Transaction {
     date: string;
     category: string;
     patient?: { name: string };
+    receiptUrl?: string;
+    nfeUrl?: string;
 }
 
 const AdminFinance = () => {
@@ -288,11 +290,14 @@ const AdminFinance = () => {
                                             fetchClient("/finance/nfe", {
                                                 method: "POST",
                                                 body: JSON.stringify({ transactionIds: transactions.map(t => t.id) })
+                                            }).then(res => {
+                                                if (!res.ok) throw new Error('Falha na emissão');
+                                                return res.json();
                                             }),
                                             {
-                                                loading: 'Sincronizando com SEFAZ...',
-                                                success: 'Lote de NF-e emitido com sucesso!',
-                                                error: 'Erro na comunicação com SEFAZ.'
+                                                loading: 'Processando NF-e...',
+                                                success: 'NF-e processadas com sucesso!',
+                                                error: 'Erro ao processar NF-e. Tente novamente.'
                                             }
                                         );
                                     }}

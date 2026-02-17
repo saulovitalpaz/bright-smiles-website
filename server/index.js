@@ -451,7 +451,7 @@ app.post('/stories/:id/view', async (req, res) => {
 });
 
 // Settings API
-app.get('/settings', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+app.get('/settings', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const settings = await prisma.setting.findMany();
         // Convert to a simple key-value object
@@ -858,12 +858,16 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
 
 app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const transaction = await prisma.financeTransaction.create({
-            data: {
-                ...req.body,
-                amount: parseFloat(req.body.amount)
-            }
-        });
+        const { type, description, amount, category, patientId, receiptUrl } = req.body;
+        const data = {
+            type,
+            description,
+            amount: parseFloat(amount),
+            category: category || 'Geral'
+        };
+        if (patientId) data.patientId = parseInt(patientId);
+        if (receiptUrl) data.receiptUrl = receiptUrl;
+        const transaction = await prisma.financeTransaction.create({ data });
         res.json(transaction);
     } catch (error) {
         res.status(400).json({ error: error.message });
