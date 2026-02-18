@@ -41,6 +41,8 @@ interface Transaction {
 const AdminFinance = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [stats, setStats] = useState({ income: 0, expense: 0, balance: 0 });
+    const [filterByMonth, setFilterByMonth] = useState(new Date().getMonth() + 1);
+    const [filterByYear, setFilterByYear] = useState(new Date().getFullYear());
 
     // New Transaction Form State
     const [newDesc, setNewDesc] = useState("");
@@ -53,12 +55,12 @@ const AdminFinance = () => {
 
     useEffect(() => {
         fetchTransactions();
-    }, []);
+    }, [filterByMonth, filterByYear]);
 
     const fetchTransactions = async () => {
         try {
             const [txRes, statsRes] = await Promise.all([
-                fetchClient("/finance"),
+                fetchClient(`/finance?month=${filterByMonth}&year=${filterByYear}`),
                 fetchClient("/finance/stats")
             ]);
 
@@ -66,6 +68,23 @@ const AdminFinance = () => {
             if (statsRes.ok) setStats(await statsRes.json());
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    const handleConfirmNfe = async (txId: number) => {
+        try {
+            const res = await fetchClient(`/finance/nfe`, {
+                method: "POST",
+                body: JSON.stringify({ transactionIds: [txId], nfeUrl: "" })
+            });
+
+            if (res.ok) {
+                toast.success("NF-e confirmada com sucesso!");
+                fetchTransactions();
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Erro ao confirmar NF-e");
         }
     };
 
@@ -132,30 +151,14 @@ const AdminFinance = () => {
         }
     };
 
-    const getDailyTransactions = () => {
-        const today = new Date().toLocaleDateString('pt-BR');
-        return transactions.filter(t => new Date(t.date).toLocaleDateString('pt-BR') === today);
-    };
-
-    const getMonthlyTransactions = () => {
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        return transactions.filter(t => {
-            const d = new Date(t.date);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        });
-    };
-
     const downloadCSV = () => {
-        const monthlyData = getMonthlyTransactions();
-        if (monthlyData.length === 0) {
-            toast.error("Nenhuma transação neste mês para exportar.");
+        if (transactions.length === 0) {
+            toast.error("Nenhuma transação neste período para exportar.");
             return;
         }
 
         const headers = ["Data", "Tipo", "Descrição", "Categoria", "Valor", "Paciente", "CPF", "Endereço"];
-        const rows = monthlyData.map(t => [
+        const rows = transactions.map(t => [
             new Date(t.date).toLocaleDateString('pt-BR'),
             t.type === 'income' ? 'Receita' : 'Despesa',
             `"${t.description.replace(/"/g, '""')}"`,
@@ -173,23 +176,12 @@ const AdminFinance = () => {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `relatorio_contabil_${new Date().toISOString().slice(0, 7)}.csv`);
+        link.setAttribute("download", `relatorio_financeiro_${filterByYear}_${filterByMonth}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         toast.success("Relatório CSV gerado!");
     };
-
-    const dailyTransactions = getDailyTransactions();
-    const dailyStats = {
-        // Recalculate stats for daily view
-        income: dailyTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
-        expense: dailyTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
-        balance: 0
-    };
-    dailyStats.balance = dailyStats.income - dailyStats.expense;
-
-    const pendingNfeToday = dailyTransactions.filter(t => t.type === 'income' && !t.nfeUrl);
 
     return (
         <AdminLayout title="Gestão Financeira">
@@ -238,7 +230,46 @@ const AdminFinance = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 space-y-6">
+                    {/* Month Selector */}
+                    <Card className="border-slate-200 shadow-sm">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg font-serif">Navegação Histórica</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex gap-4">
+                                <div className="flex-1 space-y-2">
+                                    <Label className="text-xs uppercase text-slate-500 font-bold">Mês</Label>
+                                    <Select value={filterByMonth.toString()} onValueChange={(v) => setFilterByMonth(parseInt(v))}>
+                                        <SelectTrigger className="bg-slate-50 border-slate-100">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Array.from({ length: 12 }, (_, i) => (
+                                                <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                                    {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <Label className="text-xs uppercase text-slate-500 font-bold">Ano</Label>
+                                    <Select value={filterByYear.toString()} onValueChange={(v) => setFilterByYear(parseInt(v))}>
+                                        <SelectTrigger className="bg-slate-50 border-slate-100">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[2024, 2025, 2026].map(year => (
+                                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Nova Transação</CardTitle>
@@ -336,7 +367,7 @@ const AdminFinance = () => {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-slate-200 shadow-sm mt-6 bg-white border-2 border-primary/10">
+                    <Card className="border-slate-200 shadow-sm bg-white border-2 border-primary/10">
                         <CardContent className="p-6 flex flex-col items-center text-center">
                             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
                                 <Receipt size={24} />
@@ -346,26 +377,26 @@ const AdminFinance = () => {
 
                             <div className="w-full space-y-4">
                                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                                    <div className="flex justify-between items-center text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
-                                        <span>Pendentes Hoje</span>
-                                        <span className={pendingNfeToday.length > 0 ? "text-rose-600" : "text-emerald-600"}>
-                                            {pendingNfeToday.length}
+                                    <div className="flex justify-between text-xs font-medium text-slate-500 mb-1">
+                                        <span>NF-e Pendentes</span>
+                                        <span className={transactions.filter(t => t.type === 'income' && !t.nfeUrl).length > 0 ? "text-rose-600" : "text-emerald-600"}>
+                                            {transactions.filter(t => t.type === 'income' && !t.nfeUrl).length}
                                         </span>
                                     </div>
                                     <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full transition-all duration-500 ${pendingNfeToday.length > 0 ? "bg-rose-500" : "bg-emerald-500"}`}
+                                            className={`h-full transition-all duration-500 ${transactions.filter(t => t.type === 'income' && !t.nfeUrl).length > 0 ? "bg-rose-500" : "bg-emerald-500"}`}
                                             style={{
-                                                width: dailyTransactions.filter(t => t.type === 'income').length > 0
-                                                    ? `${(pendingNfeToday.length / dailyTransactions.filter(t => t.type === 'income').length) * 100}%`
+                                                width: transactions.filter(t => t.type === 'income').length > 0
+                                                    ? `${(transactions.filter(t => t.type === 'income' && !t.nfeUrl).length / transactions.filter(t => t.type === 'income').length) * 100}%`
                                                     : '0%'
                                             }}
                                         />
                                     </div>
                                     <p className="text-[9px] text-slate-400 mt-2 text-left italic">
-                                        {pendingNfeToday.length > 0
-                                            ? `Faltam emitir ${pendingNfeToday.length} nota(s) fiscal(is) de hoje.`
-                                            : "Todas as NF-e de hoje foram emitidas."}
+                                        {transactions.filter(t => t.type === 'income' && !t.nfeUrl).length > 0
+                                            ? `Faltam confirmar ${transactions.filter(t => t.type === 'income' && !t.nfeUrl).length} nota(s) fiscal(is) deste período.`
+                                            : "Todas as NF-e do período foram confirmadas."}
                                     </p>
                                 </div>
 
@@ -389,16 +420,20 @@ const AdminFinance = () => {
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
-                                <CardTitle className="text-xl font-serif">Fluxo de Caixa</CardTitle>
-                                <CardDescription>Últimas movimentações financeiras.</CardDescription>
+                                <CardTitle className="text-xl font-serif">Fluxo de Caixa - {new Date(filterByYear, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle>
+                                <CardDescription>Histórico de movimentações financeiras.</CardDescription>
                             </div>
                             <DownloadFinanceReportButton
-                                transactions={dailyTransactions}
-                                stats={dailyStats}
-                                reportTitle={`Relatório Diário - ${new Date().toLocaleDateString('pt-BR')}`}
+                                transactions={transactions}
+                                stats={{
+                                    income: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
+                                    expense: transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+                                    balance: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0) - transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0)
+                                }}
+                                reportTitle={`Relatório - ${new Date(0, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long' })} / ${filterByYear}`}
                                 label={
                                     <Button variant="ghost" size="sm" className="text-primary font-bold">
-                                        <FileText size={16} className="mr-2" /> Exportar PDF (Do Dia)
+                                        <FileText size={16} className="mr-2" /> Exportar PDF (Histórico)
                                     </Button>
                                 }
                             />
@@ -433,11 +468,20 @@ const AdminFinance = () => {
                                                                     <Receipt size={10} /> Recibo
                                                                 </a>
                                                             )}
-                                                            {t.nfeUrl && (
-                                                                <a href={t.nfeUrl} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-emerald-600 uppercase hover:underline flex items-center gap-1">
-                                                                    <FileText size={10} /> NF-e
-                                                                </a>
-                                                            )}
+                                                            {t.nfeUrl ? (
+                                                                <span className="text-[9px] font-bold text-emerald-600 uppercase flex items-center gap-1">
+                                                                    <CheckCircle2 size={10} /> NF-e Emitida
+                                                                </span>
+                                                            ) : t.type === 'income' ? (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-5 px-1 text-[9px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                                    onClick={() => handleConfirmNfe(t.id)}
+                                                                >
+                                                                    <Plus size={10} className="mr-1" /> Confirmar NF-e
+                                                                </Button>
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 </td>

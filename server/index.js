@@ -878,7 +878,20 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
 // Finance API
 app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
+        const { month, year } = req.query;
+        let where = {};
+
+        if (month && year) {
+            const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+            const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+            where.date = {
+                gte: startDate,
+                lte: endDate
+            };
+        }
+
         const transactions = await prisma.financeTransaction.findMany({
+            where,
             include: { patient: { select: { name: true, cpf: true, address: true } } },
             orderBy: { date: 'desc' }
         });
@@ -906,7 +919,30 @@ app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asy
     }
 });
 
-app.delete('/finance/:id', async (req, res) => {
+app.put('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+    try {
+        const { date, type, amount, category, description, patientId, receiptUrl, nfeUrl } = req.body;
+        const data = {};
+        if (date) data.date = new Date(date);
+        if (type) data.type = type;
+        if (amount) data.amount = parseFloat(amount);
+        if (category) data.category = category;
+        if (description) data.description = description;
+        if (patientId !== undefined) data.patientId = patientId ? parseInt(patientId) : null;
+        if (receiptUrl !== undefined) data.receiptUrl = receiptUrl;
+        if (nfeUrl !== undefined) data.nfeUrl = nfeUrl;
+
+        const transaction = await prisma.financeTransaction.update({
+            where: { id: parseInt(req.params.id) },
+            data
+        });
+        res.json(transaction);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         await prisma.financeTransaction.delete({
             where: { id: parseInt(req.params.id) }
@@ -942,7 +978,7 @@ app.post('/finance/nfe', authenticateToken, authorizeRole(['admin', 'manager']),
     try {
         // In a real scenario, this would call a provider like FocusNFe or eNotas
         // For now, we simulate a successful issuance and update the transaction
-        const { transactionIds } = req.body;
+        const { transactionIds, nfeUrl } = req.body;
 
         if (!transactionIds || !Array.isArray(transactionIds)) {
             return res.status(400).json({ error: "Invalid transaction IDs" });
@@ -950,10 +986,10 @@ app.post('/finance/nfe', authenticateToken, authorizeRole(['admin', 'manager']),
 
         const updated = await prisma.financeTransaction.updateMany({
             where: { id: { in: transactionIds } },
-            data: { nfeUrl: "https://venda-api.exemplo.com/nfe/stub-signed.pdf" }
+            data: { nfeUrl: nfeUrl || "" } // If no URL provided, just mark as tracked (empty string)
         });
 
-        res.json({ message: `${updated.count} NF-e(s) emitidas com sucesso!`, status: "success" });
+        res.json({ message: `${updated.count} NF-e(s) marcadas como processadas!`, status: "success" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1085,10 +1121,25 @@ app.post('/analytics', async (req, res) => {
         let geoInfo = {};
         try {
             const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '127.0.0.1';
-            if (cleanIp !== '127.0.0.1' && cleanIp !== '::1' && !cleanIp.startsWith('192.168.')) {
-                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,district,lat,lon`);
+            const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+
+            // BOT/SERVER FILTER: Ignore common cloud provider locations or bot strings
+            const isBot = userAgent.includes('bot') || userAgent.includes('crawler') || userAgent.includes('spider');
+
+            if (cleanIp !== '127.0.0.1' && cleanIp !== '::1' && !cleanIp.startsWith('192.168.') && !isBot) {
+                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,district,lat,lon,as`);
                 const geoData = await geoRes.json();
-                if (geoData.status === 'success') {
+
+                // Advanced Filter: Ignore data centers (Amazon, Google, Hetzner, etc)
+                const isDataCenter = geoData.as && (
+                    geoData.as.toLowerCase().includes('amazon') ||
+                    geoData.as.toLowerCase().includes('google') ||
+                    geoData.as.toLowerCase().includes('hetzner') ||
+                    geoData.as.toLowerCase().includes('microsoft') ||
+                    geoData.as.toLowerCase().includes('digitalocean')
+                );
+
+                if (geoData.status === 'success' && !isDataCenter) {
                     location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
                     geoInfo = {
                         city: geoData.city,
@@ -1097,7 +1148,11 @@ app.post('/analytics', async (req, res) => {
                         latitude: geoData.lat,
                         longitude: geoData.lon
                     };
+                } else if (isDataCenter) {
+                    return res.status(200).json({ status: 'ignored' }); // Ignore bot/server hits
                 }
+            } else if (isBot) {
+                return res.status(200).json({ status: 'ignored' });
             }
         } catch (geoErr) {
             console.error("Geo lookup failed:", geoErr);
