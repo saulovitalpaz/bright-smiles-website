@@ -41,9 +41,20 @@ const Stories = () => {
     // View Tracking
     useEffect(() => {
         if (selectedStoryIndex !== null && stories[selectedStoryIndex]) {
-            const id = stories[selectedStoryIndex].id;
-            // Fire and forget view increment
-            fetch(`${API_URL}/stories/${id}/view`, { method: 'POST' }).catch(console.error);
+            const story = stories[selectedStoryIndex];
+            // 1. Fire and forget legacy view increment
+            fetch(`${API_URL}/stories/${story.id}/view`, { method: 'POST' }).catch(() => { });
+
+            // 2. Log to unified Analytics system
+            fetch(`${API_URL}/analytics`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path: `/story/${story.id}`,
+                    type: 'story_view',
+                    source: 'Direto' // PageTracker handles UTMs on entry, here we mark as direct interaction
+                })
+            }).catch(() => { });
         }
     }, [selectedStoryIndex]);
 
@@ -149,7 +160,7 @@ const Stories = () => {
                         </p>
                     </div>
                 </div>
-                
+
                 {/* Stories Row */}
                 <div className="flex items-center gap-3 sm:gap-6 overflow-x-auto no-scrollbar py-2">
                     {stories.map((story, index) => (

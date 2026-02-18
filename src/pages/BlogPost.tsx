@@ -20,10 +20,20 @@ const BlogPost = () => {
                 .then(data => {
                     setPost(data);
                     setIsLoading(false);
-                    // Increment views
+                    // 1. Fire and forget legacy view increment
                     if (data.id) {
                         fetch(`${API_URL}/posts/${data.id}/view`, { method: 'POST' }).catch(() => { });
                     }
+                    // 2. Log to unified Analytics system
+                    fetch(`${API_URL}/analytics`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            path: `/blog/${slug}`,
+                            type: 'blog_view',
+                            source: 'Direto'
+                        })
+                    }).catch(() => { });
                 })
                 .catch(err => {
                     console.error(err);
