@@ -19,6 +19,8 @@ import axios from "axios";
 const AdminAnalytics = () => {
     const [stats, setStats] = useState({
         visits: 0,
+        uniqueVisitors: 0,
+        conversionRate: "0",
         posts: 0,
         comments: 0,
         leads: 0,
@@ -31,46 +33,35 @@ const AdminAnalytics = () => {
     useEffect(() => {
         const loadStats = async () => {
             try {
-                const [dashStats, postsRes, leadsRes] = await Promise.all([
+                const [dashStats, postsRes, analyticsRes] = await Promise.all([
                     axios.get(`${API_URL}/dashboard/stats`),
                     axios.get(`${API_URL}/posts`),
-                    axios.get(`${API_URL}/leads`)
+                    axios.get(`${API_URL}/analytics/stats`)
                 ]);
 
                 const posts = postsRes.data;
-                const leads = leadsRes.data;
-                const totalPostViews = posts.reduce((acc: number, p: any) => acc + (p.views || 0), 0);
+                const analytics = analyticsRes.data;
                 const topPosts = posts.sort((a: any, b: any) => (b.views || 0) - (a.views || 0)).slice(0, 5);
 
-                // Calculate Sources from Leads
-                const sourceCounts: any = {};
-                leads.forEach((l: any) => {
-                    const s = l.source || "Desconhecido";
-                    sourceCounts[s] = (sourceCounts[s] || 0) + 1;
-                });
-                const sources = Object.entries(sourceCounts).map(([name, count]: [string, any]) => ({
+                const sources = Object.entries(analytics.sources).map(([name, count]: [string, any]) => ({
                     name,
-                    count,
-                    percentage: Math.round((count / leads.length) * 100)
-                })).sort((a, b) => b.count - a.count);
+                    count: count as number,
+                    percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
+                })).sort((a, b) => b.count - a.count).slice(0, 6);
 
-                // Calculate Locations from Leads
-                const locCounts: any = {};
-                leads.forEach((l: any) => {
-                    const loc = l.location || "Presencial/Direto";
-                    locCounts[loc] = (locCounts[loc] || 0) + 1;
-                });
-                const locations = Object.entries(locCounts).map(([name, count]: [string, any]) => ({
+                const locations = Object.entries(analytics.locations).map(([name, count]: [string, any]) => ({
                     name,
-                    count,
-                    percentage: Math.round((count / leads.length) * 100)
-                })).sort((a, b) => b.count - a.count);
+                    count: count as number,
+                    percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
+                })).sort((a, b) => b.count - a.count).slice(0, 6);
 
                 setStats({
-                    visits: totalPostViews,
+                    visits: analytics.totalVisits,
+                    uniqueVisitors: analytics.uniqueVisitors,
+                    conversionRate: analytics.conversionRate,
                     posts: dashStats.data.posts,
                     comments: dashStats.data.testimonials,
-                    leads: leads.length,
+                    leads: analytics.leadsCount,
                     topPosts,
                     sources,
                     locations
@@ -86,10 +77,10 @@ const AdminAnalytics = () => {
     }, []);
 
     const cards = [
-        { label: "Solicitações (Leads)", value: stats.leads, icon: Calendar, color: "text-blue-600", bg: "bg-blue-100" },
-        { label: "Comentários", value: stats.comments, icon: MessageSquare, color: "text-green-600", bg: "bg-green-100" },
-        { label: "Posts Publicados", value: stats.posts, icon: TrendingUp, color: "text-orange-600", bg: "bg-orange-100" },
-        { label: "Visualizações Blog", value: stats.visits, icon: Eye, color: "text-indigo-600", bg: "bg-indigo-100" },
+        { label: "Visitas Totais", value: stats.visits, icon: Eye, color: "text-blue-600", bg: "bg-blue-100" },
+        { label: "Vistantes Únicos", value: stats.uniqueVisitors, icon: Users, color: "text-indigo-600", bg: "bg-indigo-100" },
+        { label: "Solicitações (Leads)", value: stats.leads, icon: Calendar, color: "text-orange-600", bg: "bg-orange-100" },
+        { label: "Taxa de Conversão", value: `${stats.conversionRate}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-100" },
     ];
 
     if (loading) return (
@@ -110,7 +101,7 @@ const AdminAnalytics = () => {
                                 </div>
                                 <span className="flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
                                     <ArrowUpRight size={14} className="mr-1" />
-                                    Ativo
+                                    Real
                                 </span>
                             </div>
                             <h3 className="text-slate-500 text-sm font-medium">{stat.label}</h3>
@@ -124,7 +115,7 @@ const AdminAnalytics = () => {
                 {/* TOP POSTS */}
                 <Card className="border-slate-200 shadow-sm lg:col-span-1">
                     <CardHeader>
-                        <CardTitle className="text-xl font-serif flex items-center gap-2">
+                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
                             <TrendingUp size={20} className="text-primary" /> Posts Mais Lidos
                         </CardTitle>
                     </CardHeader>
@@ -150,11 +141,11 @@ const AdminAnalytics = () => {
                     </CardContent>
                 </Card>
 
-                {/* ORIGEM (LEADS) */}
+                {/* ORIGEM DO TRÁFEGO */}
                 <Card className="border-slate-200 shadow-sm lg:col-span-1">
                     <CardHeader>
-                        <CardTitle className="text-xl font-serif flex items-center gap-2">
-                            <Target size={20} className="text-orange-500" /> Origem dos Leads
+                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
+                            <Globe size={20} className="text-blue-500" /> Origem do Tráfego
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -169,7 +160,7 @@ const AdminAnalytics = () => {
                                             </div>
                                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                                                 <div
-                                                    className="h-full bg-primary transition-all duration-1000"
+                                                    className="h-full bg-blue-500 transition-all duration-1000"
                                                     style={{ width: `${s.percentage}%` }}
                                                 ></div>
                                             </div>
@@ -177,17 +168,17 @@ const AdminAnalytics = () => {
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-slate-500 italic text-sm text-center py-8">Dados de origem insuficientes.</p>
+                                <p className="text-slate-500 italic text-sm text-center py-8">Dados de tráfego insuficientes.</p>
                             )}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* LOCALIZAÇÃO (LEADS) */}
+                {/* LOCALIZAÇÃO */}
                 <Card className="border-slate-200 shadow-sm lg:col-span-1">
                     <CardHeader>
-                        <CardTitle className="text-xl font-serif flex items-center gap-2">
-                            <MapPin size={20} className="text-emerald-500" /> Região/Localização
+                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
+                            <MapPin size={20} className="text-emerald-500" /> Principais Cidades
                         </CardTitle>
                     </CardHeader>
                     <CardContent>

@@ -38,7 +38,7 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'bright-smiles',
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'mp4', 'mov', 'webm'],
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'mp4', 'mov', 'webm', 'pdf'],
         resource_type: 'auto', // Important for video support
     },
 });
@@ -721,6 +721,29 @@ app.get('/leads', async (req, res) => {
     }
 });
 
+app.put('/leads/:id', async (req, res) => {
+    try {
+        const lead = await prisma.lead.update({
+            where: { id: parseInt(req.params.id) },
+            data: req.body
+        });
+        res.json(lead);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/leads/:id', async (req, res) => {
+    try {
+        await prisma.lead.delete({
+            where: { id: parseInt(req.params.id) }
+        });
+        res.json({ message: 'Lead deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Testimonials API
 app.post('/testimonials', async (req, res) => {
     try {
@@ -847,7 +870,7 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
 app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const transactions = await prisma.financeTransaction.findMany({
-            include: { patient: { select: { name: true } } },
+            include: { patient: { select: { name: true, cpf: true, address: true } } },
             orderBy: { date: 'desc' }
         });
         res.json(transactions);
@@ -1046,17 +1069,18 @@ app.delete('/patient-documents/:id', async (req, res) => {
 app.post('/analytics', async (req, res) => {
     try {
         const { source, path, type } = req.body;
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
 
         // Detailed Location Lookup
         let location = "Desconhecido";
         try {
-            const cleanIp = ip.split(',')[0].trim();
-            // Using ip-api.com (free for non-commercial use, 45 requests/min)
-            const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}`);
-            const geoData = await geoRes.json();
-            if (geoData.status === 'success') {
-                location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+            const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '127.0.0.1';
+            if (cleanIp !== '127.0.0.1' && cleanIp !== '::1' && !cleanIp.startsWith('192.168.')) {
+                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}`);
+                const geoData = await geoRes.json();
+                if (geoData.status === 'success') {
+                    location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+                }
             }
         } catch (geoErr) {
             console.error("Geo lookup failed:", geoErr);
@@ -1081,11 +1105,14 @@ app.post('/analytics', async (req, res) => {
 
 app.get('/analytics/stats', async (req, res) => {
     try {
-        const events = await prisma.analyticsEvent.findMany({
-            orderBy: { date: 'desc' }
-        });
+        const [events, leadsCount] = await Promise.all([
+            prisma.analyticsEvent.findMany({ orderBy: { date: 'desc' } }),
+            prisma.lead.count()
+        ]);
 
         const totalVisits = events.filter(e => e.type === 'pageview').length;
+        const uniqueIps = new Set(events.map(e => e.ip)).size;
+        const conversionRate = uniqueIps > 0 ? ((leadsCount / uniqueIps) * 100).toFixed(2) : 0;
 
         // Group by Source
         const sources = events.reduce((acc, e) => {
@@ -1103,9 +1130,12 @@ app.get('/analytics/stats', async (req, res) => {
 
         res.json({
             totalVisits,
+            uniqueVisitors: uniqueIps,
+            leadsCount,
+            conversionRate,
             sources,
             locations,
-            recentEvents: events.slice(0, 20)
+            recentEvents: events.slice(0, 50)
         });
     } catch (error) {
         res.status(500).json({ error: error.message });

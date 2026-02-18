@@ -29,7 +29,11 @@ interface Transaction {
     amount: number;
     date: string;
     category: string;
-    patient?: { name: string };
+    patient?: {
+        name: string;
+        cpf?: string;
+        address?: string;
+    };
     receiptUrl?: string;
     nfeUrl?: string;
 }
@@ -150,7 +154,7 @@ const AdminFinance = () => {
             return;
         }
 
-        const headers = ["Data", "Tipo", "Descrição", "Categoria", "Valor", "Paciente", "Recibo"];
+        const headers = ["Data", "Tipo", "Descrição", "Categoria", "Valor", "Paciente", "CPF", "Endereço"];
         const rows = monthlyData.map(t => [
             new Date(t.date).toLocaleDateString('pt-BR'),
             t.type === 'income' ? 'Receita' : 'Despesa',
@@ -158,7 +162,8 @@ const AdminFinance = () => {
             t.category,
             t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }).replace(/\./g, '').replace(',', '.'),
             t.patient?.name || "-",
-            t.receiptUrl || "-"
+            t.patient?.cpf || "-",
+            t.patient?.address || "-"
         ]);
 
         const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
@@ -183,6 +188,8 @@ const AdminFinance = () => {
         balance: 0
     };
     dailyStats.balance = dailyStats.income - dailyStats.expense;
+
+    const pendingNfeToday = dailyTransactions.filter(t => t.type === 'income' && !t.nfeUrl);
 
     return (
         <AdminLayout title="Gestão Financeira">
@@ -337,30 +344,31 @@ const AdminFinance = () => {
                             <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-widest text-xs">Faturamento & NF-e</h4>
                             <p className="text-[10px] text-slate-500 mb-4 px-4 leading-relaxed">Emissão de notas fiscais eletrônicas e sincronização contábil.</p>
 
-                            <div className="w-full space-y-2">
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="w-full font-black uppercase text-[10px] tracking-widest h-10 shadow-lg shadow-primary/20"
-                                    onClick={() => {
-                                        toast.promise(
-                                            fetchClient("/finance/nfe", {
-                                                method: "POST",
-                                                body: JSON.stringify({ transactionIds: transactions.map(t => t.id) })
-                                            }).then(res => {
-                                                if (!res.ok) throw new Error('Falha na emissão');
-                                                return res.json();
-                                            }),
-                                            {
-                                                loading: 'Processando NF-e...',
-                                                success: 'NF-e processadas com sucesso!',
-                                                error: 'Erro ao processar NF-e. Tente novamente.'
-                                            }
-                                        );
-                                    }}
-                                >
-                                    Emitir NF-e Pendentes
-                                </Button>
+                            <div className="w-full space-y-4">
+                                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                    <div className="flex justify-between items-center text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
+                                        <span>Pendentes Hoje</span>
+                                        <span className={pendingNfeToday.length > 0 ? "text-rose-600" : "text-emerald-600"}>
+                                            {pendingNfeToday.length}
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-500 ${pendingNfeToday.length > 0 ? "bg-rose-500" : "bg-emerald-500"}`}
+                                            style={{
+                                                width: dailyTransactions.filter(t => t.type === 'income').length > 0
+                                                    ? `${(pendingNfeToday.length / dailyTransactions.filter(t => t.type === 'income').length) * 100}%`
+                                                    : '0%'
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 mt-2 text-left italic">
+                                        {pendingNfeToday.length > 0
+                                            ? `Faltam emitir ${pendingNfeToday.length} nota(s) fiscal(is) de hoje.`
+                                            : "Todas as NF-e de hoje foram emitidas."}
+                                    </p>
+                                </div>
+
                                 <div className="w-full">
                                     <Button
                                         variant="outline"
