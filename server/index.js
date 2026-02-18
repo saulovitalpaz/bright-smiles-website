@@ -684,13 +684,21 @@ app.post('/leads', async (req, res) => {
 
         // Detailed Location Lookup
         let location = "Desconhecido";
+        let geoInfo = {};
         try {
             const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '';
-            if (cleanIp) {
-                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}`);
+            if (cleanIp && cleanIp !== '127.0.0.1' && cleanIp !== '::1') {
+                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,district,lat,lon`);
                 const geoData = await geoRes.json();
                 if (geoData.status === 'success') {
                     location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+                    geoInfo = {
+                        city: geoData.city,
+                        state: geoData.regionName,
+                        neighborhood: geoData.district || "Desconhecido",
+                        latitude: geoData.lat,
+                        longitude: geoData.lon
+                    };
                 }
             }
         } catch (geoErr) {
@@ -701,7 +709,8 @@ app.post('/leads', async (req, res) => {
             data: {
                 ...rest,
                 source: source || "Site",
-                location: location
+                location: location,
+                ...geoInfo
             }
         });
         res.json(lead);
@@ -1073,13 +1082,21 @@ app.post('/analytics', async (req, res) => {
 
         // Detailed Location Lookup
         let location = "Desconhecido";
+        let geoInfo = {};
         try {
             const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '127.0.0.1';
             if (cleanIp !== '127.0.0.1' && cleanIp !== '::1' && !cleanIp.startsWith('192.168.')) {
-                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}`);
+                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,district,lat,lon`);
                 const geoData = await geoRes.json();
                 if (geoData.status === 'success') {
                     location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+                    geoInfo = {
+                        city: geoData.city,
+                        state: geoData.regionName,
+                        neighborhood: geoData.district || "Desconhecido",
+                        latitude: geoData.lat,
+                        longitude: geoData.lon
+                    };
                 }
             }
         } catch (geoErr) {
@@ -1093,7 +1110,8 @@ app.post('/analytics', async (req, res) => {
                 source: source || 'Direto',
                 location: location,
                 ip: typeof ip === 'string' ? ip.substring(0, 45) : 'unknown',
-                userAgent: req.headers['user-agent']
+                userAgent: req.headers['user-agent'],
+                ...geoInfo
             }
         });
         res.json(event);
@@ -1121,12 +1139,25 @@ app.get('/analytics/stats', async (req, res) => {
             return acc;
         }, {});
 
-        // Group by Location
+        // Group by Location (City/State)
         const locations = events.reduce((acc, e) => {
             const loc = e.location || 'Brasil';
             acc[loc] = (acc[loc] || 0) + 1;
             return acc;
         }, {});
+
+        // Group by Neighborhood (Bairro) - NEW
+        const neighborhoods = events.reduce((acc, e) => {
+            if (e.neighborhood && e.neighborhood !== 'Desconhecido') {
+                acc[e.neighborhood] = (acc[e.neighborhood] || 0) + 1;
+            }
+            return acc;
+        }, {});
+
+        // Collect coordinates for heat map potentially
+        const coordinates = events
+            .filter(e => e.latitude && e.longitude)
+            .map(e => ({ lat: e.latitude, lng: e.longitude }));
 
         res.json({
             totalVisits,
@@ -1135,6 +1166,8 @@ app.get('/analytics/stats', async (req, res) => {
             conversionRate,
             sources,
             locations,
+            neighborhoods,
+            coordinates: coordinates.slice(0, 100), // Recent 100 coordinates
             recentEvents: events.slice(0, 50)
         });
     } catch (error) {

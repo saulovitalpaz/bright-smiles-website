@@ -126,17 +126,22 @@ model Prescription {
 }
 
 model Lead {
-  id        Int      @id @default(autoincrement())
-  name      String
-  phone     String
-  email     String?
-  treatment String?
-  message   String?
-  status    String   @default("new")
-  createdAt DateTime @default(now())
-  location  String?
-  source    String?
-  ageGroup  String?
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String
+  email        String?
+  treatment    String?
+  message      String?
+  status       String   @default("new")
+  createdAt    DateTime @default(now())
+  location     String?
+  source       String?
+  ageGroup     String?
+  city         String?
+  state        String?
+  neighborhood String?
+  latitude     Float?
+  longitude    Float?
 }
 
 model Testimonial {
@@ -185,14 +190,19 @@ model PatientDocument {
 }
 
 model AnalyticsEvent {
-  id        Int      @id @default(autoincrement())
-  type      String   @default("pageview")
-  path      String
-  ip        String?
-  userAgent String?
-  date      DateTime @default(now())
-  location  String?
-  source    String?
+  id           Int      @id @default(autoincrement())
+  type         String   @default("pageview")
+  path         String
+  ip           String?
+  userAgent    String?
+  date         DateTime @default(now())
+  location     String?
+  source       String?
+  city         String?
+  state        String?
+  neighborhood String?
+  latitude     Float?
+  longitude    Float?
 }
 
 model AuditLog {

@@ -26,7 +26,8 @@ const AdminAnalytics = () => {
         leads: 0,
         topPosts: [],
         sources: [] as { name: string, count: number, percentage: number }[],
-        locations: [] as { name: string, count: number, percentage: number }[]
+        locations: [] as { name: string, count: number, percentage: number }[],
+        neighborhoods: [] as { name: string, count: number, percentage: number }[]
     });
     const [loading, setLoading] = useState(true);
 
@@ -55,6 +56,12 @@ const AdminAnalytics = () => {
                     percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
                 })).sort((a, b) => b.count - a.count).slice(0, 6);
 
+                const neighborhoods = Object.entries(analytics.neighborhoods || {}).map(([name, count]: [string, any]) => ({
+                    name,
+                    count: count as number,
+                    percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
+                })).sort((a, b) => b.count - a.count).slice(0, 6);
+
                 setStats({
                     visits: analytics.totalVisits,
                     uniqueVisitors: analytics.uniqueVisitors,
@@ -64,7 +71,8 @@ const AdminAnalytics = () => {
                     leads: analytics.leadsCount,
                     topPosts,
                     sources,
-                    locations
+                    locations,
+                    neighborhoods
                 });
 
             } catch (e) {
@@ -111,9 +119,9 @@ const AdminAnalytics = () => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 {/* TOP POSTS */}
-                <Card className="border-slate-200 shadow-sm lg:col-span-1">
+                <Card className="border-slate-200 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
                             <TrendingUp size={20} className="text-primary" /> Posts Mais Lidos
@@ -142,7 +150,7 @@ const AdminAnalytics = () => {
                 </Card>
 
                 {/* ORIGEM DO TRÁFEGO */}
-                <Card className="border-slate-200 shadow-sm lg:col-span-1">
+                <Card className="border-slate-200 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
                             <Globe size={20} className="text-blue-500" /> Origem do Tráfego
@@ -174,11 +182,11 @@ const AdminAnalytics = () => {
                     </CardContent>
                 </Card>
 
-                {/* LOCALIZAÇÃO */}
-                <Card className="border-slate-200 shadow-sm lg:col-span-1">
+                {/* LOCALIZAÇÃO (CIDADES) */}
+                <Card className="border-slate-200 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
-                            <MapPin size={20} className="text-emerald-500" /> Principais Cidades
+                            <Globe size={20} className="text-emerald-500" /> Cidades Principais
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -202,6 +210,40 @@ const AdminAnalytics = () => {
                                 ))
                             ) : (
                                 <p className="text-slate-500 italic text-sm text-center py-8">Aguardando dados geográficos.</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* ZONAS QUENTES (BAIRROS) */}
+                <Card className="border-slate-200 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
+                            <MapPin size={20} className="text-orange-500" /> Zonas Quentes (Bairros)
+                        </CardTitle>
+                        <CardDescription>Dados silenciosos via IP sem permissão GPS</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-6">
+                            {stats.neighborhoods.length > 0 ? (
+                                stats.neighborhoods.map((n, i) => (
+                                    <div key={n.name} className="flex items-center justify-between group">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-sm font-medium text-slate-700">{n.name}</span>
+                                                <span className="text-sm font-bold text-slate-900">{n.percentage}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-orange-500 transition-all duration-1000"
+                                                    style={{ width: `${n.percentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-slate-500 italic text-sm text-center py-8">Capturando dados de bairros...</p>
                             )}
                         </div>
                     </CardContent>
