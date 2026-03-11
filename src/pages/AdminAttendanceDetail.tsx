@@ -31,6 +31,8 @@ interface AppointmentData {
     returnDate: string;
     photos: string[];
     appointmentType: string;
+    price: string;
+    paymentStatus: string;
     dentalNotes: Record<string, ToothData>;
     facialNotes: Record<string, FaceRegionData>;
 }
@@ -50,6 +52,8 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     returnDate: "",
     photos: [],
     appointmentType: "odontologia",
+    price: "",
+    paymentStatus: "paid",
     dentalNotes: {},
     facialNotes: {}
 };
@@ -121,6 +125,8 @@ const AdminAttendanceDetail = () => {
                     returnDate: returnDateStr,
                     photos: fetched.photos || [],
                     appointmentType: fetched.appointmentType || "odontologia",
+                    price: fetched.price !== undefined ? fetched.price.toString() : "",
+                    paymentStatus: fetched.paymentStatus || "paid",
                     dentalNotes: fetched.dentalNotes || {},
                     facialNotes: fetched.facialNotes || {},
                     weight: fetched.weight || "",
@@ -418,6 +424,49 @@ const AdminAttendanceDetail = () => {
                                     disabled={readOnly}
                                 />
                             </div>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card className="border-slate-200 shadow-sm lg:col-span-2">
+                        <CardContent className="p-6 space-y-4">
+                            <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                <CreditCard size={16} /> Faturamento Automático
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-600">Valor Cobrado (R$)</Label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={data.price}
+                                        onChange={(e) => updateField('price', e.target.value)}
+                                        placeholder="0.00"
+                                        className="h-10 text-lg font-bold text-emerald-700 bg-emerald-50 border-emerald-100 placeholder:text-emerald-300"
+                                        disabled={readOnly}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-600">Status no Caixa</Label>
+                                    <Select 
+                                        value={data.paymentStatus} 
+                                        onValueChange={(val) => updateField('paymentStatus', val)}
+                                        disabled={readOnly}
+                                    >
+                                        <SelectTrigger className="h-10 font-bold bg-slate-50 border-slate-100">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="paid" className="text-emerald-600 font-bold">Recebido (Cai no Caixa)</SelectItem>
+                                            <SelectItem value="pending" className="text-orange-600 font-bold">A Receber (Recepção Cobra)</SelectItem>
+                                            <SelectItem value="courtesy">Cortesia / Retorno (R$ 0)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-slate-500 italic mt-2">
+                                * Se preenchido acima de R$ 0,00, finalizar este atendimento gerará automaticamente uma transação no seu módulo Financeiro com os dados deste paciente.
+                            </p>
                         </CardContent>
                     </Card>
                 </div>

@@ -19,12 +19,12 @@ interface OdontogramProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-    'Saudável': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    'Tratar': 'bg-red-100 text-red-700 border-red-200',
-    'Tratado': 'bg-blue-100 text-blue-700 border-blue-200',
-    'Ausente': 'bg-slate-200 text-slate-500 border-slate-300',
-    'Implante': 'bg-purple-100 text-purple-700 border-purple-200',
-    'Ponte': 'bg-orange-100 text-orange-700 border-orange-200',
+    'Saudável': 'bg-gradient-to-b from-white to-slate-200 text-slate-700 border-slate-300 shadow-[inset_0_-4px_6px_rgba(0,0,0,0.1),inset_0_4px_4px_rgba(255,255,255,0.9),0_4px_5px_rgba(0,0,0,0.05)]',
+    'Tratar': 'bg-gradient-to-b from-red-100 to-red-300 text-red-900 border-red-400 shadow-[inset_0_-4px_6px_rgba(150,0,0,0.3),inset_0_4px_4px_rgba(255,255,255,0.8),0_4px_5px_rgba(0,0,0,0.1)]',
+    'Tratado': 'bg-gradient-to-b from-blue-100 to-blue-300 text-blue-900 border-blue-400 shadow-[inset_0_-4px_6px_rgba(0,0,150,0.3),inset_0_4px_4px_rgba(255,255,255,0.8),0_4px_5px_rgba(0,0,0,0.1)]',
+    'Ausente': 'bg-gradient-to-b from-slate-200 to-slate-300 text-slate-500 border-slate-400 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.5)] opacity-60',
+    'Implante': 'bg-gradient-to-b from-purple-100 to-purple-300 text-purple-900 border-purple-400 shadow-[inset_0_-4px_6px_rgba(100,0,150,0.3),inset_0_4px_4px_rgba(255,255,255,0.8),0_4px_5px_rgba(0,0,0,0.1)]',
+    'Ponte': 'bg-gradient-to-b from-orange-100 to-orange-300 text-orange-900 border-orange-400 shadow-[inset_0_-4px_6px_rgba(150,50,0,0.3),inset_0_4px_4px_rgba(255,255,255,0.8),0_4px_5px_rgba(0,0,0,0.1)]',
 };
 
 const TEETH_UPPER = [
@@ -52,7 +52,8 @@ const TeethRow = ({
                     <Popover key={tooth}>
                         <PopoverTrigger asChild>
                             <button
-                                className={`relative w-8 h-10 md:w-10 md:h-12 border rounded-md flex items-center justify-center font-bold text-xs md:text-sm transition-all shadow-sm ${colorClass} ${!readOnly && 'hover:ring-2 ring-primary/50'}`}
+                                className={`relative w-9 h-12 md:w-11 md:h-14 border-x border-b-2 rounded-lg flex items-center justify-center font-bold text-xs md:text-sm transition-all shadow-md ${colorClass} ${!readOnly && 'hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:border-b-0 active:shadow-sm'}`}
+                                style={{ textShadow: "0 1px 1px rgba(255,255,255,0.5)" }}
                                 disabled={readOnly}
                             >
                                 {tooth}

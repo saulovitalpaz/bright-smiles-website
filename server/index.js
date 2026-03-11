@@ -276,12 +276,32 @@ app.post('/appointments', authenticateToken, async (req, res) => {
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
     try {
+        const payload = { ...result.data };
+        if (payload.price) {
+            payload.price = parseFloat(payload.price);
+        }
+
         const appointment = await prisma.appointment.create({
-            data: result.data
+            data: payload
         });
 
         // Trigger generic reminder check or queue specific (optional)
         // await notificationQueue.add('appointmentReminder', { appointmentId: appointment.id }, { delay: ... });
+
+        // Auto-Billing Finance Integration
+        if (payload.price && payload.price > 0) {
+            const statusLabel = payload.paymentStatus === 'pending' ? '[A RECEBER] ' : '';
+            await prisma.financeTransaction.create({
+                data: {
+                    type: 'income',
+                    amount: payload.price,
+                    category: 'Consulta/Procedimento',
+                    description: `${statusLabel}Atendimento: ${payload.procedure} - ${payload.patientName}`,
+                    date: payload.date ? new Date(payload.date) : new Date(),
+                    patientId: payload.patientId
+                }
+            });
+        }
 
         res.json(appointment);
     } catch (error) {
@@ -297,6 +317,9 @@ app.put('/appointments/:id', async (req, res) => {
         // Handle returnDate if sent as string
         if (data.returnDate) {
             data.returnDate = new Date(data.returnDate);
+        }
+        if (data.price !== undefined && data.price !== null) {
+            data.price = data.price === "" ? null : parseFloat(data.price);
         }
 
         const appointment = await prisma.appointment.update({

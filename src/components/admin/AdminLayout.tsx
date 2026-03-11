@@ -16,7 +16,8 @@ import {
     Menu,
     FileSignature,
     Sparkles,
-    Settings
+    Settings,
+    Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -83,6 +84,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+        { label: "Equipe", href: "/admin/users", icon: Users, adminOnly: true },
         { label: "Configurações", href: "/admin/settings", icon: Settings, adminOnly: true },
     ];
 

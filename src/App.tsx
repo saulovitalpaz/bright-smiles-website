@@ -25,6 +25,7 @@ import AdminDigitalGuide from "./pages/AdminDigitalGuide";
 import AdminDocuments from "./pages/AdminDocuments";
 import AdminSettings from "./pages/AdminSettings";
 import AdminPersonalFinance from "./pages/AdminPersonalFinance";
+import AdminUsers from "./pages/AdminUsers";
 import PageTracker from "./components/PageTracker";
 
 import { AuthProvider, ProtectedRoute, RoleProtectedRoute } from "./hooks/useAuth";
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
             <Route path="/admin/digital-guide" element={<RoleProtectedRoute><AdminDigitalGuide /></RoleProtectedRoute>} />
             <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />
+            <Route path="/admin/users" element={<RoleProtectedRoute><AdminUsers /></RoleProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -55,6 +55,8 @@ model Appointment {
   photos        String[]  @default([])
   dentalNotes   Json?
   facialNotes   Json?
+  price         Float?
+  paymentStatus String?   @default("paid")
   patient       Patient?  @relation(fields: [patientId], references: [id])
 }
 

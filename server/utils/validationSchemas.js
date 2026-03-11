@@ -24,6 +24,8 @@ const appointmentSchema = z.object({
     photos: z.array(z.string()).optional(),
     dentalNotes: z.any().optional().nullable(),
     facialNotes: z.any().optional().nullable(),
+    price: z.string().or(z.number()).optional().nullable(),
+    paymentStatus: z.string().optional().nullable()
 });
 
 const loginSchema = z.object({
