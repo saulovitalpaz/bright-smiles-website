@@ -63,11 +63,36 @@ const getFaceLabels = (toothNumber: number) => {
     };
 };
 
-const ToothSVG = ({ data, onClick, isLarge = false }: { data: ToothData, onClick?: (face: string) => void, isLarge?: boolean }) => {
+// Anatomical SVG Paths for different tooth types (Occlusal View)
+const TOOTH_PATHS = {
+    MOLAR: {
+        top: "M15,10 C30,5 70,5 85,10 L75,30 C65,25 35,25 25,30 Z",
+        bottom: "M25,70 C35,75 65,75 75,70 L85,90 C70,95 30,95 15,90 Z",
+        left: "M10,15 C5,30 5,70 10,85 L30,75 C25,65 25,35 30,25 Z",
+        right: "M85,30 C90,35 90,65 85,75 L70,85 C75,70 75,30 70,25 Z",
+        center: "M25,30 C35,25 65,25 75,30 C80,40 80,60 75,70 C65,75 35,75 25,70 C20,60 20,40 25,30 Z"
+    },
+    INCISOR: {
+        top: "M20,10 C40,5 60,5 80,10 L75,35 C60,30 40,30 25,35 Z",
+        bottom: "M25,65 C40,70 60,70 75,65 L80,90 C60,95 40,95 20,90 Z",
+        left: "M20,10 C15,30 15,70 20,90 L40,75 C35,60 35,40 40,25 Z",
+        right: "M80,10 C85,30 85,70 80,90 L60,75 C65,60 65,40 60,25 Z",
+        center: "M40,25 C50,20 60,20 60,25 C65,40 65,60 60,75 C50,80 40,80 40,75 C35,60 35,40 40,25 Z"
+    }
+};
+
+const ToothSVG = ({ toothNumber, data, onClick, isLarge = false }: { toothNumber: number, data: ToothData, onClick?: (face: string) => void, isLarge?: boolean }) => {
     const generalStatus = data.status || 'Saudável';
     const hasFaces = data.faces && Object.keys(data.faces).length > 0;
     
-    // If entire tooth is missing/implant, we might want to color the whole thing
+    // Determine tooth type for paths
+    const isMolarOrPremolar = (toothNumber >= 14 && toothNumber <= 18) || 
+                              (toothNumber >= 24 && toothNumber <= 28) || 
+                              (toothNumber >= 34 && toothNumber <= 38) || 
+                              (toothNumber >= 44 && toothNumber <= 48);
+    
+    const paths = isMolarOrPremolar ? TOOTH_PATHS.MOLAR : TOOTH_PATHS.INCISOR;
+    
     const overrideAll = generalStatus === 'Ausente' || generalStatus === 'Implante' || generalStatus === 'Ponte';
     
     const getFaceColor = (faceKey: string) => {
@@ -83,21 +108,48 @@ const ToothSVG = ({ data, onClick, isLarge = false }: { data: ToothData, onClick
         if (onClick) onClick(face);
     };
 
-    const strokeClass = "stroke-slate-300 transition-colors duration-200 hover:brightness-95 cursor-pointer";
-    const strokeWidth = isLarge ? "2" : "4";
+    const strokeClass = "stroke-slate-200 transition-all duration-300 hover:brightness-95 cursor-pointer";
+    const strokeWidth = isLarge ? "1.5" : "2";
 
     return (
-        <svg viewBox="0 0 100 100" className={`${isLarge ? 'w-48 h-48 drop-shadow-xl' : 'w-7 h-7 md:w-8 md:h-8 drop-shadow-sm pointer-events-none'}`}>
-            {/* Top */}
-            <polygon points="0,0 100,0 75,25 25,25" className={`${getFaceColor('top')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'top')} />
-            {/* Bottom */}
-            <polygon points="25,75 75,75 100,100 0,100" className={`${getFaceColor('bottom')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'bottom')} />
-            {/* Left */}
-            <polygon points="0,0 25,25 25,75 0,100" className={`${getFaceColor('left')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'left')} />
-            {/* Right */}
-            <polygon points="100,0 75,25 75,75 100,100" className={`${getFaceColor('right')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'right')} />
-            {/* Center */}
-            <polygon points="25,25 75,25 75,75 25,75" className={`${getFaceColor('center')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'center')} />
+        <svg viewBox="0 0 100 100" className={`${isLarge ? 'w-56 h-56 drop-shadow-2xl' : 'w-8 h-8 md:w-9 md:h-9 drop-shadow-sm pointer-events-none'}`}>
+            <defs>
+                <filter id="inner-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur" />
+                    <feOffset dx="1" dy="1" />
+                    <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadow" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.1 0" />
+                    <feBlend mode="multiply" in="shadow" in2="SourceGraphic" />
+                </filter>
+                <linearGradient id="tooth-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style={{ stopColor: '#fff', stopOpacity: 1 }} />
+                    <stop offset="100%" style={{ stopColor: '#f1f5f9', stopOpacity: 1 }} />
+                </linearGradient>
+            </defs>
+
+            {/* Faces */}
+            {Object.entries(paths).map(([faceKey, path]) => (
+                <path
+                    key={faceKey}
+                    d={path}
+                    className={`${getFaceColor(faceKey)} ${strokeClass} ${!isLarge && 'pointer-events-none'}`}
+                    strokeWidth={strokeWidth}
+                    filter={isLarge ? "url(#inner-shadow)" : ""}
+                    onClick={(e) => isLarge && handleFaceClick(e, faceKey)}
+                    style={{
+                        transition: 'fill 0.4s ease-out, stroke 0.4s ease-out',
+                        fill: getFaceColor(faceKey) === 'fill-white' ? (isLarge ? 'url(#tooth-grad)' : '#fff') : undefined
+                    }}
+                />
+            ))}
+
+            {/* Add anatomical "pits" for molars if large */}
+            {isLarge && isMolarOrPremolar && (
+                <g className="pointer-events-none opacity-20">
+                    <path d="M40,40 Q50,55 60,40" fill="none" stroke="#64748b" strokeWidth="1" />
+                    <path d="M40,60 Q50,45 60,60" fill="none" stroke="#64748b" strokeWidth="1" />
+                </g>
+            )}
         </svg>
     );
 };
@@ -121,7 +173,7 @@ const TeethRow = ({
                             onClick={() => !readOnly && onToothClick(tooth)}
                             disabled={readOnly}
                         >
-                            <ToothSVG data={toothData} />
+                            <ToothSVG toothNumber={tooth} data={toothData} />
                             
                             {hasNotes && (
                                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border border-white" />
@@ -272,6 +324,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
                             {/* Interactive Exploded SVG */}
                             <div className="relative mb-6">
                                 <ToothSVG 
+                                    toothNumber={selectedTooth}
                                     data={data[selectedTooth.toString()] || { status: 'Saudável', notes: '' }} 
                                     isLarge 
                                     onClick={(face) => setActiveFace(face)} 
