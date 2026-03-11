@@ -87,17 +87,17 @@ const ToothSVG = ({ data, onClick, isLarge = false }: { data: ToothData, onClick
     const strokeWidth = isLarge ? "2" : "4";
 
     return (
-        <svg viewBox="0 0 100 100" className={`${isLarge ? 'w-48 h-48 drop-shadow-xl' : 'w-7 h-7 md:w-8 md:h-8 drop-shadow-sm'}`}>
+        <svg viewBox="0 0 100 100" className={`${isLarge ? 'w-48 h-48 drop-shadow-xl' : 'w-7 h-7 md:w-8 md:h-8 drop-shadow-sm pointer-events-none'}`}>
             {/* Top */}
-            <polygon points="0,0 100,0 75,25 25,25" className={`${getFaceColor('top')} ${strokeClass}`} strokeWidth={strokeWidth} onClick={(e) => handleFaceClick(e, 'top')} />
+            <polygon points="0,0 100,0 75,25 25,25" className={`${getFaceColor('top')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'top')} />
             {/* Bottom */}
-            <polygon points="25,75 75,75 100,100 0,100" className={`${getFaceColor('bottom')} ${strokeClass}`} strokeWidth={strokeWidth} onClick={(e) => handleFaceClick(e, 'bottom')} />
+            <polygon points="25,75 75,75 100,100 0,100" className={`${getFaceColor('bottom')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'bottom')} />
             {/* Left */}
-            <polygon points="0,0 25,25 25,75 0,100" className={`${getFaceColor('left')} ${strokeClass}`} strokeWidth={strokeWidth} onClick={(e) => handleFaceClick(e, 'left')} />
+            <polygon points="0,0 25,25 25,75 0,100" className={`${getFaceColor('left')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'left')} />
             {/* Right */}
-            <polygon points="100,0 75,25 75,75 100,100" className={`${getFaceColor('right')} ${strokeClass}`} strokeWidth={strokeWidth} onClick={(e) => handleFaceClick(e, 'right')} />
+            <polygon points="100,0 75,25 75,75 100,100" className={`${getFaceColor('right')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'right')} />
             {/* Center */}
-            <polygon points="25,25 75,25 75,75 25,75" className={`${getFaceColor('center')} ${strokeClass}`} strokeWidth={strokeWidth} onClick={(e) => handleFaceClick(e, 'center')} />
+            <polygon points="25,25 75,25 75,75 25,75" className={`${getFaceColor('center')} ${strokeClass} ${!isLarge && 'pointer-events-none'}`} strokeWidth={strokeWidth} onClick={(e) => isLarge && handleFaceClick(e, 'center')} />
         </svg>
     );
 };
