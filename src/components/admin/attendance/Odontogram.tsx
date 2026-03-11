@@ -81,115 +81,29 @@ const SvgDefs = () => (
 // For LOWER teeth → SVG flipped vertically
 const FRONTAL: Record<string, { crown: string; roots: string[]; neck?: string }> = {
   // ── MOLAR ───────────────────────────────────────────────────────────────
-  // Crown: trapezoidal with 2 buccal cusps visible from frontal view
   MOLAR: {
-    crown: [
-      // Base at gumline
-      'M 9,68',
-      // Left cheek going up to disto-buccal cusp
-      'C 9,58 11,54 13,52',
-      'C 14,50 16,48 18,47',
-      // Left cusp tip
-      'C 19,45 21,43 23,43',
-      'C 24,43 25,44 24,46',
-      // Saddle between cusps
-      'C 24,49 30,50 36,49',
-      'C 35,44 36,43 37,43',
-      // Right cusp tip
-      'C 39,43 41,45 42,47',
-      // Right cheek
-      'C 44,48 46,50 47,52',
-      'C 49,54 51,58 51,68 Z',
-    ].join(' '),
-    // 3 roots for upper molar (2 buccal + 1 palatal behind)
-    roots: [
-      // Mesio-buccal root (left)
-      'M 18,68 C 17,60 14,45 12,25 C 11,16 14,10 17,10 C 20,10 22,16 22,24 C 22,44 21,60 22,68 Z',
-      // Palatal root (middle, slightly taller)
-      'M 27,68 C 27,58 26,40 26,18 C 27,10 31,8 34,9 C 37,10 38,14 37,20 C 36,42 35,58 35,68 Z',
-      // Disto-buccal root (right)
-      'M 40,68 C 40,60 42,44 44,25 C 45,16 48,11 51,12 C 54,13 55,18 54,26 C 51,45 47,60 46,68 Z',
-    ],
+    crown: 'M 12,68 L 12,88 L 18,95 L 28,91 L 32,91 L 42,95 L 48,88 L 48,68 Z',
+    roots: ['M 15,68 L 15,48 L 19,31 L 24,48 L 28,48 L 30,28 L 32,48 L 36,48 L 41,31 L 45,48 L 45,68 Z'],
   },
-
   // ── PREMOLAR ───────────────────────────────────────────────────────────
-  // Crown: narrower than molar, 2 cusps (buccal + palatal/lingual)
   PREMOLAR: {
-    crown: [
-      'M 14,68',
-      'C 14,60 15,55 17,52',
-      'C 18,49 20,47 22,46',
-      // Buccal cusp tip
-      'C 23,44 25,42 27,42',
-      'C 29,42 31,44 32,46',
-      // Slight dip then lingual cusp
-      'C 34,47 36,49 37,52',
-      'C 39,55 40,60 40,68 Z',
-    ].join(' '),
-    // 2 roots for upper premolar (or 1 bifurcated — show 2)
-    roots: [
-      'M 19,68 C 18,58 16,42 15,24 C 15,15 18,11 21,11 C 24,11 25,15 25,23 C 25,41 24,58 24,68 Z',
-      'M 33,68 C 33,58 35,42 36,24 C 37,15 40,11 43,12 C 46,13 46,17 45,24 C 44,42 41,58 40,68 Z',
-    ],
+    crown: 'M 18,68 L 18,88 L 25,95 L 35,95 L 42,88 L 42,68 Z',
+    roots: ['M 22,68 L 25,33 L 30,53 L 35,33 L 38,68 Z'],
   },
-
   // ── CANINE ──────────────────────────────────────────────────────────────
-  // Crown: diamond/cusp shape — single pointed cusp
   CANINE: {
-    crown: [
-      'M 16,68',
-      'C 16,60 18,54 20,50',
-      'C 21,47 23,44 25,42',
-      // Single cusp tip
-      'C 27,40 29,39 30,39',
-      'C 31,39 33,40 35,42',
-      'C 37,44 39,47 40,50',
-      'C 42,54 44,60 44,68 Z',
-    ].join(' '),
-    roots: [
-      // Single long tapered root — longest root in the mouth
-      'M 22,68 C 21,56 20,40 21,22 C 22,13 26,8 30,8 C 34,8 38,13 39,22 C 40,40 39,56 38,68 Z',
-    ],
+    crown: 'M 18,68 L 18,83 L 30,98 L 42,83 L 42,68 Z',
+    roots: ['M 22,68 L 30,28 L 38,68 Z'],
   },
-
   // ── INCISOR ─────────────────────────────────────────────────────────────
-  // Crown: shovel/spatula shape — flat incisal edge
   INCISOR: {
-    crown: [
-      'M 15,68',
-      'C 15,60 17,55 19,52',
-      'C 20,50 22,48 25,47',
-      // Slight gentle incisal edge (nearly flat)
-      'C 27,46 28,45 30,45',
-      'C 32,45 33,46 35,47',
-      'C 38,48 40,50 41,52',
-      'C 43,55 45,60 45,68 Z',
-    ].join(' '),
-    roots: [
-      // Single root, rounder and shorter than canine
-      'M 21,68 C 20,58 19,42 20,26 C 21,16 25,12 30,12 C 35,12 39,16 40,26 C 41,42 40,58 39,68 Z',
-    ],
+    crown: 'M 20,68 L 20,93 L 40,93 L 40,68 Z',
+    roots: ['M 22,68 L 30,33 L 38,68 Z'],
   },
-
   // ── LOWER MOLAR variant (2 roots: mesial + distal) ───────────────────
   MOLAR_LOWER: {
-    crown: [
-      'M 8,68',
-      'C 8,58 10,54 12,52',
-      'C 13,50 15,48 17,47',
-      'C 19,45 21,43 23,43',
-      'C 24,43 25,44 24,46',
-      'C 24,49 30,50 36,49',
-      'C 35,44 36,43 37,43',
-      'C 39,43 41,45 43,47',
-      'C 45,48 47,50 48,52',
-      'C 50,54 52,58 52,68 Z',
-    ].join(' '),
-    // 2 roots: mesial (left, wider) + distal (right)
-    roots: [
-      'M 16,68 C 14,56 12,40 11,22 C 10,14 14,9 18,10 C 22,11 24,16 23,24 C 22,42 20,56 22,68 Z',
-      'M 38,68 C 38,56 40,40 41,22 C 42,14 46,10 50,11 C 54,12 56,17 54,24 C 53,42 49,56 48,68 Z',
-    ],
+    crown: 'M 12,68 L 12,88 L 18,95 L 28,91 L 32,91 L 42,95 L 48,88 L 48,68 Z',
+    roots: ['M 15,68 L 15,48 L 20,31 L 26,48 L 34,48 L 40,31 L 45,48 L 45,68 Z'],
   },
 };
 
@@ -197,39 +111,39 @@ const FRONTAL: Record<string, { crown: string; roots: string[]; neck?: string }>
 const IMPLANT_PATH = 'M 20,68 L 20,20 C 20,15 40,15 40,20 L 40,68 Z M 18,55 L 42,55 M 18,48 L 42,48 M 18,41 L 42,41 M 18,34 L 42,34 M 18,27 L 42,27';
 
 // ─── OCCLUSAL PATHS ────────────────────────────────────────────────────────
-// ViewBox: 0 0 100 100. 5 faces: top/bottom/left/right/center
+// ViewBox: 0 0 60 60. 5 faces: top/bottom/left/right/center
 const OCCLUSAL: Record<string, Record<string, string>> = {
   MOLAR: {
-    outer:  'M 15,15 C 30,5 70,5 85,15 C 95,30 95,70 85,85 C 70,95 30,95 15,85 C 5,70 5,30 15,15 Z',
-    top:    'M 15,15 C 30,5 70,5 85,15 L 72,30 C 60,22 40,22 28,30 Z',
-    bottom: 'M 28,70 C 40,78 60,78 72,70 L 85,85 C 70,95 30,95 15,85 Z',
-    left:   'M 15,15 C 5,30 5,70 15,85 L 28,70 C 22,60 22,40 28,30 Z',
-    right:  'M 85,15 C 95,30 95,70 85,85 L 72,70 C 78,60 78,40 72,30 Z',
-    center: 'M 28,30 C 40,22 60,22 72,30 C 78,40 78,60 72,70 C 60,78 40,78 28,70 C 22,60 22,40 28,30 Z',
+    outer: 'M 6,6 L 54,6 L 54,54 L 6,54 Z',
+    top: 'M 6,6 L 54,6 L 40,20 L 20,20 Z',
+    bottom: 'M 54,54 L 6,54 L 20,40 L 40,40 Z',
+    left: 'M 6,54 L 6,6 L 20,20 L 20,40 Z',
+    right: 'M 54,6 L 54,54 L 40,40 L 40,20 Z',
+    center: 'M 20,20 L 40,20 L 40,40 L 20,40 Z',
   },
   PREMOLAR: {
-    outer:  'M 22,15 C 38,6 62,6 78,15 C 90,28 90,72 78,85 C 62,94 38,94 22,85 C 10,72 10,28 22,15 Z',
-    top:    'M 22,15 C 38,6 62,6 78,15 L 66,32 C 55,24 45,24 34,32 Z',
-    bottom: 'M 34,68 C 45,76 55,76 66,68 L 78,85 C 62,94 38,94 22,85 Z',
-    left:   'M 22,15 C 10,28 10,72 22,85 L 34,68 C 26,60 26,40 34,32 Z',
-    right:  'M 78,15 C 90,28 90,72 78,85 L 66,68 C 74,60 74,40 66,32 Z',
-    center: 'M 34,32 C 45,24 55,24 66,32 C 74,40 74,60 66,68 C 55,76 45,76 34,68 C 26,60 26,40 34,32 Z',
+    outer: 'M 16,6 L 44,6 L 44,54 L 16,54 Z',
+    top: 'M 16,6 L 44,6 L 36,20 L 24,20 Z',
+    bottom: 'M 44,54 L 16,54 L 24,40 L 36,40 Z',
+    left: 'M 16,54 L 16,6 L 24,20 L 24,40 Z',
+    right: 'M 44,6 L 44,54 L 36,40 L 36,20 Z',
+    center: 'M 24,20 L 36,20 L 36,40 L 24,40 Z',
   },
   CANINE: {
-    outer:  'M 30,15 C 44,8 56,8 70,15 C 82,26 84,60 76,82 C 65,94 35,94 24,82 C 16,60 18,26 30,15 Z',
-    top:    'M 30,15 C 44,8 56,8 70,15 L 62,35 C 54,26 46,26 38,35 Z',
-    bottom: 'M 38,65 C 46,74 54,74 62,65 L 76,82 C 65,94 35,94 24,82 Z',
-    left:   'M 30,15 C 18,26 16,60 24,82 L 38,65 C 30,55 30,42 38,35 Z',
-    right:  'M 70,15 C 82,26 84,60 76,82 L 62,65 C 70,42 70,55 62,35 Z',
-    center: 'M 38,35 C 46,26 54,26 62,35 C 70,42 70,55 62,65 C 54,74 46,74 38,65 C 30,55 30,42 38,35 Z',
+    outer: 'M 30,4 L 54,16 L 54,48 L 30,56 L 6,48 L 6,16 Z',
+    top: 'M 6,16 L 30,4 L 54,16 L 42,26 L 30,18 L 18,26 Z',
+    bottom: 'M 54,48 L 30,56 L 6,48 L 18,36 L 30,44 L 42,36 Z',
+    left: 'M 6,48 L 6,16 L 18,26 L 18,36 Z',
+    right: 'M 54,16 L 54,48 L 42,36 L 42,26 Z',
+    center: 'M 30,18 L 42,26 L 42,36 L 30,44 L 18,36 L 18,26 Z',
   },
   INCISOR: {
-    outer:  'M 20,22 C 38,10 62,10 80,22 C 88,35 88,65 80,78 C 62,90 38,90 20,78 C 12,65 12,35 20,22 Z',
-    top:    'M 20,22 C 38,10 62,10 80,22 L 72,40 C 58,30 42,30 28,40 Z',
-    bottom: 'M 28,60 C 42,70 58,70 72,60 L 80,78 C 62,90 38,90 20,78 Z',
-    left:   'M 20,22 C 12,35 12,65 20,78 L 28,60 C 22,52 22,48 28,40 Z',
-    right:  'M 80,22 C 88,35 88,65 80,78 L 72,60 C 78,48 78,52 72,40 Z',
-    center: 'M 28,40 C 42,30 58,30 72,40 C 78,48 78,52 72,60 C 58,70 42,70 28,60 C 22,52 22,48 28,40 Z',
+    outer: 'M 6,16 L 54,16 L 54,44 L 6,44 Z',
+    top: 'M 6,16 L 54,16 L 40,24 L 20,24 Z',
+    bottom: 'M 54,44 L 6,44 L 20,36 L 40,36 Z',
+    left: 'M 6,44 L 6,16 L 20,24 L 20,36 Z',
+    right: 'M 54,16 L 54,44 L 40,36 L 40,24 Z',
+    center: 'M 20,24 L 40,24 L 40,36 L 20,36 Z',
   },
 };
 
@@ -257,16 +171,16 @@ const FrontalTooth = ({
           <line key={y} x1="22" y1={y} x2="38" y2={y} stroke="#64748b" strokeWidth="1" />
         ))}
         {/* Crown */}
-        <path d={paths.crown} fill={crownFill} stroke="#334155" strokeWidth="0.8" filter="url(#tooth-shadow)" />
+        <path d={paths.crown} fill={crownFill} stroke="#1e293b" strokeWidth="2.5" strokeLinejoin="round" filter="url(#tooth-shadow)" />
       </svg>
     );
   }
 
   if (status === 'Ausente') {
     return (
-      <svg viewBox="0 0 60 130" className={`${size} overflow-visible opacity-20`} onClick={onClick}>
-        <path d={paths.crown} fill="none" stroke="#64748b" strokeWidth="1" strokeDasharray="3,2" />
-        {paths.roots.map((r, i) => <path key={i} d={r} fill="none" stroke="#64748b" strokeWidth="0.8" strokeDasharray="3,2" />)}
+      <svg viewBox="0 0 60 130" className={`${size} overflow-visible opacity-25`} onClick={onClick}>
+        <path d={paths.crown} fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="4,4" strokeLinejoin="round" />
+        {paths.roots.map((r, i) => <path key={i} d={r} fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="4,4" strokeLinejoin="round" />)}
       </svg>
     );
   }
@@ -281,37 +195,28 @@ const FrontalTooth = ({
       onClick={onClick}
     >
       <SvgDefs />
-      <g transform={flipTransform}>
+      <g transform={flipTransform} className="origin-center">
         {/* Roots */}
         {paths.roots.map((r, i) => (
           <path
             key={i}
             d={r}
             fill="url(#grad-root)"
-            stroke="#78624a"
-            strokeWidth="0.6"
-            filter="url(#tooth-shadow)"
+            stroke="#1e293b"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
           />
         ))}
         {/* Neck / gumline separator — semi-transparent pink band */}
-        <rect x="5" y="64" width="50" height="7" rx="3" fill="#d06070" fillOpacity="0.25" />
+        <rect x="18" y="62" width="24" height="4" rx="2" fill="#d06070" fillOpacity="0.3" />
         {/* Crown */}
         <path
           d={paths.crown}
           fill={crownFill}
-          stroke="#8899aa"
-          strokeWidth="0.7"
+          stroke="#1e293b"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
           filter="url(#tooth-shadow)"
-        />
-        {/* Enamel highlight */}
-        <path
-          d={paths.crown}
-          fill="none"
-          stroke="white"
-          strokeWidth="1.2"
-          strokeOpacity="0.25"
-          strokeDasharray="0"
-          style={{ clipPath: 'inset(0 0 70% 0)' }}
         />
       </g>
     </svg>
@@ -339,8 +244,8 @@ const OcclusalTooth = ({
 
   if (status === 'Ausente') {
     return (
-      <svg viewBox="0 0 100 100" className={`${size} opacity-10`}>
-        <path d={paths.outer} fill="none" stroke="#64748b" strokeWidth="1.5" strokeDasharray="4,3" />
+      <svg viewBox="0 0 60 60" className={`${size} opacity-25`}>
+        <path d={paths.outer} fill="none" stroke="#64748b" strokeWidth="2.5" strokeDasharray="6,4" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -348,7 +253,7 @@ const OcclusalTooth = ({
   const faceOrder = ['left', 'right', 'top', 'bottom', 'center'] as const;
 
   return (
-    <svg viewBox="0 0 100 100" className={`${size} drop-shadow-md`}>
+    <svg viewBox="0 0 60 60" className={`${size} drop-shadow-md`}>
       <SvgDefs />
       {faceOrder.map(face => (
         <path
@@ -356,18 +261,12 @@ const OcclusalTooth = ({
           d={paths[face]}
           fill={getFill(face)}
           stroke="#0f172a"
-          strokeWidth={large ? "0.8" : "1.5"}
+          strokeWidth={large ? "1.5" : "2.5"}
+          strokeLinejoin="round"
           className="transition-all hover:brightness-125 cursor-pointer"
           onClick={(e) => { e.stopPropagation(); onClick?.(face); }}
         />
       ))}
-      {/* Fissure lines on molars & premolars for realism */}
-      {(type === 'MOLAR' || type === 'PREMOLAR') && (
-        <g stroke="#1e293b" strokeWidth="0.8" fill="none" opacity="0.4" className="pointer-events-none">
-          <line x1="50" y1="28" x2="50" y2="72" />
-          <line x1="28" y1="50" x2="72" y2="50" />
-        </g>
-      )}
     </svg>
   );
 };
