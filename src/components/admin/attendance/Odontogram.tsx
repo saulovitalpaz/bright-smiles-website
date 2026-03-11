@@ -115,39 +115,51 @@ const ToothSVG = ({ toothNumber, data, onClick, isLarge = false }: { toothNumber
         <svg viewBox="0 0 100 100" className={`${isLarge ? 'w-56 h-56 drop-shadow-2xl' : 'w-8 h-8 md:w-9 md:h-9 drop-shadow-sm pointer-events-none'}`}>
             <defs>
                 <filter id="inner-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur" />
-                    <feOffset dx="1" dy="1" />
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur" />
+                    <feOffset dx="1" dy="2" />
                     <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadow" />
-                    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.1 0" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.25 0" />
                     <feBlend mode="multiply" in="shadow" in2="SourceGraphic" />
                 </filter>
                 <linearGradient id="tooth-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#fff', stopOpacity: 1 }} />
-                    <stop offset="100%" style={{ stopColor: '#f1f5f9', stopOpacity: 1 }} />
+                    <stop offset="0%" style={{ stopColor: '#ffffff', stopOpacity: 1 }} />
+                    <stop offset="100%" style={{ stopColor: '#e2e8f0', stopOpacity: 1 }} />
                 </linearGradient>
+                <radialGradient id="tooth-center-grad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" style={{ stopColor: '#cbd5e1', stopOpacity: 1 }} />
+                    <stop offset="100%" style={{ stopColor: '#ffffff', stopOpacity: 1 }} />
+                </radialGradient>
             </defs>
 
             {/* Faces */}
-            {Object.entries(paths).map(([faceKey, path]) => (
-                <path
-                    key={faceKey}
-                    d={path}
-                    className={`${getFaceColor(faceKey)} ${strokeClass} ${!isLarge && 'pointer-events-none'}`}
-                    strokeWidth={strokeWidth}
-                    filter={isLarge ? "url(#inner-shadow)" : ""}
-                    onClick={(e) => isLarge && handleFaceClick(e, faceKey)}
-                    style={{
-                        transition: 'fill 0.4s ease-out, stroke 0.4s ease-out',
-                        fill: getFaceColor(faceKey) === 'fill-white' ? (isLarge ? 'url(#tooth-grad)' : '#fff') : undefined
-                    }}
-                />
-            ))}
+            {Object.entries(paths).map(([faceKey, path]) => {
+                let defaultFill = '#fff';
+                if (isLarge) {
+                    defaultFill = faceKey === 'center' ? 'url(#tooth-center-grad)' : 'url(#tooth-grad)';
+                }
+                
+                return (
+                    <path
+                        key={faceKey}
+                        d={path}
+                        className={`${getFaceColor(faceKey)} ${strokeClass} ${!isLarge && 'pointer-events-none'}`}
+                        strokeWidth={strokeWidth}
+                        filter={isLarge ? "url(#inner-shadow)" : ""}
+                        onClick={(e) => isLarge && handleFaceClick(e, faceKey)}
+                        style={{
+                            transition: 'fill 0.4s ease-out, stroke 0.4s ease-out',
+                            fill: getFaceColor(faceKey) === 'fill-white' ? defaultFill : undefined
+                        }}
+                    />
+                );
+            })}
 
             {/* Add anatomical "pits" for molars if large */}
             {isLarge && isMolarOrPremolar && (
-                <g className="pointer-events-none opacity-20">
-                    <path d="M40,40 Q50,55 60,40" fill="none" stroke="#64748b" strokeWidth="1" />
-                    <path d="M40,60 Q50,45 60,60" fill="none" stroke="#64748b" strokeWidth="1" />
+                <g className="pointer-events-none opacity-40">
+                    <path d="M40,40 Q50,55 60,40" fill="none" stroke="#475569" strokeWidth="1.5" filter="url(#inner-shadow)" />
+                    <path d="M40,60 Q50,45 60,60" fill="none" stroke="#475569" strokeWidth="1.5" filter="url(#inner-shadow)" />
+                    <circle cx="50" cy="50" r="1.5" fill="#475569" />
                 </g>
             )}
         </svg>
