@@ -22,6 +22,7 @@ const appointmentSchema = z.object({
     returnDate: z.string().or(z.date()).optional().nullable(),
     weight: z.string().optional().nullable(),
     photos: z.array(z.string()).optional(),
+    externalLinks: z.array(z.string()).optional(),
     dentalNotes: z.any().optional().nullable(),
     facialNotes: z.any().optional().nullable(),
     price: z.string().or(z.number()).optional().nullable(),

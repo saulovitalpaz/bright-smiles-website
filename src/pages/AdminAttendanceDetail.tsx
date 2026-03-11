@@ -30,6 +30,7 @@ interface AppointmentData {
     complications: string;
     returnDate: string;
     photos: string[];
+    externalLinks: string[];
     appointmentType: string;
     price: string;
     paymentStatus: string;
@@ -51,6 +52,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     complications: "",
     returnDate: "",
     photos: [],
+    externalLinks: [],
     appointmentType: "odontologia",
     price: "",
     paymentStatus: "paid",
@@ -124,6 +126,7 @@ const AdminAttendanceDetail = () => {
                     cpf: fetched.cpf || fetched.patient?.cpf || "",
                     returnDate: returnDateStr,
                     photos: fetched.photos || [],
+                    externalLinks: fetched.externalLinks || [],
                     appointmentType: fetched.appointmentType || "odontologia",
                     price: fetched.price !== undefined ? fetched.price.toString() : "",
                     paymentStatus: fetched.paymentStatus || "paid",
@@ -489,10 +492,12 @@ const AdminAttendanceDetail = () => {
                     />
                 )}
 
-                {/* Evolution Gallery */}
+                {/* Evolution Gallery & Links */}
                 <PhotoGallery
                     photos={data.photos}
+                    externalLinks={data.externalLinks}
                     onChange={(photos) => updateField('photos', photos)}
+                    onLinksChange={(links) => updateField('externalLinks', links)}
                     readOnly={readOnly}
                 />
 

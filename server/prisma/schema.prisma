@@ -53,6 +53,7 @@ model Appointment {
   returnDate    DateTime?
   weight        String?
   photos        String[]  @default([])
+  externalLinks String[]  @default([])
   dentalNotes   Json?
   facialNotes   Json?
   price         Float?
