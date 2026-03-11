@@ -2,11 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, ZoomIn, ZoomOut, Move, Activity, RotateCcw } from 'lucide-react';
-import dwv from 'dwv';
 
 interface DicomViewerModalProps {
     dicomUrl: string;
     onClose: () => void;
+}
+
+// Ensure TypeScript knows dwv exists on window
+declare global {
+    interface Window {
+        dwv: any;
+    }
 }
 
 const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }) => {
@@ -15,39 +21,79 @@ const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }
     const viewerRef = useRef<any>(null);
 
     useEffect(() => {
-        // Initialize DWV App
-        const app = new dwv.App();
-        viewerRef.current = app;
+        let isMounted = true;
+        let script: HTMLScriptElement | null = null;
 
-        app.init({
-            "containerDivId": "dwv",
-            "fitToWindow": true,
-            "tools": ["Scroll", "ZoomAndPan", "WindowLevel", "Draw"],
-            "isMobile": false
-        });
+        const initViewer = () => {
+            if (!isMounted || !window.dwv) return;
 
-        const handleLoadLoad = () => {
-             setIsLoading(false);
-             // Default tool
-             app.setTool('WindowLevel');
+            try {
+                // Initialize DWV App
+                const app = new window.dwv.App();
+                viewerRef.current = app;
+
+                app.init({
+                    "containerDivId": "dwv",
+                    "fitToWindow": true,
+                    "tools": ["Scroll", "ZoomAndPan", "WindowLevel", "Draw"],
+                    "isMobile": false
+                });
+
+                const handleLoadLoad = () => {
+                     if (isMounted) setIsLoading(false);
+                     app.setTool('WindowLevel');
+                };
+
+                const handleLoadError = (event: any) => {
+                     console.error("DICOM Load Error:", event);
+                     if (isMounted) {
+                        setError("Erro ao carregar arquivo DICOM. O link pode ser inválido ou protegido por CORS.");
+                        setIsLoading(false);
+                     }
+                };
+
+                app.addEventListener('load', handleLoadLoad);
+                app.addEventListener('error', handleLoadError);
+
+                // Load the given URL
+                app.loadURLs([dicomUrl]);
+            } catch (err) {
+                 console.error("Failed to init DWV", err);
+                 if(isMounted) {
+                    setError("Falha ao inicializar o motor 3D.");
+                    setIsLoading(false);
+                 }
+            }
         };
 
-        const handleLoadError = (event: any) => {
-             console.error("DICOM Load Error:", event);
-             setError("Erro ao carregar arquivo DICOM. O link pode ser inválido ou protegido por CORS.");
-             setIsLoading(false);
-        };
-
-        app.addEventListener('load', handleLoadLoad);
-        app.addEventListener('error', handleLoadError);
-
-        // Load the given URL
-        app.loadURLs([dicomUrl]);
+        // Load Script Dynamically to bypass Vite Rollup build errors
+        if (!window.dwv) {
+            script = document.createElement('script');
+            script.src = "https://unpkg.com/dwv@0.31.0/dist/dwv.min.js";
+            script.async = true;
+            script.onload = initViewer;
+            script.onerror = () => {
+                if (isMounted) {
+                    setError("Falha de rede: Não foi possível baixar o motor DICOM via CDN.");
+                    setIsLoading(false);
+                }
+            }
+            document.body.appendChild(script);
+        } else {
+            initViewer();
+        }
 
         return () => {
-             app.removeEventListener('load', handleLoadLoad);
-             app.removeEventListener('error', handleLoadError);
-             app.resetView();
+             isMounted = false;
+             if (viewerRef.current) {
+                 // Try graceful shutdown
+                 try {
+                     viewerRef.current.resetView();
+                 } catch (e) {}
+             }
+             if (script && document.body.contains(script)) {
+                 document.body.removeChild(script);
+             }
         };
     }, [dicomUrl]);
 
