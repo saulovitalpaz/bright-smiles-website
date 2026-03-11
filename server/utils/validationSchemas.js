@@ -10,11 +10,20 @@ const patientSchema = z.object({
 
 const appointmentSchema = z.object({
     patientName: z.string().min(1),
-    date: z.string().or(z.date()), // Accept string from JSON
+    date: z.string().or(z.date()),
     procedure: z.string().min(1),
     professional: z.string().min(1),
     notes: z.string().optional(),
-    // Add other fields as needed
+    cpf: z.string().optional().nullable(),
+    patientId: z.number().optional().nullable(),
+    appointmentType: z.string().optional(),
+    complications: z.string().optional().nullable(),
+    materials: z.string().optional().nullable(),
+    returnDate: z.string().or(z.date()).optional().nullable(),
+    weight: z.string().optional().nullable(),
+    photos: z.array(z.string()).optional(),
+    dentalNotes: z.any().optional().nullable(),
+    facialNotes: z.any().optional().nullable(),
 });
 
 const loginSchema = z.object({

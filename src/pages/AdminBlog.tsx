@@ -117,7 +117,8 @@ const AdminBlog = () => {
                 const fd = new FormData();
                 fd.append('file', file);
                 const res = await axios.post(`${API_URL}/upload`, fd, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    withCredentials: true
                 });
                 setFormData(prev => ({ ...prev, image: res.data.url }));
                 toast.success("Imagem carregada!");

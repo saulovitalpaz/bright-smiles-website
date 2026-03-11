@@ -158,7 +158,8 @@ const AdminDocuments = () => {
             // 1. Upload to Cloudinary
             const uploadRes = await fetch(`${API_URL}/upload`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                credentials: 'include'
             });
             const { url } = await uploadRes.json();
 

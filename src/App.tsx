@@ -16,6 +16,7 @@ import AdminLeads from "./pages/AdminLeads";
 import AdminComments from "./pages/AdminComments";
 import AdminTreatments from "./pages/AdminTreatments";
 import AdminAppointments from "./pages/AdminAppointments";
+import AdminAttendanceDetail from "./pages/AdminAttendanceDetail";
 import AdminStories from "./pages/AdminStories";
 import AdminFinance from "./pages/AdminFinance";
 import AdminAnalytics from "./pages/AdminAnalytics";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/admin/solicitacoes" element={<RoleProtectedRoute><AdminLeads /></RoleProtectedRoute>} />
             <Route path="/admin/tratamentos" element={<RoleProtectedRoute><AdminTreatments /></RoleProtectedRoute>} />
             <Route path="/admin/consultas" element={<RoleProtectedRoute><AdminAppointments /></RoleProtectedRoute>} />
+            <Route path="/admin/consultas/:id" element={<RoleProtectedRoute><AdminAttendanceDetail /></RoleProtectedRoute>} />
             <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
             <Route path="/admin/digital-guide" element={<RoleProtectedRoute><AdminDigitalGuide /></RoleProtectedRoute>} />
             <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />

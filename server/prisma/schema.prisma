@@ -47,10 +47,14 @@ model Appointment {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   patientId     Int?
+  appointmentType String  @default("odontologia")
   complications String?
   materials     String?
   returnDate    DateTime?
   weight        String?
+  photos        String[]  @default([])
+  dentalNotes   Json?
+  facialNotes   Json?
   patient       Patient?  @relation(fields: [patientId], references: [id])
 }
 

@@ -44,7 +44,8 @@ const AdminStories = () => {
 
             // 1. Upload File
             const uploadRes = await axios.post(`${API_URL}/upload`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                withCredentials: true
             });
             const fileUrl = uploadRes.data.url;
 

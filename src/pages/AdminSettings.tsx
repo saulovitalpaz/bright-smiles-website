@@ -62,6 +62,7 @@ const AdminSettings = () => {
             try {
                 const res = await axios.post(`${API_URL}/upload`, formData, {
                     headers: { "Content-Type": "multipart/form-data" },
+                    withCredentials: true
                 });
                 handleUpdate("site_logo", res.data.url);
                 toast.success("Logo enviada!");

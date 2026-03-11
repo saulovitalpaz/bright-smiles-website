@@ -28,9 +28,9 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 // Configure Cloudinary
 cloudinary.config({
-    cloud_name: 'drvylmywu',
-    api_key: '958317597149665',
-    api_secret: 'atOr40x95JejT5Ru5AmgqWyz3_4'
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'drvylmywu',
+    api_key: process.env.CLOUDINARY_API_KEY || '958317597149665',
+    api_secret: process.env.CLOUDINARY_API_SECRET || 'atOr40x95JejT5Ru5AmgqWyz3_4'
 });
 
 // Configure Multer for Cloudinary
@@ -49,6 +49,8 @@ app.use(cors({
     origin: [
         'https://www.odontoeharmonizacao.com.br',
         'https://odontoeharmonizacao.com.br',
+        'https://bright-smiles-website.vercel.app',
+        'http://localhost:5173',
         /https:\/\/.*\.up\.railway\.app$/
     ],
     credentials: true
@@ -255,6 +257,20 @@ app.get('/appointments', async (req, res) => {
     }
 });
 
+app.get('/appointments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const item = await prisma.appointment.findUnique({
+            where: { id: parseInt(id) },
+            include: { patient: true }
+        });
+        if (!item) return res.status(404).json({ error: 'Appointment not found' });
+        res.json(item);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/appointments', authenticateToken, async (req, res) => {
     const result = appointmentSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
@@ -293,6 +309,17 @@ app.put('/appointments/:id', async (req, res) => {
     }
 });
 
+app.delete('/appointments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.appointment.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Appointment deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
 
 // Treatments API
 
