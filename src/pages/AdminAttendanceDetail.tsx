@@ -14,6 +14,8 @@ import PhotoGallery from "@/components/admin/attendance/PhotoGallery";
 import Odontogram, { ToothData } from "@/components/admin/attendance/Odontogram";
 import FaceMap, { FaceRegionData } from "@/components/admin/attendance/FaceMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EvolutionTimeline from "@/components/admin/attendance/EvolutionTimeline";
 
 // Interfaces
 interface AppointmentData {
@@ -281,239 +283,259 @@ const AdminAttendanceDetail = () => {
             </div>
 
             <div className="space-y-6 md:space-y-8 pb-12">
-                {/* Basic Info Section */}
-                <Card className="border-slate-200 shadow-sm overflow-visible">
-                    <CardContent className="p-6 md:p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <Tabs defaultValue="current" className="w-full">
+                    <div className="flex justify-center mb-6">
+                        <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-100 p-1">
+                            <TabsTrigger value="current" className="font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                                Sessão Atual
+                            </TabsTrigger>
+                            <TabsTrigger value="evolution" className="font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm flex gap-2">
+                                <Clock size={16} /> Evolução Temporal
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
 
-                            <div className="space-y-1.5 lg:col-span-2">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                    <User size={12} /> Paciente e CPF
-                                </Label>
-                                {id === 'new' ? (
-                                    <>
-                                        <PatientPicker
-                                            onSelect={(p) => {
-                                                updateField('patientName', p.name);
-                                                updateField('cpf', p.cpf);
-                                                updateField('patientId', p.id);
-                                            }}
+                    <TabsContent value="current" className="space-y-6 md:space-y-8 outline-none">
+                        {/* Basic Info Section */}
+                        <Card className="border-slate-200 shadow-sm overflow-visible">
+                            <CardContent className="p-6 md:p-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                                    <div className="space-y-1.5 lg:col-span-2">
+                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <User size={12} /> Paciente e CPF
+                                        </Label>
+                                        {id === 'new' ? (
+                                            <>
+                                                <PatientPicker
+                                                    onSelect={(p) => {
+                                                        updateField('patientName', p.name);
+                                                        updateField('cpf', p.cpf);
+                                                        updateField('patientId', p.id);
+                                                    }}
+                                                />
+                                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                                    <Input
+                                                        value={data.patientName}
+                                                        onChange={(e) => updateField('patientName', e.target.value)}
+                                                        placeholder="Nome Completo"
+                                                        className="h-10 font-bold bg-slate-50 border-slate-100 placeholder:font-normal"
+                                                    />
+                                                    <Input
+                                                        value={data.cpf}
+                                                        onChange={(e) => updateField('cpf', e.target.value)}
+                                                        placeholder="CPF"
+                                                        className="h-10 font-mono font-bold bg-slate-50 border-slate-100 placeholder:font-normal"
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col gap-1 mt-2">
+                                                <h3 className="text-xl font-bold font-serif text-slate-900">{data.patientName}</h3>
+                                                <span className="text-sm font-mono text-slate-500">{data.cpf}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Activity size={12} /> Procedimento Principal
+                                        </Label>
+                                        <Input
+                                            value={data.procedure}
+                                            onChange={(e) => updateField('procedure', e.target.value)}
+                                            placeholder="Ex: Harmonização Global"
+                                            className="h-10 font-bold text-primary bg-primary/5 border-primary/20"
+                                            disabled={readOnly}
                                         />
-                                        <div className="grid grid-cols-2 gap-3 pt-2">
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Stethoscope size={12} /> Tipo
+                                        </Label>
+                                        <Select
+                                            value={data.appointmentType}
+                                            onValueChange={(val) => updateField('appointmentType', val)}
+                                            disabled={readOnly}
+                                        >
+                                            <SelectTrigger className="h-10 font-bold bg-slate-50 border-slate-100">
+                                                <SelectValue placeholder="Selecione..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="odontologia">Odontologia</SelectItem>
+                                                <SelectItem value="harmonizacao">Harmonização Facial</SelectItem>
+                                                <SelectItem value="ambos">Ambos</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Calendar size={12} /> Retorno Desejado
+                                        </Label>
+                                        <Input
+                                            type="date"
+                                            value={data.returnDate}
+                                            onChange={(e) => updateField('returnDate', e.target.value)}
+                                            className="h-10 font-bold bg-slate-50 border-slate-100"
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Secondary Clinical Indicators */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <Card className="border-slate-200 shadow-sm">
+                                <CardContent className="p-6 space-y-4">
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                        <Stethoscope size={16} /> Diário Clínico Geral
+                                    </h4>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-600">Descrição do Caso (Anamnese/Evolução)</Label>
+                                        <Textarea
+                                            value={data.notes}
+                                            onChange={(e) => updateField('notes', e.target.value)}
+                                            placeholder="O que foi feito..."
+                                            className="min-h-[120px] bg-slate-50 border-slate-100"
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-red-500">Avisos / Intercorrências</Label>
+                                        <Textarea
+                                            value={data.complications}
+                                            onChange={(e) => updateField('complications', e.target.value)}
+                                            placeholder="Alergias, intercorrências..."
+                                            className="min-h-[80px] bg-red-50/50 border-red-100"
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-slate-200 shadow-sm">
+                                <CardContent className="p-6 space-y-4">
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                        <CreditCard size={16} /> Resumo de Protocolo Geral
+                                    </h4>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-600">Peso do Paciente (kg)</Label>
+                                        <Input
+                                            value={data.weight}
+                                            onChange={(e) => updateField('weight', e.target.value)}
+                                            placeholder="75kg"
+                                            className="h-10 bg-slate-50 border-slate-100"
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-600">Lote Global / Materiais Diversos</Label>
+                                        <Textarea
+                                            value={data.materials}
+                                            onChange={(e) => updateField('materials', e.target.value)}
+                                            placeholder="Seringas, gazes, lotes não mapeados nas regiões..."
+                                            className="min-h-[145px] bg-slate-50 border-slate-100"
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            
+                            <Card className="border-slate-200 shadow-sm lg:col-span-2">
+                                <CardContent className="p-6 space-y-4">
+                                    <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                        <CreditCard size={16} /> Faturamento Automático
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-600">Valor Cobrado (R$)</Label>
                                             <Input
-                                                value={data.patientName}
-                                                onChange={(e) => updateField('patientName', e.target.value)}
-                                                placeholder="Nome Completo"
-                                                className="h-10 font-bold bg-slate-50 border-slate-100 placeholder:font-normal"
-                                            />
-                                            <Input
-                                                value={data.cpf}
-                                                onChange={(e) => updateField('cpf', e.target.value)}
-                                                placeholder="CPF"
-                                                className="h-10 font-mono font-bold bg-slate-50 border-slate-100 placeholder:font-normal"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={data.price}
+                                                onChange={(e) => updateField('price', e.target.value)}
+                                                placeholder="0.00"
+                                                className="h-10 text-lg font-bold text-emerald-700 bg-emerald-50 border-emerald-100 placeholder:text-emerald-300"
+                                                disabled={readOnly}
                                             />
                                         </div>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col gap-1 mt-2">
-                                        <h3 className="text-xl font-bold font-serif text-slate-900">{data.patientName}</h3>
-                                        <span className="text-sm font-mono text-slate-500">{data.cpf}</span>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-slate-600">Status no Caixa</Label>
+                                            <Select 
+                                                value={data.paymentStatus} 
+                                                onValueChange={(val) => updateField('paymentStatus', val)}
+                                                disabled={readOnly}
+                                            >
+                                                <SelectTrigger className="h-10 font-bold bg-slate-50 border-slate-100">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="paid" className="text-emerald-600 font-bold">Recebido (Cai no Caixa)</SelectItem>
+                                                    <SelectItem value="pending" className="text-orange-600 font-bold">A Receber (Recepção Cobra)</SelectItem>
+                                                    <SelectItem value="courtesy">Cortesia / Retorno (R$ 0)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                    <Activity size={12} /> Procedimento Principal
-                                </Label>
-                                <Input
-                                    value={data.procedure}
-                                    onChange={(e) => updateField('procedure', e.target.value)}
-                                    placeholder="Ex: Harmonização Global"
-                                    className="h-10 font-bold text-primary bg-primary/5 border-primary/20"
-                                    disabled={readOnly}
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                    <Stethoscope size={12} /> Tipo
-                                </Label>
-                                <Select
-                                    value={data.appointmentType}
-                                    onValueChange={(val) => updateField('appointmentType', val)}
-                                    disabled={readOnly}
-                                >
-                                    <SelectTrigger className="h-10 font-bold bg-slate-50 border-slate-100">
-                                        <SelectValue placeholder="Selecione..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="odontologia">Odontologia</SelectItem>
-                                        <SelectItem value="harmonizacao">Harmonização Facial</SelectItem>
-                                        <SelectItem value="ambos">Ambos</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                    <Calendar size={12} /> Retorno Desejado
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={data.returnDate}
-                                    onChange={(e) => updateField('returnDate', e.target.value)}
-                                    className="h-10 font-bold bg-slate-50 border-slate-100"
-                                    disabled={readOnly}
-                                />
-                            </div>
-
+                                    <p className="text-[10px] text-slate-500 italic mt-2">
+                                        * Se preenchido acima de R$ 0,00, finalizar este atendimento gerará automaticamente uma transação no seu módulo Financeiro com os dados deste paciente.
+                                    </p>
+                                </CardContent>
+                            </Card>
                         </div>
-                    </CardContent>
-                </Card>
 
-                {/* Secondary Clinical Indicators */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="border-slate-200 shadow-sm">
-                        <CardContent className="p-6 space-y-4">
-                            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                <Stethoscope size={16} /> Diário Clínico Geral
-                            </h4>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-600">Descrição do Caso (Anamnese/Evolução)</Label>
-                                <Textarea
-                                    value={data.notes}
-                                    onChange={(e) => updateField('notes', e.target.value)}
-                                    placeholder="O que foi feito..."
-                                    className="min-h-[120px] bg-slate-50 border-slate-100"
-                                    disabled={readOnly}
-                                />
+                        {/* Specific Regions - Odontogram */}
+                        {(data.appointmentType === 'odontologia' || data.appointmentType === 'ambos') && (
+                            <Odontogram
+                                data={data.dentalNotes}
+                                onChange={(notes) => updateField('dentalNotes', notes)}
+                                readOnly={readOnly}
+                            />
+                        )}
+
+                        {/* Specific Regions - Face Map */}
+                        {(data.appointmentType === 'harmonizacao' || data.appointmentType === 'ambos') && (
+                            <FaceMap
+                                data={data.facialNotes}
+                                onChange={(notes) => updateField('facialNotes', notes)}
+                                readOnly={readOnly}
+                            />
+                        )}
+
+                        {/* Evolution Gallery & Links */}
+                        <PhotoGallery
+                            photos={data.photos}
+                            externalLinks={data.externalLinks}
+                            onChange={(photos) => updateField('photos', photos)}
+                            onLinksChange={(links) => updateField('externalLinks', links)}
+                            readOnly={readOnly}
+                        />
+
+                        {/* Bottom Save Reminder */}
+                        {!readOnly && (
+                            <div className="flex justify-end pt-4">
+                                <Button
+                                    className="bg-primary hover:bg-primary/90 h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/20 text-lg"
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                >
+                                    <Save size={20} className="mr-3" />
+                                    {id === 'new' ? "Finalizar Atendimento" : "Salvar Prontuário Atualizado"}
+                                </Button>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-red-500">Avisos / Intercorrências</Label>
-                                <Textarea
-                                    value={data.complications}
-                                    onChange={(e) => updateField('complications', e.target.value)}
-                                    placeholder="Alergias, intercorrências..."
-                                    className="min-h-[80px] bg-red-50/50 border-red-100"
-                                    disabled={readOnly}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
+                        )}
+                    </TabsContent>
 
-                    <Card className="border-slate-200 shadow-sm">
-                        <CardContent className="p-6 space-y-4">
-                            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                <CreditCard size={16} /> Resumo de Protocolo Geral
-                            </h4>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-600">Peso do Paciente (kg)</Label>
-                                <Input
-                                    value={data.weight}
-                                    onChange={(e) => updateField('weight', e.target.value)}
-                                    placeholder="75kg"
-                                    className="h-10 bg-slate-50 border-slate-100"
-                                    disabled={readOnly}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-600">Lote Global / Materiais Diversos</Label>
-                                <Textarea
-                                    value={data.materials}
-                                    onChange={(e) => updateField('materials', e.target.value)}
-                                    placeholder="Seringas, gazes, lotes não mapeados nas regiões..."
-                                    className="min-h-[145px] bg-slate-50 border-slate-100"
-                                    disabled={readOnly}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card className="border-slate-200 shadow-sm lg:col-span-2">
-                        <CardContent className="p-6 space-y-4">
-                            <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                <CreditCard size={16} /> Faturamento Automático
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-600">Valor Cobrado (R$)</Label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={data.price}
-                                        onChange={(e) => updateField('price', e.target.value)}
-                                        placeholder="0.00"
-                                        className="h-10 text-lg font-bold text-emerald-700 bg-emerald-50 border-emerald-100 placeholder:text-emerald-300"
-                                        disabled={readOnly}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-600">Status no Caixa</Label>
-                                    <Select 
-                                        value={data.paymentStatus} 
-                                        onValueChange={(val) => updateField('paymentStatus', val)}
-                                        disabled={readOnly}
-                                    >
-                                        <SelectTrigger className="h-10 font-bold bg-slate-50 border-slate-100">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="paid" className="text-emerald-600 font-bold">Recebido (Cai no Caixa)</SelectItem>
-                                            <SelectItem value="pending" className="text-orange-600 font-bold">A Receber (Recepção Cobra)</SelectItem>
-                                            <SelectItem value="courtesy">Cortesia / Retorno (R$ 0)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 italic mt-2">
-                                * Se preenchido acima de R$ 0,00, finalizar este atendimento gerará automaticamente uma transação no seu módulo Financeiro com os dados deste paciente.
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Specific Regions - Odontogram */}
-                {(data.appointmentType === 'odontologia' || data.appointmentType === 'ambos') && (
-                    <Odontogram
-                        data={data.dentalNotes}
-                        onChange={(notes) => updateField('dentalNotes', notes)}
-                        readOnly={readOnly}
-                    />
-                )}
-
-                {/* Specific Regions - Face Map */}
-                {(data.appointmentType === 'harmonizacao' || data.appointmentType === 'ambos') && (
-                    <FaceMap
-                        data={data.facialNotes}
-                        onChange={(notes) => updateField('facialNotes', notes)}
-                        readOnly={readOnly}
-                    />
-                )}
-
-                {/* Evolution Gallery & Links */}
-                <PhotoGallery
-                    photos={data.photos}
-                    externalLinks={data.externalLinks}
-                    onChange={(photos) => updateField('photos', photos)}
-                    onLinksChange={(links) => updateField('externalLinks', links)}
-                    readOnly={readOnly}
-                />
-
-                {/* Bottom Save Reminder */}
-                {!readOnly && (
-                    <div className="flex justify-end pt-4">
-                        <Button
-                            className="bg-primary hover:bg-primary/90 h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/20 text-lg"
-                            onClick={handleSave}
-                            disabled={isSaving}
-                        >
-                            <Save size={20} className="mr-3" />
-                            {id === 'new' ? "Finalizar Atendimento" : "Salvar Prontuário Atualizado"}
-                        </Button>
-                    </div>
-                )}
+                    <TabsContent value="evolution" className="outline-none">
+                        <EvolutionTimeline 
+                            patientId={data.patientId} 
+                            currentAppointmentId={id === 'new' ? undefined : id} 
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
         </AdminLayout>
     );
