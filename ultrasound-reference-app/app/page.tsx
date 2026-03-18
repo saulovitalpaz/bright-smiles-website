@@ -40,25 +40,25 @@ function cn(...inputs: ClassValue[]) {
 // --- CLINICAL DATA ---
 
 const calculations: any = {
-  calculateKidneyLength: (w: number) => w ? (2.5 + (0.03 * w)).toFixed(2) : null,
-  calculateProstateLength: (w: number, a: number) => (w && a) ? (0.51 + (0.04 * w) + (0.03 * a)).toFixed(2) : null,
-  calculateGIDuodenum: (w: number) => !w ? null : w < 15 ? 0.38 : (w <= 30 ? 0.41 : 0.44),
-  calculateGIJejunum: (w: number) => !w ? null : w < 15 ? 0.3 : (w <= 30 ? 0.35 : 0.38),
-  calculateGIIleum: (w: number) => !w ? null : w < 15 ? 0.3 : (w <= 30 ? 0.35 : 0.38),
-  calculateAdrenalLeft: (w: number) => !w ? null : w <= 5 ? [2.0, 5.1] : (w <= 20 ? [2.8, 6.4] : [2.9, 7.3]),
-  calculateAdrenalRight: (w: number) => !w ? null : w <= 5 ? [2.4, 5.3] : (w <= 20 ? [3.1, 7.5] : [3.3, 8.7]),
-  calculateAdrenalAortaRatio: (w: number) => !w ? null : w < 10 ? [0, 1.5] : (w <= 20 ? [0, 1.06] : [0, 0.83]),
-  calculateTesticleLength: (w: number) => !w ? null : w <= 10 ? [1.5, 3.3] : [3.4, 4],
-  calculateTesticleWidth: (w: number) => !w ? null : w <= 10 ? [1, 2.2] : [2, 3.8],
-  calculateTesticleHeight: (w: number) => !w ? null : w <= 10 ? [0.8, 1.8] : [2.2, 3.5],
-  calculateVesicleToy: (val: number) => val ? `${(6 * val + 20).toFixed(1)} dias` : null,
-  calculateVesicleSmall: (val: number) => val ? `${((val - 68.68) / 1.53).toFixed(1)} dias` : null,
-  calculateVesicleMed: (val: number) => val ? `${((val - 82.13) / 1.8).toFixed(1)} dias` : null,
-  calculateBPToy: (val: number) => val ? `${((15 * val) + 20).toFixed(1)} dias` : null,
-  calculateBPSmall: (val: number) => val ? `${((val - 25.11) / 0.61).toFixed(1)} dias` : null,
-  calculateBPMed: (val: number) => val ? `${((val - 29.18) / 0.7).toFixed(1)} dias` : null,
-  calculateFelinePancreaticDuct: (_w: number, a: number) => a < 10 ? [0.5, 1.3] : [0.6, 2.4],
-  calculateFelineAdrenalCaudal: (w: number) => w <= 4 ? [0, 3.9] : [0, 4.8],
+  calculateKidneyLength: (w: any) => { const vn = Number(w); return vn ? parseFloat((2.5 + (0.03 * vn)).toFixed(2)) : null; },
+  calculateProstateLength: (w: any, a: any) => { const vw = Number(w); const va = Number(a); return (vw && va) ? parseFloat((0.51 + (0.04 * vw) + (0.03 * va)).toFixed(2)) : null; },
+  calculateGIDuodenum: (w: any) => { const vn = Number(w); return !vn ? null : vn < 15 ? 0.38 : (vn <= 30 ? 0.41 : 0.44); },
+  calculateGIJejunum: (w: any) => { const vn = Number(w); return !vn ? null : vn < 15 ? 0.3 : (vn <= 30 ? 0.35 : 0.38); },
+  calculateGIIleum: (w: any) => { const vn = Number(w); return !vn ? null : vn < 15 ? 0.3 : (vn <= 30 ? 0.35 : 0.38); },
+  calculateAdrenalLeft: (w: any) => { const vn = Number(w); return !vn ? null : vn <= 5 ? [2.0, 5.1] : (vn <= 20 ? [2.8, 6.4] : [2.9, 7.3]); },
+  calculateAdrenalRight: (w: any) => { const vn = Number(w); return !vn ? null : vn <= 5 ? [2.4, 5.3] : (vn <= 20 ? [3.1, 7.5] : [3.3, 8.7]); },
+  calculateAdrenalAortaRatio: (w: any) => { const vn = Number(w); return !vn ? null : vn < 10 ? [0, 1.5] : (vn <= 20 ? [0, 1.06] : [0, 0.83]); },
+  calculateTesticleLength: (w: any) => { const vn = Number(w); return !vn ? null : vn <= 10 ? [1.5, 3.3] : [3.4, 4]; },
+  calculateTesticleWidth: (w: any) => { const vn = Number(w); return !vn ? null : vn <= 10 ? [1, 2.2] : [2, 3.8]; },
+  calculateTesticleHeight: (w: any) => { const vn = Number(w); return !vn ? null : vn <= 10 ? [0.8, 1.8] : [2.2, 3.5]; },
+  calculateVesicleToy: (val: any) => { const vn = Number(val); return vn ? `${(6 * vn + 20).toFixed(1)} dias` : null; },
+  calculateVesicleSmall: (val: any) => { const vn = Number(val); return vn ? `${((vn - 68.68) / 1.53).toFixed(1)} dias` : null; },
+  calculateVesicleMed: (val: any) => { const vn = Number(val); return vn ? `${((vn - 82.13) / 1.8).toFixed(1)} dias` : null; },
+  calculateBPToy: (val: any) => { const vn = Number(val); return vn ? `${((15 * vn) + 20).toFixed(1)} dias` : null; },
+  calculateBPSmall: (val: any) => { const vn = Number(val); return vn ? `${((vn - 25.11) / 0.61).toFixed(1)} dias` : null; },
+  calculateBPMed: (val: any) => { const vn = Number(val); return vn ? `${((vn - 29.18) / 0.7).toFixed(1)} dias` : null; },
+  calculateFelinePancreaticDuct: (_w: any, a: any) => { const va = Number(a); return va < 10 ? [0.5, 1.3] : [0.6, 2.4]; },
+  calculateFelineAdrenalCaudal: (w: any) => { const vn = Number(w); return vn <= 4 ? [0, 3.9] : [0, 4.8]; },
 };
 
 const organData: any = {
@@ -328,7 +328,7 @@ export default function VPVetApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center p-4 lg:p-10 font-sans text-slate-900 printable-area relative">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center p-2 sm:p-4 lg:p-10 font-sans text-slate-900 printable-area relative overflow-x-hidden">
       {/* TOP-LEVEL PRINT HEADER (Logo + Patient Data) */}
       <div className="print-header hidden print:block w-full max-w-[1400px] mb-8 print:mb-2 border-b-2 print:border-b border-slate-100 pb-10 print:pb-2 relative">
         <div className="flex justify-between items-start">
@@ -370,29 +370,29 @@ export default function VPVetApp() {
       </div>
 
       {/* Main UI Container */}
-      <div className="w-full max-w-[1400px] space-y-6 flex-1">
+      <div className="w-full max-w-[1400px] space-y-4 sm:space-y-6 flex-1">
         {/* Header Bar */}
-        <header className="flex justify-between items-center bg-white p-4 px-8 rounded-3xl shadow-soft no-print">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 relative flex-shrink-0">
+        <header className="flex flex-col lg:flex-row justify-between items-center bg-white p-4 sm:p-4 sm:px-8 rounded-[24px] sm:rounded-3xl shadow-soft gap-4 lg:gap-0 no-print">
+          <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-6 w-full lg:w-auto">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 relative flex-shrink-0">
               {/* Visual Placeholder for Logo - Instruction for User to replace src */}
               <img src="/assets/logo.png" alt="VPVet Logo" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = "https://vitalpaz.vet/wp-content/uploads/2023/07/cropped-Favicon-32x32.png" }} />
             </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-2">
-                VPVET <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full tracking-wide">REFERÊNCIA US</span>
+            <div className="flex flex-col items-center sm:items-start">
+              <h1 className="text-lg sm:text-xl font-black text-slate-800 tracking-tighter uppercase flex flex-col sm:flex-row items-center gap-2">
+                VPVET <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full tracking-wide">REFERÊNCIA US</span>
               </h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramenta de Diagnóstico Avançado</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 sm:mt-0">Ferramenta de Diagnóstico Avançado</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="bg-emerald-50 text-emerald-600 p-2 rounded-xl">
+          <div className="flex items-center justify-center sm:justify-start gap-4 bg-slate-50 lg:bg-transparent p-3 lg:p-0 rounded-2xl w-full lg:w-auto">
+            <div className="bg-emerald-50 text-emerald-600 p-2 rounded-xl flex-shrink-0">
               <Stethoscope className="w-5 h-5" />
             </div>
-            <div className="text-right">
-              <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Vital Paz Vet</p>
-              <p className="text-[10px] font-bold text-emerald-600">UNIDADE DIAGNÓSTICA</p>
+            <div className="text-left lg:text-right">
+              <p className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-tighter leading-tight">Vital Paz Vet</p>
+              <p className="text-[8px] sm:text-[10px] font-bold text-emerald-600 leading-tight">UNIDADE DIAGNÓSTICA</p>
             </div>
           </div>
         </header>
@@ -401,17 +401,17 @@ export default function VPVetApp() {
           {/* Form Area */}
           <div className="xl:col-span-8 space-y-6 no-print">
             {/* Patient Data Card */}
-            <section className="bg-white p-6 rounded-[32px] shadow-soft space-y-6 border-b-6 border-slate-100">
+            <section className="bg-white p-4 sm:p-6 rounded-[24px] sm:rounded-[32px] shadow-soft space-y-4 sm:space-y-6 border-b-4 sm:border-b-6 border-slate-100">
               <div className="flex justify-between items-center">
-                <h3 className="font-black text-sm text-slate-800 uppercase tracking-widest flex items-center gap-3">
-                  <div className="w-1 h-5 bg-emerald-500 rounded-full" /> Dados do Paciente
+                <h3 className="font-black text-xs sm:text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2 sm:gap-3">
+                  <div className="w-1 h-4 sm:h-5 bg-emerald-500 rounded-full" /> Dados do Paciente
                 </h3>
                 <button onClick={() => { setPatient({ species: '', weight: '', age: '', gender: '' }); setResults([]); setMeasurements({}); setSelectedOrgan(null); }} className="p-2 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all group">
                   <RefreshCcw className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 group-hover:rotate-180 transition-all duration-700" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {['species', 'weight', 'age', 'gender'].map(field => (
                   <div key={field} className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{field === 'species' ? 'Espécie' : field === 'weight' ? 'Peso (kg)' : field === 'age' ? 'Idade' : 'Sexo'}</label>
@@ -429,9 +429,9 @@ export default function VPVetApp() {
             </section>
 
             {/* Organ Grid */}
-            <section className="bg-white p-6 rounded-[32px] shadow-soft space-y-6 border-b-6 border-slate-100">
-              <h3 className="font-black text-sm text-slate-800 uppercase tracking-widest flex items-center gap-3">
-                <div className="w-1 h-5 bg-emerald-500 rounded-full" /> Órgãos & Sistemas
+            <section className="bg-white p-4 sm:p-6 rounded-[24px] sm:rounded-[32px] shadow-soft space-y-4 sm:space-y-6 border-b-4 sm:border-b-6 border-slate-100">
+              <h3 className="font-black text-xs sm:text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2 sm:gap-3">
+                <div className="w-1 h-4 sm:h-5 bg-emerald-500 rounded-full" /> Órgãos & Sistemas
               </h3>
               {!patient.species ? (
                 <div className="py-12 text-center border-4 border-dashed border-slate-50 rounded-[28px] font-bold text-slate-300 uppercase tracking-[0.3em] flex flex-col items-center gap-3">
@@ -461,19 +461,19 @@ export default function VPVetApp() {
 
               {/* Organ Analysis Form Area */}
               {selectedOrgan && (
-                <div className="mt-4 p-6 bg-emerald-50/50 rounded-[32px] border-2 border-emerald-100/30 space-y-8 animate-in fade-in zoom-in duration-500">
+                <div className="mt-2 sm:mt-4 p-4 sm:p-6 bg-emerald-50/50 rounded-[20px] sm:rounded-[32px] border-2 border-emerald-100/30 space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-500">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-black text-emerald-800 text-xs uppercase flex items-center gap-2">
+                    <h4 className="font-black text-emerald-800 text-[10px] sm:text-xs uppercase flex items-center gap-2">
                       <Activity className="w-4 h-4 text-emerald-500" /> Medições: {currentOrgans[selectedOrgan].name}
                     </h4>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-4 sm:gap-6">
                     {(currentOrgans[selectedOrgan].fields || []).map((f: any) => (
-                      <div key={f.id} className="space-y-2">
-                        <label className="text-[9px] font-black text-emerald-700/60 uppercase tracking-widest">{f.label}</label>
+                      <div key={f.id} className="space-y-1.5 sm:space-y-2">
+                        <label className="text-[8px] sm:text-[9px] font-black text-emerald-700/60 uppercase tracking-widest">{f.label}</label>
                         <div className="relative">
-                          <input type="number" step="0.01" value={measurements[f.id] || ''} onChange={(e) => setMeasurements({ ...measurements, [f.id]: e.target.value })} className="w-full p-4 rounded-[20px] bg-white border-2 border-emerald-100/50 focus:border-emerald-500 outline-none font-bold text-base shadow-sm transition-all focus:shadow-emerald-100" placeholder="0.00" />
-                          {f.unit && <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-emerald-300 text-[10px] uppercase">{f.unit}</span>}
+                          <input type="number" step="0.01" value={measurements[f.id] || ''} onChange={(e) => setMeasurements({ ...measurements, [f.id]: e.target.value })} className="w-full p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] bg-white border-2 border-emerald-100/50 focus:border-emerald-500 outline-none font-bold text-sm sm:text-base shadow-sm transition-all focus:shadow-emerald-100" placeholder="0.00" />
+                          {f.unit && <span className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 font-black text-emerald-300 text-[9px] sm:text-[10px] uppercase">{f.unit}</span>}
                         </div>
                       </div>
                     ))}
@@ -481,15 +481,15 @@ export default function VPVetApp() {
 
                   {/* Subsections if exist */}
                   {(currentOrgans[selectedOrgan].subsections || []).map((sub: any) => (
-                    <div key={sub.name} className="space-y-4 pt-4 border-t border-emerald-100/50">
-                      <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{sub.name}</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div key={sub.name} className="space-y-3 sm:space-y-4 pt-4 border-t border-emerald-100/50">
+                      <h5 className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest">{sub.name}</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 sm:gap-4">
                         {sub.fields.map((f: any) => (
-                          <div key={f.id} className="space-y-2">
-                            <label className="text-[9px] font-black text-emerald-700/40 uppercase tracking-widest">{f.label}</label>
+                          <div key={f.id} className="space-y-1.5 sm:space-y-2">
+                            <label className="text-[8px] sm:text-[9px] font-black text-emerald-700/40 uppercase tracking-widest">{f.label}</label>
                             <div className="relative">
-                              <input type="number" step="0.01" value={measurements[f.id] || ''} onChange={(e) => setMeasurements({ ...measurements, [f.id]: e.target.value })} className="w-full p-4 rounded-[20px] bg-white border-2 border-emerald-100/50 focus:border-emerald-500 outline-none font-bold text-base shadow-sm transition-all focus:shadow-emerald-100" placeholder="0.00" />
-                              {f.unit && <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-emerald-200 text-[10px] uppercase">{f.unit}</span>}
+                              <input type="number" step="0.01" value={measurements[f.id] || ''} onChange={(e) => setMeasurements({ ...measurements, [f.id]: e.target.value })} className="w-full p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] bg-white border-2 border-emerald-100/50 focus:border-emerald-500 outline-none font-bold text-sm sm:text-base shadow-sm transition-all focus:shadow-emerald-100" placeholder="0.00" />
+                              {f.unit && <span className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 font-black text-emerald-200 text-[9px] sm:text-[10px] uppercase">{f.unit}</span>}
                             </div>
                           </div>
                         ))}
@@ -497,7 +497,7 @@ export default function VPVetApp() {
                     </div>
                   ))}
 
-                  <button onClick={analyze} className="w-full bg-emerald-500 text-white p-5 rounded-[24px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 text-sm">
+                  <button onClick={analyze} className="w-full bg-emerald-500 text-white p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 text-xs sm:text-sm">
                     <Activity className="w-5 h-5" /> Consolidar Laudo
                   </button>
                 </div>
@@ -506,9 +506,9 @@ export default function VPVetApp() {
           </div>
 
           {/* Results Sidebar / Summary */}
-          <div className="xl:col-span-4 space-y-6">
+          <div className="xl:col-span-4 space-y-4 sm:space-y-6">
             <section className={cn(
-              "bg-white p-6 print:p-0 rounded-[32px] print:rounded-none shadow-lg print:shadow-none h-full min-h-[500px] print:min-h-0 print:h-auto flex flex-col transition-all relative overflow-hidden ring-4 ring-transparent print:ring-0 print:border-none",
+              "bg-white p-4 sm:p-6 print:p-0 rounded-[24px] sm:rounded-[32px] print:rounded-none shadow-lg print:shadow-none h-full min-h-[300px] sm:min-h-[500px] print:min-h-0 print:h-auto flex flex-col transition-all relative overflow-hidden ring-4 ring-transparent print:ring-0 print:border-none",
               results.length > 0 ? "ring-emerald-50" : "opacity-90"
             )}>
               <div className="flex items-center gap-3 border-b-2 border-slate-50 pb-3 mb-4 no-print">
@@ -536,22 +536,22 @@ export default function VPVetApp() {
                             "p-4 print:py-1 print:px-2 rounded-[24px] print:rounded-md border print:border-none print:border-b print:border-slate-50 transition-all space-y-3 print:space-y-0.5",
                             item.interpretation.status === 'danger' ? "bg-rose-50/50 border-rose-100 print:bg-rose-50/20" : item.interpretation.status === 'warning' ? "bg-amber-50/50 border-amber-100 print:bg-amber-50/20" : "bg-emerald-50/30 border-emerald-50 print:bg-emerald-50/10"
                           )}>
-                            <div className="flex justify-between items-center">
-                              <h5 className="text-[9px] print:text-[8px] font-black text-slate-400 print:text-slate-500 uppercase tracking-wide truncate max-w-[150px] print:max-w-none">{item.label}</h5>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 sm:gap-0">
+                              <h5 className="text-[9px] print:text-[8px] font-black text-slate-400 print:text-slate-500 uppercase tracking-wide truncate max-w-[200px] print:max-w-none">{item.label}</h5>
                               <div className={cn(
-                                "px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest print:text-[6px]",
+                                "px-2.5 py-0.5 rounded-full text-[7px] sm:text-[8px] font-black uppercase tracking-widest print:text-[6px] w-fit",
                                 item.interpretation.status === 'danger' ? "bg-rose-500 text-white" : item.interpretation.status === 'warning' ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"
                               )}>
                                 {item.interpretation.text}
                               </div>
                             </div>
                             <div className="flex items-baseline gap-1.5 pt-0.5">
-                              <span className={cn("text-xl print:text-sm font-black", item.interpretation.status === 'danger' ? "text-rose-900" : item.interpretation.status === 'warning' ? "text-amber-900" : "text-emerald-900")}>{item.value}</span>
-                              <span className="text-[9px] print:text-[7px] font-black text-slate-400 print:text-slate-500 uppercase">{item.unit}</span>
+                              <span className={cn("text-lg sm:text-xl print:text-sm font-black", item.interpretation.status === 'danger' ? "text-rose-900" : item.interpretation.status === 'warning' ? "text-amber-900" : "text-emerald-900")}>{item.value}</span>
+                              <span className="text-[8px] sm:text-[9px] print:text-[7px] font-black text-slate-400 print:text-slate-500 uppercase">{item.unit}</span>
                             </div>
-                            <div className="p-2.5 print:p-0 bg-white/80 print:bg-transparent rounded-xl print:rounded-none text-[8px] print:text-[7px] font-bold text-slate-400 print:text-slate-500 flex justify-between items-center mb-1 print:mb-0 print:pb-0.5">
+                            <div className="p-2 sm:p-2.5 print:p-0 bg-white/80 print:bg-transparent rounded-lg sm:rounded-xl print:rounded-none text-[7px] sm:text-[8px] print:text-[7px] font-bold text-slate-400 print:text-slate-500 flex flex-col sm:flex-row sm:flex-wrap justify-between items-start sm:items-center gap-1 sm:gap-2 mb-1 print:mb-0 print:pb-0.5">
                               <span className="tracking-widest uppercase opacity-60">REF:</span>
-                              <span className="font-black truncate max-w-[150px] print:max-w-none">{Array.isArray(item.reference) ? `${item.reference[0]} - ${item.reference[1]}` : item.reference === null ? 'N/A' : item.reference} {item.reference !== null ? item.unit : ''}</span>
+                              <span className="font-black sm:truncate w-full sm:w-auto text-left sm:text-right print:max-w-none opacity-80 break-all">{Array.isArray(item.reference) ? `${item.reference[0]} - ${item.reference[1]}` : item.reference === null ? 'N/A' : item.reference} {item.reference !== null ? item.unit : ''}</span>
                             </div>
                             {item.interpretation.suspicion && (
                               <div className={cn(
