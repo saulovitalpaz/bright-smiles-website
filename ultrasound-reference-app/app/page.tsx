@@ -260,21 +260,69 @@ function interpretResult(measured: number, reference: any, fieldId?: string) {
   // --- DOPPLER & CLINICAL SUSPICIONS ---
   if (isHigh || isLow) {
     const suspicions: Record<string, { high?: string, low?: string }> = {
+      // Renal
+      'kidney_length': { high: 'Nefromegalia (LRA, Infiltração, Neoplasia, Inflamação aguda)', low: 'Microplasia (Doença Renal Crônica, Hipoplasia)' },
+      'kidney_cortex': { high: 'Nefromegalia / Infiltração macroscópica', low: 'Doença Renal Crônica (perda corticomedular)' },
+      'kidney_pelvis': { high: 'Pieloectasia / Hidronefrose / Pielonefrite' },
+      'kidney_aorta_ratio': { high: 'Nefromegalia (LRA, PIF, Linfoma)', low: 'Microplasia Renal Crônica' },
       'renal_ir_right': { high: 'Sugere ^ Resistência Vascular (Nefrites, fibrose, LRA, obstrução)', low: 'Possível vasodilatação (inflamação aguda)' },
       'renal_ir_left': { high: 'Sugere ^ Resistência Vascular (Nefrites, fibrose, LRA, obstrução)', low: 'Possível vasodilatação (inflamação aguda)' },
       'renal_ir': { high: 'Sugere ^ Resistência (Nefrite, DRC, LRA)', low: 'Vasodilatação ou hiperemia' },
-      'portal_velocity_mean': { low: 'Hipertensão portal, insuf. direita, trombose parcial', high: 'Shunt portossistêmico, inflamação hepática ativa' },
-      'splenic_ir_normal': { high: 'Esplenite, congestão severa, neoplasia, torção parcial', low: 'Hiperemia ativa / inflamação aguda' },
-      'prostate_ir_normal': { high: 'Prostatite crônica, HBP severa, neoplasia', low: 'Prostatite aguda (hiperemia)' },
-      'testicular_ir_normal': { high: 'Orquite crônica, neoplasia, torção (fase inicial)', low: 'Inflamação aguda (hiperfluxo)' },
-      'uterus_ir_diestrus': { high: 'Baixa perfusão (risco gestacional, piometra crônica)', low: 'Padrão inflamatório ativo (endometrite)' },
-      'aorta_vps': { high: 'Estenose aórtica, sobrecarga de volume', low: 'Baixo débito cardíaco, tromboembolismo' },
-      'kidney_aorta_ratio': { high: 'Nefromegalia (LRA, linfoma, PIF, hidronefrose)', low: 'Microplasia renal (DRC terminal)' },
+      // Hepatic / GB
       'liver_score': { high: 'Hiperecóico (Lipidose, hepatopatia vacuolar, fibrose/cirrose)', low: 'Hipoecóico (Congestão venosa aguda, hepatite, linfoma)' },
       'gb_wall': { high: 'Colecistite, edema de parede (anafilaxia, hipoalbuminemia), mucocele' },
+      'cbd_porta': { high: 'Obstrução Biliar Extra-hepática / Colangiohepatite' },
+      // Pancreas
       'pancreas_body': { high: 'Pancreatite aguda, edema, hiperplasia nodular, neoplasia', low: 'Atrofia pancreática (IPE)' },
+      'pancreas_left': { high: 'Pancreatite aguda, Neoplasia', low: 'Atrofia pancreática' },
+      'pancreas_right': { high: 'Pancreatite aguda, Neoplasia', low: 'Atrofia pancreática' },
+      'pancreatic_duct': { high: 'Dilatação ductal (Obstrução, Pancreatite crônica)' },
+      // Adrenals
       'adrenal_left': { high: 'Hiperadrenocorticismo (pituitário-dependente), tumor adrenal', low: 'Hipoadrenocorticismo, atrofia iatrogênica' },
-      'adrenal_right': { high: 'Hiperadrenocorticismo (pituitário-dependente), tumor adrenal', low: 'Hipoadrenocorticismo, atrofia iatrogênica' }
+      'adrenal_right': { high: 'Hiperadrenocorticismo (pituitário-dependente), tumor adrenal', low: 'Hipoadrenocorticismo, atrofia iatrogênica' },
+      'adrenal_left_length': { high: 'Adrenomegalia / Neoplasia / HAC' },
+      'adrenal_right_length': { high: 'Adrenomegalia / Neoplasia / HAC' },
+      'adrenal_aorta_left': { high: 'Hiperadrenocorticismo crônico / Tumor Adrenal' },
+      // Spleen
+      'spleen_thickness': { high: 'Esplenomegalia (Congestão, Infeccioso, Neoplasia, Torção)', low: 'Contração esplênica (Secundária a estresse/choque)' },
+      'splenic_ir_normal': { high: 'Esplenite, congestão severa, neoplasia, torção parcial', low: 'Hiperemia ativa / inflamação aguda' },
+      // GI Tract
+      'gi_stomach': { high: 'Espessamento (Gastrite, Ulceração, Linfoma)' },
+      'gi_duodenum': { high: 'Espessamento (Enterite, IBD, Neoplasia)' },
+      'gi_jejunum': { high: 'Espessamento (Enterite, IBD, Obstrução parcial)' },
+      'gi_ileum': { high: 'Espessamento (Intussuscepção crônica, Linfoma, IBD)' },
+      'gi_cecum': { high: 'Tiflite, Infiltração celular' },
+      'stomach_interrugal': { high: 'Gastrite espessada, IBD felina, Linfoma' },
+      'stomach_rugal_fold': { high: 'Pregas alteradas (Inflamação / Infiltração)' },
+      'duodenum_jejunum': { high: 'IBD felino, Linfoma alimentar' },
+      'ileum_fold': { high: 'Hiperplasia linfóide severa / IBD' },
+      // Repro Male
+      'prostate_length': { high: 'Hiperplasia Prostática Benigna (HBP), Prostatite, Cistos, Neoplasia' },
+      'prostate_ir_normal': { high: 'Prostatite crônica, HBP severa, neoplasia', low: 'Prostatite aguda (hiperemia)' },
+      'testicle_length': { high: 'Orquite, Neoplasia, Torção (inicial)', low: 'Hipoplasia ou atrofia' },
+      'testicle_width': { high: 'Orquite, Neoplasia' },
+      'testicular_ir_normal': { high: 'Orquite crônica, neoplasia, torção (fase inicial)', low: 'Inflamação aguda (hiperfluxo)' },
+      'epididymis_head': { high: 'Epididimite, Granuloma espermático, Cistos' },
+      'epididymis_tail': { high: 'Epididimite, Cistos' },
+      // Repro Female && Bladder
+      'bladder_wall': { high: 'Cistite crônica/aguda, Pólipos, Neoplasia (Carcinoma de Células de Transição)' },
+      'uterus_body': { high: 'Piometra, Mucometra, Hemometra, Gestação' },
+      'uterus_horns': { high: 'Conteúdo intra-luminal (Piometra/Gestação)' },
+      'uterus_ir_diestrus': { high: 'Baixa perfusão (risco gestacional, piometra crônica)', low: 'Padrão inflamatório ativo (endometrite)' },
+      'fhr_normal': { low: 'Sofrimento fetal avançado / Hipóxia severa', high: 'Estresse fetal pontual / Taquicardia' },
+      'fhr_stress_mod': { low: 'Bradicardia fetal perigosa' },
+      // Lymphnodes
+      'ln_iliaco': { high: 'Linfadenomegalia reativa, Linfoma, Metástase pélvica/perineal' },
+      'ln_hepatico': { high: 'Linfadenomegalia reativa, Linfoma, Hepatite ativa' },
+      'ln_esplenico': { high: 'Linfadenomegalia, Linfoma' },
+      'ln_jejunal': { high: 'Linfadenite, Enteropatia, Linfoma' },
+      'ln_mesenteric_cat': { high: 'Linfoma Alimentar Felino, IBD avançado' },
+      'ln_shape_normal': { high: 'Perda do formato oval (altamente sugestivo de Linfoma / Malignidade)' },
+      // Vascular General
+      'aorta_vps': { high: 'Estenose aórtica, sobrecarga de volume', low: 'Baixo débito cardíaco, tromboembolismo' },
+      'portal_velocity_mean': { low: 'Hipertensão portal, insuf. direita, trombose parcial', high: 'Shunt portossistêmico, inflamação hepática ativa' },
+      'portal_diameter': { high: 'Congestão venosa hepática profunda / ICC direita', low: 'Hipovolemia profunda / Desidratação / Shunt' },
+      'vcc_diameter': { high: 'Congestão profunda / Cor Pulmonale / Endocardiose Tricúspide', low: 'Choque hipovolêmico' }
     };
 
     if (fieldId && suspicions[fieldId]) {

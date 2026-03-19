@@ -1,4 +1,4 @@
-// File: C:\Users\saulo\Desktop\SAULO\VPVet\Site\ultrasound-reference-app\app\page.tsx
+// File: C:\Users\saulo\Desktop\SAULO\Karol\site\bright-smiles-website\ultrasound-reference-app\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
