@@ -3,8 +3,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-import models, database, schemas
-from database import engine, get_db
+from backend import models, database, schemas
+from backend.database import engine, get_db
 import os
 import shutil
 
