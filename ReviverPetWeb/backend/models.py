@@ -19,6 +19,7 @@ class Patient(Base):
     conditions = Column(Text)
     vaccines = Column(Text)
     photo_path = Column(String) # Path to saved image
+    is_personal = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships

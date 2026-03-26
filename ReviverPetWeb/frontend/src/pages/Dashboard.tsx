@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, ClipboardList, Stethoscope, FileText, Pill, Dog, Home, Plus, Search, LogOut, Trash2 } from "lucide-react";
+import { ClipboardList, Stethoscope, FileText, Pill, Home, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PatientSidebar from "@/components/PatientSidebar";
 import ProntuarioTab from "@/components/tabs/ProntuarioTab";
 import ConsultasTab from "@/components/tabs/ConsultasTab";
@@ -32,14 +32,43 @@ const tabs = [
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [patients, setPatients] = useState(mockPatients);
-  const [allConsultations, setAllConsultations] = useState(mockConsultations);
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode") || "clinical";
+  const isPersonal = mode === "personal";
+
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [allConsultations, setAllConsultations] = useState<Consultation[]>(mockConsultations);
   const [allTreatments, setAllTreatments] = useState<Treatment[]>(mockTreatments);
   const [allDocuments, setAllDocuments] = useState<PetDocument[]>(mockDocuments);
   const [allMetrics, setAllMetrics] = useState<any[]>([]);
 
-  const [selectedId, setSelectedId] = useState<number | null>(mockPatients[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("prontuario");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const prevSelectedId = useRef<number | null>(null);
+
+  // Carrega todos os pacientes do backend ao montar
+  useEffect(() => {
+    fetch(`/api/patients/?is_personal=${isPersonal}`)
+      .then(res => res.json())
+      .then(data => {
+        const formatted = data.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          species: p.species || "Cão",
+          breed: p.breed || "S/R",
+          birthDate: p.birth_date || "01/01/2024",
+          tutorName: p.tutor_name || "Tutor",
+          phone: p.phone || "(00) 00000-0000",
+          conditions: p.conditions || "",
+          photo: p.photo_path ? `/api/patients/${p.id}/photo?t=${new Date().getTime()}` : undefined
+        }));
+        setPatients(formatted);
+        if (formatted.length > 0) setSelectedId(formatted[0].id);
+      })
+      .catch(err => console.error("Erro ao carregar pacientes:", err));
+  }, []);
 
   // Carrega métricas e documentos reais do backend ao selecionar paciente
   useEffect(() => {
@@ -78,6 +107,41 @@ const Dashboard = () => {
 
   const selectedPatient = patients.find((p) => p.id === selectedId);
 
+  // Auto-save: Dispara um PUT 1.5s após a última modificação no paciente atual
+  useEffect(() => {
+    if (!selectedPatient) return;
+    
+    // Se acabou de carregar/mudar o paciente selecionado, apenas atualiza a ref e não tenta salvar
+    if (prevSelectedId.current !== selectedPatient.id) {
+      prevSelectedId.current = selectedPatient.id;
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        await fetch(`/api/patients/${selectedPatient.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: selectedPatient.name,
+            species: selectedPatient.species,
+            breed: selectedPatient.breed,
+            birth_date: selectedPatient.birthDate,
+            tutor_name: selectedPatient.tutorName,
+            phone: selectedPatient.phone,
+            conditions: selectedPatient.conditions,
+            is_personal: isPersonal
+          })
+        });
+        console.log(`Auto-save: Paciente ${selectedPatient.id} salvo em background.`);
+      } catch (err) {
+        console.error("Auto-save falhou:", err);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [selectedPatient]);
+
   const patientConsultations = allConsultations.filter((c) => c.patientId === selectedId);
   const patientTreatments = allTreatments.filter((t) => t.patientId === selectedId);
   const patientDocuments = allDocuments.filter((d) => d.patientId === selectedId);
@@ -86,21 +150,44 @@ const Dashboard = () => {
     setPatients((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   }, []);
 
-  const handleAddNew = () => {
-    const newPatient: Patient = {
-      id: Date.now(),
-      name: "Novo Paciente",
-      species: "Cão",
-      breed: "S/R",
-      birthDate: "01/01/2024",
-      tutorName: "Tutor",
-      phone: "(00) 00000-0000",
-      conditions: "",
-    };
-    setPatients([newPatient, ...patients]);
-    setSelectedId(newPatient.id);
-    setActiveTab("prontuario");
-    toast({ title: "Novo paciente criado", description: "Edite as informações na aba Prontuário." });
+  const handleAddNew = async () => {
+    try {
+      const resp = await fetch("/api/patients/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Novo Paciente",
+          species: "Cão",
+          breed: "S/R",
+          birth_date: "01/01/2024",
+          tutor_name: "Tutor",
+          phone: "(00) 00000-0000",
+          conditions: "",
+          is_personal: isPersonal
+        })
+      });
+      if (resp.ok) {
+        const p = await resp.json();
+        const newPatient: Patient = {
+          id: p.id,
+          name: p.name,
+          species: p.species || "Cão",
+          breed: p.breed || "S/R",
+          birthDate: p.birth_date || "01/01/2024",
+          tutorName: p.tutor_name || "Tutor",
+          phone: p.phone || "(00) 00000-0000",
+          conditions: p.conditions || "",
+        };
+        setPatients(prev => [newPatient, ...prev]);
+        setSelectedId(p.id);
+        setActiveTab("prontuario");
+        setSidebarOpen(false);
+        toast({ title: "Paciente Criado", description: "Edite as informações na aba Prontuário." });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erro", description: "Falha ao criar paciente", variant: "destructive" });
+    }
   };
 
   const handleDeleteDocument = async (id: number) => {
@@ -137,39 +224,59 @@ const Dashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  const handleDeletePatient = (id: number) => {
+  const handleDeletePatient = async (id: number) => {
     const patient = patients.find(p => p.id === id);
-    if (confirm(`Tem certeza que deseja excluir o paciente ${patient?.name}? Todos os registros serão perdidos.`)) {
-      setPatients(prev => prev.filter(p => p.id !== id));
-      if (selectedId === id) setSelectedId(null);
-      toast({ title: "Paciente excluído", variant: "destructive" });
+    if (!patient) return;
+    if (confirm(`Tem certeza que deseja excluir o paciente ${patient.name}? Todos os registros serão perdidos.`)) {
+      try {
+        const res = await fetch(`/api/patients/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          setPatients(prev => prev.filter(p => p.id !== id));
+          if (selectedId === id) setSelectedId(null);
+          toast({ title: "Paciente excluído", variant: "destructive" });
+        } else {
+          toast({ title: "Erro", description: "Falha ao excluir", variant: "destructive" });
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
-  };
-
-  const handleSave = () => {
-    toast({ title: "✓ Salvo com sucesso", description: "Alterações persistidas no estado local." });
   };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
+      {/* Sidebar — drawer on mobile, static on md+ */}
       <PatientSidebar
         patients={patients}
         selectedId={selectedId}
         onSelect={(id) => { setSelectedId(id); setActiveTab("prontuario"); }}
         onAddNew={handleAddNew}
         onDelete={handleDeletePatient}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="bg-gradient-to-r from-primary to-primary-light px-6 py-5 flex items-center justify-between text-primary-foreground shrink-0">
-          <div>
-            <h1 className="text-2xl font-bold">Reviver Pet</h1>
-            <p className="text-sm text-primary-foreground/80 tracking-wide">
-              Fisiatria e Reabilitação Veterinária
-            </p>
+        <header className="bg-gradient-to-r from-primary to-primary-light px-4 py-3 sm:px-6 sm:py-5 flex items-center justify-between text-primary-foreground shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Hamburger — only on mobile */}
+            <Button
+              onClick={() => setSidebarOpen(true)}
+              size="icon"
+              variant="ghost"
+              className="md:hidden rounded-xl bg-white/10 hover:bg-white/25 text-primary-foreground border-0 h-9 w-9"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg sm:text-2xl font-bold leading-tight">Reviver Pet</h1>
+              <p className="text-xs sm:text-sm text-primary-foreground/80 tracking-wide hidden sm:block">
+                Fisiatria e Reabilitação Veterinária
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -178,20 +285,14 @@ const Dashboard = () => {
               variant="ghost"
               className="rounded-xl gap-2 bg-white/10 hover:bg-white/25 text-primary-foreground border-0"
             >
-              <Home className="h-4 w-4" /> Início
-            </Button>
-            <Button
-              onClick={handleSave}
-              size="sm"
-              className="rounded-xl gap-2 bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
-            >
-              <Save className="h-4 w-4" /> Salvar
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline">Início</span>
             </Button>
           </div>
         </header>
 
         {/* Tabs */}
-        <nav className="bg-muted/30 px-4 py-2 flex gap-1 overflow-x-auto shrink-0 border-b border-border">
+        <nav className="bg-muted/30 px-2 sm:px-4 py-2 flex gap-1 overflow-x-auto shrink-0 border-b border-border">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -199,21 +300,21 @@ const Dashboard = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200",
+                  "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 sm:flex-none justify-center sm:justify-start",
                   activeTab === tab.id
                     ? "bg-card text-primary shadow-sm"
                     : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
                 )}
               >
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="hidden xs:inline sm:inline text-xs sm:text-sm">{tab.label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           <AnimatePresence mode="wait">
             {selectedPatient ? (
               <div key={`${selectedId}-${activeTab}`}>
@@ -250,6 +351,7 @@ const Dashboard = () => {
                       setAllMetrics((prev) => [newMetric, ...prev]);
                     }}
                     onDeleteMetric={handleDeleteMetric}
+                    patientName={selectedPatient?.name}
                   />
                 )}
                 {activeTab === "tratamentos" && (
@@ -268,15 +370,21 @@ const Dashboard = () => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Selecione um paciente para começar
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 py-16">
+                <p className="text-center">Selecione um paciente para começar</p>
+                <Button
+                  onClick={() => setSidebarOpen(true)}
+                  className="md:hidden rounded-xl gap-2 bg-primary hover:bg-primary-light"
+                >
+                  <Menu className="h-4 w-4" /> Abrir Lista de Pacientes
+                </Button>
               </div>
             )}
           </AnimatePresence>
         </div>
 
         {/* Footer */}
-        <footer className="px-6 py-4 text-center border-t border-border text-xs text-muted-foreground shrink-0">
+        <footer className="px-4 py-3 text-center border-t border-border text-xs text-muted-foreground shrink-0">
           <strong>Reviver Pet - Gestão de Pacientes</strong>
           <br />
           R. Vinte e Seis - Gov. Valadares, MG, 35020-630

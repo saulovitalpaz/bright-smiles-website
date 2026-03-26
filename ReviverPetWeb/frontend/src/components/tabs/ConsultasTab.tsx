@@ -64,7 +64,6 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
     setIsSaving(true);
 
     try {
-      // 1. Save Consultation to backend
       const consultData = {
         date,
         painLevel,
@@ -85,7 +84,6 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
       if (!res.ok) throw new Error("Erro ao salvar a consulta");
       const savedConsultation = await res.json();
 
-      // 2. Upload attachments if any
       const attachmentsList = [];
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
@@ -101,11 +99,9 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
         }
       }
 
-      // Add attachments to consultation for frontend state
       savedConsultation.attachments = attachmentsList;
       onAdd(savedConsultation);
 
-      // Reset Form
       setIsAdding(false);
       setDate(new Date().toLocaleDateString("pt-BR"));
       setPainLevel(undefined);
@@ -127,9 +123,9 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
   // Prepare chart data (chronological order)
   const chartData = [...consultations]
     .filter(c => c.painLevel !== undefined)
-    .reverse() // from oldest to newest if the array is newest first
+    .reverse()
     .map(c => ({
-      date: c.date.substring(0, 5), // DD/MM
+      date: c.date.substring(0, 5),
       dor: c.painLevel,
     }));
 
@@ -138,56 +134,59 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       {!isAdding ? (
         <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Consultas e Evolução Fisiátrica</h2>
-            <Button onClick={() => setIsAdding(true)} className="rounded-xl gap-2 bg-primary hover:bg-primary-light">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-lg sm:text-xl font-bold text-foreground">Consultas e Evolução Fisiátrica</h2>
+            <Button onClick={() => setIsAdding(true)} className="rounded-xl gap-2 bg-primary hover:bg-primary-light w-full sm:w-auto">
               <Plus className="h-4 w-4" /> Nova Consulta
             </Button>
           </div>
 
           {/* Pain Evolution Chart */}
           {chartData.length > 0 && (
-            <Card className="border-none shadow-sm bg-card mb-6">
+            <Card className="border-none shadow-sm bg-card mb-4 sm:mb-6">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2 text-primary">
                   <Activity className="h-4 w-4" /> Gráfico de Melhora (Dor)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis domain={[0, 5]} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip
-                      contentStyle={{
-                        background: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "0.75rem",
-                        fontSize: 13,
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="dor"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      dot={{ fill: "hsl(var(--primary))", r: 5 }}
-                      name="Nível de Dor"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <CardContent className="px-2 sm:px-6">
+                <div className="h-[180px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis domain={[0, 5]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "0.75rem",
+                          fontSize: 12,
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="dor"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={3}
+                        dot={{ fill: "hsl(var(--primary))", r: 5 }}
+                        name="Nível de Dor"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {consultations.length === 0 ? (
             <Card className="border-dashed border-2">
-              <CardContent className="p-10 text-center text-muted-foreground">
+              <CardContent className="p-8 sm:p-10 text-center text-muted-foreground">
                 Nenhuma consulta registrada para este paciente.
               </CardContent>
             </Card>
@@ -201,18 +200,18 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                   transition={{ delay: i * 0.05 }}
                 >
                   <Card className="border-none shadow-sm bg-card border-l-4 border-l-primary hover:shadow-md transition-shadow">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between mb-4">
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="flex items-start justify-between mb-3 sm:mb-4">
                         <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
                           <Calendar className="h-4 w-4" /> {c.date}
                         </span>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {c.painLevel !== undefined && (
                             <span className={cn(
-                              "px-2.5 py-1 text-xs font-bold rounded-full",
+                              "px-2 py-1 text-xs font-bold rounded-full",
                               c.painLevel >= 4 ? "bg-red-100 text-red-700" : c.painLevel >= 2 ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
                             )}>
-                              {painOptions.find(p => p.value === c.painLevel)?.emoji} Dor {c.painLevel}/5
+                              {painOptions.find(p => p.value === c.painLevel)?.emoji} {c.painLevel}/5
                             </span>
                           )}
                           <Button
@@ -226,7 +225,7 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-3">
                           {c.complaint && (
                             <div>
@@ -273,20 +272,20 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                             </div>
                           )}
 
-                          {/* Attachments Display */}
+                          {/* Attachments */}
                           {c.attachments && c.attachments.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-border">
+                            <div className="mt-3 pt-3 border-t border-border">
                               <span className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5 mb-2">
                                 <ImageIcon className="h-4 w-4" /> Anexos e Imagens
                               </span>
-                              <div className="flex flex-wrap gap-3">
+                              <div className="flex flex-wrap gap-2">
                                 {c.attachments.map(att => (
                                   <a
                                     key={att.id}
                                     href={`/api/consultations/attachments/${att.id}/view`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="relative group border border-border rounded-lg overflow-hidden shrink-0 w-24 h-24 block shadow-sm hover:shadow-md transition-all"
+                                    className="relative group border border-border rounded-lg overflow-hidden shrink-0 w-20 h-20 sm:w-24 sm:h-24 block shadow-sm hover:shadow-md transition-all"
                                   >
                                     <img
                                       src={`/api/consultations/attachments/${att.id}/view`}
@@ -312,43 +311,43 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="space-y-6"
+          className="space-y-4 sm:space-y-6"
         >
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => setIsAdding(false)} className="rounded-xl h-10 w-10">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={() => setIsAdding(false)} className="rounded-xl h-10 w-10 shrink-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Stethoscope className="h-5 w-5 text-primary" /> Registrar Atendimento
+            <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
+              <Stethoscope className="h-5 w-5 text-primary shrink-0" /> Registrar Atendimento
             </h2>
           </div>
 
           <Card className="border-none shadow-md bg-card">
-            <CardContent className="p-6 space-y-8">
+            <CardContent className="p-4 sm:p-6 space-y-6">
               {/* Row 1: Date & Pain */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                 <div className="space-y-2">
                   <Label className="text-sm font-bold text-primary">Data do Atendimento</Label>
-                  <Input value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl h-12" />
+                  <Input value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl h-11" />
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-sm font-bold text-primary">Escala de Dor (0 a 5)</Label>
-                  <div className="flex justify-between gap-1 p-2 bg-muted/30 rounded-xl border border-border">
+                  <div className="flex justify-between gap-0.5 sm:gap-1 p-1.5 sm:p-2 bg-muted/30 rounded-xl border border-border">
                     {painOptions.map((opt) => (
                       <button
                         key={opt.value}
                         onClick={() => setPainLevel(opt.value)}
                         className={cn(
-                          "flex flex-col items-center justify-center p-2 rounded-lg transition-all flex-1",
+                          "flex flex-col items-center justify-center p-1 sm:p-2 rounded-lg transition-all flex-1",
                           painLevel === opt.value
                             ? "bg-primary text-primary-foreground shadow-md scale-105"
                             : "hover:bg-muted text-muted-foreground"
                         )}
                         title={opt.label}
                       >
-                        <span className="text-2xl">{opt.emoji}</span>
-                        <span className="text-[10px] font-semibold mt-1 hidden sm:block">{opt.value}</span>
+                        <span className="text-xl sm:text-2xl">{opt.emoji}</span>
+                        <span className="text-[9px] sm:text-[10px] font-semibold mt-0.5 hidden sm:block">{opt.value}</span>
                       </button>
                     ))}
                   </div>
@@ -356,7 +355,7 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
               </div>
 
               {/* Row 2: Text fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-bold text-foreground">Queixa Principal *</Label>
                   <Input
@@ -372,7 +371,7 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                     value={anamnesis}
                     onChange={(e) => setAnamnesis(e.target.value)}
                     placeholder="Histórico do quadro atual..."
-                    className="rounded-xl resize-none h-[42px]"
+                    className="rounded-xl resize-none min-h-[42px]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -436,8 +435,8 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                 <Label className="text-sm font-bold text-foreground block">
                   Imagens e Anexos
                 </Label>
-                <div className="flex flex-wrap gap-4 items-center">
-                  <label className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-xl cursor-pointer transition-colors border border-border">
+                <div className="flex flex-wrap gap-3 items-center">
+                  <label className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-muted-foreground rounded-xl cursor-pointer transition-colors border border-border text-sm">
                     <ImageIcon className="h-4 w-4" /> Escolher fotos...
                     <input
                       type="file"
@@ -455,7 +454,7 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                   {selectedFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedFiles.map((file, idx) => (
-                        <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-border shadow-sm">
+                        <div key={idx} className="relative group w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden border border-border shadow-sm">
                           <img
                             src={URL.createObjectURL(file)}
                             alt={`Preview ${idx}`}
@@ -474,7 +473,7 @@ const ConsultasTab = ({ patientId, consultations, onAdd, onDelete }: ConsultasTa
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-border">
+              <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t border-border">
                 <Button variant="ghost" onClick={() => setIsAdding(false)} className="rounded-xl" disabled={isSaving}>
                   Cancelar
                 </Button>

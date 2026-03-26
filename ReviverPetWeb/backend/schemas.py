@@ -16,6 +16,7 @@ class PatientBase(BaseModel):
     conditions: Optional[str] = None
     vaccines: Optional[str] = None
     photo_path: Optional[str] = None
+    is_personal: Optional[bool] = False
 
 class PatientCreate(PatientBase):
     pass

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "outline": "#7d7760",
+              "on-primary": "#ffffff",
+              "on-secondary-fixed-variant": "#454748",
+              "on-error": "#ffffff",
+              "inverse-primary": "#e2c60f",
+              "tertiary-fixed-dim": "#00dce1",
+              "on-tertiary-fixed": "#002021",
+              "tertiary": "#00696c",
+              "secondary": "#5c5f60",
+              "surface-bright": "#fbf9f8",
+              "tertiary-fixed": "#2dfaff",
+              "on-error-container": "#93000a",
+              "surface-container-highest": "#e4e2e1",
+              "inverse-on-surface": "#f3f0f0",
+              "on-primary-container": "#736300",
+              "surface-container-low": "#f6f3f2",
+              "surface-container": "#f0eded",
+              "secondary-container": "#e1e3e4",
+              "primary": "#6d5e00",
+              "on-secondary": "#ffffff",
+              "surface-variant": "#e4e2e1",
+              "on-secondary-fixed": "#191c1d",
+              "primary-fixed-dim": "#e2c60f",
+              "on-tertiary": "#ffffff",
+              "primary-fixed": "#ffe245",
+              "on-tertiary-fixed-variant": "#004f51",
+              "on-primary-fixed-variant": "#524700",
+              "surface-tint": "#6d5e00",
+              "on-surface-variant": "#4c4733",
+              "on-tertiary-container": "#006f72",
+              "error-container": "#ffdad6",
+              "outline-variant": "#cec6ac",
+              "on-primary-fixed": "#211b00",
+              "on-secondary-container": "#626566",
+              "surface-dim": "#dcd9d9",
+              "secondary-fixed": "#e1e3e4",
+              "on-background": "#1b1c1c",
+              "tertiary-container": "#00faff",
+              "error": "#ba1a1a",
+              "on-surface": "#1b1c1c",
+              "surface": "#fbf9f8",
+              "primary-container": "#ffe135",
+              "background": "#fbf9f8",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#c5c7c8",
+              "surface-container-high": "#eae8e7",
+              "inverse-surface": "#303030"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-6 px-4 bg-zinc-50 dark:bg-zinc-950 h-screen w-64 border-r border-zinc-200/50 dark:border-zinc-800/50 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Dra. Brenda</h1>
+<p class="text-xs text-zinc-500 font-medium">Veterinary Rehab</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium">Dashboard</span>
+</a>
+<!-- Patients (Active) -->
+<a class="flex items-center gap-3 px-4 py-3 bg-yellow-400/10 dark:bg-yellow-400/5 text-yellow-700 dark:text-yellow-400 rounded-full font-bold transition-all duration-150 ease-in-out scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-bold">Patients</span>
+</a>
+<!-- Calendar -->
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-medium">Calendar</span>
+</a>
+<!-- Sessions -->
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">rebase_edit</span>
+<span class="font-medium">Sessions</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2">
+<button class="w-full bg-primary-container text-on-primary-container py-3 rounded-full font-bold flex items-center justify-center gap-2 mb-6 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">add</span>
+                New Session
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-medium">Logout</span>
+</a>
+<div class="pt-6 flex items-center gap-3 px-4 border-t border-zinc-200/50 mt-4">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-zinc-200">
+<img alt="Dra. Brenda Tiradentes Profile" class="w-full h-full object-cover" data-alt="professional portrait of a confident female veterinarian with kind eyes in a clean clinical setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBP7qSgO3wqCbj6P4SvINIx6JN8O1_r5xdhWV_9hhfa-6jfo_074j-s2xbOZYSjrMZdEuHioxn9NkLr0XU92UpxfhUZtIR88_Qr3VsT1wpSjWewtl6kutLKOV8WGvwXvFSKR_9sFGvomrRa21v9b4yhcEtWdqYFGbWSZBrU3n1l3yg6vZIe2GdgxbYkTvQjcyoDZPa5E7gr6UfF5a_CTWoKaGMDpKz8pM1pz5Il92bS1UH3gC6ij51XNsFbGwq-NgdaibQziDg2elk"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-sm font-bold text-zinc-900 truncate">Dra. Brenda</p>
+<p class="text-xs text-zinc-500 truncate">Rehab Specialist</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 z-40 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl shadow-sm dark:shadow-none">
+<div class="flex items-center gap-8">
+<span class="text-lg font-extrabold text-zinc-900 dark:text-zinc-50">The Radiant Clinician</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-sm font-bold" href="#">Overview</a>
+<a class="text-yellow-600 dark:text-yellow-400 border-b-2 border-yellow-400 pb-1 text-sm font-bold" href="#">Today</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-sm font-bold" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<input class="bg-surface-container-high border-none rounded-full py-2 pl-10 pr-4 text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search patients..." type="text"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-lg">search</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Page Canvas -->
+<section class="p-8 flex-1 max-w-7xl w-full mx-auto">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-10">
+<div>
+<h2 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Patient Directory</h2>
+<p class="text-on-surface-variant font-medium">Manage and monitor the recovery of your furry patients.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-3 bg-primary-container text-on-primary-container rounded-full font-bold flex items-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-sm">
+<span class="material-symbols-outlined">add_circle</span>
+                        Register Patient
+                    </button>
+</div>
+</div>
+<!-- Bento Filters -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+<!-- Search Box -->
+<div class="md:col-span-2 bg-surface-container-low p-4 rounded-xl flex items-center gap-4">
+<div class="bg-surface-container-lowest p-3 rounded-full text-primary">
+<span class="material-symbols-outlined">search</span>
+</div>
+<div class="flex-1">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-1">Search Patient</label>
+<input class="w-full bg-transparent border-none p-0 text-on-surface placeholder:text-zinc-400 focus:ring-0 font-medium" placeholder="Type name or tutor..." type="text"/>
+</div>
+</div>
+<!-- Species Filter -->
+<div class="bg-surface-container-low p-4 rounded-xl">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">Species</label>
+<div class="flex gap-2">
+<button class="flex-1 py-2 px-3 bg-primary-container text-on-primary-container rounded-lg text-xs font-bold flex items-center justify-center gap-1">
+                            Canine
+                        </button>
+<button class="flex-1 py-2 px-3 bg-surface-container-lowest text-on-surface-variant rounded-lg text-xs font-bold flex items-center justify-center gap-1 hover:bg-white transition-colors">
+                            Feline
+                        </button>
+</div>
+</div>
+<!-- Status Filter -->
+<div class="bg-surface-container-low p-4 rounded-xl">
+<label class="block text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2">Status</label>
+<select class="w-full bg-surface-container-lowest border-none rounded-lg text-xs font-bold text-on-surface py-2 focus:ring-1 focus:ring-primary/20">
+<option>Active Treatment</option>
+<option>Maintenance</option>
+<option>Discharged</option>
+<option>Waitlist</option>
+</select>
+</div>
+</div>
+<!-- Patient List Grid -->
+<div class="space-y-4">
+<!-- Patient Row 1 -->
+<div class="bg-surface-container-low rounded-lg p-5 flex items-center gap-6 group hover:bg-surface-container-high transition-all duration-300">
+<div class="relative">
+<img alt="Golden Retriever Patient" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm transition-transform group-hover:scale-105" data-alt="cheerful golden retriever dog sitting calmly in a bright clinical room with natural window light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDn93xlTp_zQb7Ows--F3C9RaW9UNodQ6EhKbKmwMjdBkev537bBgcs6Mz6fT0ztDGeJJH4SF3zvzC00b_edGU1Tj3RAbUD6OWjy--o4z5lJ0a3oiZTL21cXeNzKNW7hd2oXRlBxje7RYCO2Qe-IaGXYGvMiVlMhv8GoWQLkoEDfQFxbZGVVZ0nOXYGjyAy_gMiOC-NulTHleXYvmQMFqbeThuVGza-ZXuBevN95lsl6NjlzZvdM1F1UQes2pZ9om0tu4AUO3Rc-Us"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center border-2 border-white">
+<span class="material-symbols-outlined text-sm">pets</span>
+</div>
+</div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+<div>
+<h3 class="text-xl font-bold text-on-surface">Luna</h3>
+<p class="text-sm text-on-surface-variant font-medium">Golden Retriever • 5yo</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Tutor</p>
+<p class="text-sm font-semibold text-on-surface">Beatriz Amaral</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Last Session</p>
+<p class="text-sm font-semibold text-on-surface">Oct 24, 2023</p>
+</div>
+<div>
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
+                                Active Rehab
+                            </div>
+</div>
+</div>
+<button class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-full shadow-sm hover:bg-primary hover:text-on-primary transition-all flex items-center gap-2 group/btn">
+                        View Record
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Patient Row 2 -->
+<div class="bg-surface-container-low rounded-lg p-5 flex items-center gap-6 group hover:bg-surface-container-high transition-all duration-300">
+<div class="relative">
+<img alt="Calico Cat Patient" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm transition-transform group-hover:scale-105" data-alt="a beautiful calico cat looking curiously into the camera with soft fur textures and bright eyes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjKKMKCdvkvUbzoHtUkMRCi82WHZDQU_sK8i2XNpajPxVqW0uMGg6D0kJhKHYcfpJSJVX7CWBTYii1TUoabQBTSVPd1oN-Vs7eEHdyh7wulKwKA9-fq64o9ixLRBuz3IYm3mQiVo3WQnBk-4QIBADXkuAt3BIQa2uW_NRSufNqqZLuYuq2u6JATrUt_4HdAtgF7BkPT4EXCcRkO_BHzaDC5LV7IWBpGMUaw3cqlg2wew2HGvFtdDbwGTGrmFDG6t4tANzIJOUsP08"/>
+<div class="absolute -bottom-1 -right-1 bg-tertiary text-on-tertiary w-8 h-8 rounded-full flex items-center justify-center border-2 border-white">
+<span class="material-symbols-outlined text-sm">pets</span>
+</div>
+</div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+<div>
+<h3 class="text-xl font-bold text-on-surface">Oliver</h3>
+<p class="text-sm text-on-surface-variant font-medium">Domestic Shorthair • 2yo</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Tutor</p>
+<p class="text-sm font-semibold text-on-surface">Ricardo Gomes</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Last Session</p>
+<p class="text-sm font-semibold text-on-surface">Oct 20, 2023</p>
+</div>
+<div>
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-bold uppercase tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-yellow-500 mr-2"></span>
+                                Post-Op Recovery
+                            </div>
+</div>
+</div>
+<button class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-full shadow-sm hover:bg-primary hover:text-on-primary transition-all flex items-center gap-2 group/btn">
+                        View Record
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Patient Row 3 -->
+<div class="bg-surface-container-low rounded-lg p-5 flex items-center gap-6 group hover:bg-surface-container-high transition-all duration-300">
+<div class="relative">
+<img alt="Corgi Patient" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm transition-transform group-hover:scale-105" data-alt="a small fluffy corgi dog standing on a wooden floor in a warm sunlit room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDO8EWlSeBb6ZcWPpHd5XSkPBNv7wPNdiAsNSRYU4CoDH5U3Hympx67ZLahcMdlwanidgu3pLH3nQ_q9LUV-7Y3e82Ep5JI0YBRUJUjD-Lh-xEvVb_WzIBGLvUhWetrdI4QkJXNZLYe5-mfg7BI2fJkli1o9o8wcqEm02KkCIOelc25N36Gy8UfpvCcBRSAXYADOh3_vwfcTCC0JewQ6x3V5-bT4wYQjfVdkXDZZc3Euy1ch1SXzxE4mJcW_Y0rfiCCLMmXPHaZUqk"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center border-2 border-white">
+<span class="material-symbols-outlined text-sm">pets</span>
+</div>
+</div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+<div>
+<h3 class="text-xl font-bold text-on-surface">Bento</h3>
+<p class="text-sm text-on-surface-variant font-medium">Pembroke Corgi • 4yo</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Tutor</p>
+<p class="text-sm font-semibold text-on-surface">Juliana Paes</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Last Session</p>
+<p class="text-sm font-semibold text-on-surface">Oct 15, 2023</p>
+</div>
+<div>
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>
+                                Maintenance
+                            </div>
+</div>
+</div>
+<button class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-full shadow-sm hover:bg-primary hover:text-on-primary transition-all flex items-center gap-2 group/btn">
+                        View Record
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Patient Row 4 -->
+<div class="bg-surface-container-low rounded-lg p-5 flex items-center gap-6 group hover:bg-surface-container-high transition-all duration-300">
+<div class="relative">
+<img alt="Beagle Patient" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm transition-transform group-hover:scale-105" data-alt="a focused beagle dog standing alert in a clean minimalist veterinary clinic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCG7n9OL8ViGhkGWsc2LGqXSGgHJmhKrtfHRGyBgr2TfTmTxp4KReVBpfTXjnihH6v0Uv-OlydYZYh1uZ2gfcKIgXYK79Hyx1JQda5IASL7r4wf6oTGhl9KHhnIcW2fg04PxijhLMl_c1o9kl-0NVQEfjB02dy3XcyHxTbhvNrWgz294QJKL2EVFH2tSnwcaChCmTJRH-D3qvQoDHR9sYY1sEXmBOJ8S16Gq7nl7FZYkdLSEFIvgWwje7yDcwVd4myHYArrmopRuP8"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center border-2 border-white">
+<span class="material-symbols-outlined text-sm">pets</span>
+</div>
+</div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+<div>
+<h3 class="text-xl font-bold text-on-surface">Max</h3>
+<p class="text-sm text-on-surface-variant font-medium">Beagle • 7yo</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Tutor</p>
+<p class="text-sm font-semibold text-on-surface">Claudio Mattos</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mb-1">Last Session</p>
+<p class="text-sm font-semibold text-on-surface">Sept 28, 2023</p>
+</div>
+<div>
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-zinc-200 text-zinc-600 text-[10px] font-bold uppercase tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-zinc-400 mr-2"></span>
+                                Discharged
+                            </div>
+</div>
+</div>
+<button class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-full shadow-sm hover:bg-primary hover:text-on-primary transition-all flex items-center gap-2 group/btn">
+                        View Record
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Pagination/Footer -->
+<div class="mt-12 flex justify-between items-center bg-surface-container-lowest p-4 rounded-xl shadow-sm">
+<p class="text-sm text-on-surface-variant font-medium">Showing 4 of 128 patients</p>
+<div class="flex gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-on-primary font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">3</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</body></html>

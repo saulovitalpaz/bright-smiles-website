@@ -8,8 +8,17 @@ from backend.database import engine, get_db
 import os
 import shutil
 
+from sqlalchemy import text
+
 # Create tables
 models.Base.metadata.create_all(bind=engine)
+
+with engine.connect() as con:
+    try:
+        con.execute(text("ALTER TABLE patients ADD COLUMN is_personal BOOLEAN DEFAULT 0"))
+        con.commit()
+    except Exception:
+        pass
 
 app = FastAPI(title="ReviverPet API", description="Sistema de Prontuário Veterinário")
 
@@ -36,8 +45,8 @@ os.makedirs(DOCUMENTS_BASE, exist_ok=True)
 # --- PATIENTS ENDPOINTS ---
 
 @app.get("/api/patients/", response_model=list[schemas.Patient])
-def read_patients(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    patients = db.query(models.Patient).offset(skip).limit(limit).all()
+def read_patients(skip: int = 0, limit: int = 100, is_personal: bool = False, db: Session = Depends(get_db)):
+    patients = db.query(models.Patient).filter(models.Patient.is_personal == is_personal).offset(skip).limit(limit).all()
     return patients
 
 @app.get("/api/patients/{patient_id}", response_model=schemas.PatientWithDetails)

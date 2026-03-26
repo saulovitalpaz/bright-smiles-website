@@ -1,11 +1,11 @@
 [build]
-dockerfilePath = "Dockerfile"
+dockerfile_path = "Dockerfile"
 
 [deploy]
-startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/api/patients/"
-healthcheckTimeout = 100
-restartPolicyType = "ON_FAILURE"
+start_command = "sh -c 'python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT'"
+healthcheck_path = "/api/patients/"
+healthcheck_timeout = 100
+restart_policy_type = "ON_FAILURE"
 
 [envs]
 DATA_DIR = "/data"

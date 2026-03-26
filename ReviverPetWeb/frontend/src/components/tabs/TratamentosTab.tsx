@@ -57,9 +57,9 @@ const TratamentosTab = ({ patientId, treatments, onAdd, onDelete, onToggle }: Tr
     >
       {!isAdding ? (
         <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Plano Terapêutico</h2>
-            <Button onClick={() => setIsAdding(true)} className="rounded-xl gap-2 bg-primary hover:bg-primary-light">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-lg sm:text-xl font-bold text-foreground">Plano Terapêutico</h2>
+            <Button onClick={() => setIsAdding(true)} className="rounded-xl gap-2 bg-primary hover:bg-primary-light w-full sm:w-auto">
               <Plus className="h-4 w-4" /> Novo Tratamento
             </Button>
           </div>

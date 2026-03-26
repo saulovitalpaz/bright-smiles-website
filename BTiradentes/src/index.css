@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+:root {
+  /* Material 3 - Banana Yellow Palette */
+  --primary: #6d5e00;
+  --on-primary: #ffffff;
+  --primary-container: #ffe135;
+  --on-primary-container: #736300;
+  --primary-fixed: #ffe245;
+  --on-primary-fixed-variant: #524700;
+
+  --secondary: #5c5f60;
+  --on-secondary: #ffffff;
+  --secondary-container: #e1e3e4;
+  --on-secondary-container: #626566;
+
+  --tertiary: #00696c;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #00faff;
+  --on-tertiary-container: #006f72;
+
+  --surface: #fbf9f8;
+  --on-surface: #1b1c1c;
+  --surface-variant: #e4e2e1;
+  --on-surface-variant: #4c4733;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f6f3f2;
+  --surface-container: #f0eded;
+  --surface-container-high: #eae8e7;
+  --surface-container-highest: #e4e2e1;
+
+  --outline: #7d7760;
+  --outline-variant: #cec6ac;
+
+  /* Typography */
+  --font-headline: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+
+  /* Spacing & Radius */
+  --radius-default: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--surface);
+  color: var(--on-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-headline);
+  font-weight: 700;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: var(--transition-fast);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition-fast);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-container);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline);
+}

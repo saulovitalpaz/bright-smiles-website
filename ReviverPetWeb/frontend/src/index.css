@@ -35,7 +35,7 @@
     --success-foreground: 0 0% 100%;
 
     --warning: 48 89% 50%;
-    --warning-foreground: 0 0% 15%;
+    --warning-foreground: 0 0% 15%%;
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
@@ -108,5 +108,72 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Outfit', sans-serif;
+  }
+}
+
+/* ============================================
+   PRINT STYLES — Exportar PDF de Resultados
+   ============================================ */
+@media print {
+  /* Esconder tudo que não é conteúdo de impressão */
+  body > * {
+    display: none !important;
+  }
+
+  /* Esconder a sidebar, header, footer, nav, botões de ação */
+  aside,
+  header,
+  footer,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Mostrar apenas a seção de resultados */
+  .print-section {
+    display: block !important;
+  }
+
+  /* Mostrar o cabeçalho de impressão */
+  .print-header {
+    display: block !important;
+  }
+
+  /* Resetar o layout para impressão */
+  html, body {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    background: white;
+    color: black;
+    font-family: 'Outfit', sans-serif;
+    font-size: 12pt;
+  }
+
+  /* Garantir que o conteúdo da seção de resultados apareça */
+  .print-section * {
+    display: revert !important;
+  }
+
+  .print-section .no-print {
+    display: none !important;
+  }
+
+  /* Corrigir o layout dos cards no modo impressão */
+  .print-section .grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* Remover sombras e efeitos desnecessários */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Quebra de página */
+  @page {
+    margin: 1.5cm;
   }
 }

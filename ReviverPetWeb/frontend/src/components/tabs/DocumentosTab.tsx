@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useRef, useState } from "react";
-import { Plus, FileText, Trash2, Download, Upload, LineChart as ChartIcon, Activity } from "lucide-react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { Plus, FileText, Trash2, Download, Upload, LineChart as ChartIcon, Activity, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ interface DocumentosTabProps {
   onDelete: (id: number) => void;
   onAddMetric: (metric: any) => void;
   onDeleteMetric: (id: number) => void;
+  patientName?: string;
 }
 
 const DocumentosTab = ({
@@ -37,7 +38,8 @@ const DocumentosTab = ({
   onAdd,
   onDelete,
   onAddMetric,
-  onDeleteMetric
+  onDeleteMetric,
+  patientName
 }: DocumentosTabProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -47,7 +49,6 @@ const DocumentosTab = ({
     return (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
   };
 
-  // States for manual metric entry
   const [isAddingMetric, setIsAddingMetric] = useState(false);
   const [metricName, setMetricName] = useState("");
   const [metricValue, setMetricValue] = useState("");
@@ -56,9 +57,6 @@ const DocumentosTab = ({
   const [metricDate, setMetricDate] = useState(getTodayISO());
   const [selectedMetricForChart, setSelectedMetricForChart] = useState<string | null>(null);
 
-  // Auto-fill unit and reference when typing a known metric name
-  // To avoid circular dependencies, we use a simple effect
-  // that runs when metricName changes
   const prevMetricNameRef = useRef(metricName);
   if (metricName !== prevMetricNameRef.current) {
     prevMetricNameRef.current = metricName;
@@ -71,7 +69,7 @@ const DocumentosTab = ({
     }
   }
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -143,8 +141,12 @@ const DocumentosTab = ({
     }
   };
 
+  const handlePrintMetrics = () => {
+    window.print();
+  };
+
   const activeMetrics = Array.from(new Set(metrics.map(m => m.metric_name)));
-  
+
   const parseDate = (d: string) => {
     if (!d) return 0;
     const parts = d.split("/");
@@ -166,16 +168,10 @@ const DocumentosTab = ({
           refMax = parts[1];
         } else if (m.reference_range.includes('<')) {
           const val = parseFloat(m.reference_range.replace(/[^\d.,]/g, '').replace(',', '.'));
-          if (!isNaN(val)) {
-            refMin = 0;
-            refMax = val;
-          }
+          if (!isNaN(val)) { refMin = 0; refMax = val; }
         } else if (m.reference_range.includes('>')) {
           const val = parseFloat(m.reference_range.replace(/[^\d.,]/g, '').replace(',', '.'));
-          if (!isNaN(val)) {
-            refMin = val;
-            refMax = val * 2; // Arbitrary upper bound for visual display
-          }
+          if (!isNaN(val)) { refMin = val; refMax = val * 2; }
         }
       }
       return {
@@ -192,20 +188,21 @@ const DocumentosTab = ({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-bold text-foreground">Exames e Resultados</h2>
-        <div className="flex gap-2">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="text-lg sm:text-xl font-bold text-foreground">Exames e Resultados</h2>
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => setIsAddingMetric(!isAddingMetric)}
-            className="rounded-xl gap-2 border-primary text-primary hover:bg-primary/5"
+            className="rounded-xl gap-2 border-primary text-primary hover:bg-primary/5 flex-1 sm:flex-none"
           >
             <Plus className="h-4 w-4" /> Resultado Manual
           </Button>
           <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
-          <Button onClick={() => fileInputRef.current?.click()} className="rounded-xl gap-2 bg-primary hover:bg-primary-light">
+          <Button onClick={() => fileInputRef.current?.click()} className="rounded-xl gap-2 bg-primary hover:bg-primary-light flex-1 sm:flex-none">
             <Upload className="h-4 w-4" /> Enviar Arquivo
           </Button>
         </div>
@@ -221,30 +218,32 @@ const DocumentosTab = ({
             className="overflow-hidden"
           >
             <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-6 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase">Métrica (Ex: Ureia)</Label>
-                  <Input value={metricName} onChange={e => setMetricName(e.target.value)} placeholder="Ex: ALT" className="bg-white" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase">Valor</Label>
-                  <Input type="text" inputMode="decimal" value={metricValue} onChange={e => setMetricValue(e.target.value)} placeholder="0.0" className="bg-white" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase">Unidade</Label>
-                  <Input value={metricUnit} onChange={e => setMetricUnit(e.target.value)} placeholder="mg/dL" className="bg-white" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase">Referência</Label>
-                  <Input value={metricReference} onChange={e => setMetricReference(e.target.value)} placeholder="10-50" className="bg-white" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase">Data</Label>
-                  <Input type="date" value={metricDate} onChange={e => setMetricDate(e.target.value)} className="bg-white w-full" />
-                </div>
-                <div className="flex items-end gap-2">
-                  <Button onClick={handleSaveMetric} className="flex-1 bg-primary h-10 rounded-lg">Salvar</Button>
-                  <Button variant="ghost" onClick={() => setIsAddingMetric(false)} className="h-10 px-2">X</Button>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase">Métrica (Ex: Ureia)</Label>
+                    <Input value={metricName} onChange={e => setMetricName(e.target.value)} placeholder="Ex: ALT" className="bg-white" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase">Valor</Label>
+                    <Input type="text" inputMode="decimal" value={metricValue} onChange={e => setMetricValue(e.target.value)} placeholder="0.0" className="bg-white" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase">Unidade</Label>
+                    <Input value={metricUnit} onChange={e => setMetricUnit(e.target.value)} placeholder="mg/dL" className="bg-white" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase">Referência</Label>
+                    <Input value={metricReference} onChange={e => setMetricReference(e.target.value)} placeholder="10-50" className="bg-white" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase">Data</Label>
+                    <Input type="date" value={metricDate} onChange={e => setMetricDate(e.target.value)} className="bg-white w-full" />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button onClick={handleSaveMetric} className="flex-1 bg-primary h-10 rounded-lg">Salvar</Button>
+                    <Button variant="ghost" onClick={() => setIsAddingMetric(false)} className="h-10 px-3">✕</Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -255,22 +254,22 @@ const DocumentosTab = ({
       {/* Evolution Chart */}
       {metrics.length > 0 && (
         <Card className="border-none shadow-sm bg-card">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base flex items-center gap-2 text-primary">
               <Activity className="h-4 w-4" /> Evolução de Resultados
             </CardTitle>
             <select
-              className="text-xs bg-muted border-none rounded-md px-2 py-1 outline-none"
+              className="text-xs bg-muted border-none rounded-md px-2 py-1 outline-none max-w-[160px] sm:max-w-none"
               onChange={(e) => setSelectedMetricForChart(e.target.value)}
               value={selectedMetricForChart || activeMetrics[0]}
             >
               {activeMetrics.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px] w-full">
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
+                <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                   {chartData.length > 0 && chartData[0].refMin !== undefined && chartData[0].refMax !== undefined && (
                     <ReferenceArea
                       y1={chartData[0].refMin}
@@ -283,9 +282,7 @@ const DocumentosTab = ({
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }} />
                   <Line
                     type="monotone"
                     dataKey="valor"
@@ -303,11 +300,30 @@ const DocumentosTab = ({
 
       {/* Manual Results List */}
       {metrics.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
-            <ChartIcon className="h-4 w-4" /> Resultados Lançados
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-stretch">
+        <div className="space-y-3 print-section">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase flex items-center gap-2">
+              <ChartIcon className="h-4 w-4" /> Resultados Lançados
+            </h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintMetrics}
+              className="rounded-lg gap-2 text-muted-foreground border-border hover:bg-muted no-print"
+            >
+              <Printer className="h-4 w-4" /> Exportar PDF
+            </Button>
+          </div>
+
+          {/* Print-only header */}
+          <div className="hidden print-header">
+            <h1 className="text-xl font-bold">Reviver Pet — Resultados de Exames</h1>
+            {patientName && <p className="text-base text-gray-600">Paciente: {patientName}</p>}
+            <p className="text-sm text-gray-500">Emitido em: {new Date().toLocaleDateString("pt-BR")}</p>
+            <hr className="my-3" />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 items-stretch">
             {metrics.map(metric => (
               <LudicCard
                 key={metric.id}
@@ -318,14 +334,14 @@ const DocumentosTab = ({
               >
                 <div className="flex flex-col h-full justify-between">
                   <div>
-                    <p className="text-2xl font-black text-amber-900 drop-shadow-sm">
+                    <p className="text-xl sm:text-2xl font-black text-amber-900 drop-shadow-sm break-all">
                       {metric.value} <span className="text-xs font-semibold text-amber-700">{metric.unit}</span>
                     </p>
                     <p className="text-xs text-amber-800/80 font-medium mt-1">
                       {metric.date} {metric.reference_range && `| Ref: ${metric.reference_range}`}
                     </p>
                   </div>
-                  <div className="mt-4 flex justify-end border-t border-amber-200/50 pt-2">
+                  <div className="mt-3 flex justify-end border-t border-amber-200/50 pt-2 no-print">
                     <Button variant="ghost" size="icon" onClick={() => onDeleteMetric(metric.id)} className="h-7 w-7 text-amber-800 hover:text-red-600 hover:bg-red-100/50">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -345,7 +361,7 @@ const DocumentosTab = ({
         {documents.length === 0 ? (
           <p className="text-sm text-center text-muted-foreground py-4">Nenhum arquivo anexado.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-stretch">
             {documents.map((doc) => {
               const isImage = doc.name.toLowerCase().match(/\.(jpg|jpeg|png)$/i);
               return (

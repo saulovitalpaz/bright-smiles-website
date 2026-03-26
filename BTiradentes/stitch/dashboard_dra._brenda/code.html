@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "outline": "#7d7760",
+              "on-primary": "#ffffff",
+              "on-secondary-fixed-variant": "#454748",
+              "on-error": "#ffffff",
+              "inverse-primary": "#e2c60f",
+              "tertiary-fixed-dim": "#00dce1",
+              "on-tertiary-fixed": "#002021",
+              "tertiary": "#00696c",
+              "secondary": "#5c5f60",
+              "surface-bright": "#fbf9f8",
+              "tertiary-fixed": "#2dfaff",
+              "on-error-container": "#93000a",
+              "surface-container-highest": "#e4e2e1",
+              "inverse-on-surface": "#f3f0f0",
+              "on-primary-container": "#736300",
+              "surface-container-low": "#f6f3f2",
+              "surface-container": "#f0eded",
+              "secondary-container": "#e1e3e4",
+              "primary": "#6d5e00",
+              "on-secondary": "#ffffff",
+              "surface-variant": "#e4e2e1",
+              "on-secondary-fixed": "#191c1d",
+              "primary-fixed-dim": "#e2c60f",
+              "on-tertiary": "#ffffff",
+              "primary-fixed": "#ffe245",
+              "on-tertiary-fixed-variant": "#004f51",
+              "on-primary-fixed-variant": "#524700",
+              "surface-tint": "#6d5e00",
+              "on-surface-variant": "#4c4733",
+              "on-tertiary-container": "#006f72",
+              "error-container": "#ffdad6",
+              "outline-variant": "#cec6ac",
+              "on-primary-fixed": "#211b00",
+              "on-secondary-container": "#626566",
+              "surface-dim": "#dcd9d9",
+              "secondary-fixed": "#e1e3e4",
+              "on-background": "#1b1c1c",
+              "tertiary-container": "#00faff",
+              "error": "#ba1a1a",
+              "on-surface": "#1b1c1c",
+              "surface": "#fbf9f8",
+              "primary-container": "#ffe135",
+              "background": "#fbf9f8",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#c5c7c8",
+              "surface-container-high": "#eae8e7",
+              "inverse-surface": "#303030"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Manrope"],
+              "label": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-6 px-4 bg-zinc-50 dark:bg-zinc-950 h-screen w-64 border-r border-zinc-200/50 dark:border-zinc-800/50 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Dra. Brenda</h1>
+<p class="text-xs text-zinc-500 font-medium">Veterinary Rehab</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Dashboard Active -->
+<a class="flex items-center gap-3 px-4 py-3 bg-yellow-400/10 dark:bg-yellow-400/5 text-yellow-700 dark:text-yellow-400 rounded-full font-bold transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="pets">pets</span>
+<span class="font-body">Patients</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+<span class="font-body">Calendar</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="rebase_edit">rebase_edit</span>
+<span class="font-body">Sessions</span>
+</a>
+</nav>
+<div class="mt-auto space-y-6">
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-full flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+                New Session
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</a>
+</div>
+<div class="flex items-center gap-3 px-2 pt-4 border-t border-zinc-200/50">
+<img alt="Dra. Brenda Tiradentes Profile" class="w-10 h-10 rounded-full object-cover" data-alt="Professional headshot of a friendly female veterinarian with dark hair in a clinical setting, soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZeWMnsgXhaw-fQ9hbp1_tZoIlw1_kY6myh0CPVpRIsurMH9ajMs_wASWcIGcH5yqs0yK4L7ilUoTjZDiqroxzZGPoq6EoQlnhSbxCtGWHkQbWLkngeBnNnH6q652ZzdSDLoJ59azQCemKRBdzNdwJ5fnqgbCWYH-4QMxI8jA-ta8q5Dv05eFDxAmGAdNjvgpSO1VwmamiaLtqNeONKpsHLCr1waJe1lP1TRA31FGPnFxYhPMzc9sYuitX53ewy2bGLRQgTagKOhk"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold text-zinc-900 truncate">Dra. Brenda Tiradentes</p>
+<p class="text-[10px] text-zinc-500">Administrator</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center w-full px-8 h-16 ml-64 max-w-[calc(100%-16rem)] sticky top-0 z-40 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl shadow-sm dark:shadow-none">
+<div class="flex items-center gap-8">
+<span class="text-lg font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">The Radiant Clinician</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-semibold text-yellow-600 dark:text-yellow-400 border-b-2 border-yellow-400 pb-1" href="#">Overview</a>
+<a class="text-sm font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-opacity" href="#">Today</a>
+<a class="text-sm font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-opacity" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">search</span>
+<input class="bg-surface-container-high border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search patients..." type="text"/>
+</div>
+<button class="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-8 min-h-[calc(100vh-4rem)]">
+<header class="mb-10">
+<h2 class="text-3xl font-extrabold text-on-surface tracking-tight mb-2">Good morning, Dra. Brenda</h2>
+<p class="text-on-surface-variant font-medium">You have 8 rehabilitation sessions scheduled for today.</p>
+</header>
+<!-- Bento Grid Dashboard -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Stats Row -->
+<div class="col-span-12 lg:col-span-4 bg-primary-container p-8 rounded-xl flex flex-col justify-between min-h-[220px] relative overflow-hidden group">
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[160px]" data-icon="pets">pets</span>
+</div>
+<div>
+<span class="text-on-primary-fixed-variant font-bold text-sm uppercase tracking-widest">Active Patients</span>
+<h3 class="text-6xl font-extrabold text-on-primary-container mt-2">42</h3>
+</div>
+<div class="flex items-center gap-2 text-on-primary-fixed-variant/70 text-sm font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12% from last month</span>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-4 bg-surface-container-low p-8 rounded-xl border border-outline-variant/10 flex flex-col justify-between min-h-[220px]">
+<div>
+<span class="text-on-surface-variant font-bold text-sm uppercase tracking-widest">Sessions Today</span>
+<h3 class="text-6xl font-extrabold text-on-surface mt-2">08</h3>
+</div>
+<div class="w-full bg-secondary-container h-3 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[37.5%] rounded-full"></div>
+</div>
+<p class="text-sm font-semibold text-on-surface-variant">3 completed / 5 remaining</p>
+</div>
+<div class="col-span-12 lg:col-span-4 bg-tertiary-container/20 p-8 rounded-xl border border-tertiary-container/30 flex flex-col justify-between min-h-[220px]">
+<div>
+<span class="text-on-tertiary-container font-bold text-sm uppercase tracking-widest">Recovery Rate</span>
+<h3 class="text-6xl font-extrabold text-on-tertiary-container mt-2">94%</h3>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex -space-x-3">
+<img alt="Pet Avatar" class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Close up portrait of a happy golden retriever puppy outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfYV_IVKTxuPPUVwDCCf1AqImRllRHzDluLUmfEC9pQmPWPhNYRCv-31RVnqpZppKzvxOXl_5VR8hDCFuSohDV9APNS8YcraBCTa10uQ5gqKDBoL2CgfsYJOASSKArSpdHqsgkP0APGNOHoRiI9_vYiu2XNhUAluY7wsUW9hjBmjXYP1h-Vwe3BdUji8t6hK2S-SxAAVe_Mwm4RNqZ7dOzYj-dufD6n2K9BIETaSiZchHsfUJlhqeueb3mhZ5rIHnh_vlCy5nPu1o"/>
+<img alt="Pet Avatar" class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Portrait of a beagle dog with a soft bokeh background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-vKyfz9I2IBkLDrsWNWYsHnTw55hcm7T0wlWt7vxXpNKoDWHHmyd8TZYwf7pzCkP3nvRBeWIRZ5Z6xU2gBiNrNWOFLEwpBsGFtCq314hblFZw3vU4ImeusQ1UaxLVZ0WpyHKOQmkskWCmp3KUnkNb-CUULpE_WTm3QTzKy_i_ohSyxZeSkercTtat2Mm2rGNlxBaXJcoOGZ6MMPhZ8XytbHaEhML6dBYiduIcqvAiIzmhw_-pFFG0ApfTONlVUZ-a2zDEWaKG0Jw"/>
+<img alt="Pet Avatar" class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Fluffy white Samoyed dog sitting in a clinical room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChArvERLjtGcoakyQQHki_swaYdwgl9Nz4n9uwIBD69Jwz3CCdQtPRQ1nrfzs8kM2XLX_6D4kPeR7v0nTM5991NbBWUaFPQ_fq_RjyH6rj8oYcHXtOzu2IflT0FcxtbFbSJ0Yd5f3owyTVLQGRaJLHcHctdQy5vDchLRNDXiNDHlpirZSCDyvyVfMzdtH7P3xrkTLkew-OwIlH7Rk0hVW0dUwY5n3tkWmnrlAQb8T8qKgaAqyYg9JAtQT2iw5sZiG8csfuuYxwNzU"/>
+</div>
+<span class="text-sm font-bold text-on-tertiary-container">+5 fully recovered this week</span>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-xl font-bold tracking-tight">Upcoming Appointments <span class="text-on-surface-variant font-medium text-sm ml-2">(Next 2 Hours)</span></h3>
+<button class="text-primary font-bold text-sm hover:underline">View Schedule</button>
+</div>
+<div class="space-y-4">
+<!-- Appointment Card 1 -->
+<div class="flex items-center gap-6 p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors group">
+<div class="text-center w-20">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter">Starts in</p>
+<p class="text-2xl font-black text-primary">15m</p>
+</div>
+<div class="h-12 w-[1px] bg-outline-variant/30"></div>
+<div class="flex-1 flex items-center gap-4">
+<img alt="Patient" class="w-14 h-14 rounded-full object-cover shadow-sm" data-alt="A small terrier dog looking at the camera with large expressive eyes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3diwa8nQfvJhOSvjUIKpRDHOZcCma4zPojrJEt95pjI8e28Ci_gbWFFUaQK7BmwlnqT2OkRLiVLPLQTtZePz9XPdPypsUPzFK_DSbQN5gvzFYAiNVB6WWB4nPiXnz1sdRcYWQh6C2bNt_5WkQ16ZD9QFfcXNTzpZhEEW0RVY7WfQmt0Z970z9A8_CiSbGnrDuSLy1cKjgirul3v7LfqCGEB25LE_gRWjMxNKgKAZ8Yy4kDWDLCOHyxLkvQCb1TS7l7PPexc3-HW4"/>
+<div>
+<h4 class="font-bold text-on-surface leading-tight">Luna <span class="text-on-surface-variant font-normal">· French Bulldog</span></h4>
+<p class="text-sm text-on-surface-variant font-medium">Hydrotherapy Session #4</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 bg-primary-container text-on-primary-container rounded-full text-xs font-bold hover:brightness-95 transition-all">Start Session</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface rounded-full">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Appointment Card 2 -->
+<div class="flex items-center gap-6 p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors group">
+<div class="text-center w-20">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter">Starts in</p>
+<p class="text-2xl font-black text-on-surface">55m</p>
+</div>
+<div class="h-12 w-[1px] bg-outline-variant/30"></div>
+<div class="flex-1 flex items-center gap-4">
+<img alt="Patient" class="w-14 h-14 rounded-full object-cover shadow-sm" data-alt="Domestic shorthair cat with green eyes sitting calmly" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtGg--RPBZaBNbRktLLQMWVuqmKTzCJ-yPLxvbcZ0_gosZ1QsHl_79mq9MzyiKVYhsSCz4Nfg_ZE5qZ_lr0F2wYIfZKA13cFaO14ATA8Aiha8RLE8qva1MGgYSbu1RF92qVFMrSUYb1_nI7RmpIR2U_VyB2jXYcMqaysTG0GOwXDouNc1U9AYkMRQCRufIpfAuHrIQcKq5oD03L6ngLB2VowJY3aUf1LdMdcZ10j7Vo1IdzOKJu73W4bIDZpX4ej02XBQsyQDWMuM"/>
+<div>
+<h4 class="font-bold text-on-surface leading-tight">Milo <span class="text-on-surface-variant font-normal">· Siamese Cat</span></h4>
+<p class="text-sm text-on-surface-variant font-medium">Laser Therapy · Post-Op Check</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Checking In</span>
+<button class="p-2 text-on-surface-variant hover:text-on-surface rounded-full">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Appointment Card 3 -->
+<div class="flex items-center gap-6 p-4 rounded-lg bg-surface-container-low/50 opacity-80 transition-colors group">
+<div class="text-center w-20">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter">Starts in</p>
+<p class="text-2xl font-black text-on-surface-variant">1h 20</p>
+</div>
+<div class="h-12 w-[1px] bg-outline-variant/30"></div>
+<div class="flex-1 flex items-center gap-4">
+<img alt="Patient" class="w-14 h-14 rounded-full object-cover shadow-sm grayscale" data-alt="Large greyhound dog in a standing position showing muscular structure" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwya1rTUAt_OUa-S7-tlKCq7w9sCIuDApmpYKb4sX9cuFK_vU-dGNEuwM4S2lOXZznmb6Af1frnwWbHPejgeZiPw5S8iu6IAufPW62Nt5QPidwSXEWyu5pZnytUN6x9uljcJZ1T_qBRbWhKPovhyZLYmVqpgEcq5x6auqFe6CZgdcHjkGToLfTy5JfhQ0p9bngnY8pbWOK8YMyGT5F-7fTZBq7TCW1PK2qOstVTgkI8azAWlhL-96OiJLj3tKxqUL2wrCIh8yG8SU"/>
+<div>
+<h4 class="font-bold text-on-surface leading-tight">Thor <span class="text-on-surface-variant font-normal">· Greyhound</span></h4>
+<p class="text-sm text-on-surface-variant font-medium">Strength &amp; Conditioning</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-on-surface rounded-full">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Actions & Insights -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Quick Session Launch -->
+<div class="bg-zinc-900 dark:bg-zinc-950 p-6 rounded-xl text-white relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="text-lg font-bold mb-2">New Session</h4>
+<p class="text-zinc-400 text-sm mb-6 leading-relaxed">Instantly start a new rehabilitation record for a walk-in or unscheduled session.</p>
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-3 rounded-full flex items-center justify-center gap-2 hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined">bolt</span>
+                            Quick Start
+                        </button>
+</div>
+<!-- Abstract Background Shape -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-400/20 rounded-full blur-3xl"></div>
+</div>
+<!-- Daily Tip Card -->
+<div class="bg-surface-container p-6 rounded-xl border border-outline-variant/20">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined text-primary">lightbulb</span>
+</div>
+<h4 class="font-bold text-sm uppercase tracking-wider text-on-surface-variant">Clinical Insight</h4>
+</div>
+<p class="text-sm text-on-surface font-medium italic leading-relaxed">
+                        "Patients receiving low-level laser therapy within 48h of surgery show a 30% faster initial recovery in joint mobility."
+                    </p>
+<div class="mt-6 flex items-center justify-between">
+<span class="text-[10px] text-on-surface-variant font-bold">SOURCE: VETMED JOURNALS</span>
+<button class="text-primary text-xs font-bold flex items-center gap-1">
+                            Read more
+                            <span class="material-symbols-outlined text-xs">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Map/Location Preview -->
+<div class="rounded-xl overflow-hidden h-40 relative group">
+<img alt="Location" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="Soft focused aerial view of a clean modern urban district with green spaces, representing the clinic's neighborhood" data-location="Curitiba" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAk09yYKpUta5UD4MAdOGINto2E8ca0XMGRjtbWYSPvucQQ08YEr4JkT8M8afOVG9fWC2uz-6CkT7xnUjJg8rK5vqFx8l3mfTbY6MDgSVppm6Zb3Sq1HjqF8SF_Bgwmy80SEx042eXgC9eLMNgnB4fu7xbi2_UmA6G66NBpjCqpP1Wz6dsnMvN8hJKJ89Moa57PvIYeAxrdj--YyAiFu-58G0iO-AketPCJ8yaPzDhiXImWlWioFYWMWZlbFZzhxaI7zpzvWMTHHOw"/>
+<div class="absolute inset-0 bg-black/30 flex flex-col justify-end p-4">
+<p class="text-white font-bold text-sm">Main Clinic</p>
+<p class="text-white/80 text-[10px]">Active now · 4 staff on duty</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

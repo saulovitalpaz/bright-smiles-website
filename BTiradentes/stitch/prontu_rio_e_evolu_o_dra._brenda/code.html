@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Patient Record - The Radiant Clinician</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "outline": "#7d7760",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#454748",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#e2c60f",
+                        "tertiary-fixed-dim": "#00dce1",
+                        "on-tertiary-fixed": "#002021",
+                        "tertiary": "#00696c",
+                        "secondary": "#5c5f60",
+                        "surface-bright": "#fbf9f8",
+                        "tertiary-fixed": "#2dfaff",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e4e2e1",
+                        "inverse-on-surface": "#f3f0f0",
+                        "on-primary-container": "#736300",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container": "#f0eded",
+                        "secondary-container": "#e1e3e4",
+                        "primary": "#6d5e00",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#e4e2e1",
+                        "on-secondary-fixed": "#191c1d",
+                        "primary-fixed-dim": "#e2c60f",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#ffe245",
+                        "on-tertiary-fixed-variant": "#004f51",
+                        "on-primary-fixed-variant": "#524700",
+                        "surface-tint": "#6d5e00",
+                        "on-surface-variant": "#4c4733",
+                        "on-tertiary-container": "#006f72",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#cec6ac",
+                        "on-primary-fixed": "#211b00",
+                        "on-secondary-container": "#626566",
+                        "surface-dim": "#dcd9d9",
+                        "secondary-fixed": "#e1e3e4",
+                        "on-background": "#1b1c1c",
+                        "tertiary-container": "#00faff",
+                        "error": "#ba1a1a",
+                        "on-surface": "#1b1c1c",
+                        "surface": "#fbf9f8",
+                        "primary-container": "#ffe135",
+                        "background": "#fbf9f8",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#c5c7c8",
+                        "surface-container-high": "#eae8e7",
+                        "inverse-surface": "#303030"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-6 px-4 bg-zinc-50 dark:bg-zinc-950 h-screen w-64 border-r border-zinc-200/50 dark:border-zinc-800/50 z-50">
+<div class="mb-8 px-4">
+<h1 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Dra. Brenda</h1>
+<p class="text-xs text-zinc-500 font-medium uppercase tracking-widest mt-1">Veterinary Rehab</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-yellow-400/10 dark:bg-yellow-400/5 text-yellow-700 dark:text-yellow-400 rounded-full font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="pets" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-label">Patients</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+<span class="font-label">Calendar</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="rebase_edit">rebase_edit</span>
+<span class="font-label">Sessions</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-zinc-100 pt-6 px-4 space-y-4">
+<button class="w-full py-3 bg-primary-container text-on-primary-container rounded-full font-bold flex items-center justify-center gap-2 scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined text-lg" data-icon="add">add</span>
+                New Session
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-2 py-2 text-zinc-500 text-sm hover:text-zinc-900 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="settings">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 px-2 py-2 text-zinc-500 text-sm hover:text-zinc-900 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="logout">logout</span>
+                    Logout
+                </a>
+</div>
+<div class="flex items-center gap-3 pt-4">
+<img alt="Dra. Brenda Tiradentes Profile" class="w-10 h-10 rounded-full object-cover" data-alt="professional portrait of a female veterinarian with a kind expression in a bright clinical setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_OH8nzHtjNZnv9XPZr6rRRJ152QgPfIOxmvZoWJ1-8hC_jYPxccgnuTqLlLtXU-Eze6NgLv55z2gIOKncD3VvY21CqgrB8fD12ZZpBd_AuDreZbeRHLkU8HZTt8mlqLsQPdIzjL-M8VhRzfeiAKb20j5nbzurCOWD7aQMStQ_lu0BeJMXkp0BWzGu1FxIy5KncS5H5AjRmlHXsdkIRRyk-VdQjVKyDjauhw5UgclkTzwV9Hguh967jzmIPepQvvNlHQZ4XD19jqM"/>
+<div>
+<p class="text-sm font-bold text-zinc-900">Dra. Brenda</p>
+<p class="text-[10px] text-zinc-500 font-medium">Clinician</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center w-full px-8 h-16 ml-64 max-w-[calc(100%-16rem)] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl sticky top-0 z-40 shadow-sm dark:shadow-none">
+<div class="flex items-center gap-8">
+<span class="text-lg font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">The Radiant Clinician</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-sm font-medium" href="#">Overview</a>
+<a class="text-yellow-600 dark:text-yellow-400 border-b-2 border-yellow-400 pb-1 text-sm font-medium" href="#">Today</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-sm font-medium" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-zinc-100 border-none rounded-full text-sm w-64 focus:ring-2 focus:ring-yellow-400/20 transition-all" placeholder="Search patients..." type="text"/>
+</div>
+<button class="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-8 max-w-[1400px]">
+<!-- Patient Info Header (Asymmetric Bento Style) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-end">
+<div class="lg:col-span-8 flex flex-col md:flex-row gap-8 items-start md:items-end">
+<div class="relative group">
+<div class="absolute -inset-2 bg-primary-fixed blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+<img alt="Patient Photo" class="relative w-48 h-64 object-cover rounded-xl shadow-2xl rotate-[-2deg] hover:rotate-0 transition-transform duration-500" data-alt="high-quality studio portrait of a golden retriever dog sitting calmly with a gentle expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBui6CVgDDKTLH8KPXGBBZOnD_xw1PcB2CPHpSJk41m8xs1n4k5UOEweEo9_Kn5yxsIwFSlWlIWdZyoCTQSv6sH0g4zyo23QGQzkZkA-9moL1uy6h5Th1RjGxpztMWFaq0K08h0vOv4MDg99akDH7XcdxfVTePaHtNVKlkJnDuCrN8Be4sYnFMK5nWmGrf9duUyqpOhdxFkza2SGGNv_M5eC4TktXath7VwpoPoWatvRcWatEWGznJXTHrEYlD3yIWLnmSISA1jMus"/>
+<div class="absolute -bottom-4 -right-4 bg-primary text-on-primary w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-surface">
+<span class="material-symbols-outlined" data-icon="medical_services" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+</div>
+</div>
+<div class="flex-1 space-y-4">
+<div class="space-y-1">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-widest rounded-full">Patient ID: #PR-2024-089</span>
+<h2 class="text-5xl font-extrabold text-on-surface tracking-tight">Maximus Aurelius</h2>
+</div>
+<div class="flex flex-wrap gap-4">
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="category">category</span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Breed</p>
+<p class="text-sm font-semibold">Golden Retriever</p>
+</div>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="cake">cake</span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Age</p>
+<p class="text-sm font-semibold">7 Years, 2 Months</p>
+</div>
+</div>
+<div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="weight">weight</span>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Weight</p>
+<p class="text-sm font-semibold">32.4 kg</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 bg-surface-container-high p-6 rounded-xl flex flex-col justify-between h-48 border border-outline-variant/10">
+<div>
+<h3 class="font-bold text-lg mb-1">Status: In Rehabilitation</h3>
+<p class="text-sm text-on-surface-variant">Ongoing treatment for Hip Dysplasia and post-surgical recovery.</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-high">B</div>
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-[10px] font-bold border-2 border-surface-container-high">T</div>
+</div>
+<button class="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
+                        Edit Records
+                        <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: History & Stats -->
+<div class="lg:col-span-8 space-y-8">
+<!-- Evolution Chart Card -->
+<div class="bg-surface-container-low p-8 rounded-xl relative overflow-hidden">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="text-xl font-bold">Evolution Chart</h3>
+<p class="text-sm text-on-surface-variant">Pain level tracking over the last 6 months</p>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-container-lowest rounded-full text-xs font-bold border border-outline-variant/20 shadow-sm">6 Months</button>
+<button class="px-3 py-1 bg-transparent rounded-full text-xs font-bold text-on-surface-variant">1 Year</button>
+</div>
+</div>
+<!-- SVG Chart Mockup -->
+<div class="w-full h-48 relative mt-4">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ffe135" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#ffe135" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 C100,130 200,160 300,100 C400,40 500,80 600,60 C700,40 800,20 800,20 L800,200 L0,200 Z" fill="url(#chartGradient)"></path>
+<path d="M0,150 C100,130 200,160 300,100 C400,40 500,80 600,60 C700,40 800,20 800,20" fill="none" stroke="#6d5e00" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="300" cy="100" fill="#6d5e00" r="6"></circle>
+<circle cx="600" cy="60" fill="#6d5e00" r="6"></circle>
+</svg>
+<div class="absolute bottom-0 w-full flex justify-between px-2 pt-4 border-t border-outline-variant/10 text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+</div>
+</div>
+</div>
+<!-- Anamnesis History -->
+<div class="space-y-4">
+<h3 class="text-xl font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="history">history</span>
+                        Anamnesis History
+                    </h3>
+<div class="space-y-4">
+<!-- History Item -->
+<div class="group bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/5 hover:border-primary-container transition-all">
+<div class="flex justify-between items-start mb-3">
+<span class="text-xs font-bold text-primary px-3 py-1 bg-primary-container/20 rounded-full tracking-wide">Physiotherapy - 24 May 2024</span>
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="more_vert">more_vert</span>
+</div>
+<p class="text-sm font-bold text-on-surface mb-2">Post-Op Hydrotherapy Session 04</p>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">Significant improvement in right hind limb flexion. Patient showed less resistance during aquatic treadmill exercise. Pain scale reported by owner at 2/10 during morning walks.</p>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant text-[10px] font-bold rounded-md">Hydrotherapy</span>
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant text-[10px] font-bold rounded-md">ROM Exercises</span>
+</div>
+</div>
+<!-- History Item -->
+<div class="group bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/5 hover:border-primary-container transition-all">
+<div class="flex justify-between items-start mb-3">
+<span class="text-xs font-bold text-primary px-3 py-1 bg-primary-container/20 rounded-full tracking-wide">Acupuncture - 17 May 2024</span>
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="more_vert">more_vert</span>
+</div>
+<p class="text-sm font-bold text-on-surface mb-2">Pain Management Focus</p>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">Laser therapy applied to L7-S1 segment. Acupuncture points BL23, BL25, and BL40 stimulated. Relaxed response observed after 10 minutes of needle retention.</p>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant text-[10px] font-bold rounded-md">Laser Therapy</span>
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant text-[10px] font-bold rounded-md">Dry Needling</span>
+</div>
+</div>
+</div>
+<button class="w-full py-4 border-2 border-dashed border-outline-variant/20 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                        Load older history
+                    </button>
+</div>
+</div>
+<!-- Right Column: New Session Form -->
+<div class="lg:col-span-4">
+<div class="bg-surface-container-lowest rounded-xl shadow-lg shadow-on-surface/5 sticky top-24 overflow-hidden">
+<div class="bg-primary-container p-6 text-on-primary-container">
+<h3 class="text-xl font-bold flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+                            New Session
+                        </h3>
+<p class="text-xs font-medium opacity-80 mt-1">Recording details for today, 01 June 2024</p>
+</div>
+<form class="p-6 space-y-6">
+<!-- Session Type Toggle -->
+<div class="flex bg-surface-container p-1 rounded-full">
+<button class="flex-1 py-2 text-xs font-bold bg-white rounded-full shadow-sm text-primary" type="button">Physio</button>
+<button class="flex-1 py-2 text-xs font-bold text-on-surface-variant" type="button">Acupuncture</button>
+</div>
+<!-- Pain Scale -->
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Pain Scale (0-10)</label>
+<span class="text-xl font-black text-primary">4</span>
+</div>
+<input class="w-full accent-primary h-2 bg-surface-container rounded-full appearance-none cursor-pointer" max="10" min="0" type="range" value="4"/>
+<div class="flex justify-between text-[10px] font-bold text-on-surface-variant">
+<span>No Pain</span>
+<span>Mild</span>
+<span>Moderate</span>
+<span>Severe</span>
+</div>
+</div>
+<!-- Points Used -->
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Points Used (Acupuncture)</label>
+<div class="flex flex-wrap gap-2">
+<div class="px-3 py-1.5 bg-surface-container-high rounded-full flex items-center gap-2 text-xs font-bold">
+                                    BL23 <span class="material-symbols-outlined text-[14px]" data-icon="close">close</span>
+</div>
+<div class="px-3 py-1.5 bg-surface-container-high rounded-full flex items-center gap-2 text-xs font-bold">
+                                    GV4 <span class="material-symbols-outlined text-[14px]" data-icon="close">close</span>
+</div>
+<button class="px-3 py-1.5 border border-dashed border-primary/40 rounded-full flex items-center gap-2 text-xs font-bold text-primary" type="button">
+<span class="material-symbols-outlined text-[14px]" data-icon="add">add</span>
+                                    Add Point
+                                </button>
+</div>
+</div>
+<!-- Observation -->
+<div class="space-y-2">
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Observation &amp; Progress Notes</label>
+<textarea class="w-full bg-surface-container border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 p-4" placeholder="Describe the patient's gait, mood, and responses..." rows="4"></textarea>
+</div>
+<div class="pt-4">
+<button class="w-full py-4 bg-primary text-on-primary rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" type="submit">
+                                Complete Session
+                            </button>
+<button class="w-full mt-2 py-2 text-xs font-bold text-on-surface-variant hover:text-error transition-colors" type="button">
+                                Cancel &amp; Discard
+                            </button>
+</div>
+</form>
+</div>
+<!-- Next Appointment Hint -->
+<div class="mt-6 p-6 border-2 border-primary-container/20 rounded-xl flex items-center gap-4 bg-primary-container/5">
+<div class="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="event">event</span>
+</div>
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Next Appointment</p>
+<p class="text-sm font-extrabold">Thursday, June 08 @ 14:30</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Element (Optional Signature touch) -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="w-16 h-16 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300" data-icon="add">add</span>
+</button>
+</div>
+</body></html>
