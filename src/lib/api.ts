@@ -1,5 +1,9 @@
 const getApiUrl = () => {
-    // 1. Smart fallback based on browser URL (Prioridade para produção)
+    // Prefer the value injected at build time. This is important when the
+    // frontend and API are deployed as separate Railway services.
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\/$/, '');
+
+    // Fallback based on the browser URL for deployments without a variable.
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         if (hostname.includes("odontoeharmonizacao.com.br") || hostname.includes("railway.app")) {
@@ -7,10 +11,7 @@ const getApiUrl = () => {
         }
     }
 
-    // 2. Check for environment variable (Vite approach)
-    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-
-    // 3. Produção como fallback final (removido localhost)
+    // Production fallback kept for the current hosted site.
     return "https://backend-production-e175.up.railway.app";
 };
 
@@ -20,9 +21,10 @@ export const fetchClient = async (endpoint: string, options: RequestInit = {}) =
     // Determine if endpoint is full URL or relative path
     const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
-    const defaultHeaders = {
-        'Content-Type': 'application/json',
-    };
+    const isFormData = options.body instanceof FormData;
+    const defaultHeaders: HeadersInit = isFormData
+        ? {}
+        : { 'Content-Type': 'application/json' };
 
     const config = {
         ...options,

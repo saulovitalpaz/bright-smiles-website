@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { API_URL } from "@/lib/api";
+import { API_URL, fetchClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,7 +166,7 @@ const AdminAttendanceDetail = () => {
             // If new and patient doesn't exist, create it via endpoint
             let finalPatientId = data.patientId;
             if (isNew && !finalPatientId && data.patientName && data.cpf) {
-                const pRes = await fetch(`${API_URL}/patients`, {
+                const pRes = await fetchClient(`/patients`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name: data.patientName, cpf: data.cpf })
@@ -189,7 +189,7 @@ const AdminAttendanceDetail = () => {
                 delete (payload as any).updatedAt;
             }
 
-            const res = await fetch(url, {
+            const res = await fetchClient(url, {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -199,7 +199,7 @@ const AdminAttendanceDetail = () => {
                 const saved = await res.json();
 
                 if (isNew && leadId) {
-                    await fetch(`${API_URL}/leads/${leadId}`, {
+                    await fetchClient(`/leads/${leadId}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ status: 'completed' })
@@ -211,7 +211,8 @@ const AdminAttendanceDetail = () => {
                     navigate(`/admin/consultas/${saved.id}`, { replace: true });
                 }
             } else {
-                toast.error("Erro ao salvar.");
+                const error = await res.json().catch(() => null);
+                toast.error(error?.error || "Erro ao salvar.");
             }
         } catch (error) {
             console.error(error);
@@ -224,7 +225,7 @@ const AdminAttendanceDetail = () => {
     const handleDelete = async () => {
         if (confirm("Tem certeza que deseja excluir esta consulta definitivamente?")) {
             try {
-                const res = await fetch(`${API_URL}/appointments/${id}`, {
+                const res = await fetchClient(`/appointments/${id}`, {
                     method: 'DELETE',
                 });
                 if (res.ok) {

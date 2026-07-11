@@ -193,6 +193,7 @@ model PatientDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   pdfUrl    String?
+  storageKey String?
   patient   Patient  @relation(fields: [patientId], references: [id])
 }
 

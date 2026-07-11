@@ -6,6 +6,7 @@ require('dotenv').config();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl } = require('./utils/patientDocumentStorage');
 
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
@@ -28,9 +29,9 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 // Configure Cloudinary
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'drvylmywu',
-    api_key: process.env.CLOUDINARY_API_KEY || '958317597149665',
-    api_secret: process.env.CLOUDINARY_API_SECRET || 'atOr40x95JejT5Ru5AmgqWyz3_4'
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // Configure Multer for Cloudinary
@@ -44,6 +45,11 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage: storage });
+const documentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (req, file, callback) => callback(null, file.mimetype === 'application/pdf')
+});
 
 app.use(cors({
     origin: [
@@ -96,6 +102,50 @@ app.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
     }
 });
 
+// Private patient-document upload. The database stores only the object key;
+// access is granted through the authenticated route below.
+app.post('/patient-documents/:id/file', authenticateToken, documentUpload.single('file'), async (req, res) => {
+    let storageKey;
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Only PDF files are accepted.' });
+
+        const documentId = Number.parseInt(req.params.id, 10);
+        if (!Number.isInteger(documentId)) return res.status(400).json({ error: 'Invalid document id.' });
+
+        const document = await prisma.patientDocument.findUnique({ where: { id: documentId } });
+        if (!document) return res.status(404).json({ error: 'Document not found.' });
+
+        storageKey = await uploadPatientDocument({ patientId: document.patientId, body: req.file.buffer });
+        await prisma.patientDocument.update({
+            where: { id: documentId },
+            data: { storageKey, pdfUrl: null }
+        });
+
+        res.json({ url: `/patient-documents/${documentId}/file` });
+    } catch (error) {
+        if (storageKey) await deletePatientDocument(storageKey).catch(() => {});
+        console.error('Patient document upload error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/patient-documents/:id/file', authenticateToken, async (req, res) => {
+    try {
+        const documentId = Number.parseInt(req.params.id, 10);
+        const document = await prisma.patientDocument.findUnique({ where: { id: documentId } });
+        if (!document) return res.status(404).json({ error: 'Document not found.' });
+
+        if (document.storageKey) {
+            return res.redirect(302, await createPatientDocumentUrl(document.storageKey));
+        }
+        if (document.pdfUrl) return res.redirect(302, document.pdfUrl);
+        return res.status(404).json({ error: 'No file attached to this document.' });
+    } catch (error) {
+        console.error('Patient document access error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/', (req, res) => {
     res.json({ message: 'Bright Smiles API is running!' });
 });
@@ -141,10 +191,11 @@ app.post('/login', async (req, res) => {
             const { password, ...userWithoutPassword } = user;
             const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
 
+            const isSecure = process.env.NODE_ENV === 'production' || req.secure;
             res.cookie('token', token, {
                 httpOnly: true,
-                secure: true, // Always true for cross-site cookies
-                sameSite: 'none', // Needed for cross-site cookies (Railway backend -> Custom domain frontend)
+                secure: isSecure,
+                sameSite: isSecure ? 'none' : 'lax',
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
@@ -277,8 +328,23 @@ app.post('/appointments', authenticateToken, async (req, res) => {
 
     try {
         const payload = { ...result.data };
-        if (payload.price) {
+        payload.date = new Date(payload.date);
+        if (Number.isNaN(payload.date.getTime())) {
+            return res.status(400).json({ error: 'Invalid appointment date' });
+        }
+        if (payload.returnDate) {
+            payload.returnDate = new Date(payload.returnDate);
+            if (Number.isNaN(payload.returnDate.getTime())) {
+                return res.status(400).json({ error: 'Invalid return date' });
+            }
+        }
+        if (payload.price === '' || payload.price === null || payload.price === undefined) {
+            payload.price = null;
+        } else {
             payload.price = parseFloat(payload.price);
+            if (Number.isNaN(payload.price)) {
+                return res.status(400).json({ error: 'Invalid price' });
+            }
         }
 
         const appointment = await prisma.appointment.create({
@@ -314,12 +380,26 @@ app.put('/appointments/:id', async (req, res) => {
         const { id } = req.params;
         const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
 
+        if (data.date) {
+            data.date = new Date(data.date);
+            if (Number.isNaN(data.date.getTime())) {
+                return res.status(400).json({ error: 'Invalid appointment date' });
+            }
+        }
         // Handle returnDate if sent as string
         if (data.returnDate) {
             data.returnDate = new Date(data.returnDate);
+            if (Number.isNaN(data.returnDate.getTime())) {
+                return res.status(400).json({ error: 'Invalid return date' });
+            }
         }
-        if (data.price !== undefined && data.price !== null) {
-            data.price = data.price === "" ? null : parseFloat(data.price);
+        if (data.price === '') {
+            data.price = null;
+        } else if (data.price !== undefined && data.price !== null) {
+            data.price = parseFloat(data.price);
+            if (Number.isNaN(data.price)) {
+                return res.status(400).json({ error: 'Invalid price' });
+            }
         }
 
         const appointment = await prisma.appointment.update({
@@ -1114,19 +1194,22 @@ app.delete('/document-templates/:id', async (req, res) => {
 });
 
 // Patient Documents API (History)
-app.get('/patient-documents/:patientId', async (req, res) => {
+app.get('/patient-documents/:patientId', authenticateToken, async (req, res) => {
     try {
         const docs = await prisma.patientDocument.findMany({
             where: { patientId: parseInt(req.params.patientId) },
             orderBy: { date: 'desc' }
         });
-        res.json(docs);
+        res.json(docs.map(doc => ({
+            ...doc,
+            fileUrl: doc.storageKey ? `/patient-documents/${doc.id}/file` : null
+        })));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.post('/patient-documents', async (req, res) => {
+app.post('/patient-documents', authenticateToken, async (req, res) => {
     try {
         const doc = await prisma.patientDocument.create({
             data: req.body
@@ -1137,7 +1220,7 @@ app.post('/patient-documents', async (req, res) => {
     }
 });
 
-app.put('/patient-documents/:id', async (req, res) => {
+app.put('/patient-documents/:id', authenticateToken, async (req, res) => {
     try {
         const doc = await prisma.patientDocument.update({
             where: { id: parseInt(req.params.id) },
@@ -1149,11 +1232,13 @@ app.put('/patient-documents/:id', async (req, res) => {
     }
 });
 
-app.delete('/patient-documents/:id', async (req, res) => {
+app.delete('/patient-documents/:id', authenticateToken, async (req, res) => {
     try {
-        await prisma.patientDocument.delete({
-            where: { id: parseInt(req.params.id) }
-        });
+        const id = parseInt(req.params.id);
+        const document = await prisma.patientDocument.findUnique({ where: { id } });
+        if (!document) return res.status(404).json({ error: 'Document not found.' });
+        await deletePatientDocument(document.storageKey);
+        await prisma.patientDocument.delete({ where: { id } });
         res.json({ message: 'Document deleted' });
     } catch (error) {
         res.status(400).json({ error: error.message });

@@ -19,7 +19,7 @@ import {
     FileCheck
 } from "lucide-react";
 import { toast } from "sonner";
-import { API_URL } from "@/lib/api";
+import { API_URL, fetchClient } from "@/lib/api";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
@@ -51,7 +51,7 @@ const AdminDocuments = () => {
 
     // Load Templates
     const loadTemplates = () => {
-        fetch(`${API_URL}/document-templates`)
+        fetchClient(`/document-templates`)
             .then(res => res.json())
             .then(data => setTemplates(data))
             .catch(console.error);
@@ -64,7 +64,7 @@ const AdminDocuments = () => {
     // Load History when patient changes
     React.useEffect(() => {
         if (patientData.id) {
-            fetch(`${API_URL}/patient-documents/${patientData.id}`)
+            fetchClient(`/patient-documents/${patientData.id}`)
                 .then(res => res.json())
                 .then(setHistory)
                 .catch(console.error);
@@ -74,11 +74,11 @@ const AdminDocuments = () => {
     const handleCreateTemplate = async () => {
         if (!newTemplate.title || !newTemplate.content) return toast.error("Preencha título e conteúdo");
         try {
-            await fetch(`${API_URL}/document-templates`, {
+            const res = await fetchClient(`/document-templates`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(newTemplate)
             });
+            if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "Erro ao criar modelo");
             toast.success("Modelo criado!");
             setNewTemplate({ title: "", content: "" });
             loadTemplates();
@@ -91,7 +91,8 @@ const AdminDocuments = () => {
     const handleDeleteTemplate = async (id: number) => {
         if (!confirm("Tem certeza que deseja excluir este modelo?")) return;
         try {
-            await fetch(`${API_URL}/document-templates/${id}`, { method: "DELETE" });
+            const res = await fetchClient(`/document-templates/${id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "Erro ao excluir");
             toast.success("Modelo excluído!");
             loadTemplates();
             if (selectedTemplate?.id === id) {
@@ -118,9 +119,8 @@ const AdminDocuments = () => {
     const handleSaveHistory = async () => {
         if (!patientData.id || !documentContent) return toast.error("Selecione um paciente e gere um documento.");
         try {
-            const res = await fetch(`${API_URL}/patient-documents`, {
+            const res = await fetchClient(`/patient-documents`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     title: selectedTemplate?.title || "Documento Avulso",
                     content: documentContent,
@@ -131,6 +131,9 @@ const AdminDocuments = () => {
                 toast.success("Salvo no histórico!");
                 const saved = await res.json();
                 setHistory([saved, ...history]);
+            } else {
+                const error = await res.json().catch(() => null);
+                toast.error(error?.error || "Erro ao salvar.");
             }
         } catch (e) {
             toast.error("Erro ao salvar.");
@@ -140,7 +143,7 @@ const AdminDocuments = () => {
     const handleDeleteHistory = async (id: number) => {
         if (!window.confirm("Excluir este documento do histórico?")) return;
         try {
-            const res = await fetch(`${API_URL}/patient-documents/${id}`, { method: "DELETE" });
+            const res = await fetchClient(`/patient-documents/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setHistory(prev => prev.filter(h => h.id !== id));
                 toast.success("Documento excluído!");
@@ -155,24 +158,17 @@ const AdminDocuments = () => {
         formData.append("file", file);
 
         try {
-            // 1. Upload to Cloudinary
-            const uploadRes = await fetch(`${API_URL}/upload`, {
+            // Upload to the private Railway Bucket through the backend.
+            const uploadRes = await fetchClient(`/patient-documents/${docId}/file`, {
                 method: "POST",
-                body: formData,
-                credentials: 'include'
+                body: formData
             });
+            if (!uploadRes.ok) throw new Error((await uploadRes.json().catch(() => null))?.error || "Erro no upload");
             const { url } = await uploadRes.json();
-
-            // 2. Update Document record
-            await fetch(`${API_URL}/patient-documents/${docId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ pdfUrl: url })
-            });
 
             toast.success("PDF Anexado com sucesso!");
             // Refresh history locally
-            setHistory(history.map(h => h.id === docId ? { ...h, pdfUrl: url } : h));
+            setHistory(history.map(h => h.id === docId ? { ...h, fileUrl: url } : h));
         } catch (e) {
             console.error(e);
             toast.error("Erro ao fazer upload.");
@@ -280,8 +276,8 @@ const AdminDocuments = () => {
                                         </div>
                                         <div className="flex justify-between items-center mt-2">
                                             <div className="flex gap-2">
-                                                {doc.pdfUrl ? (
-                                                    <a href={doc.pdfUrl} target="_blank" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
+                                                {doc.fileUrl || doc.pdfUrl ? (
+                                                    <a href={(doc.fileUrl || doc.pdfUrl).startsWith('http') ? (doc.fileUrl || doc.pdfUrl) : `${API_URL}${doc.fileUrl || doc.pdfUrl}`} target="_blank" rel="noopener noreferrer" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
                                                         <FileCheck size={12} /> Assinado
                                                     </a>
                                                 ) : (

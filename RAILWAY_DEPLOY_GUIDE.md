@@ -58,6 +58,19 @@ Your database is fresh and empty. To create the initial Admin user:
     *   Change it temporarily to `npm install && npx prisma db seed`.
     *   Deploy once, then remove it.
 
+## 6. Connect the private document Bucket
+
+Add the Bucket variable references to the backend service. Keep these values only in Railway Variables:
+
+* `ENDPOINT` → the Bucket `Endpoint URL`
+* `REGION` → the Bucket `Region`
+* `BUCKET` → the Bucket `Bucket Name`
+* `ACCESS_KEY_ID` → the Bucket `Access Key ID`
+* `SECRET_ACCESS_KEY` → the Bucket `Secret Access Key`
+* `AWS_S3_URL_STYLE` → `virtual` (use `path` only if the Bucket Credentials tab specifies path-style URLs)
+
+Patient PDFs are uploaded through the backend into the private Bucket. The database stores only the object key, and document access uses a short-lived signed URL.
+
 ## Summary of Services
 You should have 3 boxes in your Railway Project Canvas:
 1.  **PostgreSQL** (The Database)
