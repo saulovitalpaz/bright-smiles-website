@@ -67,6 +67,7 @@ const AdminAttendanceDetail = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const leadId = searchParams.get("leadId");
+    const patientIdParam = searchParams.get("patientId");
 
     const [data, setData] = useState<AppointmentData>({ ...DEFAULT_APPOINTMENT });
     const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +79,12 @@ const AdminAttendanceDetail = () => {
 
     useEffect(() => {
         if (id === 'new') {
-            const draft = { ...DEFAULT_APPOINTMENT, professional: currentUser.name || "Profissional" };
+            const parsedPatientId = patientIdParam ? Number.parseInt(patientIdParam, 10) : NaN;
+            const draft = {
+                ...DEFAULT_APPOINTMENT,
+                patientId: Number.isFinite(parsedPatientId) ? parsedPatientId : null,
+                professional: currentUser.name || "Profissional"
+            };
             if (leadId) {
                 fetchLead(leadId, draft);
             } else {
@@ -88,7 +94,7 @@ const AdminAttendanceDetail = () => {
         } else {
             fetchAppointment(id as string);
         }
-    }, [id, leadId]);
+    }, [id, leadId, patientIdParam]);
 
     const fetchLead = async (leadIdStr: string, draft: AppointmentData) => {
         try {
@@ -124,6 +130,7 @@ const AdminAttendanceDetail = () => {
 
                 setData({
                     ...fetched,
+                    patientId: fetched.patientId ?? fetched.patient?.id ?? null,
                     patientName: fetched.patientName || fetched.patient?.name || "",
                     cpf: fetched.cpf || fetched.patient?.cpf || "",
                     returnDate: returnDateStr,

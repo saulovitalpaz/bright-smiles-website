@@ -22,6 +22,7 @@ import {
 
 interface AppointmentRecord {
     id: number;
+    patientId?: number | null;
     patientName: string;
     cpf?: string;
     date: string;
@@ -152,7 +153,7 @@ const AdminAppointments = () => {
                         filteredAppointments.map((record) => (
                             <div key={record.id} className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4 group">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer" onClick={() => navigate(`/admin/consultas/${record.id}`)}>
+                                    <div className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer" onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}>
                                         <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
                                             <User size={24} />
                                         </div>
@@ -205,7 +206,7 @@ const AdminAppointments = () => {
                                             </AlertDialog>
                                         )}
                                         <Button
-                                            onClick={() => navigate(`/admin/consultas/${record.id}`)}
+                                            onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}
                                             className="h-10 px-4 text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200"
                                         >
                                             Ver Evolução

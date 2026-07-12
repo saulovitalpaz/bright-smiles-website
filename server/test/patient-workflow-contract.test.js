@@ -34,3 +34,19 @@ test('appointments can filter history by patient and completed requests are hidd
     assert.match(appointmentsRoute, /prisma\.appointment\.findMany\(\{[\s\S]*where/);
     assert.match(leadsRoute, /where:\s*\{\s*status:\s*\{\s*not:\s*['"]completed['"]\s*\}\s*\}/);
 });
+
+test('attendance navigation preserves the selected patient', () => {
+    const appointmentsSource = fs.readFileSync(
+        path.join(serverRoot, '..', 'src', 'pages', 'AdminAppointments.tsx'),
+        'utf8'
+    );
+    const timelineSource = fs.readFileSync(
+        path.join(serverRoot, '..', 'src', 'components', 'admin', 'attendance', 'EvolutionTimeline.tsx'),
+        'utf8'
+    );
+
+    assert.match(appointmentsSource, /patientId\??:\s*number\s*\|\s*null/);
+    const patientLinks = appointmentsSource.match(/patientId=\$\{record\.patientId(?:\s*\?\?[^}]+)?\}/g) || [];
+    assert.ok(patientLinks.length >= 2, 'row and Ver Evolução links must carry patientId');
+    assert.match(timelineSource, /appointments\?patientId=\$\{patientId\}/);
+});
