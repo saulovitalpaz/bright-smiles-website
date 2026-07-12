@@ -13,16 +13,12 @@ const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./utils/encryption');
 const auditLogger = require('./middleware/auditLogger');
 const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
-const { notificationQueue, scheduleReminders } = require('./workers/whatsappWorker');
 
 const app = express();
 app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_should_be_in_env';
-
-// Start scheduler
-setInterval(scheduleReminders, 1000 * 60 * 60); // Check every hour
 
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -350,9 +346,6 @@ app.post('/appointments', authenticateToken, async (req, res) => {
         const appointment = await prisma.appointment.create({
             data: payload
         });
-
-        // Trigger generic reminder check or queue specific (optional)
-        // await notificationQueue.add('appointmentReminder', { appointmentId: appointment.id }, { delay: ... });
 
         // Auto-Billing Finance Integration
         if (payload.price && payload.price > 0) {
