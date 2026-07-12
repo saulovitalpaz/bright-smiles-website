@@ -295,7 +295,10 @@ app.post('/posts/:id/view', async (req, res) => {
 // Appointments API
 app.get('/appointments', async (req, res) => {
     try {
+        const patientId = Number.parseInt(req.query.patientId, 10);
+        const where = Number.isNaN(patientId) ? {} : { patientId };
         const list = await prisma.appointment.findMany({
+            where,
             orderBy: { date: 'desc' }
         });
         res.json(list);
@@ -845,6 +848,7 @@ app.post('/leads', async (req, res) => {
 app.get('/leads', async (req, res) => {
     try {
         const leads = await prisma.lead.findMany({
+            where: { status: { not: 'completed' } },
             orderBy: { createdAt: 'desc' }
         });
         res.json(leads);
