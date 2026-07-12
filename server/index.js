@@ -609,6 +609,8 @@ app.post('/settings', async (req, res) => {
 // Patients API
 app.get('/patients', authenticateToken, async (req, res) => {
     const { search } = req.query;
+    const phone = req.query.phone;
+    const cpf = req.query.cpf;
     try {
         const patients = await prisma.patient.findMany({
             orderBy: { name: 'asc' }
@@ -623,8 +625,18 @@ app.get('/patients', authenticateToken, async (req, res) => {
 
         // Filter in memory if search is provided (since we can't search encrypted securely with current design)
         // Note: For large datasets, this needs deterministic encryption for CPF to search in DB.
+        const normalizeIdentity = (value) => String(value || '').replace(/\D/g, '');
+        const requestedPhone = normalizeIdentity(phone);
+        const requestedCpf = normalizeIdentity(cpf);
+
         let result = decryptedPatients;
-        if (search) {
+        if (requestedPhone) {
+            result = result.filter(p => normalizeIdentity(p.phone) === requestedPhone);
+        }
+        if (requestedCpf) {
+            result = result.filter(p => normalizeIdentity(p.cpf) === requestedCpf);
+        }
+        if (search && !requestedPhone && !requestedCpf) {
             const lowerSearch = search.toLowerCase();
             result = decryptedPatients.filter(p =>
                 p.name.toLowerCase().includes(lowerSearch) ||

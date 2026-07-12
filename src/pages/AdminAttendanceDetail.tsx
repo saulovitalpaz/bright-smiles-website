@@ -103,9 +103,12 @@ const AdminAttendanceDetail = () => {
                 const leads = await res.json();
                 const lead = leads.find((l: any) => l.id === parseInt(leadIdStr));
                 if (lead) {
+                    const patientId = await resolveLeadPatient(lead);
                     setData({
                         ...draft,
+                        patientId,
                         patientName: lead.name || "",
+                        cpf: lead.cpf || "",
                         procedure: lead.treatment || "",
                         notes: lead.message || "",
                     });
@@ -117,6 +120,36 @@ const AdminAttendanceDetail = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const resolveLeadPatient = async (lead: any): Promise<number | null> => {
+        const findPatient = async (endpoint: string): Promise<number | null> => {
+            try {
+                const patientRes = await fetchClient(endpoint);
+                if (!patientRes.ok) return null;
+                const patients = await patientRes.json();
+                if (Array.isArray(patients) && patients.length > 0 && Number.isFinite(patients[0]?.id)) {
+                    return patients[0].id;
+                }
+            } catch (error) {
+                console.error("Error resolving lead patient:", error);
+            }
+            return null;
+        };
+
+        const phone = typeof lead.phone === "string" ? lead.phone.trim() : "";
+        if (phone) {
+            const patientId = await findPatient(`/patients?phone=${encodeURIComponent(phone)}`);
+            if (patientId) return patientId;
+        }
+
+        const cpf = typeof lead.cpf === "string" ? lead.cpf.trim() : "";
+        if (cpf) {
+            const patientId = await findPatient(`/patients?cpf=${encodeURIComponent(cpf)}`);
+            if (patientId) return patientId;
+        }
+
+        return null;
     };
 
     const fetchAppointment = async (appId: string) => {
@@ -182,6 +215,11 @@ const AdminAttendanceDetail = () => {
                     const newPatient = await pRes.json();
                     finalPatientId = newPatient.id;
                 }
+            }
+
+            if (isNew && leadId && !finalPatientId) {
+                toast.error("Selecione um paciente existente ou informe o CPF para cadastrá-lo antes de finalizar.");
+                return;
             }
 
             const payload = {

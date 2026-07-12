@@ -50,3 +50,21 @@ test('attendance navigation preserves the selected patient', () => {
     assert.ok(patientLinks.length >= 2, 'row and Ver Evolução links must carry patientId');
     assert.match(timelineSource, /appointments\?patientId=\$\{patientId\}/);
 });
+
+test('lead attendance resolves patients by exact contact identity', () => {
+    const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    const patientsRoute = readRoute(
+        indexSource,
+        "app.get('/patients', authenticateToken, async (req, res) => {",
+        "app.get('/patients/:cpf'"
+    );
+    const attendanceSource = fs.readFileSync(
+        path.join(serverRoot, '..', 'src', 'pages', 'AdminAttendanceDetail.tsx'),
+        'utf8'
+    );
+
+    assert.match(patientsRoute, /req\.query\.phone/);
+    assert.match(patientsRoute, /req\.query\.cpf/);
+    assert.match(attendanceSource, /patients\?phone=/);
+    assert.match(attendanceSource, /patients\?cpf=/);
+});
