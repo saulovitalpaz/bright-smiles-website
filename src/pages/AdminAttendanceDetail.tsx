@@ -231,6 +231,10 @@ const AdminAttendanceDetail = () => {
                 patientId: finalPatientId,
                 returnDate: data.returnDate ? new Date(data.returnDate).toISOString() : null
             };
+            // `phone` is temporary patient-contact state used when creating a
+            // patient from a lead. It is not an Appointment Prisma field, so
+            // keep it out of both POST and PUT appointment payloads.
+            delete (payload as any).phone;
             if (!isNew) {
                 delete (payload as any).id; // don't send ID in body explicitly if PUT usually ignores, just safe
                 delete (payload as any).patient;

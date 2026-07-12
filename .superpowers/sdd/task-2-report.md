@@ -5,6 +5,7 @@ Status: complete
 Initial commit SHA: `aaf2c54`
 Review-fix commit SHA: `a723f3f`
 Safety-fix commit SHA: `ebb1f30`
+Runtime payload fix commit SHA: `7453c63`
 
 Review fix: lead-started attendances now resolve an existing patient by exact normalized phone, then exact CPF when supplied. The authenticated patient list endpoint accepts `phone` and `cpf` identity filters; no name matching is used. Leads without a resolved patient must select one or provide a CPF before saving.
 
@@ -26,9 +27,14 @@ Review fix: lead-started attendances now resolve an existing patient by exact no
 - Safety-fix contract and full server tests: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
 - Frontend build after safety fix: passed (`npm run build` from repository root; `vite build`, 3289 modules transformed).
 - Server build after safety fix: passed (`npm run build` from `server/`; Prisma Client generated successfully).
+- Runtime payload regression contract: passed; `AdminAttendanceDetail` now removes temporary `phone` state before POST/PUT while retaining it for patient creation.
+- Full server tests after runtime payload fix: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+- Frontend build after runtime payload fix: passed (`npm run build` from repository root; Vite 3289 modules transformed).
+- Server build after runtime payload fix: passed (`npm run build` from `server/`; Prisma Client generated successfully).
 
 ## Concerns
 
 - Appointment rows without a patient relationship navigate with an empty `patientId` query value; existing-record loading still uses the API's fetched relationship as the source of truth.
 - Vite reports existing bundle-size and stale Browserslist-data warnings; no build errors.
 - Invalid `phone`/`cpf` query values now return an empty patient list instead of all patients; lead-created patients retain their phone for future exact matching.
+- Existing attendance PUT requests previously forwarded temporary `phone` state to Prisma and failed with an unknown-field error; the client now strips `phone` from appointment payloads for both new and existing saves.

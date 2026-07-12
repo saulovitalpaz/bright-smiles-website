@@ -72,4 +72,5 @@ test('lead attendance resolves patients by exact contact identity', () => {
     assert.match(attendanceSource, /patients\?phone=/);
     assert.match(attendanceSource, /patients\?cpf=/);
     assert.match(attendanceSource, /phone:\s*data\.phone/);
+    assert.match(attendanceSource, /delete \(payload as any\)\.phone/);
 });
