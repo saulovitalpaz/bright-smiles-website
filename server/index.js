@@ -628,15 +628,21 @@ app.get('/patients', authenticateToken, async (req, res) => {
         const normalizeIdentity = (value) => String(value || '').replace(/\D/g, '');
         const requestedPhone = normalizeIdentity(phone);
         const requestedCpf = normalizeIdentity(cpf);
+        const hasPhoneQuery = phone !== undefined;
+        const hasCpfQuery = cpf !== undefined;
 
         let result = decryptedPatients;
-        if (requestedPhone) {
-            result = result.filter(p => normalizeIdentity(p.phone) === requestedPhone);
+        if (hasPhoneQuery) {
+            result = requestedPhone
+                ? result.filter(p => normalizeIdentity(p.phone) === requestedPhone)
+                : [];
         }
-        if (requestedCpf) {
-            result = result.filter(p => normalizeIdentity(p.cpf) === requestedCpf);
+        if (hasCpfQuery) {
+            result = requestedCpf
+                ? result.filter(p => normalizeIdentity(p.cpf) === requestedCpf)
+                : [];
         }
-        if (search && !requestedPhone && !requestedCpf) {
+        if (search && !hasPhoneQuery && !hasCpfQuery) {
             const lowerSearch = search.toLowerCase();
             result = decryptedPatients.filter(p =>
                 p.name.toLowerCase().includes(lowerSearch) ||

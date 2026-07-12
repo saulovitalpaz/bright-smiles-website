@@ -22,6 +22,7 @@ interface AppointmentData {
     id: number | 'new';
     patientName: string;
     cpf: string;
+    phone: string;
     patientId: number | null;
     date: string;
     procedure: string;
@@ -44,6 +45,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     id: 'new',
     patientName: "",
     cpf: "",
+    phone: "",
     patientId: null,
     date: new Date().toISOString(),
     procedure: "",
@@ -109,6 +111,7 @@ const AdminAttendanceDetail = () => {
                         patientId,
                         patientName: lead.name || "",
                         cpf: lead.cpf || "",
+                        phone: lead.phone || "",
                         procedure: lead.treatment || "",
                         notes: lead.message || "",
                     });
@@ -166,6 +169,7 @@ const AdminAttendanceDetail = () => {
                     patientId: fetched.patientId ?? fetched.patient?.id ?? null,
                     patientName: fetched.patientName || fetched.patient?.name || "",
                     cpf: fetched.cpf || fetched.patient?.cpf || "",
+                    phone: fetched.phone || fetched.patient?.phone || "",
                     returnDate: returnDateStr,
                     photos: fetched.photos || [],
                     externalLinks: fetched.externalLinks || [],
@@ -209,7 +213,7 @@ const AdminAttendanceDetail = () => {
                 const pRes = await fetchClient(`/patients`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: data.patientName, cpf: data.cpf })
+                    body: JSON.stringify({ name: data.patientName, cpf: data.cpf, phone: data.phone || undefined })
                 });
                 if (pRes.ok) {
                     const newPatient = await pRes.json();
@@ -356,6 +360,7 @@ const AdminAttendanceDetail = () => {
                                                     onSelect={(p) => {
                                                         updateField('patientName', p.name);
                                                         updateField('cpf', p.cpf);
+                                                        updateField('phone', p.phone || '');
                                                         updateField('patientId', p.id);
                                                     }}
                                                 />
