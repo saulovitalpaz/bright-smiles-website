@@ -643,10 +643,11 @@ app.get('/patients', authenticateToken, async (req, res) => {
                 : [];
         }
         if (search && !hasPhoneQuery && !hasCpfQuery) {
-            const lowerSearch = search.toLowerCase();
+            const lowerSearch = String(search).toLowerCase();
+            const normalizedSearch = normalizeIdentity(search);
             result = decryptedPatients.filter(p =>
                 p.name.toLowerCase().includes(lowerSearch) ||
-                (p.cpf && p.cpf.includes(search))
+                (normalizedSearch && normalizeIdentity(p.cpf).includes(normalizeIdentity(search)))
             );
         }
 

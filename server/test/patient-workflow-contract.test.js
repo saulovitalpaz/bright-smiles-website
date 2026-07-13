@@ -69,6 +69,7 @@ test('lead attendance resolves patients by exact contact identity', () => {
     assert.match(patientsRoute, /const hasCpfQuery = cpf !== undefined/);
     assert.match(patientsRoute, /hasPhoneQuery[\s\S]*requestedPhone[\s\S]*\[\]/);
     assert.match(patientsRoute, /hasCpfQuery[\s\S]*requestedCpf[\s\S]*\[\]/);
+    assert.match(patientsRoute, /normalizeIdentity\(p\.cpf\)\.includes\(normalizeIdentity\(search\)\)/);
     assert.match(attendanceSource, /patients\?phone=/);
     assert.match(attendanceSource, /patients\?cpf=/);
     assert.match(attendanceSource, /phone:\s*data\.phone/);
