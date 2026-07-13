@@ -323,7 +323,9 @@
   }
 
   .print-document {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100% !important;
     width: 100%;
     background: white !important;
     color: black !important;

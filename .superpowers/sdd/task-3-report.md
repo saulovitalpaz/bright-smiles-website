@@ -21,3 +21,8 @@ Status: complete with baseline lint findings
 
 - Full repository lint remains the known baseline failure described in `.superpowers/sdd/progress.md`; it is not caused by the print/card changes.
 - The centralized print stylesheet intentionally owns print resets and chrome hiding; no page-level print media overrides remain in the two print roots.
+
+## Reviewer follow-up
+
+- Preserved the prescription root's `flex min-h-screen flex-col` layout and updated the shared `.print-document` print rule to use `display: flex`, `flex-direction: column`, and `min-height: 100%`. This keeps the signature/footer pushed to the bottom while retaining clinic/compact mode behavior.
+- Follow-up verification: `npm.cmd run build` passed (3291 modules; same existing Browserslist and chunk-size warnings). Targeted ESLint remains limited to the same 19 pre-existing `no-explicit-any` findings.

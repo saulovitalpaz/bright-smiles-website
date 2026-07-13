@@ -409,7 +409,7 @@ const AdminPrescription = () => {
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className={`hidden print-only ${printDocumentClass(printMode)} text-slate-900`} id="printable-recipe">
+            <div className={`hidden print-only ${printDocumentClass(printMode)} flex min-h-screen flex-col text-slate-900`} id="printable-recipe">
                 {/* Header: compact, single row */}
                 <div className="print-section flex items-center gap-4 border-b border-slate-200 pb-4 mb-5">
                     <img src="/images/logo-oficial.png" alt="Logo" className="w-14 h-14 object-contain" />
