@@ -85,6 +85,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
         { label: "Equipe", href: "/admin/users", icon: Users, adminOnly: true },
+        { label: "Pacientes", href: "/admin/pacientes", icon: Users, adminOnly: true },
         { label: "Configurações", href: "/admin/settings", icon: Settings, adminOnly: true },
     ];
 

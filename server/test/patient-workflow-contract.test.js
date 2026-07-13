@@ -112,3 +112,18 @@ test('patient schema and routes support safe updates and deletion protection', (
     assert.match(deleteRoute, /status\(409\)/);
     assert.match(deleteRoute, /prisma\.patient\.delete/);
 });
+
+test('admin patients page is registered and exposed in the admin navigation', () => {
+    const appSource = fs.readFileSync(path.join(serverRoot, '..', 'src', 'App.tsx'), 'utf8');
+    const layoutSource = fs.readFileSync(
+        path.join(serverRoot, '..', 'src', 'components', 'admin', 'AdminLayout.tsx'),
+        'utf8'
+    );
+
+    assert.match(appSource, /import AdminPatients from ["']\.\/pages\/AdminPatients["']/);
+    assert.match(appSource, /path=["']\/admin\/pacientes["'][\s\S]*AdminPatients/);
+    assert.match(layoutSource, /label:\s*["']Pacientes["']/);
+    assert.match(layoutSource, /href:\s*["']\/admin\/pacientes["']/);
+    assert.match(layoutSource, /icon:\s*Users/);
+    assert.match(layoutSource, /adminOnly:\s*true/);
+});
