@@ -1,21 +1,41 @@
-# Task 2 report: responsive authenticated admin shell
+# Task 2 report: preserve patientId through attendance navigation
 
 Status: complete
 
+Initial commit SHA: `aaf2c54`
+Review-fix commit SHA: `a723f3f`
+Safety-fix commit SHA: `ebb1f30`
+Runtime payload fix commit SHA: `e48fe52`
+
+Review fix: lead-started attendances now resolve an existing patient by exact normalized phone, then exact CPF when supplied. The authenticated patient list endpoint accepts `phone` and `cpf` identity filters; no name matching is used. Leads without a resolved patient must select one or provide a CPF before saving.
+
 ## Changes
 
-- Added the requested mobile body scroll-lock effect while the drawer is open.
-- Added the stable `.admin-shell`, `.admin-sidebar`, `.admin-main`, and `.admin-mobile-bar` hooks and CSS-variable-based desktop widths/margins.
-- Replaced all render-time `window.innerWidth` checks with responsive utility classes. The mobile top bar is 64px, its menu button is 44px, the backdrop is z-30, and the drawer is z-40 with an in-drawer close control.
-- Normalized primary and nested navigation link sizing and consolidated the warm active state without changing route matching or permission filtering.
-- Updated the page header to stack on narrow screens and allow action wrapping.
+- Added `patientId?: number | null` to appointment records and propagated it in both appointment-row and “Ver Evolução” navigation URLs.
+- Initialized new attendance drafts from the `patientId` query parameter and preserved the fetched appointment relationship when editing an existing attendance.
+- Kept `PatientPicker` as the explicit patient selector and retained `finalPatientId` in appointment save payloads.
+- Added contract assertions for patient-aware navigation and evolution-history requests.
 
 ## Verification
 
-- `npx eslint src/components/admin/AdminLayout.tsx`: passed.
-- `npm.cmd run build`: passed (`vite build`, 3290 modules transformed).
-- `npm.cmd run lint`: failed on 63 pre-existing repository errors (mostly `no-explicit-any`, plus existing empty-interface/import issues); no errors were reported for `AdminLayout.tsx`.
+- `node --test test/patient-workflow-contract.test.js` (initial run): failed as expected because the new patient-link contract was not implemented.
+- `node --test test/*.test.js` from `server/`: passed, 3 tests.
+- `npm run build` from repository root: passed (`vite build`, 3289 modules transformed).
+- Review-fix contract test: passed, including exact phone/CPF query and lead resolver assertions.
+- `node --test test/*.test.js` from `server/` after review fix: passed, 4 tests.
+- `npm run build` from repository root after review fix: passed (`vite build`, 3289 modules transformed).
+- Safety-fix contract and full server tests: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+- Frontend build after safety fix: passed (`npm run build` from repository root; `vite build`, 3289 modules transformed).
+- Server build after safety fix: passed (`npm run build` from `server/`; Prisma Client generated successfully).
+- Runtime payload regression contract: passed; `AdminAttendanceDetail` now removes temporary `phone` state before POST/PUT while retaining it for patient creation.
+- Full server tests after runtime payload fix: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+- Verification rerun on the committed fix: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+- Frontend build after runtime payload fix: passed (`npm run build` from repository root; Vite 3289 modules transformed).
+- Server build after runtime payload fix: passed (`npm run build` from `server/`; Prisma Client generated successfully).
 
 ## Concerns
 
-- Full-repository lint remains red because of unrelated existing violations outside this task's single permitted file. Vite also reports the existing stale Browserslist and bundle-size warnings.
+- Appointment rows without a patient relationship navigate with an empty `patientId` query value; existing-record loading still uses the API's fetched relationship as the source of truth.
+- Vite reports existing bundle-size and stale Browserslist-data warnings; no build errors.
+- Invalid `phone`/`cpf` query values now return an empty patient list instead of all patients; lead-created patients retain their phone for future exact matching.
+- Existing attendance PUT requests previously forwarded temporary `phone` state to Prisma and failed with an unknown-field error; the client now strips `phone` from appointment payloads for both new and existing saves.
