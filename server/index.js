@@ -705,6 +705,78 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
     }
 });
 
+app.put('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    const result = patientSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid patient id.' });
+
+    try {
+        const { cpf, history, consentDate, ...rest } = result.data;
+        const data = {
+            ...rest,
+            cpf: encrypt(cpf, true),
+            history: encrypt(history)
+        };
+
+        if (consentDate !== undefined) {
+            data.consentDate = consentDate === null ? null : new Date(consentDate);
+        }
+
+        const patient = await prisma.patient.update({
+            where: { id },
+            data
+        });
+
+        res.json({
+            ...patient,
+            cpf: decrypt(patient.cpf),
+            history: decrypt(patient.history)
+        });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Patient not found' });
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.delete('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid patient id.' });
+
+    try {
+        const patient = await prisma.patient.findUnique({
+            where: { id },
+            include: {
+                appointments: { take: 1, select: { id: true } },
+                prescriptions: { take: 1, select: { id: true } },
+                documents: { take: 1, select: { id: true } },
+                finance: { take: 1, select: { id: true } }
+            }
+        });
+
+        if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+        const hasRelatedRecords = [
+            patient.appointments,
+            patient.prescriptions,
+            patient.documents,
+            patient.finance
+        ].some(records => records.length > 0);
+
+        if (hasRelatedRecords) {
+            return res.status(409).json({
+                error: 'Cannot delete patient with existing appointments, prescriptions, documents, or financial records.'
+            });
+        }
+
+        await prisma.patient.delete({ where: { id } });
+        res.json({ message: 'Patient deleted' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Consent API
 app.post('/patients/:cpf/consent', authenticateToken, async (req, res) => {
     try {

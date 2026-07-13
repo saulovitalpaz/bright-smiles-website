@@ -6,6 +6,9 @@ const patientSchema = z.object({
     phone: z.string().optional(),
     address: z.string().optional(),
     history: z.string().optional(),
+    consent: z.boolean().optional(),
+    consentDate: z.string().or(z.date()).optional().nullable(),
+    odontogram: z.any().optional().nullable(),
 });
 
 const appointmentSchema = z.object({

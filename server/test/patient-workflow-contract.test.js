@@ -74,3 +74,41 @@ test('lead attendance resolves patients by exact contact identity', () => {
     assert.match(attendanceSource, /phone:\s*data\.phone/);
     assert.match(attendanceSource, /delete \(payload as any\)\.phone/);
 });
+
+test('patient schema and routes support safe updates and deletion protection', () => {
+    const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    const schemaSource = fs.readFileSync(path.join(serverRoot, 'utils', 'validationSchemas.js'), 'utf8');
+
+    assert.match(schemaSource, /consent:\s*z\.boolean\(\)\.optional\(\)/);
+    assert.match(schemaSource, /consentDate:\s*(?:z\.string\(\)\.or\(z\.date\(\)\)|z\.date\(\))\.optional\(\)/);
+    assert.match(schemaSource, /odontogram:\s*z\.any\(\)\.optional\(\)/);
+
+    const updateRoute = readRoute(
+        indexSource,
+        "app.put('/patients/:id'",
+        "app.post('/patients/:cpf/consent'"
+    );
+    assert.match(updateRoute, /authenticateToken/);
+    assert.match(updateRoute, /patientSchema\.safeParse\(req\.body\)/);
+    assert.match(updateRoute, /Number\.parseInt\(req\.params\.id/);
+    assert.match(updateRoute, /encrypt\(cpf,\s*true\)/);
+    assert.match(updateRoute, /encrypt\(history\)/);
+    assert.match(updateRoute, /prisma\.patient\.update/);
+    assert.match(updateRoute, /decrypt\(.*\.cpf\)/s);
+    assert.match(updateRoute, /decrypt\(.*\.history\)/s);
+
+    const deleteRoute = readRoute(
+        indexSource,
+        "app.delete('/patients/:id'",
+        "// Consent API"
+    );
+    assert.match(deleteRoute, /authenticateToken/);
+    assert.match(deleteRoute, /prisma\.patient\.findUnique/);
+    assert.match(deleteRoute, /appointments/);
+    assert.match(deleteRoute, /prescriptions/);
+    assert.match(deleteRoute, /documents/);
+    assert.match(deleteRoute, /finance/);
+    assert.match(deleteRoute, /status\(404\)/);
+    assert.match(deleteRoute, /status\(409\)/);
+    assert.match(deleteRoute, /prisma\.patient\.delete/);
+});
