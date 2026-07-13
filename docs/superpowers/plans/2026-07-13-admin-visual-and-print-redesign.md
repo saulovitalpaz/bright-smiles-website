@@ -53,7 +53,7 @@ export const printDocumentClass = (mode: PrintMode) => `print-document print-${m
 
 - [ ] **Step 3: Mark `Card` surfaces.** In `src/components/ui/card.tsx`, add `data-admin-card` to the root `<div>` and add `.admin-shell [data-admin-card] { @apply admin-card; }` (or equivalent declarations) in `index.css`.
 
-- [ ] **Step 4: Replace the global print reset.** Use one `@media print` block that hides shell chrome, resets `#root/main`, and protects `.print-section`, `.print-patient-block`, and `.print-signature`. Set `@page` to `14mm 14mm 16mm` by default and add a compact override with `@page { size: A4; margin: 9mm; }`, compact 10pt text, tighter cell padding, and `thead { display: table-header-group; }`.
+- [ ] **Step 4: Replace the global print reset.** Use centralized `@media print` rules that hide shell chrome, reset `#root/main`, and protect `.print-section`, `.print-patient-block`, and `.print-signature`. Set `@page` to `14mm 14mm 16mm` by default and add a compact override with `@page { size: A4; margin: 9mm; }`, compact 10pt text, tighter cell padding, and `thead { display: table-header-group; }`.
 
 - [ ] **Step 5: Run `npm run build`.** Expected: Vite exits 0 with no PostCSS/TypeScript errors.
 
