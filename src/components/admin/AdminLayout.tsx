@@ -179,7 +179,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     {/* Mobile Close Button */}
                     <button
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="lg:hidden absolute top-4 right-4 text-white/50 hover:text-white"
+                        className="lg:hidden absolute top-4 right-4 h-11 w-11 inline-flex items-center justify-center rounded-md text-white/50 hover:text-white"
                         aria-label="Fechar menu"
                     >
                         <ChevronLeft size={24} />
