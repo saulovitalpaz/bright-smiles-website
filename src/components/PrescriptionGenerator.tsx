@@ -63,10 +63,7 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     footer: {
-        position: 'absolute',
-        bottom: 30,
-        left: 30,
-        right: 30,
+        marginTop: 20,
         textAlign: 'center',
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
@@ -137,7 +134,7 @@ export const PrescriptionDocument = ({ data, content, mode = 'clinic' }: Prescri
                 <Text style={{ fontSize: tokens.bodySize }}>{content.replace(/<[^>]+>/g, '')}</Text>
             </View>
 
-            <View style={{ ...styles.footer, bottom: tokens.pagePadding, left: tokens.pagePadding, right: tokens.pagePadding, paddingTop: tokens.sectionGap }}>
+            <View wrap={false} style={{ ...styles.footer, marginTop: tokens.sectionGap, paddingTop: tokens.sectionGap }}>
                 <View style={styles.signatureLine}></View>
                 <Text style={{ fontSize: 10, fontWeight: 'bold' }}>{data.professionalName || "Profissional"}</Text>
                 <Text style={styles.smallText}>{data.professionalCro || "CRO"}</Text>

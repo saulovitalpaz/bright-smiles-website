@@ -120,9 +120,9 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     );
 
     return (
-        <div className="admin-shell min-h-screen bg-[#f1f5f9]">
+        <div className="admin-shell min-h-screen bg-background">
             {/* Mobile Header Toggle (Visible only on mobile) */}
-            <div className="admin-mobile-bar lg:hidden fixed inset-x-0 top-0 z-20 h-[var(--admin-topbar-mobile)] px-4 flex items-center">
+            <div className="admin-mobile-bar no-print lg:hidden fixed inset-x-0 top-0 z-20 h-[var(--admin-topbar-mobile)] px-4 flex items-center">
                 <Button
                     size="icon"
                     variant="outline"
@@ -137,7 +137,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             {/* Mobile Backdrop */}
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden animate-in fade-in duration-200"
+                    className="no-print fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden animate-in fade-in duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
@@ -248,11 +248,11 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             </aside>
 
             {/* Main Content - offset by sidebar width on desktop */}
-            <main className={`admin-main min-h-screen bg-[#f8fafc] flex flex-col transition-all duration-300 overflow-x-hidden pt-[var(--admin-topbar-mobile)] lg:pt-0
+            <main className={`admin-main min-h-screen bg-background flex flex-col transition-all duration-300 overflow-x-hidden pt-[var(--admin-topbar-mobile)] lg:pt-0
                 ${isCollapsed ? "lg:ml-[var(--admin-sidebar-collapsed)]" : "lg:ml-[var(--admin-sidebar-expanded)]"}
                 ml-0
             `}>
-                <header className="no-print sticky top-0 bg-[#f8fafc]/80 backdrop-blur-md z-10 px-4 md:px-8 py-4 md:py-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200">
+                <header className="no-print sticky top-0 bg-background/80 backdrop-blur-md z-10 px-4 md:px-8 py-4 md:py-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200">
                     <div className="flex flex-col">
                         <h1 className="text-xl md:text-3xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase truncate max-w-[200px] md:max-w-none">{title}</h1>
                         <div className="hidden md:flex items-center gap-2 mt-2">
@@ -273,17 +273,12 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     </div>
                 </header>
 
-                <div className="flex-1 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
+                <div className="admin-content flex-1 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
                     {children}
                 </div>
             </main>
 
             <style>{`
-                @media print {
-                    .no-print { display: none !important; }
-                    main { margin-left: 0 !important; padding: 0 !important; width: 100% !important; background: white !important; }
-                }
-
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 4px;
                 }

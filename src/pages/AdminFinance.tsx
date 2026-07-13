@@ -189,7 +189,7 @@ const AdminFinance = () => {
     return (
         <AdminLayout title="Gestão Financeira">
             <div className={printDocumentClass(printMode)}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="no-print grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <Card className="border-slate-100 shadow-sm overflow-hidden">
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
@@ -234,7 +234,7 @@ const AdminFinance = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-6">
+                <div className="no-print lg:col-span-1 space-y-6">
                     {/* Month Selector */}
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="pb-3">
@@ -420,7 +420,7 @@ const AdminFinance = () => {
                     </Card>
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="print-report lg:col-span-2">
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
@@ -464,7 +464,7 @@ const AdminFinance = () => {
                                             <th className="pb-4 font-medium">Descrição</th>
                                             <th className="pb-4 font-medium">Paciente</th>
                                             <th className="pb-4 font-medium text-right">Valor</th>
-                                            <th className="pb-4 font-medium w-10"></th>
+                                            <th className="no-print pb-4 font-medium w-10"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -493,7 +493,7 @@ const AdminFinance = () => {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-5 px-1 text-[9px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                                    className="no-print h-5 px-1 text-[9px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50"
                                                                     onClick={() => handleConfirmNfe(t.id)}
                                                                 >
                                                                     <Plus size={10} className="mr-1" /> Confirmar NF-e
@@ -512,7 +512,7 @@ const AdminFinance = () => {
                                                 <td className={`py-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString()}
                                                 </td>
-                                                <td className="py-4 text-right">
+                                                <td className="no-print py-4 text-right">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete(t.id)}>
                                                         <Trash2 size={14} />
                                                     </Button>

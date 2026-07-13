@@ -297,29 +297,22 @@
     background: white !important;
   }
 
-  /* Keep navigation and other application chrome out of printed documents. */
+  #root .admin-content {
+    padding: 0 !important;
+  }
+
+  /* Only explicitly marked application chrome is hidden; semantic document
+     headers/footers remain printable content. */
   .no-print,
-  header,
-  footer,
-  nav,
-  aside,
-  button,
-  input,
-  textarea,
-  select,
   [data-admin-chrome] {
     display: none !important;
   }
 
   .print-only {
     display: block !important;
-    position: absolute !important;
-    top: 0;
-    left: 0;
     width: 100%;
-    min-height: 100%;
+    min-height: 0;
     background: white !important;
-    z-index: 9999 !important;
   }
 
   .print-document {
@@ -329,6 +322,15 @@
     width: 100%;
     background: white !important;
     color: black !important;
+  }
+
+  .print-report {
+    width: 100% !important;
+    grid-column: 1 / -1 !important;
+  }
+
+  .print-document :where(.admin-card, [data-admin-card], .shadow, .shadow-sm, .shadow-md, .shadow-lg) {
+    box-shadow: none !important;
   }
 
   .print-clinic {

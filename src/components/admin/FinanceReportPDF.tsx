@@ -100,10 +100,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
     },
     footer: {
-        position: 'absolute',
-        bottom: 30,
-        left: 30,
-        right: 30,
+        marginTop: 20,
         textAlign: 'center',
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
@@ -189,7 +186,7 @@ export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Rela
 
             {/* Transactions Table */}
             <View style={{ ...styles.table, marginTop: tokens.sectionGap }}>
-                <View style={[styles.tableRow, { backgroundColor: '#f1f5f9' }]}>
+                <View fixed wrap={false} style={[styles.tableRow, { backgroundColor: '#f1f5f9' }]}>
                     <View style={styles.tableCol}>
                         <Text style={{ ...styles.tableHeader, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>Data</Text>
                     </View>
@@ -224,7 +221,7 @@ export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Rela
                 ))}
             </View>
 
-            <View style={{ ...styles.footer, bottom: tokens.pagePadding, left: tokens.pagePadding, right: tokens.pagePadding, paddingTop: tokens.sectionGap }}>
+            <View wrap={false} style={{ ...styles.footer, marginTop: tokens.sectionGap, paddingTop: tokens.sectionGap }}>
                 <Text style={styles.smallText}>Relatório Gerencial Interno</Text>
                 <Text style={styles.digitalSig}>Hash: {Math.random().toString(36).substring(7).toUpperCase()}</Text>
             </View>
