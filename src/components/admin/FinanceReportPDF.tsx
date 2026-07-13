@@ -1,5 +1,11 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
+import type { PrintMode } from '@/lib/print-layout';
+
+const pdfTokens = {
+  clinic: { pagePadding: 40, sectionGap: 16, tableCellPadding: 6, bodySize: 10 },
+  compact: { pagePadding: 26, sectionGap: 8, tableCellPadding: 3, bodySize: 9 },
+} as const;
 
 // Create styles
 const styles = StyleSheet.create({
@@ -94,10 +100,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
     },
     footer: {
-        position: 'absolute',
-        bottom: 30,
-        left: 30,
-        right: 30,
+        marginTop: 20,
         textAlign: 'center',
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
@@ -133,13 +136,17 @@ interface FinanceReportProps {
         balance: number;
     };
     reportTitle?: string;
+    mode?: PrintMode;
 }
 
 // Create Document Component
-export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Relatório Financeiro" }: FinanceReportProps) => (
+export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Relatório Financeiro", mode = 'clinic' }: FinanceReportProps) => {
+    const tokens = pdfTokens[mode];
+
+    return (
     <Document>
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
+        <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
+            <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: tokens.sectionGap }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                     {/* Logo Image - assuming public path */}
                     <Image src="/images/logo-oficial.png" style={{ width: 50, height: 50, marginRight: 10 }} />
@@ -150,63 +157,63 @@ export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Rela
                 </View>
             </View>
 
-            <Text style={{ ...styles.title, fontSize: 14 }}>{reportTitle}</Text>
-            <Text style={{ fontSize: 9, textAlign: 'center', marginBottom: 15, color: '#64748b' }}>
+            <Text style={{ ...styles.title, fontSize: tokens.bodySize + 4, marginBottom: tokens.sectionGap }}>{reportTitle}</Text>
+            <Text style={{ fontSize: tokens.bodySize - 1, textAlign: 'center', marginBottom: tokens.sectionGap, color: '#64748b' }}>
                 Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}
             </Text>
 
             {/* Summary Section */}
-            <View style={styles.summary}>
+            <View style={{ ...styles.summary, marginTop: tokens.sectionGap, padding: tokens.tableCellPadding }}>
                 <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Receita Total:</Text>
-                    <Text style={[styles.summaryValue, { color: '#059669' }]}>
+                    <Text style={{ ...styles.summaryLabel, fontSize: tokens.bodySize }}>Receita Total:</Text>
+                    <Text style={[styles.summaryValue, { fontSize: tokens.bodySize, color: '#059669' }]}>
                         R$ {stats.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </Text>
                 </View>
                 <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Despesas Totais:</Text>
-                    <Text style={[styles.summaryValue, { color: '#e11d48' }]}>
+                    <Text style={{ ...styles.summaryLabel, fontSize: tokens.bodySize }}>Despesas Totais:</Text>
+                    <Text style={[styles.summaryValue, { fontSize: tokens.bodySize, color: '#e11d48' }]}>
                         R$ {stats.expense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </Text>
                 </View>
                 <View style={{ ...styles.summaryRow, marginTop: 10, borderTopWidth: 1, borderTopColor: '#cbd5e1', paddingTop: 5 }}>
-                    <Text style={styles.summaryLabel}>Saldo Líquido:</Text>
-                    <Text style={[styles.summaryValue, { fontWeight: 'bold', color: stats.balance >= 0 ? '#059669' : '#e11d48' }]}>
+                    <Text style={{ ...styles.summaryLabel, fontSize: tokens.bodySize }}>Saldo Líquido:</Text>
+                    <Text style={[styles.summaryValue, { fontSize: tokens.bodySize, fontWeight: 'bold', color: stats.balance >= 0 ? '#059669' : '#e11d48' }]}>
                         R$ {stats.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </Text>
                 </View>
             </View>
 
             {/* Transactions Table */}
-            <View style={styles.table}>
-                <View style={[styles.tableRow, { backgroundColor: '#f1f5f9' }]}>
+            <View style={{ ...styles.table, marginTop: tokens.sectionGap }}>
+                <View fixed wrap={false} style={[styles.tableRow, { backgroundColor: '#f1f5f9' }]}>
                     <View style={styles.tableCol}>
-                        <Text style={styles.tableHeader}>Data</Text>
+                        <Text style={{ ...styles.tableHeader, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>Data</Text>
                     </View>
                     <View style={styles.tableColDesc}>
-                        <Text style={styles.tableHeader}>Descrição</Text>
+                        <Text style={{ ...styles.tableHeader, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>Descrição</Text>
                     </View>
                     <View style={styles.tableCol}>
-                        <Text style={styles.tableHeader}>Categoria</Text>
+                        <Text style={{ ...styles.tableHeader, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>Categoria</Text>
                     </View>
                     <View style={styles.tableCol}>
-                        <Text style={styles.tableHeader}>Valor</Text>
+                        <Text style={{ ...styles.tableHeader, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>Valor</Text>
                     </View>
                 </View>
 
                 {transactions.map((t) => (
                     <View style={styles.tableRow} key={t.id}>
                         <View style={styles.tableCol}>
-                            <Text style={styles.tableCell}>{new Date(t.date).toLocaleDateString('pt-BR')}</Text>
+                        <Text style={{ ...styles.tableCell, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>{new Date(t.date).toLocaleDateString('pt-BR')}</Text>
                         </View>
                         <View style={styles.tableColDesc}>
-                            <Text style={styles.tableCell}>{t.description}</Text>
+                        <Text style={{ ...styles.tableCell, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>{t.description}</Text>
                         </View>
                         <View style={styles.tableCol}>
-                            <Text style={styles.tableCell}>{t.category}</Text>
+                        <Text style={{ ...styles.tableCell, margin: tokens.tableCellPadding, fontSize: tokens.bodySize }}>{t.category}</Text>
                         </View>
                         <View style={styles.tableCol}>
-                            <Text style={[styles.tableCell, { color: t.type === 'income' ? '#059669' : '#e11d48' }]}>
+                        <Text style={[styles.tableCell, { margin: tokens.tableCellPadding, fontSize: tokens.bodySize, color: t.type === 'income' ? '#059669' : '#e11d48' }]}>
                                 {t.type === 'expense' ? '-' : '+'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </Text>
                         </View>
@@ -214,17 +221,22 @@ export const FinanceReportDocument = ({ transactions, stats, reportTitle = "Rela
                 ))}
             </View>
 
-            <View style={styles.footer}>
+            <View wrap={false} style={{ ...styles.footer, marginTop: tokens.sectionGap, paddingTop: tokens.sectionGap }}>
                 <Text style={styles.smallText}>Relatório Gerencial Interno</Text>
                 <Text style={styles.digitalSig}>Hash: {Math.random().toString(36).substring(7).toUpperCase()}</Text>
             </View>
         </Page>
     </Document>
-);
+    );
+};
 
-export const DownloadFinanceReportButton = ({ transactions, stats, label = "Exportar PDF", reportTitle }: any) => (
+export interface DownloadFinanceReportButtonProps extends FinanceReportProps {
+    label?: React.ReactNode;
+}
+
+export const DownloadFinanceReportButton = ({ transactions, stats, label = "Exportar PDF", reportTitle, mode = 'clinic' }: DownloadFinanceReportButtonProps) => (
     <PDFDownloadLink
-        document={<FinanceReportDocument transactions={transactions} stats={stats} reportTitle={reportTitle} />}
+        document={<FinanceReportDocument transactions={transactions} stats={stats} reportTitle={reportTitle} mode={mode} />}
         fileName={`relatorio-financeiro-${new Date().toISOString().split('T')[0]}.pdf`}
         className="w-full"
         style={{ textDecoration: 'none' }}

@@ -1,5 +1,11 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Image } from '@react-pdf/renderer';
+import type { PrintMode } from '@/lib/print-layout';
+
+const pdfTokens = {
+    clinic: { pagePadding: 40, sectionGap: 16, tableCellPadding: 6, bodySize: 10 },
+    compact: { pagePadding: 26, sectionGap: 8, tableCellPadding: 3, bodySize: 9 },
+} as const;
 
 // Create styles
 const styles = StyleSheet.create({
@@ -57,10 +63,7 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     footer: {
-        position: 'absolute',
-        bottom: 30,
-        left: 30,
-        right: 30,
+        marginTop: 20,
         textAlign: 'center',
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
@@ -87,15 +90,29 @@ const styles = StyleSheet.create({
 });
 
 // Create Document Component
-const PrescriptionDocument = ({ data, content }) => (
+export interface PrescriptionDocumentProps {
+    data: {
+        name: string;
+        cpf: string;
+        professionalName?: string;
+        professionalCro?: string;
+    };
+    content: string;
+    mode?: PrintMode;
+}
+
+export const PrescriptionDocument = ({ data, content, mode = 'clinic' }: PrescriptionDocumentProps) => {
+    const tokens = pdfTokens[mode];
+
+    return (
     <Document>
-        <Page size="A4" style={styles.page}>
-            <View style={styles.header}>
+        <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
+            <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: tokens.sectionGap }}>
                 <Text style={styles.logoText}>Núcleo Odontológico</Text>
                 <Text style={styles.subLogoText}>Especializado & Harmonização</Text>
             </View>
 
-            <View style={styles.patientInfo}>
+            <View style={{ ...styles.patientInfo, padding: tokens.tableCellPadding, marginBottom: tokens.sectionGap }}>
                 <Text style={styles.label}>Paciente</Text>
                 <Text style={styles.value}>{data.name}</Text>
 
@@ -111,13 +128,13 @@ const PrescriptionDocument = ({ data, content }) => (
                 </View>
             </View>
 
-            <View style={styles.content}>
+            <View style={{ ...styles.content, fontSize: tokens.bodySize, marginTop: tokens.sectionGap, marginBottom: tokens.sectionGap }}>
                 {/* Simple text rendering. For HTML content, we would need to parse HTML, but react-pdf is strict. 
             We pass plain text or simplified structure for now. */}
-                <Text>{content.replace(/<[^>]+>/g, '')}</Text>
+                <Text style={{ fontSize: tokens.bodySize }}>{content.replace(/<[^>]+>/g, '')}</Text>
             </View>
 
-            <View style={styles.footer}>
+            <View wrap={false} style={{ ...styles.footer, marginTop: tokens.sectionGap, paddingTop: tokens.sectionGap }}>
                 <View style={styles.signatureLine}></View>
                 <Text style={{ fontSize: 10, fontWeight: 'bold' }}>{data.professionalName || "Profissional"}</Text>
                 <Text style={styles.smallText}>{data.professionalCro || "CRO"}</Text>
@@ -129,10 +146,13 @@ const PrescriptionDocument = ({ data, content }) => (
             </View>
         </Page>
     </Document>
-);
+    );
+};
 
-export const DownloadPrescriptionButton = ({ data, content }) => (
-    <PDFDownloadLink document={<PrescriptionDocument data={data} content={content} />} fileName={`receita-${data.name}.pdf`}>
+export type DownloadPrescriptionButtonProps = PrescriptionDocumentProps;
+
+export const DownloadPrescriptionButton = ({ data, content, mode = 'clinic' }: DownloadPrescriptionButtonProps) => (
+    <PDFDownloadLink document={<PrescriptionDocument data={data} content={content} mode={mode} />} fileName={`receita-${data.name}.pdf`}>
         {({ blob, url, loading, error }) =>
             loading ? 'Gerando PDF...' : 'Baixar PDF Assinado'
         }

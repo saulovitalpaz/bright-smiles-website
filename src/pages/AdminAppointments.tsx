@@ -131,7 +131,7 @@ const AdminAppointments = () => {
                 )}
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm w-full">
+            <div className="admin-card p-6 w-full">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
                         <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900">Histórico de Pacientes</h2>

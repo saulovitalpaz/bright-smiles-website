@@ -23,6 +23,7 @@ import { API_URL, fetchClient } from "@/lib/api";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
 
 const AdminDocuments = () => {
     const [patientData, setPatientData] = useState({
@@ -36,6 +37,7 @@ const AdminDocuments = () => {
     const [templates, setTemplates] = useState<any[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
     const [documentContent, setDocumentContent] = useState("");
+    const [printMode, setPrintMode] = useState<PrintMode>("clinic");
 
     // History & Upload State
     const [history, setHistory] = useState<any[]>([]);
@@ -105,7 +107,7 @@ const AdminDocuments = () => {
     };
 
     const applyTemplate = (template: any) => {
-        let processed = template.content
+        const processed = template.content
             .replace(/#NOME/g, patientData.name || "_________________")
             .replace(/#CPF/g, patientData.cpf || "_________________")
             .replace(/#PROCEDIMENTO/g, patientData.procedure || "_________________")
@@ -318,10 +320,17 @@ const AdminDocuments = () => {
                                     {selectedTemplate?.title || "Novo Documento"}
                                 </span>
                             </div>
-                            <div className="flex gap-2 w-full sm:w-auto">
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                 <Button onClick={handleSaveHistory} variant="outline" className="flex-1 sm:flex-none gap-2 border-slate-200 text-slate-600">
                                     <Save size={18} /> <span className="sm:hidden">Salvar</span><span className="hidden sm:inline">Salvar no Histórico</span>
                                 </Button>
+                                <label className="no-print inline-flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span>Formato</span>
+                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
+                                        <option value="clinic">A4 clínico</option>
+                                        <option value="compact">A4 compacto</option>
+                                    </select>
+                                </label>
                                 <Button onClick={() => window.print()} className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20">
                                     <Printer size={18} /> <span className="sm:hidden">Imprimir</span><span className="hidden sm:inline">Apenas Imprimir</span>
                                 </Button>
@@ -339,18 +348,18 @@ const AdminDocuments = () => {
                     </Card>
 
                     {/* Print Preview (Hidden normally, Visible on Print) */}
-                    <div className="print-only bg-white text-slate-900 fixed top-0 left-0 w-full h-full z-[9999]">
-                        <div className="flex flex-col items-center mb-6 text-center border-b border-slate-100 pb-4">
+                    <div className={`hidden print-only ${printDocumentClass(printMode)} text-slate-900`}>
+                        <div className="print-section flex flex-col items-center mb-6 text-center border-b border-slate-100 pb-4">
                             <img src="/images/logo-oficial.png" alt="Logo" className="w-20 h-20 object-contain mb-2" />
                             <h1 className="text-xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
                             <p className="text-slate-500 font-medium text-[9px] uppercase tracking-[0.2em] mt-1">Especializado & Harmonização</p>
                         </div>
 
-                        <div className="whitespace-pre-wrap font-serif text-base leading-[1.6] text-justify text-slate-800 px-4">
+                        <div className="print-section whitespace-pre-wrap font-serif text-base leading-[1.6] text-justify text-slate-800 px-4">
                             {documentContent}
                         </div>
 
-                        <div className="mt-20 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 text-center">
+                        <div className="print-signature break-inside-avoid mt-20 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 text-center">
                             <div>
                                 <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
                                 <p className="font-bold uppercase text-[10px]">Assinatura do Paciente</p>
@@ -370,26 +379,6 @@ const AdminDocuments = () => {
                 </div>
             </div >
 
-            <style>{`
-                @media print {
-                    @page { 
-                        margin: 10mm 15mm; 
-                        size: A4; 
-                    }
-                    .no-print { display: none !important; }
-                    .print-only { 
-                        display: block !important; 
-                        position: static !important;
-                        width: 100%; 
-                        height: auto; 
-                        background: white; 
-                        padding: 0 !important;
-                    }
-                    body { background: white !important; overflow: visible !important; }
-                    #root { overflow: visible !important; }
-                }
-                .print-only { display: none; }
-            `}</style>
         </AdminLayout >
     );
 };

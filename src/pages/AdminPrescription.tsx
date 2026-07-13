@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
 
 const AdminPrescription = () => {
     const [searchParams] = useSearchParams();
@@ -42,6 +43,7 @@ const AdminPrescription = () => {
 
     const [prescriptionHistory, setPrescriptionHistory] = useState<any[]>([]);
     const [prescriptionContent, setPrescriptionContent] = useState("");
+    const [printMode, setPrintMode] = useState<PrintMode>("clinic");
     const [showConsentDialog, setShowConsentDialog] = useState(false);
     const [patientConsent, setPatientConsent] = useState(false);
     const [includeOdontogram, setIncludeOdontogram] = useState(false);
@@ -329,13 +331,20 @@ const AdminPrescription = () => {
                     <Card className="border-slate-200 shadow-sm flex flex-col min-h-[500px] md:min-h-[600px]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Prescrição Clínica</p>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                                 <Button onClick={handleSave} variant="outline" size="sm" className="gap-2 border-slate-200 text-slate-600">
                                     <Save size={16} /> Salvar Tudo
                                 </Button>
                                 <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
                                     <Printer size={16} /> Print Rápido
                                 </Button>
+                                <label className="no-print inline-flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span>Formato</span>
+                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
+                                        <option value="clinic">A4 clínico</option>
+                                        <option value="compact">A4 compacto</option>
+                                    </select>
+                                </label>
                                 {(patientData.name && prescriptionContent) && (
                                     <>
                                         {!patientConsent ? (
@@ -352,6 +361,7 @@ const AdminPrescription = () => {
                                                         professionalCro: currentUser.cro
                                                     }}
                                                     content={prescriptionContent}
+                                                    mode={printMode}
                                                 />
                                             </Button>
                                         )}
@@ -400,9 +410,9 @@ const AdminPrescription = () => {
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className="print-only bg-white text-slate-900 absolute top-0 left-0 w-full min-h-screen flex flex-col" id="printable-recipe">
+            <div className={`hidden print-only ${printDocumentClass(printMode)} flex min-h-screen flex-col text-slate-900`} id="printable-recipe">
                 {/* Header: compact, single row */}
-                <div className="flex items-center gap-4 border-b border-slate-200 pb-4 mb-5">
+                <div className="print-section flex items-center gap-4 border-b border-slate-200 pb-4 mb-5">
                     <img src="/images/logo-oficial.png" alt="Logo" className="w-14 h-14 object-contain" />
                     <div>
                         <h1 className="text-lg font-serif font-black text-slate-900 tracking-wider uppercase leading-tight">Núcleo Odontológico</h1>
@@ -415,7 +425,7 @@ const AdminPrescription = () => {
                 </div>
 
                 {/* Patient Info Block: clean grid */}
-                <div className="bg-slate-50 p-3 rounded-lg mb-5 border border-slate-100">
+                <div className="print-patient-block bg-slate-50 p-3 rounded-lg mb-5 border border-slate-100">
                     <div className="grid grid-cols-12 gap-x-4 gap-y-2">
                         <div className="col-span-7">
                             <p className="text-[7px] uppercase font-black text-primary tracking-[0.15em] mb-0.5">Paciente</p>
@@ -440,7 +450,7 @@ const AdminPrescription = () => {
 
                 {/* Optional Odontogram in print */}
                 {includeOdontogram && Object.keys(patientData.odontogram || {}).length > 0 && (
-                    <div className="mb-5 print-odontogram">
+                    <div className="print-section mb-5 print-odontogram">
                         <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest mb-2">Mapeamento Dentário</p>
                         <div className="transform scale-[0.65] origin-top-left -mb-20">
                             <Odontogram
@@ -453,12 +463,12 @@ const AdminPrescription = () => {
                 )}
 
                 {/* Prescription Body */}
-                <div className="flex-1 py-3 px-5 rounded-xl border border-dotted border-slate-200 mb-6 font-serif text-base leading-relaxed text-slate-800">
+                <div className="print-section flex-1 py-3 px-5 rounded-xl border border-dotted border-slate-200 mb-6 font-serif text-base leading-relaxed text-slate-800">
                     <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
                 </div>
 
                 {/* Footer: pushed to bottom, NO position:fixed */}
-                <div className="mt-auto pt-6">
+                <div className="print-signature mt-auto pt-6">
                     <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-5"></div>
 
                     <div className="flex justify-between items-end">
@@ -499,26 +509,6 @@ const AdminPrescription = () => {
             )}
 
             <style>{`
-                @media print {
-                    @page {
-                        margin: 12mm 16mm;
-                        size: A4;
-                    }
-                    .no-print { display: none !important; }
-                    .print-only {
-                        display: flex !important;
-                        flex-direction: column;
-                        min-height: 100%;
-                        background: white !important;
-                        padding: 8px;
-                    }
-                    body { background: white !important; }
-                    main { margin-left: 0 !important; padding: 0 !important; }
-                    .prose { max-width: none; }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    .print-odontogram * { background: white !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
-                }
-                .print-only { display: none; }
                 [contenteditable]:empty:before {
                     content: attr(data-placeholder);
                     color: #94a3b8;

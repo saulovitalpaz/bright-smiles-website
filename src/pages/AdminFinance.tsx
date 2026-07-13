@@ -16,11 +16,13 @@ import {
     FileText,
     Wallet,
     Receipt,
-    Trash2
+    Trash2,
+    Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle2 } from "lucide-react";
 import { DownloadFinanceReportButton } from "@/components/admin/FinanceReportPDF";
+import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
 
 interface Transaction {
     id: number;
@@ -43,6 +45,7 @@ const AdminFinance = () => {
     const [stats, setStats] = useState({ income: 0, expense: 0, balance: 0 });
     const [filterByMonth, setFilterByMonth] = useState(new Date().getMonth() + 1);
     const [filterByYear, setFilterByYear] = useState(new Date().getFullYear());
+    const [printMode, setPrintMode] = useState<PrintMode>("compact");
 
     // New Transaction Form State
     const [newDesc, setNewDesc] = useState("");
@@ -185,7 +188,8 @@ const AdminFinance = () => {
 
     return (
         <AdminLayout title="Gestão Financeira">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className={printDocumentClass(printMode)}>
+            <div className="no-print grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <Card className="border-slate-100 shadow-sm overflow-hidden">
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
@@ -230,7 +234,7 @@ const AdminFinance = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-6">
+                <div className="no-print lg:col-span-1 space-y-6">
                     {/* Month Selector */}
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="pb-3">
@@ -416,27 +420,40 @@ const AdminFinance = () => {
                     </Card>
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="print-report lg:col-span-2">
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle className="text-xl font-serif">Fluxo de Caixa - {new Date(filterByYear, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle>
                                 <CardDescription>Histórico de movimentações financeiras.</CardDescription>
                             </div>
-                            <DownloadFinanceReportButton
-                                transactions={transactions}
-                                stats={{
-                                    income: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
-                                    expense: transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
-                                    balance: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0) - transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0)
-                                }}
-                                reportTitle={`Relatório - ${new Date(0, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long' })} / ${filterByYear}`}
-                                label={
-                                    <Button variant="ghost" size="sm" className="text-primary font-bold">
-                                        <FileText size={16} className="mr-2" /> Exportar PDF (Histórico)
-                                    </Button>
-                                }
-                            />
+                            <div className="no-print flex items-center gap-2">
+                                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span>Formato</span>
+                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
+                                        <option value="clinic">A4 clínico</option>
+                                        <option value="compact">A4 compacto</option>
+                                    </select>
+                                </label>
+                                <Button variant="ghost" size="sm" className="text-primary font-bold" onClick={() => window.print()}>
+                                    <Printer size={16} className="mr-2" /> Imprimir
+                                </Button>
+                                <DownloadFinanceReportButton
+                                    transactions={transactions}
+                                    stats={{
+                                        income: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
+                                        expense: transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+                                        balance: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0) - transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0)
+                                    }}
+                                    reportTitle={`Relatório - ${new Date(0, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long' })} / ${filterByYear}`}
+                                    mode={printMode}
+                                    label={
+                                        <Button variant="ghost" size="sm" className="text-primary font-bold">
+                                            <FileText size={16} className="mr-2" /> Exportar PDF (Histórico)
+                                        </Button>
+                                    }
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
@@ -447,7 +464,7 @@ const AdminFinance = () => {
                                             <th className="pb-4 font-medium">Descrição</th>
                                             <th className="pb-4 font-medium">Paciente</th>
                                             <th className="pb-4 font-medium text-right">Valor</th>
-                                            <th className="pb-4 font-medium w-10"></th>
+                                            <th className="no-print pb-4 font-medium w-10"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -476,7 +493,7 @@ const AdminFinance = () => {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-5 px-1 text-[9px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                                    className="no-print h-5 px-1 text-[9px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50"
                                                                     onClick={() => handleConfirmNfe(t.id)}
                                                                 >
                                                                     <Plus size={10} className="mr-1" /> Confirmar NF-e
@@ -495,7 +512,7 @@ const AdminFinance = () => {
                                                 <td className={`py-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString()}
                                                 </td>
-                                                <td className="py-4 text-right">
+                                                <td className="no-print py-4 text-right">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete(t.id)}>
                                                         <Trash2 size={14} />
                                                     </Button>
@@ -508,6 +525,7 @@ const AdminFinance = () => {
                         </CardContent>
                     </Card>
                 </div>
+            </div>
             </div>
         </AdminLayout >
     );

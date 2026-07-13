@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
     LayoutDashboard,
@@ -33,7 +33,6 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     const { logout } = useAuth();
     const location = useLocation();
-    const navigate = useNavigate();
     const [isCollapsed, setIsCollapsed] = React.useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -41,6 +40,13 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     React.useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [location.pathname]);
+
+    React.useEffect(() => {
+        if (!isMobileMenuOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => { document.body.style.overflow = previousOverflow; };
+    }, [isMobileMenuOpen]);
 
     const { data: settings } = useQuery({
         queryKey: ['settings'],
@@ -94,15 +100,35 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         ? allMenuItems.filter(item => !item.adminOnly)
         : allMenuItems;
 
+    const activeNavClass = "bg-primary text-primary-foreground shadow-lg shadow-primary/20";
+    const inactiveNavClass = "text-slate-500 hover:bg-slate-800/50 hover:text-white";
+
+    const renderNestedItems = (item: (typeof menuItems)[number], isActive: boolean) => item.subItems && (isActive || location.pathname.startsWith(item.href)) && (
+        <div className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-1">
+            {item.subItems.map(sub => (
+                <Link
+                    key={sub.label}
+                    to={sub.href}
+                    className={`flex min-h-9 items-center rounded-md px-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${location.pathname === sub.href
+                        ? "text-primary"
+                        : "text-slate-500 hover:text-white"}`}
+                >
+                    {sub.label}
+                </Link>
+            ))}
+        </div>
+    );
+
     return (
-        <div className="min-h-screen bg-[#f1f5f9]">
+        <div className="admin-shell min-h-screen bg-background">
             {/* Mobile Header Toggle (Visible only on mobile) */}
-            <div className="lg:hidden fixed top-4 left-4 z-50">
+            <div className="admin-mobile-bar no-print lg:hidden fixed inset-x-0 top-0 z-20 h-[var(--admin-topbar-mobile)] px-4 flex items-center">
                 <Button
                     size="icon"
                     variant="outline"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="bg-white shadow-md border-slate-200 text-slate-700"
+                    className="h-11 w-11 bg-white shadow-md border-slate-200 text-slate-700"
+                    aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
                 >
                     <Menu size={20} />
                 </Button>
@@ -111,22 +137,22 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             {/* Mobile Backdrop */}
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden animate-in fade-in duration-200"
+                    className="no-print fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden animate-in fade-in duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
 
             {/* Sidebar - Always fixed position */}
-            <aside className={`
+            <aside className={`admin-sidebar
                 fixed inset-y-0 left-0 z-40 bg-[hsl(30,15%,10%)] text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-[hsl(30,10%,15%)] no-print
-                ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} 
+                ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
                 lg:translate-x-0 h-screen flex flex-col
-                ${isCollapsed ? "lg:w-20" : "lg:w-72"}
-                w-72
+                ${isCollapsed ? "lg:w-[var(--admin-sidebar-collapsed)]" : "lg:w-[var(--admin-sidebar-expanded)]"}
+                w-[min(86vw,320px)]
             `}>
                 {/* Branding & Logo */}
-                <div className={`relative p-6 border-b border-[hsl(30,10%,15%)] flex flex-col items-center justify-center transition-all ${isCollapsed ? "lg:h-24 h-52" : "h-52"}`}>
-                    <div className={`${isCollapsed ? "lg:w-12 lg:h-12 w-32 h-32" : "w-32 h-32"} transition-all duration-500 relative z-10`}>
+                <div className={`relative p-6 border-b border-[hsl(30,10%,15%)] flex flex-col items-center justify-center transition-all ${isCollapsed ? "lg:h-24 h-44" : "h-52"}`}>
+                    <div className={`${isCollapsed ? "lg:w-12 lg:h-12" : "lg:w-32 lg:h-32"} w-24 h-24 sm:w-28 sm:h-28 transition-all duration-500 relative z-10`}>
                         <img
                             src={logoUrl}
                             alt="Logo"
@@ -134,14 +160,12 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                             onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}
                         />
                     </div>
-                    {(!isCollapsed || window.innerWidth < 1024) && (
-                        <div className={`mt-4 text-center relative z-10 animate-in fade-in zoom-in duration-500 ${isCollapsed ? "lg:hidden" : ""}`}>
-                            <h2 className="font-serif font-bold text-lg text-white tracking-widest leading-tight mb-1">{clinicName}</h2>
-                            <div className="text-[9px] text-[hsl(43,74%,49%)] font-bold uppercase tracking-[0.15em] leading-relaxed">
-                                <p>{settings?.clinic_slogan || "Especializado & Harmonização"}</p>
-                            </div>
+                    <div className={`mt-4 text-center relative z-10 animate-in fade-in zoom-in duration-500 ${isCollapsed ? "lg:hidden" : ""}`}>
+                        <h2 className="font-serif font-bold text-lg text-white tracking-widest leading-tight mb-1">{clinicName}</h2>
+                        <div className="text-[9px] text-[hsl(43,74%,49%)] font-bold uppercase tracking-[0.15em] leading-relaxed">
+                            <p>{settings?.clinic_slogan || "Especializado & Harmonização"}</p>
                         </div>
-                    )}
+                    </div>
 
                     {/* Floating Collapse Toggle (Desktop Only) */}
                     <button
@@ -155,7 +179,8 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     {/* Mobile Close Button */}
                     <button
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="lg:hidden absolute top-4 right-4 text-white/50 hover:text-white"
+                        className="lg:hidden absolute top-4 right-4 h-11 w-11 inline-flex items-center justify-center rounded-md text-white/50 hover:text-white"
+                        aria-label="Fechar menu"
                     >
                         <ChevronLeft size={24} />
                     </button>
@@ -173,75 +198,36 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                                         <div className="hidden lg:block">
                                             <Link
                                                 to={item.href}
-                                                className={`flex items-center justify-center p-3 rounded-xl transition-all ${isActive
-                                                    ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                                                    }`}
+                                                className={`flex min-h-11 items-center justify-center px-3.5 rounded-xl transition-all ${isActive ? activeNavClass : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
                                                 title={item.label}
                                             >
                                                 <Icon size={22} />
                                             </Link>
                                         </div>
-                                        {/* Full Menu Mode (Mobile) - Since sidebar is full width on mobile even if collapsed state is true */}
+                                        {/* Full Menu Mode (Mobile) */}
                                         <div className="lg:hidden">
                                             <Link
                                                 to={item.href}
-                                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                                    ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                                    : "text-slate-500 hover:bg-slate-800/50 hover:text-white"
-                                                    }`}
+                                                className={`flex min-h-11 items-center gap-3 px-3.5 rounded-xl transition-all ${isActive ? activeNavClass : inactiveNavClass}`}
                                             >
-                                                <Icon size={20} className={isActive ? "text-white" : "text-slate-400 group-hover:text-primary transition-colors"} />
+                                                <Icon size={20} className={isActive ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary transition-colors"} />
                                                 <span className="font-bold text-sm tracking-tight">{item.label}</span>
                                                 {item.subItems && <ChevronRight size={14} className={`ml-auto opacity-50 ${isActive ? "rotate-90" : ""}`} />}
                                             </Link>
-
-                                            {item.subItems && (isActive || location.pathname.startsWith(item.href)) && (
-                                                <div className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-4">
-                                                    {item.subItems.map(sub => (
-                                                        <Link
-                                                            key={sub.label}
-                                                            to={sub.href}
-                                                            className={`block py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors ${location.pathname === sub.href
-                                                                ? "text-primary"
-                                                                : "text-slate-500 hover:text-white"}`}
-                                                        >
-                                                            {sub.label}
-                                                        </Link>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            {renderNestedItems(item, isActive)}
                                         </div>
                                     </>
                                 ) : (
                                     <>
                                         <Link
                                             to={item.href}
-                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                                ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                                : "text-slate-500 hover:bg-slate-800/50 hover:text-white"
-                                                }`}
+                                            className={`flex min-h-11 items-center gap-3 px-3.5 rounded-xl transition-all ${isActive ? activeNavClass : inactiveNavClass}`}
                                         >
-                                            <Icon size={20} className={isActive ? "text-white" : "text-slate-400 group-hover:text-primary transition-colors"} />
+                                            <Icon size={20} className={isActive ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary transition-colors"} />
                                             <span className="font-bold text-sm tracking-tight">{item.label}</span>
                                             {item.subItems && <ChevronRight size={14} className={`ml-auto opacity-50 ${isActive ? "rotate-90" : ""}`} />}
                                         </Link>
-
-                                        {item.subItems && (isActive || location.pathname.startsWith(item.href)) && (
-                                            <div className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-4">
-                                                {item.subItems.map(sub => (
-                                                    <Link
-                                                        key={sub.label}
-                                                        to={sub.href}
-                                                        className={`block py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors ${location.pathname === sub.href
-                                                            ? "text-primary"
-                                                            : "text-slate-500 hover:text-white"}`}
-                                                    >
-                                                        {sub.label}
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        )}
+                                        {renderNestedItems(item, isActive)}
                                     </>
                                 )}
                             </div>
@@ -256,18 +242,18 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                         onClick={logout}
                     >
                         <LogOut size={20} />
-                        {(!isCollapsed || window.innerWidth < 1024) && <span className={`text-xs font-bold uppercase tracking-widest ${isCollapsed ? "lg:hidden" : ""}`}>Sair</span>}
+                        <span className={`text-xs font-bold uppercase tracking-widest ${isCollapsed ? "lg:hidden" : ""}`}>Sair</span>
                     </Button>
                 </div>
             </aside>
 
             {/* Main Content - offset by sidebar width on desktop */}
-            <main className={`min-h-screen bg-[#f8fafc] flex flex-col transition-all duration-300 overflow-x-hidden
-                ${isCollapsed ? "lg:ml-20" : "lg:ml-72"} 
+            <main className={`admin-main min-h-screen bg-background flex flex-col transition-all duration-300 overflow-x-hidden pt-[var(--admin-topbar-mobile)] lg:pt-0
+                ${isCollapsed ? "lg:ml-[var(--admin-sidebar-collapsed)]" : "lg:ml-[var(--admin-sidebar-expanded)]"}
                 ml-0
             `}>
-                <header className="no-print sticky top-0 bg-[#f8fafc]/80 backdrop-blur-md z-10 px-4 md:px-8 py-4 md:py-6 flex justify-between items-center border-b border-slate-200">
-                    <div className="flex flex-col ml-12 lg:ml-0">
+                <header className="no-print sticky top-0 bg-background/80 backdrop-blur-md z-10 px-4 md:px-8 py-4 md:py-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200">
+                    <div className="flex flex-col">
                         <h1 className="text-xl md:text-3xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase truncate max-w-[200px] md:max-w-none">{title}</h1>
                         <div className="hidden md:flex items-center gap-2 mt-2">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -276,8 +262,8 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100">
-                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs ring-2 ring-primary/20">
+                    <div className="flex flex-wrap items-center gap-4 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs ring-2 ring-primary/20">
                             {getInitials(currentUser.name)}
                         </div>
                         <div className="text-left hidden md:block">
@@ -287,18 +273,12 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     </div>
                 </header>
 
-                <div className="flex-1 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
+                <div className="admin-content flex-1 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
                     {children}
                 </div>
             </main>
 
-
             <style>{`
-                @media print {
-                    .no-print { display: none !important; }
-                    main { margin-left: 0 !important; padding: 0 !important; width: 100% !important; background: white !important; }
-                }
-
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 4px;
                 }

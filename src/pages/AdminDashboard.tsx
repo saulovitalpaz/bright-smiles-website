@@ -75,7 +75,7 @@ const AdminDashboard = () => {
                 {!isManager ? (
                     <div
                         onClick={() => navigate('/admin/solicitacoes')}
-                        className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md hover:border-blue-100 transition-all group overflow-hidden relative"
+                        className="admin-card p-5 md:p-6 flex items-center justify-between cursor-pointer group overflow-hidden relative"
                     >
                         <div className="relative z-10 flex items-center gap-4">
                             <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
@@ -90,7 +90,7 @@ const AdminDashboard = () => {
                         <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-50/30 rounded-full blur-2xl group-hover:bg-blue-100/50 transition-colors" />
                     </div>
                 ) : (
-                    <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-4 overflow-hidden relative">
+                    <div className="admin-card p-5 md:p-6 flex items-center gap-4 overflow-hidden relative">
                         <div className="p-3 rounded-2xl bg-primary/10 text-primary">
                             <Calendar size={24} />
                         </div>
@@ -102,7 +102,7 @@ const AdminDashboard = () => {
                 )}
 
                 {/* LATEST TESTIMONIAL PREVIEW */}
-                <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-center md:col-span-2 relative overflow-hidden group">
+                <div className="admin-card p-5 md:p-6 flex flex-col justify-center md:col-span-2 relative overflow-hidden group">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between relative z-10 w-full gap-4 sm:gap-0">
                         <div className="flex-1 min-w-0">
                             <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -132,7 +132,7 @@ const AdminDashboard = () => {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
                 {/* AGENDAMENTOS CONFIRMADOS */}
-                <div className="bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <div className="admin-card p-5 md:p-8">
                     <div className="flex items-center justify-between mb-6 md:mb-8">
                         <div>
                             <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Agendamentos</h3>
@@ -189,7 +189,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* ÚLTIMOS ATENDIMENTOS */}
-                <div className="bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <div className="admin-card p-5 md:p-8">
                     <div className="flex items-center justify-between mb-6 md:mb-8">
                         <div>
                             <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Histórico</h3>
