@@ -361,6 +361,7 @@ const AdminPrescription = () => {
                                                         professionalCro: currentUser.cro
                                                     }}
                                                     content={prescriptionContent}
+                                                    mode={printMode}
                                                 />
                                             </Button>
                                         )}

@@ -16,11 +16,13 @@ import {
     FileText,
     Wallet,
     Receipt,
-    Trash2
+    Trash2,
+    Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle2 } from "lucide-react";
 import { DownloadFinanceReportButton } from "@/components/admin/FinanceReportPDF";
+import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
 
 interface Transaction {
     id: number;
@@ -43,6 +45,7 @@ const AdminFinance = () => {
     const [stats, setStats] = useState({ income: 0, expense: 0, balance: 0 });
     const [filterByMonth, setFilterByMonth] = useState(new Date().getMonth() + 1);
     const [filterByYear, setFilterByYear] = useState(new Date().getFullYear());
+    const [printMode, setPrintMode] = useState<PrintMode>("compact");
 
     // New Transaction Form State
     const [newDesc, setNewDesc] = useState("");
@@ -185,6 +188,7 @@ const AdminFinance = () => {
 
     return (
         <AdminLayout title="Gestão Financeira">
+            <div className={printDocumentClass(printMode)}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <Card className="border-slate-100 shadow-sm overflow-hidden">
                     <CardContent className="p-6">
@@ -423,20 +427,33 @@ const AdminFinance = () => {
                                 <CardTitle className="text-xl font-serif">Fluxo de Caixa - {new Date(filterByYear, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle>
                                 <CardDescription>Histórico de movimentações financeiras.</CardDescription>
                             </div>
-                            <DownloadFinanceReportButton
-                                transactions={transactions}
-                                stats={{
-                                    income: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
-                                    expense: transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
-                                    balance: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0) - transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0)
-                                }}
-                                reportTitle={`Relatório - ${new Date(0, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long' })} / ${filterByYear}`}
-                                label={
-                                    <Button variant="ghost" size="sm" className="text-primary font-bold">
-                                        <FileText size={16} className="mr-2" /> Exportar PDF (Histórico)
-                                    </Button>
-                                }
-                            />
+                            <div className="no-print flex items-center gap-2">
+                                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span>Formato</span>
+                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
+                                        <option value="clinic">A4 clínico</option>
+                                        <option value="compact">A4 compacto</option>
+                                    </select>
+                                </label>
+                                <Button variant="ghost" size="sm" className="text-primary font-bold" onClick={() => window.print()}>
+                                    <Printer size={16} className="mr-2" /> Imprimir
+                                </Button>
+                                <DownloadFinanceReportButton
+                                    transactions={transactions}
+                                    stats={{
+                                        income: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
+                                        expense: transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+                                        balance: transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0) - transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0)
+                                    }}
+                                    reportTitle={`Relatório - ${new Date(0, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long' })} / ${filterByYear}`}
+                                    mode={printMode}
+                                    label={
+                                        <Button variant="ghost" size="sm" className="text-primary font-bold">
+                                            <FileText size={16} className="mr-2" /> Exportar PDF (Histórico)
+                                        </Button>
+                                    }
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
@@ -508,6 +525,7 @@ const AdminFinance = () => {
                         </CardContent>
                     </Card>
                 </div>
+            </div>
             </div>
         </AdminLayout >
     );
