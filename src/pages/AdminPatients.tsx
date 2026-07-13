@@ -176,7 +176,7 @@ const AdminPatients = () => {
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     {patients.map((patient) => {
                                         const appointment = latestAppointments.get(patient.id);
-                                        return <article key={patient.id} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                        return <article key={patient.id} className="admin-card min-w-0 p-4">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0"><h3 className="truncate font-semibold text-slate-900">{patient.name}</h3><p className="text-xs text-slate-500">CPF: {patient.cpf || "—"}</p></div>
                                                 {patient.consent && <Badge variant="secondary">Consentimento</Badge>}

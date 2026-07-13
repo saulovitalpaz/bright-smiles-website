@@ -141,7 +141,7 @@ const AdminBlog = () => {
 
     return (
         <AdminLayout title="Gerenciar Blog">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="admin-card overflow-hidden">
                 <div className="p-6 border-b border-slate-50 flex justify-between items-center">
                     <div>
                         <h3 className="font-serif font-bold text-xl">Artigos Publicados</h3>
@@ -157,7 +157,7 @@ const AdminBlog = () => {
                     {isLoading && <p className="p-6">Carregando...</p>}
                     {blogPosts?.length === 0 && <p className="p-6 text-slate-500">Nenhum post encontrado.</p>}
 
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full min-w-[720px] text-left border-collapse">
                         <thead className={blogPosts?.length === 0 ? "hidden" : ""}>
                             <tr className="bg-slate-50 text-slate-500 uppercase text-xs font-bold tracking-wider">
                                 <th className="px-6 py-4">Imagem</th>
