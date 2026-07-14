@@ -200,9 +200,15 @@ const AdminAppointments = () => {
     const saveProfessional = async () => {
         if (!pendingDetails) return;
 
+        const professional = professionalDraft.trim();
+        if (pendingDetails.kind === "appointment" && !professional) {
+            toast.error("Selecione um profissional para o atendimento.");
+            return;
+        }
+
         setIsSavingCalendarChange(true);
         try {
-            await updateCalendarEntry(pendingDetails, { professional: professionalDraft || null });
+            await updateCalendarEntry(pendingDetails, { professional: professional || null });
             await refreshCalendarRecords();
             setPendingDetails(null);
             toast.success("Profissional atualizado com sucesso.");
@@ -445,10 +451,12 @@ const AdminAppointments = () => {
                             </div>
                             <div className="space-y-2">
                                 <p className="text-xs font-medium uppercase text-slate-500">Profissional</p>
-                                <Select value={professionalDraft || "unassigned"} onValueChange={(value) => setProfessionalDraft(value === "unassigned" ? "" : value)}>
+                                <Select value={professionalDraft || (pendingDetails.kind === "lead" ? "unassigned" : "")} onValueChange={(value) => setProfessionalDraft(value === "unassigned" ? "" : value)}>
                                     <SelectTrigger><SelectValue placeholder="Selecione o profissional" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="unassigned">Sem profissional</SelectItem>
+                                        {pendingDetails.kind === "lead" && (
+                                            <SelectItem value="unassigned">Sem profissional</SelectItem>
+                                        )}
                                         {staff.map((user) => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>

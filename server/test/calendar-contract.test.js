@@ -51,3 +51,22 @@ test('calendar moves wait for confirmation and professional changes use separate
     assert.match(source, /Cancelar/);
     assert.match(source, /buildCalendarEntries/);
 });
+
+test('appointments require a professional while leads can clear one', () => {
+    const source = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
+
+    assert.match(source, /const professional = professionalDraft\.trim\(\)/);
+    assert.match(source, /pendingDetails\.kind === "appointment" && !professional/);
+    assert.match(source, /pendingDetails\.kind === "lead" && \(/);
+    assert.match(source, /professional:\s*professional \|\| null/);
+});
+
+test('calendar expands its 30-minute slots for entries outside baseline hours', () => {
+    const source = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
+
+    assert.match(source, /const getVisibleSlotMinutes/);
+    assert.match(source, /Math\.min\(8 \* 60/);
+    assert.match(source, /Math\.max\(20 \* 60/);
+    assert.match(source, /const slotMinutes = getVisibleSlotMinutes\(entries, days\)/);
+    assert.match(source, /getDropDateTime\(day, minutes\)/);
+});

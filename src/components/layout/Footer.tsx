@@ -8,9 +8,9 @@ import { mediaUrl } from "@/lib/media";
 
 const Footer = () => {
   const { data: settings } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ['public-settings'],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/settings`);
+      const res = await axios.get(`${API_URL}/public-settings`);
       return res.data;
     }
   });

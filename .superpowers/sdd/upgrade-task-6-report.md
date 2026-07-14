@@ -64,3 +64,25 @@ Fresh verification after the fix:
 | `npx eslint src/lib/calendar.ts src/components/admin/attendance/EvolutionTimeline.tsx` | Exit 1 only because of three pre-existing explicit-`any` errors at EvolutionTimeline lines 74–75 and one existing hook-dependency warning at line 56. `calendar.ts` is clean and the three fixed regressions no longer appear. |
 | `npm run build` | PASS — Vite production build completed successfully. It emitted only the existing Browserslist-age and >500 kB chunk-size warnings. |
 | `server/: node --test test/calendar-contract.test.js test/file-scheduling-patient-contract.test.js test/static-asset-contract.test.js` | PASS — 27 tests passed, 0 failed. |
+
+## Final review fix wave
+
+Implemented only the requested review items:
+
+- Appointment calendar details now require a non-empty professional for appointment entries; the “Sem profissional” option and `null` clearing remain available only for leads.
+- Added `src/lib/appointmentType.ts` with `normalizeAppointmentType`, shared by the historical evolution timeline and current attendance editor. Unsupported or missing values normalize to `odontologia`.
+- Calendar slots retain the 08:00–20:00 baseline and expand in 30-minute increments for early or late entries in the displayed week. Drag/drop continues to call `getDropDateTime(day, minutes)`.
+- Added unauthenticated `GET /public-settings`, which returns only `site_logo`, `clinic_name`, `clinic_slogan`, `contact_whatsapp`, and `contact_instagram`. The existing authenticated `GET /settings` and its mutation route were not changed. Header and Footer now query the public route and continue resolving uploaded logos through `mediaUrl`.
+- Added focused calendar, appointment-type, and public-branding source contracts.
+
+### RED/GREEN evidence
+
+| Stage | Command | Exact result |
+| --- | --- | --- |
+| RED | `server/: node --test test/calendar-contract.test.js test/file-scheduling-patient-contract.test.js test/static-asset-contract.test.js` | Exit 1 — 26 passed, 4 failed. The new contracts failed because appointment-professional validation, dynamic slots, shared appointment-type helper, and public-settings route were absent. |
+| GREEN | Same focused command | PASS — 30 passed, 0 failed. |
+| Full server suite | `server/: node --test test/*.test.js` | PASS — 36 passed, 0 failed. |
+| Server build | `server/: npm run build` | PASS — Prisma Client generation succeeded. |
+| Frontend build | `npm run build` | PASS — Vite completed 3,295 transformed modules. Existing Browserslist-age and >500 kB chunk-size warnings remain. |
+| Scoped lint | `npx eslint src/lib/appointmentType.ts src/components/admin/attendance/EvolutionTimeline.tsx src/pages/AdminAttendanceDetail.tsx src/pages/AdminAppointments.tsx src/components/admin/appointments/CalendarView.tsx src/components/layout/Header.tsx src/components/layout/Footer.tsx` | Exit 1 only for 11 pre-existing explicit-`any` errors and 2 pre-existing hook-dependency warnings in EvolutionTimeline and AdminAttendanceDetail. No newly changed file introduces a lint finding. |
+| Diff integrity | `git diff --check` | PASS — no whitespace errors. |

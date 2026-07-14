@@ -627,6 +627,29 @@ app.post('/stories/:id/view', async (req, res) => {
 });
 
 // Settings API
+const PUBLIC_SETTINGS_KEYS = new Set([
+    'site_logo',
+    'clinic_name',
+    'clinic_slogan',
+    'contact_whatsapp',
+    'contact_instagram'
+]);
+
+app.get('/public-settings', async (req, res) => {
+    try {
+        const settings = await prisma.setting.findMany();
+        const publicSettings = settings
+            .filter((setting) => PUBLIC_SETTINGS_KEYS.has(setting.key))
+            .reduce((acc, setting) => {
+                acc[setting.key] = setting.value;
+                return acc;
+            }, {});
+        res.json(publicSettings);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/settings', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const settings = await prisma.setting.findMany();

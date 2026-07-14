@@ -16,6 +16,7 @@ import FaceMap, { FaceRegionData } from "@/components/admin/attendance/FaceMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EvolutionTimeline from "@/components/admin/attendance/EvolutionTimeline";
+import { normalizeAppointmentType } from "@/lib/appointmentType";
 
 // Interfaces
 interface AppointmentData {
@@ -201,7 +202,7 @@ const AdminAttendanceDetail = () => {
                     returnDate: returnDateStr,
                     photos: Array.isArray(fetched.photos) ? fetched.photos : [],
                     externalLinks: fetched.externalLinks || [],
-                    appointmentType: fetched.appointmentType || "odontologia",
+                    appointmentType: normalizeAppointmentType(fetched.appointmentType),
                     price: fetched.price !== undefined ? fetched.price.toString() : "",
                     paymentStatus: fetched.paymentStatus || "paid",
                     dentalNotes: fetched.dentalNotes && typeof fetched.dentalNotes === "object" ? fetched.dentalNotes : {},

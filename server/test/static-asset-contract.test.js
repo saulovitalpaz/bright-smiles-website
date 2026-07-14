@@ -80,3 +80,21 @@ test('Conteúdo parent routes managers to a manager-visible child', () => {
     const layout = fs.readFileSync(path.join(repoRoot, 'src/components/admin/AdminLayout.tsx'), 'utf8');
     assert.match(layout, /href:\s*isManager\s*\?\s*["']\/admin\/comentarios["']\s*:\s*["']\/admin\/blog["']/);
 });
+
+test('public branding uses an allowlisted unauthenticated settings route', () => {
+    const server = fs.readFileSync(path.join(repoRoot, 'server/index.js'), 'utf8');
+    const header = fs.readFileSync(path.join(repoRoot, 'src/components/layout/Header.tsx'), 'utf8');
+    const footer = fs.readFileSync(path.join(repoRoot, 'src/components/layout/Footer.tsx'), 'utf8');
+
+    assert.match(server, /const PUBLIC_SETTINGS_KEYS/);
+    for (const key of ['site_logo', 'clinic_name', 'clinic_slogan', 'contact_whatsapp', 'contact_instagram']) {
+        assert.match(server, new RegExp(`['"]${key}['"]`));
+    }
+    assert.match(server, /app\.get\(['"]\/public-settings['"]/);
+    assert.match(server, /PUBLIC_SETTINGS_KEYS\.has\(setting\.key\)/);
+    for (const source of [header, footer]) {
+        assert.match(source, /API_URL}\/public-settings/);
+        assert.doesNotMatch(source, /API_URL}\/settings/);
+        assert.match(source, /mediaUrl\(settings\?\.site_logo\)/);
+    }
+});

@@ -25,11 +25,19 @@ const professionalClasses = {
     slate: "bg-slate-100 text-slate-700"
 } as const;
 
-const slotMinutes = Array.from({ length: 25 }, (_, index) => 8 * 60 + index * 30);
-
 const eventSlotMinutes = (scheduledAt: string) => {
     const date = new Date(scheduledAt);
     return Math.floor((date.getHours() * 60 + date.getMinutes()) / 30) * 30;
+};
+
+const getVisibleSlotMinutes = (entries: CalendarEntry[], days: Date[]) => {
+    const weeklyEntryMinutes = entries
+        .filter((entry) => days.some((day) => isSameDay(new Date(entry.scheduledAt), day)))
+        .map((entry) => eventSlotMinutes(entry.scheduledAt));
+    const firstMinute = Math.floor(Math.min(8 * 60, ...weeklyEntryMinutes) / 30) * 30;
+    const lastMinute = Math.ceil(Math.max(20 * 60, ...weeklyEntryMinutes) / 30) * 30;
+
+    return Array.from({ length: (lastMinute - firstMinute) / 30 + 1 }, (_, index) => firstMinute + index * 30);
 };
 
 export const CalendarView = ({
@@ -40,6 +48,7 @@ export const CalendarView = ({
     onEventDrop
 }: CalendarViewProps) => {
     const days = getWeekDays(anchorDate);
+    const slotMinutes = getVisibleSlotMinutes(entries, days);
 
     const handleDrop = (event: React.DragEvent<HTMLDivElement>, day: Date, minutes: number) => {
         event.preventDefault();
