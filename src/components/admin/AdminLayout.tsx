@@ -4,18 +4,15 @@ import { useAuth } from "@/hooks/useAuth";
 import {
     LayoutDashboard,
     FileText,
-    MessageSquare,
     Calendar,
     LogOut,
     ChevronRight,
     Stethoscope,
-    Play,
     DollarSign,
     BarChart3,
     ChevronLeft,
     Menu,
     FileSignature,
-    Sparkles,
     Settings,
     Users
 } from "lucide-react";
@@ -24,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 interface AdminLayoutProps {
     children: React.ReactNode;
@@ -56,7 +54,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         }
     });
 
-    const logoUrl = settings?.site_logo || "/images/logo-oficial.png";
+    const logoUrl = mediaUrl(settings?.site_logo) || "/images/logo-oficial.png";
     const clinicName = settings?.clinic_name || "Núcleo Odontológico";
 
     // Get user from localStorage
@@ -73,9 +71,18 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     const allMenuItems = [
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
         { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
-        { label: "Comentários", href: "/admin/comentarios", icon: MessageSquare },
-        { label: "Tratamentos", href: "/admin/tratamentos", icon: Sparkles, adminOnly: true },
-        { label: "Blog", href: "/admin/blog", icon: FileText, adminOnly: true },
+        {
+            label: "Conteúdo",
+            href: "/admin/blog",
+            icon: FileText,
+            adminOnly: true,
+            subItems: [
+                { label: "Comentários", href: "/admin/comentarios" },
+                { label: "Tratamentos", href: "/admin/tratamentos" },
+                { label: "Blog", href: "/admin/blog" },
+                { label: "Stories", href: "/admin/stories" }
+            ]
+        },
         {
             label: "Consultas", href: "/admin/consultas", icon: Stethoscope, adminOnly: true, subItems: [
                 { label: "Atendimentos", href: "/admin/consultas" },
@@ -86,7 +93,6 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         },
         // Termos & Doc as standalone for manager (since Consultas group is hidden)
         ...(isManager ? [{ label: "Termos & Doc", href: "/admin/documentos", icon: FileSignature }] : []),
-        { label: "Stories", href: "/admin/stories", icon: Play },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
@@ -102,8 +108,10 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
 
     const activeNavClass = "bg-primary text-primary-foreground shadow-lg shadow-primary/20";
     const inactiveNavClass = "text-slate-500 hover:bg-slate-800/50 hover:text-white";
+    const isItemActive = (item: (typeof menuItems)[number]) =>
+        location.pathname === item.href || item.subItems?.some((sub) => location.pathname.startsWith(sub.href));
 
-    const renderNestedItems = (item: (typeof menuItems)[number], isActive: boolean) => item.subItems && (isActive || location.pathname.startsWith(item.href)) && (
+    const renderNestedItems = (item: (typeof menuItems)[number], isActive: boolean) => item.subItems && isActive && (
         <div className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-1">
             {item.subItems.map(sub => (
                 <Link
@@ -189,7 +197,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 <nav className="flex-1 p-3 space-y-1 mt-6 overflow-y-auto custom-scrollbar">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = location.pathname.startsWith(item.href);
+                        const isActive = isItemActive(item);
                         return (
                             <div key={item.label} className="group">
                                 {isCollapsed ? (

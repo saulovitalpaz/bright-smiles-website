@@ -28,9 +28,9 @@ export const blogPosts: Post[] = [
         category: "Harmonização",
         date: "08 Jan 2026",
         readTime: "5 min",
-        image: "/images/botox/Botox (2).png",
+        image: "/images/botox/Botox capa.png",
         images: [
-            "/images/botox/Botox (2).png",
+            "/images/botox/Botox capa.png",
             "/images/preenchimento/preenchimento - hialuronico (1).png",
             "/images/bioestimulador/Bioestimulador (1).jpg"
         ],

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import axios from "axios";
 
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 const AdminSettings = () => {
     const [settings, setSettings] = useState<Record<string, string>>({});
@@ -58,16 +59,21 @@ const AdminSettings = () => {
             setIsUploading(true);
             const formData = new FormData();
             formData.append("file", e.target.files[0]);
+            formData.append("scope", "public");
 
             try {
                 const res = await axios.post(`${API_URL}/upload`, formData, {
                     headers: { "Content-Type": "multipart/form-data" },
                     withCredentials: true
                 });
-                handleUpdate("site_logo", res.data.url);
+                handleUpdate("site_logo", res.data.reference || res.data.url);
+                e.target.value = "";
                 toast.success("Logo enviada!");
-            } catch (error) {
-                toast.error("Erro ao fazer upload da logo");
+            } catch (error: unknown) {
+                const message = axios.isAxiosError<{ error?: string }>(error)
+                    ? error.response?.data?.error || error.message
+                    : error instanceof Error ? error.message : "Erro desconhecido.";
+                toast.error("Erro ao fazer upload da logo: " + message);
             } finally {
                 setIsUploading(false);
             }
@@ -100,7 +106,7 @@ const AdminSettings = () => {
                             <div className="flex items-start gap-6">
                                 <div className="w-32 h-32 bg-slate-100 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
                                     {settings.site_logo ? (
-                                        <img src={settings.site_logo} alt="Logo Preview" className="w-full h-full object-contain p-2" />
+                                        <img src={mediaUrl(settings.site_logo) || undefined} alt="Logo Preview" className="w-full h-full object-contain p-2" />
                                     ) : (
                                         <ImageIcon className="text-slate-300 w-10 h-10" />
                                     )}

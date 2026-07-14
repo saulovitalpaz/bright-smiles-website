@@ -9,6 +9,7 @@ import axios from "axios";
 
 // API URL
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 interface AdminStory {
     id: number;
@@ -41,13 +42,14 @@ const AdminStories = () => {
         mutationFn: async (file: File) => {
             const formData = new FormData();
             formData.append('file', file);
+            formData.append("scope", "public");
 
             // 1. Upload File
             const uploadRes = await axios.post(`${API_URL}/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 withCredentials: true
             });
-            const fileUrl = uploadRes.data.url;
+            const fileUrl = uploadRes.data.reference || uploadRes.data.url;
 
             // 2. Create Story Record
             const type = file.type.startsWith('video') ? 'video' : 'image';
@@ -60,10 +62,14 @@ const AdminStories = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['stories'] });
+            if (fileInputRef.current) fileInputRef.current.value = "";
             toast.success("Story enviado com sucesso!");
         },
-        onError: (err) => {
-            toast.error("Erro ao enviar story: " + (err as Error).message);
+        onError: (error: unknown) => {
+            const message = axios.isAxiosError<{ error?: string }>(error)
+                ? error.response?.data?.error || error.message
+                : error instanceof Error ? error.message : "Erro desconhecido.";
+            toast.error("Erro ao enviar story: " + message);
         }
     });
 
@@ -173,9 +179,9 @@ const AdminStories = () => {
                                             <td className="px-6 py-4">
                                                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
                                                     {story.type === 'video' ? (
-                                                        <video src={story.url} className="w-full h-full object-cover" />
+                                                        <video src={mediaUrl(story.url) || undefined} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <img src={story.url} alt="Story" className="w-full h-full object-cover" />
+                                                        <img src={mediaUrl(story.url) || undefined} alt="Story" className="w-full h-full object-cover" />
                                                     )}
                                                 </div>
                                             </td>
