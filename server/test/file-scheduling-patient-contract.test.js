@@ -127,3 +127,12 @@ test('asset storage cleanup helper deletes uploaded assets when response constru
 
     assert.deepEqual(deletedReferences, ['bucket://clinical/patients/42/x-ray.jpg']);
 });
+
+test('clinical photo uploads use the private scope and documents expose legacy pdfUrl', () => {
+    const repoRoot = path.resolve(serverRoot, '..');
+    const gallery = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/PhotoGallery.tsx'), 'utf8');
+    const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    assert.match(gallery, /scope.*clinical|clinical.*scope/);
+    assert.match(indexSource, /fileUrl:.*storageKey.*pdfUrl/);
+    assert.match(indexSource, /clinical-assets/);
+});

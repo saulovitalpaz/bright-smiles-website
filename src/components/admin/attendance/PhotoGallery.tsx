@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Image as ImageIcon, X, Loader2, Edit3 } from "lucide-react";
 import { toast } from "sonner";
-import { API_URL } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
+import { assetDeliveryUrl, isClinicalAssetReference, loadProtectedAsset, mediaUrl } from "@/lib/media";
 import PhotoEditor from "./PhotoEditor";
 import DicomViewerModal from "./DicomViewerModal";
 
@@ -29,6 +30,87 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     const [newLinkUrl, setNewLinkUrl] = useState('');
     const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
     const [viewingDicomUrl, setViewingDicomUrl] = useState<string | null>(null);
+    const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+    const [resolvedPhotos, setResolvedPhotos] = useState<Record<string, string>>({});
+    const objectUrlsRef = useRef<string[]>([]);
+
+    useEffect(() => {
+        setPreviewUrls((current) => {
+            const nextEntries = Object.entries(current).filter(([photo]) => photos.includes(photo));
+            if (nextEntries.length === Object.keys(current).length) {
+                return current;
+            }
+            return Object.fromEntries(nextEntries);
+        });
+    }, [photos]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const createdObjectUrls: string[] = [];
+
+        const cleanupObjectUrls = () => {
+            objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+            objectUrlsRef.current = [];
+        };
+
+        const resolvePhotos = async () => {
+            cleanupObjectUrls();
+
+            const entries = await Promise.all(photos.map(async (photo) => {
+                if (previewUrls[photo]) {
+                    return [photo, previewUrls[photo]] as const;
+                }
+
+                if (isClinicalAssetReference(photo)) {
+                    try {
+                        const protectedUrl = assetDeliveryUrl(photo);
+                        if (!protectedUrl) return [photo, photo] as const;
+                        const objectUrl = await loadProtectedAsset(protectedUrl);
+                        createdObjectUrls.push(objectUrl);
+                        return [photo, objectUrl] as const;
+                    } catch (error) {
+                        console.error("Clinical photo load error:", error);
+                        return [photo, ''] as const;
+                    }
+                }
+
+                return [photo, mediaUrl(assetDeliveryUrl(photo) || photo) || photo] as const;
+            }));
+
+            if (cancelled) {
+                createdObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+                return;
+            }
+
+            objectUrlsRef.current = createdObjectUrls;
+            setResolvedPhotos(Object.fromEntries(entries));
+        };
+
+        resolvePhotos();
+
+        return () => {
+            cancelled = true;
+            cleanupObjectUrls();
+        };
+    }, [photos, previewUrls]);
+
+    const uploadClinicalPhoto = async (file: Blob, fileName: string) => {
+        const formData = new FormData();
+        formData.append("file", file, fileName);
+        formData.append("scope", "clinical");
+
+        const res = await fetchClient(`/upload`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || "Erro ao fazer upload da foto.");
+        }
+
+        return res.json();
+    };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
@@ -41,30 +123,15 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
         }
 
         setUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
 
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${API_URL}/upload`, {
-                method: "POST",
-                headers: {
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                },
-                body: formData,
-                credentials: 'omit' // Usually upload with bearer token
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                onChange([...photos, data.url]);
-                toast.success("Foto adicionada com sucesso!");
-            } else {
-                toast.error("Erro ao fazer upload da foto.");
-            }
+            const data = await uploadClinicalPhoto(file, file.name);
+            setPreviewUrls((current) => ({ ...current, [data.reference]: data.url }));
+            onChange([...photos, data.reference]);
+            toast.success("Foto adicionada com sucesso!");
         } catch (error) {
             console.error("Upload error:", error);
-            toast.error("Erro de conexão ao enviar foto.");
+            toast.error(error instanceof Error ? error.message : "Erro de conexão ao enviar foto.");
         } finally {
             setUploading(false);
             if(e.target) e.target.value = ''; // Reset input
@@ -73,25 +140,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
     const handleSaveEditedPhoto = async (blob: Blob) => {
         setUploading(true);
-        const formData = new FormData();
-        formData.append("file", blob, `edited_photo_${Date.now()}.png`);
 
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${API_URL}/upload`, {
-                method: "POST",
-                headers: {
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                },
-                body: formData,
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                onChange([...photos, data.url]);
-            } else {
-                throw new Error("Falha no servidor");
-            }
+            const data = await uploadClinicalPhoto(blob, `edited_photo_${Date.now()}.png`);
+            setPreviewUrls((current) => ({ ...current, [data.reference]: data.url }));
+            onChange([...photos, data.reference]);
         } catch (error) {
             console.error("Upload edited error:", error);
             throw error; // Let the editor catch and toast
@@ -102,7 +155,15 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
     const handleRemove = (index: number) => {
         const newPhotos = [...photos];
-        newPhotos.splice(index, 1);
+        const [removedPhoto] = newPhotos.splice(index, 1);
+        if (removedPhoto) {
+            setPreviewUrls((current) => {
+                if (!(removedPhoto in current)) return current;
+                const next = { ...current };
+                delete next[removedPhoto];
+                return next;
+            });
+        }
         onChange(newPhotos);
     };
 
@@ -145,16 +206,24 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
             </CardHeader>
             <CardContent className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {photos.map((url, idx) => (
+                    {photos.map((photo, idx) => {
+                        const resolvedPhoto = resolvedPhotos[photo] || mediaUrl(assetDeliveryUrl(photo) || photo) || photo;
+                        return (
                         <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                            <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                            {resolvedPhoto ? (
+                                <img src={resolvedPhoto} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                            ) : (
+                                <div className="flex h-full items-center justify-center p-3 text-center text-xs font-medium text-slate-400">
+                                    Não foi possível carregar esta foto clínica.
+                                </div>
+                            )}
                             {!readOnly && (
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                                    <Button 
                                        size="sm" 
                                        variant="secondary" 
                                        className="h-8 shadow-lg"
-                                       onClick={(e) => { e.preventDefault(); setEditingPhoto(url); }}
+                                       onClick={(e) => { e.preventDefault(); setEditingPhoto(resolvedPhoto || photo); }}
                                    >
                                        <Edit3 size={14} className="mr-1.5" /> Editar
                                    </Button>
@@ -168,7 +237,8 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
                                 </div>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
 
                     {!readOnly && (
                         <label className="relative aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-primary/50 hover:bg-primary/5 cursor-pointer flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-primary transition-all">

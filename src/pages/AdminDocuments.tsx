@@ -19,11 +19,12 @@ import {
     FileCheck
 } from "lucide-react";
 import { toast } from "sonner";
-import { API_URL, fetchClient } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
+import { mediaUrl } from "@/lib/media";
 
 const AdminDocuments = () => {
     const [patientData, setPatientData] = useState({
@@ -156,6 +157,11 @@ const AdminDocuments = () => {
     };
 
     const handleUploadSigned = async (docId: number, file: File) => {
+        if (file.type !== 'application/pdf') {
+            toast.error("Apenas arquivos PDF são aceitos.");
+            return;
+        }
+
         const formData = new FormData();
         formData.append("file", file);
 
@@ -173,7 +179,7 @@ const AdminDocuments = () => {
             setHistory(history.map(h => h.id === docId ? { ...h, fileUrl: url } : h));
         } catch (e) {
             console.error(e);
-            toast.error("Erro ao fazer upload.");
+            toast.error(e instanceof Error ? e.message : "Erro ao fazer upload.");
         }
     };
 
@@ -278,8 +284,8 @@ const AdminDocuments = () => {
                                         </div>
                                         <div className="flex justify-between items-center mt-2">
                                             <div className="flex gap-2">
-                                                {doc.fileUrl || doc.pdfUrl ? (
-                                                    <a href={(doc.fileUrl || doc.pdfUrl).startsWith('http') ? (doc.fileUrl || doc.pdfUrl) : `${API_URL}${doc.fileUrl || doc.pdfUrl}`} target="_blank" rel="noopener noreferrer" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
+                                                {mediaUrl(doc.fileUrl || doc.pdfUrl) ? (
+                                                    <a href={mediaUrl(doc.fileUrl || doc.pdfUrl) || undefined} target="_blank" rel="noopener noreferrer" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
                                                         <FileCheck size={12} /> Assinado
                                                     </a>
                                                 ) : (

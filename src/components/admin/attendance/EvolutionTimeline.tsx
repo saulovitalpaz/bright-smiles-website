@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { API_URL } from "@/lib/api";
+import React, { useEffect, useRef, useState } from 'react';
+import { fetchClient } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Camera, Stethoscope, ChevronRight, ChevronDown, User } from "lucide-react";
@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale";
 import Odontogram, { ToothData } from "./Odontogram";
 import FaceMap, { FaceRegionData } from "./FaceMap";
 import { Button } from "@/components/ui/button";
+import { assetDeliveryUrl, isClinicalAssetReference, loadProtectedAsset, mediaUrl } from "@/lib/media";
 
 interface EvolutionTimelineProps {
     patientId: number | null;
@@ -29,6 +30,9 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
     const [history, setHistory] = useState<HistoricalAppointment[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
+    const [resolvedPhotos, setResolvedPhotos] = useState<Record<string, string>>({});
+    const [photoErrors, setPhotoErrors] = useState<Record<string, string>>({});
+    const objectUrlsRef = useRef<string[]>([]);
 
     useEffect(() => {
         if (patientId) {
@@ -39,7 +43,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
     const fetchHistory = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_URL}/appointments?patientId=${patientId}`);
+            const res = await fetchClient(`/appointments?patientId=${patientId}`);
             if (res.ok) {
                 const data = await res.json();
                 // Filter out current appointment if needed and sort by date desc
@@ -54,6 +58,68 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        const expandedAppointment = history.find((app) => app.id === expandedId);
+        let cancelled = false;
+
+        const cleanupObjectUrls = () => {
+            objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+            objectUrlsRef.current = [];
+        };
+
+        if (!expandedAppointment || expandedAppointment.photos.length === 0) {
+            cleanupObjectUrls();
+            setResolvedPhotos({});
+            setPhotoErrors({});
+            return;
+        }
+
+        const createdObjectUrls: string[] = [];
+
+        const resolveExpandedPhotos = async () => {
+            cleanupObjectUrls();
+            const nextResolved: Record<string, string> = {};
+            const nextErrors: Record<string, string> = {};
+
+            await Promise.all(expandedAppointment.photos.map(async (photo) => {
+                if (isClinicalAssetReference(photo)) {
+                    try {
+                        const protectedUrl = assetDeliveryUrl(photo);
+                        if (!protectedUrl) {
+                            nextErrors[photo] = 'Foto clínica indisponível.';
+                            return;
+                        }
+                        const objectUrl = await loadProtectedAsset(protectedUrl);
+                        createdObjectUrls.push(objectUrl);
+                        nextResolved[photo] = objectUrl;
+                    } catch (error) {
+                        console.error("Evolution photo load error:", error);
+                        nextErrors[photo] = error instanceof Error ? error.message : 'Foto clínica indisponível.';
+                    }
+                    return;
+                }
+
+                nextResolved[photo] = mediaUrl(assetDeliveryUrl(photo) || photo) || photo;
+            }));
+
+            if (cancelled) {
+                createdObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+                return;
+            }
+
+            objectUrlsRef.current = createdObjectUrls;
+            setResolvedPhotos(nextResolved);
+            setPhotoErrors(nextErrors);
+        };
+
+        resolveExpandedPhotos();
+
+        return () => {
+            cancelled = true;
+            cleanupObjectUrls();
+        };
+    }, [expandedId, history]);
 
     if (isLoading) return <div className="p-8 text-center text-slate-400">Carregando histórico do paciente...</div>;
     if (!patientId) return <div className="p-8 text-center text-slate-400">Selecione um paciente para ver a evolução.</div>;
@@ -138,14 +204,25 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                                                 <div className="space-y-2">
                                                     <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registros Fotográficos</h5>
                                                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                                        {app.photos.map((url, i) => (
-                                                            <img 
-                                                                key={i} 
-                                                                src={url} 
-                                                                alt="Evolução" 
-                                                                className="w-24 h-24 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
-                                                            />
-                                                        ))}
+                                                        {app.photos.map((photo, i) => {
+                                                            const resolvedPhoto = resolvedPhotos[photo];
+                                                            const photoError = photoErrors[photo];
+                                                            return photoError ? (
+                                                                <div
+                                                                    key={i}
+                                                                    className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50 p-2 text-center text-[10px] font-medium text-red-500"
+                                                                >
+                                                                    Falha ao carregar
+                                                                </div>
+                                                            ) : (
+                                                                <img 
+                                                                    key={i} 
+                                                                    src={resolvedPhoto || mediaUrl(assetDeliveryUrl(photo) || photo) || photo}
+                                                                    alt="Evolução" 
+                                                                    className="w-24 h-24 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
+                                                                />
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}

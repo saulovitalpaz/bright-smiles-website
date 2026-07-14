@@ -1342,7 +1342,7 @@ app.get('/patient-documents/:patientId', authenticateToken, async (req, res) => 
         });
         res.json(docs.map(doc => ({
             ...doc,
-            fileUrl: doc.storageKey ? `/patient-documents/${doc.id}/file` : null
+            fileUrl: doc.storageKey ? `/patient-documents/${doc.id}/file` : doc.pdfUrl || null
         })));
     } catch (error) {
         res.status(500).json({ error: error.message });
