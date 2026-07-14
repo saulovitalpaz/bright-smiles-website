@@ -86,3 +86,17 @@ Implemented only the requested review items:
 | Frontend build | `npm run build` | PASS — Vite completed 3,295 transformed modules. Existing Browserslist-age and >500 kB chunk-size warnings remain. |
 | Scoped lint | `npx eslint src/lib/appointmentType.ts src/components/admin/attendance/EvolutionTimeline.tsx src/pages/AdminAttendanceDetail.tsx src/pages/AdminAppointments.tsx src/components/admin/appointments/CalendarView.tsx src/components/layout/Header.tsx src/components/layout/Footer.tsx` | Exit 1 only for 11 pre-existing explicit-`any` errors and 2 pre-existing hook-dependency warnings in EvolutionTimeline and AdminAttendanceDetail. No newly changed file introduces a lint finding. |
 | Diff integrity | `git diff --check` | PASS — no whitespace errors. |
+
+## Settings-write security fix
+
+`POST /settings` now requires `authenticateToken` and `authorizeRole(['admin'])`. It rejects keys outside the same five-key public allowlist used by `GET /public-settings`; the authenticated `GET /settings` route remains unchanged and the public route remains anonymous. `AdminSettings` now sends credentials for both settings reads and writes.
+
+| Stage | Command | Exact result |
+| --- | --- | --- |
+| RED | `server/: node --test test/static-asset-contract.test.js` | Exit 1 — the new shared `server/utils/publicSettings` runtime helper was absent (`MODULE_NOT_FOUND`), demonstrating the missing shared allowlist boundary. |
+| GREEN | `server/: node --test test/calendar-contract.test.js test/file-scheduling-patient-contract.test.js test/static-asset-contract.test.js` | PASS — 31 passed, 0 failed. Includes runtime filtering of non-public keys plus source checks for admin-only POST middleware, key validation, credentialed admin calls, and anonymous public settings. |
+| Full server suite | `server/: node --test test/*.test.js` | PASS — 37 passed, 0 failed. |
+| Server build | `server/: npm run build` | PASS — Prisma Client generation succeeded. |
+| Frontend build | `npm run build` | PASS — Vite completed 3,295 transformed modules; only existing Browserslist-age and >500 kB chunk-size warnings remain. |
+| Scoped lint | `npx eslint src/pages/AdminSettings.tsx` | PASS — no findings. |
+| Diff integrity | `git diff --check` | PASS — no whitespace errors. |

@@ -24,7 +24,7 @@ const AdminSettings = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await axios.get(`${API_URL}/settings`);
+            const res = await axios.get(`${API_URL}/settings`, { withCredentials: true });
             setSettings(res.data);
         } catch (error) {
             console.error("Error fetching settings:", error);
@@ -43,7 +43,7 @@ const AdminSettings = () => {
         try {
             // For simplicity, we save each setting in parallel
             const promises = Object.entries(settings).map(([key, value]) =>
-                axios.post(`${API_URL}/settings`, { key, value })
+                axios.post(`${API_URL}/settings`, { key, value }, { withCredentials: true })
             );
             await Promise.all(promises);
             toast.success("Configurações salvas!");

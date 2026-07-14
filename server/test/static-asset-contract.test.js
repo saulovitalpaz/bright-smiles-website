@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('../utils/publicSettings');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 
@@ -83,18 +84,43 @@ test('Conteúdo parent routes managers to a manager-visible child', () => {
 
 test('public branding uses an allowlisted unauthenticated settings route', () => {
     const server = fs.readFileSync(path.join(repoRoot, 'server/index.js'), 'utf8');
+    const publicSettings = fs.readFileSync(path.join(repoRoot, 'server/utils/publicSettings.js'), 'utf8');
     const header = fs.readFileSync(path.join(repoRoot, 'src/components/layout/Header.tsx'), 'utf8');
     const footer = fs.readFileSync(path.join(repoRoot, 'src/components/layout/Footer.tsx'), 'utf8');
 
-    assert.match(server, /const PUBLIC_SETTINGS_KEYS/);
+    assert.match(server, /toPublicSettings\(settings\)/);
     for (const key of ['site_logo', 'clinic_name', 'clinic_slogan', 'contact_whatsapp', 'contact_instagram']) {
-        assert.match(server, new RegExp(`['"]${key}['"]`));
+        assert.match(publicSettings, new RegExp(`['"]${key}['"]`));
     }
     assert.match(server, /app\.get\(['"]\/public-settings['"]/);
-    assert.match(server, /PUBLIC_SETTINGS_KEYS\.has\(setting\.key\)/);
+    assert.match(publicSettings, /PUBLIC_SETTINGS_KEYS\.has\(setting\.key\)/);
     for (const source of [header, footer]) {
         assert.match(source, /API_URL}\/public-settings/);
         assert.doesNotMatch(source, /API_URL}\/settings/);
         assert.match(source, /mediaUrl\(settings\?\.site_logo\)/);
     }
+});
+
+test('settings writes are admin-only and share the public settings allowlist', () => {
+    const server = fs.readFileSync(path.join(repoRoot, 'server/index.js'), 'utf8');
+    const settingsPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminSettings.tsx'), 'utf8');
+    const settingsWrite = server.match(/app\.post\('\/settings',[\s\S]*?\n\}\);/)?.[0];
+
+    assert.deepEqual([...PUBLIC_SETTINGS_KEYS].sort(), [
+        'clinic_name',
+        'clinic_slogan',
+        'contact_instagram',
+        'contact_whatsapp',
+        'site_logo'
+    ]);
+    assert.deepEqual(toPublicSettings([
+        { key: 'site_logo', value: 'bucket://public/logo.png' },
+        { key: 'private_note', value: 'do-not-return' }
+    ]), { site_logo: 'bucket://public/logo.png' });
+    assert.ok(settingsWrite);
+    assert.match(settingsWrite, /authenticateToken/);
+    assert.match(settingsWrite, /authorizeRole\(\['admin'\]\)/);
+    assert.match(settingsWrite, /PUBLIC_SETTINGS_KEYS\.has\(key\)/);
+    assert.match(settingsPage, /axios\.get\(`\$\{API_URL\}\/settings`, \{ withCredentials: true \}\)/);
+    assert.match(settingsPage, /axios\.post\(`\$\{API_URL\}\/settings`, \{ key, value \}, \{ withCredentials: true \}\)/);
 });
