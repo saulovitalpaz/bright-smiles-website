@@ -16,6 +16,7 @@ const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl }
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./utils/encryption');
+const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const auditLogger = require('./middleware/auditLogger');
 const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
 
@@ -83,13 +84,6 @@ const authorizeRole = (roles) => {
         next();
     };
 };
-
-function parseOptionalDate(value, message) {
-    if (value === undefined || value === null || value === '') return null;
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) throw new Error(message);
-    return parsed;
-}
 
 app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
     try {
@@ -391,7 +385,7 @@ app.post('/appointments', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Invalid appointment date' });
         }
         payload.returnDate = parseOptionalDate(payload.returnDate, 'Invalid return date');
-        payload.scheduledAt = parseOptionalDate(payload.scheduledAt, 'Invalid scheduled date');
+        payload.scheduledAt = normalizeScheduledAt(payload.scheduledAt);
         if (payload.price === '' || payload.price === null || payload.price === undefined) {
             payload.price = null;
         } else {
@@ -441,7 +435,7 @@ app.put('/appointments/:id', async (req, res) => {
             data.returnDate = parseOptionalDate(data.returnDate, 'Invalid return date');
         }
         if (data.scheduledAt !== undefined) {
-            data.scheduledAt = parseOptionalDate(data.scheduledAt, 'Invalid scheduled date');
+            data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
         }
         if (data.price === '') {
             data.price = null;
@@ -941,34 +935,10 @@ app.get('/dashboard/stats', async (req, res) => {
             })
         ]);
 
-        const upcomingSchedule = [
-            ...scheduledAppointments.map((appointment) => ({
-                kind: 'appointment',
-                id: appointment.id,
-                patientName: appointment.patientName,
-                treatment: null,
-                procedure: appointment.procedure,
-                appointmentType: appointment.appointmentType,
-                scheduledAt: appointment.scheduledAt,
-                createdAt: appointment.createdAt,
-                patientId: appointment.patientId,
-                leadId: null
-            })),
-            ...scheduledLeads.map((lead) => ({
-                kind: 'lead',
-                id: lead.id,
-                patientName: lead.name,
-                treatment: lead.treatment,
-                procedure: null,
-                appointmentType: null,
-                scheduledAt: lead.scheduledAt,
-                createdAt: lead.createdAt,
-                patientId: null,
-                leadId: lead.id
-            }))
-        ]
-            .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
-            .slice(0, 10);
+        const upcomingSchedule = buildUpcomingSchedule({
+            appointments: scheduledAppointments,
+            leads: scheduledLeads
+        });
 
         const recentTestimonials = await prisma.testimonial.findMany({
             take: 5,
@@ -1050,7 +1020,7 @@ app.put('/leads/:id', async (req, res) => {
     try {
         const data = { ...req.body };
         if (data.scheduledAt !== undefined) {
-            data.scheduledAt = parseOptionalDate(data.scheduledAt, 'Invalid scheduled date');
+            data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
         }
         const lead = await prisma.lead.update({
             where: { id: parseInt(req.params.id) },
@@ -1115,7 +1085,7 @@ app.put('/leads/:id', async (req, res) => {
     try {
         const data = { ...req.body };
         if (data.scheduledAt !== undefined) {
-            data.scheduledAt = parseOptionalDate(data.scheduledAt, 'Invalid scheduled date');
+            data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
         }
         const lead = await prisma.lead.update({
             where: { id: parseInt(req.params.id) },

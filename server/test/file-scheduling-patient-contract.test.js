@@ -137,14 +137,157 @@ test('clinical photo uploads use the private scope and documents expose legacy p
     assert.match(indexSource, /clinical-assets/);
 });
 
-test('schedule fields are persisted and dashboard exposes ascending upcoming schedule', () => {
+test('schedule normalization handles nullable, ISO, and datetime-local values at runtime', () => {
+    const { normalizeScheduledAt } = require('../utils/schedule');
+
+    assert.equal(normalizeScheduledAt(undefined), null);
+    assert.equal(normalizeScheduledAt(null), null);
+    assert.equal(normalizeScheduledAt(''), null);
+
+    const isoValue = normalizeScheduledAt('2026-07-13T14:30:00.000Z');
+    assert.equal(isoValue instanceof Date, true);
+    assert.equal(isoValue.toISOString(), '2026-07-13T14:30:00.000Z');
+
+    const browserValue = normalizeScheduledAt('2026-07-13T09:45');
+    assert.equal(browserValue instanceof Date, true);
+    assert.equal(Number.isNaN(browserValue.getTime()), false);
+    assert.equal(browserValue.getFullYear(), 2026);
+    assert.equal(browserValue.getMonth(), 6);
+    assert.equal(browserValue.getDate(), 13);
+    assert.equal(browserValue.getHours(), 9);
+    assert.equal(browserValue.getMinutes(), 45);
+});
+
+test('schedule normalization rejects invalid scheduled values with the clear contract message', () => {
+    const { normalizeScheduledAt } = require('../utils/schedule');
+
+    assert.throws(() => normalizeScheduledAt('not-a-date'), /Invalid scheduled date/);
+});
+
+test('upcoming schedule helper returns promised fields in ascending order and excludes completed leads', () => {
+    const { buildUpcomingSchedule } = require('../utils/schedule');
+
+    const upcomingSchedule = buildUpcomingSchedule({
+        appointments: [
+            {
+                id: 8,
+                patientName: 'Ana Paciente',
+                procedure: 'Limpeza',
+                appointmentType: 'return',
+                scheduledAt: new Date('2026-07-15T12:00:00.000Z'),
+                createdAt: new Date('2026-07-01T09:00:00.000Z'),
+                patientId: 3
+            },
+            {
+                id: 2,
+                patientName: 'Bruno Paciente',
+                procedure: 'Avaliação',
+                appointmentType: 'initial',
+                scheduledAt: new Date('2026-07-14T09:00:00.000Z'),
+                createdAt: new Date('2026-07-01T08:00:00.000Z'),
+                patientId: 5
+            },
+            {
+                id: 11,
+                patientName: 'Sem Agenda',
+                procedure: 'Ignorar',
+                appointmentType: 'initial',
+                scheduledAt: null,
+                createdAt: new Date('2026-07-02T08:00:00.000Z'),
+                patientId: 9
+            }
+        ],
+        leads: [
+            {
+                id: 7,
+                name: 'Carlos Lead',
+                treatment: 'Implante',
+                status: 'new',
+                scheduledAt: new Date('2026-07-14T08:30:00.000Z'),
+                createdAt: new Date('2026-07-03T08:00:00.000Z')
+            },
+            {
+                id: 9,
+                name: 'Lead Concluído',
+                treatment: 'Clareamento',
+                status: 'completed',
+                scheduledAt: new Date('2026-07-13T08:30:00.000Z'),
+                createdAt: new Date('2026-07-02T08:00:00.000Z')
+            },
+            {
+                id: 10,
+                name: 'Sem Horário',
+                treatment: 'Botox',
+                status: 'new',
+                scheduledAt: null,
+                createdAt: new Date('2026-07-02T09:00:00.000Z')
+            }
+        ]
+    });
+
+    assert.deepEqual(
+        upcomingSchedule.map((item) => ({
+            kind: item.kind,
+            id: item.id,
+            patientName: item.patientName,
+            treatment: item.treatment,
+            procedure: item.procedure,
+            appointmentType: item.appointmentType,
+            patientId: item.patientId,
+            leadId: item.leadId
+        })),
+        [
+            {
+                kind: 'lead',
+                id: 7,
+                patientName: 'Carlos Lead',
+                treatment: 'Implante',
+                procedure: null,
+                appointmentType: null,
+                patientId: null,
+                leadId: 7
+            },
+            {
+                kind: 'appointment',
+                id: 2,
+                patientName: 'Bruno Paciente',
+                treatment: null,
+                procedure: 'Avaliação',
+                appointmentType: 'initial',
+                patientId: 5,
+                leadId: null
+            },
+            {
+                kind: 'appointment',
+                id: 8,
+                patientName: 'Ana Paciente',
+                treatment: null,
+                procedure: 'Limpeza',
+                appointmentType: 'return',
+                patientId: 3,
+                leadId: null
+            }
+        ]
+    );
+    assert.deepEqual(
+        upcomingSchedule.map((item) => item.scheduledAt.toISOString()),
+        [
+            '2026-07-14T08:30:00.000Z',
+            '2026-07-14T09:00:00.000Z',
+            '2026-07-15T12:00:00.000Z'
+        ]
+    );
+    assert.equal(upcomingSchedule.every((item) => item.createdAt instanceof Date), true);
+});
+
+test('schedule contract remains wired through schema and server boundaries', () => {
     const schema = fs.readFileSync(path.join(serverRoot, 'prisma/schema.prisma'), 'utf8');
     const validation = fs.readFileSync(path.join(serverRoot, 'utils/validationSchemas.js'), 'utf8');
     const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
     assert.match(schema, /model Lead[\s\S]*scheduledAt\s+DateTime\?/);
     assert.match(schema, /model Appointment[\s\S]*scheduledAt\s+DateTime\?/);
     assert.match(validation, /scheduledAt/);
-    assert.match(source, /Invalid scheduled date/);
-    assert.match(source, /upcomingSchedule/);
-    assert.match(source, /orderBy:\s*\{\s*scheduledAt:\s*['"]asc['"]\s*\}/);
+    assert.match(source, /require\(['"]\.\/utils\/schedule['"]\)/);
+    assert.match(source, /normalizeScheduledAt/);
+    assert.match(source, /buildUpcomingSchedule/);
 });
