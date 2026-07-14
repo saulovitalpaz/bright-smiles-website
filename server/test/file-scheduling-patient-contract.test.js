@@ -350,3 +350,17 @@ test('schedule contract remains wired through schema and server boundaries', () 
     assert.match(source, /normalizeScheduledAt/);
     assert.match(source, /buildUpcomingSchedule/);
 });
+
+test('request, dashboard, and attendance screens distinguish scheduledAt from createdAt', () => {
+    const repoRoot = path.resolve(serverRoot, '..');
+    const leads = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminLeads.tsx'), 'utf8');
+    const dashboard = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminDashboard.tsx'), 'utf8');
+    const attendance = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAttendanceDetail.tsx'), 'utf8');
+
+    assert.match(leads, /type=["']datetime-local["']/);
+    assert.match(leads, /scheduledAt/);
+    assert.match(dashboard, /upcomingSchedule/);
+    assert.match(dashboard, /admin\/consultas\/new\?leadId=/);
+    assert.match(attendance, /scheduledAt/);
+    assert.match(attendance, /createdAt/);
+});

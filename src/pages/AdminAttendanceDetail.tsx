@@ -25,6 +25,8 @@ interface AppointmentData {
     phone: string;
     patientId: number | null;
     date: string;
+    scheduledAt: string | null;
+    createdAt?: string;
     procedure: string;
     professional: string;
     notes: string;
@@ -41,6 +43,28 @@ interface AppointmentData {
     facialNotes: Record<string, FaceRegionData>;
 }
 
+const formatDateTimeInput = (value?: string | null) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const localValue = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localValue.toISOString().slice(0, 16);
+};
+
+const formatDateTimeLabel = (value?: string | null) => {
+    if (!value) return "Não informado";
+
+    return new Date(value).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
 const DEFAULT_APPOINTMENT: AppointmentData = {
     id: 'new',
     patientName: "",
@@ -48,6 +72,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     phone: "",
     patientId: null,
     date: new Date().toISOString(),
+    scheduledAt: null,
     procedure: "",
     professional: "",
     notes: "",
@@ -112,6 +137,7 @@ const AdminAttendanceDetail = () => {
                         patientName: lead.name || "",
                         cpf: lead.cpf || "",
                         phone: lead.phone || "",
+                        scheduledAt: lead.scheduledAt || null,
                         procedure: lead.treatment || "",
                         notes: lead.message || "",
                     });
@@ -170,6 +196,8 @@ const AdminAttendanceDetail = () => {
                     patientName: fetched.patientName || fetched.patient?.name || "",
                     cpf: fetched.cpf || fetched.patient?.cpf || "",
                     phone: fetched.phone || fetched.patient?.phone || "",
+                    scheduledAt: fetched.scheduledAt || null,
+                    createdAt: fetched.createdAt || undefined,
                     returnDate: returnDateStr,
                     photos: fetched.photos || [],
                     externalLinks: fetched.externalLinks || [],
@@ -228,6 +256,7 @@ const AdminAttendanceDetail = () => {
 
             const payload = {
                 ...data,
+                scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : null,
                 patientId: finalPatientId,
                 returnDate: data.returnDate ? new Date(data.returnDate).toISOString() : null
             };
@@ -426,6 +455,19 @@ const AdminAttendanceDetail = () => {
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Clock size={12} /> Agendado para
+                                        </Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={formatDateTimeInput(data.scheduledAt)}
+                                            onChange={(e) => updateField('scheduledAt', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                                            className="h-10 font-bold bg-slate-50 border-slate-100"
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                                             <Calendar size={12} /> Retorno Desejado
                                         </Label>
                                         <Input
@@ -436,6 +478,17 @@ const AdminAttendanceDetail = () => {
                                             disabled={readOnly}
                                         />
                                     </div>
+
+                                    {id !== 'new' && (
+                                        <div className="space-y-1.5 lg:col-span-5">
+                                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Clock size={12} /> Criado em
+                                            </Label>
+                                            <p className="text-sm font-medium text-slate-600 pt-2">
+                                                {formatDateTimeLabel(data.createdAt)}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

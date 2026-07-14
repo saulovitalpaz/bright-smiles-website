@@ -26,6 +26,8 @@ interface AppointmentRecord {
     patientName: string;
     cpf?: string;
     date: string;
+    scheduledAt?: string | null;
+    createdAt?: string;
     procedure: string;
     notes: string;
     professional: string;
@@ -106,6 +108,8 @@ const AdminAppointments = () => {
         }
     };
 
+    const formatScheduleLabel = (record: AppointmentRecord) => formatDate(record.scheduledAt || record.date);
+
     return (
         <AdminLayout title="Atendimentos & Consultas">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -175,8 +179,16 @@ const AdminAppointments = () => {
                                                 <span className="text-xs text-slate-300 hidden sm:inline">|</span>
                                                 <span className="text-xs text-slate-500 flex items-center gap-1 font-medium whitespace-nowrap">
                                                     <History size={12} />
-                                                    {formatDate(record.date)}
+                                                    {formatScheduleLabel(record)}
                                                 </span>
+                                                {record.scheduledAt && record.scheduledAt !== record.date && (
+                                                    <>
+                                                        <span className="text-xs text-slate-300 hidden sm:inline">|</span>
+                                                        <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                                                            Criado em {formatDate(record.date)}
+                                                        </span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
