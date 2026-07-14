@@ -356,6 +356,7 @@ test('request, dashboard, and attendance screens distinguish scheduledAt from cr
     const leads = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminLeads.tsx'), 'utf8');
     const dashboard = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminDashboard.tsx'), 'utf8');
     const attendance = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAttendanceDetail.tsx'), 'utf8');
+    const appointments = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
 
     assert.match(leads, /type=["']datetime-local["']/);
     assert.match(leads, /scheduledAt/);
@@ -363,4 +364,9 @@ test('request, dashboard, and attendance screens distinguish scheduledAt from cr
     assert.match(dashboard, /admin\/consultas\/new\?leadId=/);
     assert.match(attendance, /scheduledAt/);
     assert.match(attendance, /createdAt/);
+    assert.match(appointments, /Agendado para/);
+    assert.match(appointments, /Data clínica/);
+    assert.match(appointments, /Criado em/);
+    assert.match(appointments, /record\.createdAt/);
+    assert.doesNotMatch(appointments, /Criado em \{formatDate\(record\.date\)\}/);
 });

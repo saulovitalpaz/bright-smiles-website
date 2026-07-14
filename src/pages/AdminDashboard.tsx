@@ -184,6 +184,12 @@ const AdminDashboard = () => {
                                         <div className="flex-1 min-w-0 sm:hidden">
                                             <p className="font-bold text-slate-900 truncate">{item.patientName}</p>
                                             <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                            <p className="text-sm font-bold text-blue-700 mt-2">
+                                                {formatDateTime(item.scheduledAt)}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 mt-1">
+                                                Criado em {formatDateTime(item.createdAt)}
+                                            </p>
                                         </div>
                                     </div>
 

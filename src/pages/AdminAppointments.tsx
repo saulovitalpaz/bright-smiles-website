@@ -108,7 +108,9 @@ const AdminAppointments = () => {
         }
     };
 
-    const formatScheduleLabel = (record: AppointmentRecord) => formatDate(record.scheduledAt || record.date);
+    const formatScheduledAt = (record: AppointmentRecord) => formatDate(record.scheduledAt || record.date);
+    const formatClinicalDate = (record: AppointmentRecord) => formatDate(record.date);
+    const formatCreatedAt = (record: AppointmentRecord) => record.createdAt ? formatDate(record.createdAt) : null;
 
     return (
         <AdminLayout title="Atendimentos & Consultas">
@@ -179,13 +181,17 @@ const AdminAppointments = () => {
                                                 <span className="text-xs text-slate-300 hidden sm:inline">|</span>
                                                 <span className="text-xs text-slate-500 flex items-center gap-1 font-medium whitespace-nowrap">
                                                     <History size={12} />
-                                                    {formatScheduleLabel(record)}
+                                                    Agendado para {formatScheduledAt(record)}
                                                 </span>
-                                                {record.scheduledAt && record.scheduledAt !== record.date && (
+                                                <span className="text-xs text-slate-300 hidden sm:inline">|</span>
+                                                <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                                                    Data clínica {formatClinicalDate(record)}
+                                                </span>
+                                                {record.createdAt && (
                                                     <>
                                                         <span className="text-xs text-slate-300 hidden sm:inline">|</span>
                                                         <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                                                            Criado em {formatDate(record.date)}
+                                                            Criado em {formatCreatedAt(record)}
                                                         </span>
                                                     </>
                                                 )}
