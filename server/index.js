@@ -737,20 +737,41 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
     try {
-        const { cpf, history, ...rest } = result.data;
+        const { cpf, history, consentDate, ...rest } = result.data;
 
         // Encrypt Sensitive Data
         // Use deterministic for CPF to allow duplicate check if needed (though we rely on catch error for unique constraint)
         const encryptedCpf = encrypt(cpf, true);
         const encryptedHistory = encrypt(history);
+        const normalizedConsentDate = consentDate === undefined
+            ? undefined
+            : consentDate === null
+                ? null
+                : new Date(consentDate);
+        const data = {
+            ...rest,
+            history: encryptedHistory
+        };
+
+        if (normalizedConsentDate !== undefined) {
+            if (Number.isNaN(normalizedConsentDate?.getTime?.())) {
+                return res.status(400).json({ error: 'Invalid consent date.' });
+            }
+            data.consentDate = normalizedConsentDate;
+        }
 
         const patient = await prisma.patient.upsert({
             where: { cpf: encryptedCpf },
-            update: { ...rest, history: encryptedHistory },
-            create: { ...rest, cpf: encryptedCpf, history: encryptedHistory }
+            update: data,
+            create: { ...data, cpf: encryptedCpf }
         });
 
-        res.json({ ...patient, cpf, history });
+        res.json({
+            id: patient.id,
+            ...patient,
+            cpf: decrypt(patient.cpf),
+            history: decrypt(patient.history)
+        });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

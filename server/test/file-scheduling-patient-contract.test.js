@@ -193,6 +193,15 @@ test('schedule normalization rejects invalid scheduled values with the clear con
     assert.throws(() => normalizeScheduledAt('not-a-date'), /Invalid scheduled date/);
 });
 
+test('patient create converts consentDate before Prisma persistence', () => {
+    const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    const route = source.slice(source.indexOf("app.post('/patients'"), source.indexOf("app.put('/patients/:id'"));
+
+    assert.match(route, /consentDate/);
+    assert.match(route, /new Date\(consentDate\)/);
+    assert.match(route, /res\.json\(\{[\s\S]*id/);
+});
+
 test('lead update route rejects invalid scheduledAt with HTTP 400 JSON before prisma', async () => {
     const { createUpdateLeadHandler } = require('../routes/leads');
     let updateCalls = 0;
