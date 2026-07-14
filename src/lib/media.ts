@@ -16,9 +16,10 @@ export const assetDeliveryUrl = (value?: string | null) => {
 
 export const mediaUrl = (value?: string | null) => {
     if (!value) return null;
-    if (/^(https?:|blob:|data:)/i.test(value)) return value;
-    if (value.startsWith('/images/')) return value;
-    return `${API_URL}${value.startsWith('/') ? value : `/${value}`}`;
+    const delivered = assetDeliveryUrl(value) || value;
+    if (/^(https?:|blob:|data:)/i.test(delivered)) return delivered;
+    if (delivered.startsWith('/images/')) return delivered;
+    return API_URL + (delivered.startsWith('/') ? delivered : '/' + delivered);
 };
 
 export const loadProtectedAsset = async (value: string) => {

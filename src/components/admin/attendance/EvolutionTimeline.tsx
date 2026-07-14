@@ -9,6 +9,7 @@ import Odontogram, { ToothData } from "./Odontogram";
 import FaceMap, { FaceRegionData } from "./FaceMap";
 import { Button } from "@/components/ui/button";
 import { assetDeliveryUrl, isClinicalAssetReference, loadProtectedAsset, mediaUrl } from "@/lib/media";
+import { AppointmentType, normalizeAppointmentType } from "@/lib/appointmentType";
 
 interface EvolutionTimelineProps {
     patientId: number | null;
@@ -23,8 +24,21 @@ interface HistoricalAppointment {
     photos: string[];
     dentalNotes: Record<string, ToothData>;
     facialNotes: Record<string, FaceRegionData>;
-    appointmentType: string;
+    appointmentType: AppointmentType;
 }
+
+type HistoricalAppointmentResponse = Omit<HistoricalAppointment, "appointmentType" | "photos" | "dentalNotes" | "facialNotes"> & {
+    appointmentType: string;
+    photos?: unknown;
+    dentalNotes?: unknown;
+    facialNotes?: unknown;
+};
+
+const categoryLabel = {
+    odontologia: "Odontologia",
+    harmonizacao: "Harmonização Facial",
+    ambos: "Odontologia + Harmonização"
+} as const;
 
 const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, currentAppointmentId }) => {
     const [history, setHistory] = useState<HistoricalAppointment[]>([]);
@@ -45,9 +59,15 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
         try {
             const res = await fetchClient(`/appointments?patientId=${patientId}`);
             if (res.ok) {
-                const data = await res.json();
-                // Filter out current appointment if needed and sort by date desc
-                const filtered = data
+                const data = await res.json() as HistoricalAppointmentResponse[];
+                const normalized: HistoricalAppointment[] = data.map((app) => ({
+                    ...app,
+                    appointmentType: normalizeAppointmentType(app.appointmentType),
+                    photos: Array.isArray(app.photos) ? app.photos as string[] : [],
+                    dentalNotes: app.dentalNotes && typeof app.dentalNotes === "object" ? app.dentalNotes as Record<string, ToothData> : {},
+                    facialNotes: app.facialNotes && typeof app.facialNotes === "object" ? app.facialNotes as Record<string, FaceRegionData> : {}
+                }));
+                const filtered = normalized
                     .filter((app: any) => app.id.toString() !== currentAppointmentId?.toString())
                     .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 setHistory(filtered);
@@ -151,7 +171,8 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                                 <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
                                     {format(new Date(app.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
                                 </span>
-                                <Badge variant="secondary" className="capitalize">{app.procedure}</Badge>
+                                <Badge variant="secondary">{categoryLabel[app.appointmentType]}</Badge>
+                                {app.procedure && <span className="text-sm text-slate-500">{app.procedure}</span>}
                             </div>
 
                             <Card className={`border-slate-200 shadow-sm transition-all hover:border-primary/20 ${expandedId === app.id ? 'ring-1 ring-primary/10' : ''}`}>

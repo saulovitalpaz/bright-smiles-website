@@ -379,3 +379,28 @@ test('request, dashboard, and attendance screens distinguish scheduledAt from cr
     assert.match(appointments, /record\.createdAt/);
     assert.doesNotMatch(appointments, /Criado em \{formatDate\(record\.date\)\}/);
 });
+
+test('evolution classification uses appointmentType for clinical panels', () => {
+    const repoRoot = path.resolve(serverRoot, '..');
+    const timeline = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/EvolutionTimeline.tsx'), 'utf8');
+    assert.match(timeline, /appointmentType === ['"]odontologia['"]/);
+    assert.match(timeline, /appointmentType === ['"]harmonizacao['"]/);
+    assert.match(timeline, /procedure/);
+    assert.match(timeline, /Odontologia/);
+    assert.match(timeline, /Harmonização Facial/);
+    assert.doesNotMatch(timeline, /procedure === ['"]odontologia['"]|procedure === ['"]harmonizacao['"]/);
+});
+
+test('evolution editor and timeline share appointment type normalization', () => {
+    const repoRoot = path.resolve(serverRoot, '..');
+    const helper = fs.readFileSync(path.join(repoRoot, 'src/lib/appointmentType.ts'), 'utf8');
+    const timeline = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/EvolutionTimeline.tsx'), 'utf8');
+    const attendance = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAttendanceDetail.tsx'), 'utf8');
+
+    assert.match(helper, /export const normalizeAppointmentType/);
+    assert.match(helper, /"odontologia"/);
+    assert.match(helper, /"harmonizacao"/);
+    assert.match(helper, /"ambos"/);
+    assert.match(timeline, /normalizeAppointmentType\(app\.appointmentType\)/);
+    assert.match(attendance, /normalizeAppointmentType\(fetched\.appointmentType\)/);
+});

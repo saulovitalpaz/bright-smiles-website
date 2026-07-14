@@ -3,6 +3,7 @@ import { X, Play, Pause } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 interface Story {
     id: number;
@@ -176,10 +177,10 @@ const Stories = () => {
                             <div className="relative p-[2px] sm:p-[3px] rounded-full bg-gradient-to-tr from-gold via-yellow-400 to-amber-500 shadow-sm">
                                 <div className="p-[2px] bg-white rounded-full">
                                     {story.type === 'video' ? (
-                                        <video src={story.url} className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-100" />
+                                        <video src={mediaUrl(story.url) || story.url} className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-100" />
                                     ) : (
                                         <img
-                                            src={story.url}
+                                            src={mediaUrl(story.url) || story.url}
                                             alt={story.title}
                                             className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-100"
                                         />
@@ -260,7 +261,7 @@ const Stories = () => {
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
-                                            src={stories[selectedStoryIndex].url}
+                                            src={mediaUrl(stories[selectedStoryIndex].url) || stories[selectedStoryIndex].url}
                                             className="w-full h-full object-cover"
                                             playsInline
                                             autoPlay
@@ -273,7 +274,7 @@ const Stories = () => {
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0 }}
                                             transition={{ duration: 0.4 }}
-                                            src={stories[selectedStoryIndex].url}
+                                            src={mediaUrl(stories[selectedStoryIndex].url) || stories[selectedStoryIndex].url}
                                             className="w-full h-full object-cover"
                                         />
                                     )}

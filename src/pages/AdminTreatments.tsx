@@ -16,6 +16,7 @@ import axios from "axios";
 
 // API Base URL (adjust if needed via env or direct)
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 interface TreatmentResult {
     id: number;
@@ -164,15 +165,19 @@ const AdminTreatments = () => {
     const uploadFile = async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append("scope", "public");
         try {
             setIsUploading(true);
             const res = await axios.post(`${API_URL}/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 withCredentials: true
             });
-            return res.data.url;
-        } catch (error) {
-            toast.error("Erro ao fazer upload: " + (error as Error).message);
+            return res.data.reference || res.data.url;
+        } catch (error: unknown) {
+            const message = axios.isAxiosError<{ error?: string }>(error)
+                ? error.response?.data?.error || error.message
+                : error instanceof Error ? error.message : "Erro desconhecido.";
+            toast.error("Erro ao fazer upload: " + message);
             return null;
         } finally {
             setIsUploading(false);
@@ -184,6 +189,7 @@ const AdminTreatments = () => {
             const url = await uploadFile(e.target.files[0]);
             if (url) {
                 setFormData(prev => ({ ...prev, image: url }));
+                e.target.value = "";
             }
         }
     };
@@ -195,6 +201,7 @@ const AdminTreatments = () => {
             const url = await uploadFile(e.target.files[0]);
             if (url) {
                 setNewResult(prev => ({ ...prev, image: url }));
+                e.target.value = "";
             }
         }
     };
@@ -237,7 +244,7 @@ const AdminTreatments = () => {
                         <Card key={treatment.id} className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-all group">
                             <div className="aspect-video relative bg-slate-100">
                                 {treatment.image ? (
-                                    <img src={treatment.image} alt={treatment.title} className="w-full h-full object-cover" />
+                                    <img src={mediaUrl(treatment.image) || undefined} alt={treatment.title} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-slate-400"><ImageIcon size={32} /></div>
                                 )}
@@ -459,7 +466,7 @@ const AdminTreatments = () => {
                                                             <TableRow key={result.id}>
                                                                 <TableCell>
                                                                     <div className="w-16 h-12 bg-slate-100 rounded overflow-hidden">
-                                                                        <img src={result.image} className="w-full h-full object-cover" alt="Result" onError={(e) => (e.target as HTMLImageElement).src = '/placeholder.png'} />
+                                                                        <img src={mediaUrl(result.image) || undefined} className="w-full h-full object-cover" alt="Result" onError={(e) => (e.target as HTMLImageElement).src = '/placeholder.png'} />
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell className="text-xs">{result.description}</TableCell>

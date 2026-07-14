@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, Eye, Upload, Loader2, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,14 +117,19 @@ const AdminBlog = () => {
             try {
                 const fd = new FormData();
                 fd.append('file', file);
+                fd.append("scope", "public");
                 const res = await axios.post(`${API_URL}/upload`, fd, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     withCredentials: true
                 });
-                setFormData(prev => ({ ...prev, image: res.data.url }));
+                setFormData(prev => ({ ...prev, image: res.data.reference || res.data.url }));
+                e.target.value = "";
                 toast.success("Imagem carregada!");
-            } catch (err) {
-                toast.error("Erro no upload da imagem.");
+            } catch (error: unknown) {
+                const message = axios.isAxiosError<{ error?: string }>(error)
+                    ? error.response?.data?.error || error.message
+                    : error instanceof Error ? error.message : "Erro desconhecido.";
+                toast.error("Erro no upload da imagem: " + message);
             } finally {
                 setUploading(false);
             }
@@ -173,7 +179,7 @@ const AdminBlog = () => {
                                     <td className="px-6 py-4">
                                         {post.image && (
                                             <img
-                                                src={post.image}
+                                                    src={mediaUrl(post.image) || undefined}
                                                 alt={post.title}
                                                 className="w-16 h-12 object-cover rounded-lg shadow-sm"
                                             />
@@ -245,7 +251,7 @@ const AdminBlog = () => {
                             <Label>Imagem de Capa</Label>
                             <div className="flex items-center gap-4">
                                 {formData.image && (
-                                    <img src={formData.image} className="h-20 w-32 object-cover rounded-md border" />
+                                    <img src={mediaUrl(formData.image) || undefined} className="h-20 w-32 object-cover rounded-md border" />
                                 )}
                                 <input
                                     type="file"

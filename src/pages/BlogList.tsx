@@ -5,6 +5,7 @@ import { ArrowLeft, BookOpen, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
@@ -80,7 +81,7 @@ const BlogList = () => {
                                     <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-2xl transition-all duration-500 bg-card/50 backdrop-blur-sm flex flex-col">
                                         <div className="aspect-video relative overflow-hidden">
                                             <img
-                                                src={post.image}
+                                                src={mediaUrl(post.image) || post.image}
                                                 alt={post.title}
                                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                             />

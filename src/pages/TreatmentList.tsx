@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, ArrowRight, Search, Sparkles, Stethoscope, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { mediaUrl } from "@/lib/media";
 
 // Helper type matching the API response
 interface Treatment {
@@ -116,7 +117,7 @@ const TreatmentList = () => {
                   <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-2xl transition-all duration-500 bg-card/50 backdrop-blur-sm flex flex-col">
                     <div className="aspect-[4/3] relative overflow-hidden bg-secondary/10">
                       <img
-                        src={treatment.image}
+                        src={mediaUrl(treatment.image) || treatment.image}
                         alt={treatment.title}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />

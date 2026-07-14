@@ -4,17 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 const Footer = () => {
   const { data: settings } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ['public-settings'],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/settings`);
+      const res = await axios.get(`${API_URL}/public-settings`);
       return res.data;
     }
   });
 
-  const logoUrl = settings?.site_logo || "/images/logo-oficial.png";
+  const logoUrl = mediaUrl(settings?.site_logo) || "/images/logo-oficial.png";
   const clinicName = settings?.clinic_name || "Núcleo Odontológico";
   const clinicSlogan = settings?.clinic_slogan || "Especializado & Harmonização";
   const currentYear = new Date().getFullYear();

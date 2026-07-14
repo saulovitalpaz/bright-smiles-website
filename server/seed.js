@@ -39,7 +39,7 @@ const treatments = [
         title: "Preenchimento Labial",
         description: "Volume e contorno labial com ácido hialurônico para resultados naturais e harmônicos.",
         category: "Harmonização",
-        image: "/images/preenchimento/preenchimento - hialuronico (1).jpg",
+        image: "/images/preenchimento/preenchimento - hialuronico (1).png",
         content: "O preenchimento labial é um procedimento estético que utiliza ácido hialurônico para aumentar o volume e definir o contorno dos lábios. O foco é sempre em resultados naturais, respeitando as proporções do seu rosto e proporcionando hidratação profunda.",
         indications: [
             "Pessoas que desejam lábios mais volumosos",
@@ -61,9 +61,9 @@ const treatments = [
             longevity: "8-12 meses"
         },
         results: [
-            { image: "/images/preenchimento/preenchimento - hialuronico (1).jpg", description: "Resultado 1" },
-            { image: "/images/preenchimento/preenchimento - hialuronico (2).jpg", description: "Resultado 2" },
-            { image: "/images/preenchimento/preenchimento - hialuronico (3).jpg", description: "Resultado 3" }
+            { image: "/images/preenchimento/preenchimento - hialuronico (1).png", description: "Resultado 1" },
+            { image: "/images/preenchimento/preenchimento - hialuronico (1).png", description: "Resultado 2" },
+            { image: "/images/preenchimento/preenchimento - hialuronico (1).png", description: "Resultado 3" }
         ]
     },
     {
@@ -71,7 +71,7 @@ const treatments = [
         title: "Toxina Botulínica (Botox)",
         description: "Suavização de linhas de expressão e prevenção de rugas para uma aparência rejuvenescida.",
         category: "Harmonização",
-        image: "/images/botox/Botox (1).jpg",
+        image: "/images/botox/Botox capa.png",
         content: "A toxina botulínica é amplamente utilizada para suavizar linhas de expressão na testa, 'pés de galinha' e entre as sobrancelhas. Além do uso estético preventivo, também possui excelentes aplicações terapêuticas para bruxismo e sorriso gengival.",
         indications: [
             "Linhas de expressão na testa",
@@ -93,8 +93,8 @@ const treatments = [
             longevity: "4-6 meses"
         },
         results: [
-            { image: "/images/botox/Botox (1).jpg", description: "Caso 1" },
-            { image: "/images/botox/Botox (2).jpg", description: "Caso 2" }
+            { image: "/images/botox/Botox capa.png", description: "Caso 1" },
+            { image: "/images/botox/Botox capa.png", description: "Caso 2" }
         ]
     },
     {
@@ -194,12 +194,12 @@ const blogPosts = [
         category: "Harmonização",
         date: new Date("2026-01-08"),
         readTime: "5 min",
-        image: "/images/botox/Botox (2).jpg",
+        image: "/images/botox/Botox capa.png",
         images: [
-            "/images/botox/Botox (2).jpg",
-            "/images/botox/Botox (3).jpg",
-            "/images/preenchimento/preenchimento - hialuronico (10).jpg",
-            "/images/preenchimento/preenchimento - hialuronico (11).jpg"
+            "/images/botox/Botox capa.png",
+            "/images/botox/Botox capa.png",
+            "/images/preenchimento/preenchimento - hialuronico (1).png",
+            "/images/preenchimento/preenchimento - hialuronico (1).png"
         ],
         author: "Dra. Ana Karolina",
         content: "A harmonização facial não é apenas sobre aplicar produtos, mas sobre entender a simetria e a beleza única de cada rosto. Quando combinamos procedimentos como toxina botulínica e preenchimento com ácido hialurônico, conseguimos suavizar linhas de expressão e realçar traços naturais, criando um sorriso muito mais harmônico e uma aparência descansada.",

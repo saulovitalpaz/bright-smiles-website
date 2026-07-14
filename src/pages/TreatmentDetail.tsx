@@ -6,6 +6,7 @@ import { ArrowLeft, MessageCircle, CheckCircle2, Clock, Sparkles, ShieldCheck, C
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
+import { mediaUrl } from "@/lib/media";
 
 // Types matching API
 interface TreatmentResult {
@@ -133,7 +134,7 @@ const TreatmentDetail = () => {
                                 onClick={() => { setActiveImage(0); setIsZoomOpen(true); }}
                             >
                                 <img
-                                    src={treatment.image}
+                                    src={mediaUrl(treatment.image) || treatment.image}
                                     alt={treatment.title}
                                     className="w-full h-full object-cover p-0 transition-opacity duration-500"
                                 />
@@ -160,7 +161,7 @@ const TreatmentDetail = () => {
                                 {/* Result Image */}
                                 <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/10 shadow-lg border border-border">
                                     <img
-                                        src={treatment.results[activeResultIndex].image}
+                                        src={mediaUrl(treatment.results[activeResultIndex].image) || treatment.results[activeResultIndex].image}
                                         alt="Resultado"
                                         className="w-full h-full object-contain"
                                     />
@@ -281,7 +282,7 @@ const TreatmentDetail = () => {
                     </button>
 
                     <img
-                        src={treatment.image}
+                        src={mediaUrl(treatment.image) || treatment.image}
                         alt="Zoomed content"
                         className="max-h-[85vh] max-w-full object-contain rounded-lg"
                     />

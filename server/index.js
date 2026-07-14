@@ -18,6 +18,7 @@ const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
 const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
+const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
 
@@ -627,6 +628,15 @@ app.post('/stories/:id/view', async (req, res) => {
 });
 
 // Settings API
+app.get('/public-settings', async (req, res) => {
+    try {
+        const settings = await prisma.setting.findMany();
+        res.json(toPublicSettings(settings));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/settings', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const settings = await prisma.setting.findMany();
@@ -641,8 +651,11 @@ app.get('/settings', authenticateToken, authorizeRole(['admin', 'manager']), asy
     }
 });
 
-app.post('/settings', async (req, res) => {
+app.post('/settings', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     const { key, value } = req.body;
+    if (!PUBLIC_SETTINGS_KEYS.has(key)) {
+        return res.status(400).json({ error: 'Invalid public setting key.' });
+    }
     try {
         const setting = await prisma.setting.upsert({
             where: { key },
