@@ -4,8 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
 
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { uploadAsset, deleteAsset, isAssetReference, createPublicAssetUrl, createPrivateAssetUrl } = require('./utils/assetStorage');
 const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl } = require('./utils/patientDocumentStorage');
 
 const cookieParser = require('cookie-parser');
@@ -20,27 +19,22 @@ const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_should_be_in_env';
 
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = new Set([
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'video/mp4',
+            'video/quicktime',
+            'video/webm',
+            'application/pdf'
+        ]);
+        callback(null, allowedMimeTypes.has(file.mimetype));
+    }
 });
-
-// Configure Multer for Cloudinary
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'bright-smiles',
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'mp4', 'mov', 'webm', 'pdf'],
-        resource_type: 'auto', // Important for video support
-    },
-});
-
-const upload = multer({ storage: storage });
 const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 },
@@ -84,16 +78,66 @@ const authorizeRole = (roles) => {
     };
 };
 
-// Cloudinary Upload Endpoint
-app.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
+app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
+    let uploadedReference;
     try {
         if (!req.file) {
-            return res.status(400).send('No file uploaded.');
+            return res.status(400).json({ error: 'Supported image, video, or PDF file is required.' });
         }
-        // Cloudinary returns the URL in req.file.path
-        res.json({ url: req.file.path });
+
+        const scope = req.body?.scope || 'public';
+        if (!['public', 'clinical'].includes(scope)) {
+            return res.status(400).json({ error: 'Invalid scope. Expected public or clinical.' });
+        }
+
+        const asset = await uploadAsset({
+            scope,
+            body: req.file.buffer,
+            contentType: req.file.mimetype,
+            extension: req.file.originalname ? req.file.originalname.split('.').pop() : undefined,
+            ownerId: req.user?.id
+        });
+        uploadedReference = asset.reference;
+
+        const payload = { reference: asset.reference, url: asset.deliveryPath };
+        res.json(payload);
     } catch (error) {
+        if (uploadedReference) await deleteAsset(uploadedReference).catch(() => {});
         console.error("Upload error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/assets', async (req, res) => {
+    try {
+        const { reference } = req.query;
+        if (!isAssetReference(reference)) {
+            return res.status(400).json({ error: 'Invalid asset reference.' });
+        }
+        if (!reference.startsWith('bucket://public/')) {
+            return res.status(403).json({ error: 'Public asset route accepts only public asset references.' });
+        }
+
+        return res.redirect(302, await createPublicAssetUrl(reference));
+    } catch (error) {
+        console.error('Public asset access error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/clinical-assets', authenticateToken, async (req, res) => {
+    try {
+        const { reference } = req.query;
+        if (!isAssetReference(reference)) {
+            return res.status(400).json({ error: 'Invalid asset reference.' });
+        }
+        if (!reference.startsWith('bucket://clinical/')) {
+            return res.status(403).json({ error: 'Clinical asset route accepts only clinical asset references.' });
+        }
+
+        return res.redirect(302, await createPrivateAssetUrl(reference));
+    } catch (error) {
+        console.error('Clinical asset access error:', error);
         res.status(500).json({ error: error.message });
     }
 });
