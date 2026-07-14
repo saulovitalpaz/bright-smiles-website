@@ -379,3 +379,14 @@ test('request, dashboard, and attendance screens distinguish scheduledAt from cr
     assert.match(appointments, /record\.createdAt/);
     assert.doesNotMatch(appointments, /Criado em \{formatDate\(record\.date\)\}/);
 });
+
+test('evolution classification uses appointmentType for clinical panels', () => {
+    const repoRoot = path.resolve(serverRoot, '..');
+    const timeline = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/EvolutionTimeline.tsx'), 'utf8');
+    assert.match(timeline, /appointmentType === ['"]odontologia['"]/);
+    assert.match(timeline, /appointmentType === ['"]harmonizacao['"]/);
+    assert.match(timeline, /procedure/);
+    assert.match(timeline, /Odontologia/);
+    assert.match(timeline, /Harmonização Facial/);
+    assert.doesNotMatch(timeline, /procedure === ['"]odontologia['"]|procedure === ['"]harmonizacao['"]/);
+});
