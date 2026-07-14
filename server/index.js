@@ -4,7 +4,13 @@ const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
 
 const multer = require('multer');
-const { uploadAsset, deleteAsset, isAssetReference, createPublicAssetUrl, createPrivateAssetUrl } = require('./utils/assetStorage');
+const {
+    uploadAsset,
+    withAssetUploadCleanup,
+    createPublicAssetUrl,
+    createPrivateAssetUrl,
+    validateAssetDeliveryRequest
+} = require('./utils/assetStorage');
 const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl } = require('./utils/patientDocumentStorage');
 
 const cookieParser = require('cookie-parser');
@@ -79,7 +85,6 @@ const authorizeRole = (roles) => {
 };
 
 app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
-    let uploadedReference;
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'Supported image, video, or PDF file is required.' });
@@ -97,12 +102,15 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
             extension: req.file.originalname ? req.file.originalname.split('.').pop() : undefined,
             ownerId: req.user?.id
         });
-        uploadedReference = asset.reference;
 
-        const payload = { reference: asset.reference, url: asset.deliveryPath };
-        res.json(payload);
+        await withAssetUploadCleanup({
+            uploadedReference: asset.reference,
+            run: async () => {
+                const payload = { reference: asset.reference, url: asset.deliveryPath };
+                res.json(payload);
+            }
+        });
     } catch (error) {
-        if (uploadedReference) await deleteAsset(uploadedReference).catch(() => {});
         console.error("Upload error:", error);
         res.status(500).json({ error: error.message });
     }
@@ -110,15 +118,15 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
 
 app.get('/assets', async (req, res) => {
     try {
-        const { reference } = req.query;
-        if (!isAssetReference(reference)) {
-            return res.status(400).json({ error: 'Invalid asset reference.' });
-        }
-        if (!reference.startsWith('bucket://public/')) {
-            return res.status(403).json({ error: 'Public asset route accepts only public asset references.' });
+        const validation = validateAssetDeliveryRequest({
+            routeScope: 'public',
+            reference: req.query.reference
+        });
+        if (!validation.ok) {
+            return res.status(validation.statusCode).json({ error: validation.error });
         }
 
-        return res.redirect(302, await createPublicAssetUrl(reference));
+        return res.redirect(302, await createPublicAssetUrl(validation.reference));
     } catch (error) {
         console.error('Public asset access error:', error);
         res.status(500).json({ error: error.message });
@@ -127,15 +135,15 @@ app.get('/assets', async (req, res) => {
 
 app.get('/clinical-assets', authenticateToken, async (req, res) => {
     try {
-        const { reference } = req.query;
-        if (!isAssetReference(reference)) {
-            return res.status(400).json({ error: 'Invalid asset reference.' });
-        }
-        if (!reference.startsWith('bucket://clinical/')) {
-            return res.status(403).json({ error: 'Clinical asset route accepts only clinical asset references.' });
+        const validation = validateAssetDeliveryRequest({
+            routeScope: 'clinical',
+            reference: req.query.reference
+        });
+        if (!validation.ok) {
+            return res.status(validation.statusCode).json({ error: validation.error });
         }
 
-        return res.redirect(302, await createPrivateAssetUrl(reference));
+        return res.redirect(302, await createPrivateAssetUrl(validation.reference));
     } catch (error) {
         console.error('Clinical asset access error:', error);
         res.status(500).json({ error: error.message });

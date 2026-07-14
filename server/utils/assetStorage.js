@@ -63,10 +63,42 @@ function getObjectKey(scope, key) {
     return `${getObjectPrefix(scope)}/${key}`;
 }
 
-function buildDeliveryPath(reference) {
+function createAssetDeliveryPath(reference) {
     const parsed = parseAssetReference(reference);
     if (!parsed) throw new Error('Invalid asset reference.');
     return `${parsed.scope === 'clinical' ? '/clinical-assets' : '/assets'}?reference=${encodeURIComponent(reference)}`;
+}
+
+function validateAssetDeliveryRequest({ routeScope, reference }) {
+    const normalizedRouteScope = normalizeScope(routeScope);
+    if (!normalizedRouteScope) {
+        throw new Error('Invalid delivery route scope. Expected public or clinical.');
+    }
+
+    const parsed = parseAssetReference(reference);
+    if (!parsed) {
+        return {
+            ok: false,
+            statusCode: 400,
+            error: 'Invalid asset reference.'
+        };
+    }
+
+    if (parsed.scope !== normalizedRouteScope) {
+        return {
+            ok: false,
+            statusCode: 403,
+            error: normalizedRouteScope === 'clinical'
+                ? 'Clinical asset route accepts only clinical asset references.'
+                : 'Public asset route accepts only public asset references.'
+        };
+    }
+
+    return {
+        ok: true,
+        reference,
+        parsed
+    };
 }
 
 function normalizeExtension(extension, contentType) {
@@ -112,9 +144,20 @@ async function uploadAsset({ scope, body, contentType, extension, ownerId }) {
 
     return {
         reference,
-        deliveryPath: buildDeliveryPath(reference),
+        deliveryPath: createAssetDeliveryPath(reference),
         contentType
     };
+}
+
+async function withAssetUploadCleanup({ uploadedReference, run, cleanup = deleteAsset }) {
+    try {
+        return await run();
+    } catch (error) {
+        if (uploadedReference) {
+            await cleanup(uploadedReference).catch(() => {});
+        }
+        throw error;
+    }
 }
 
 async function deleteAsset(reference) {
@@ -151,9 +194,12 @@ async function createPrivateAssetUrl(reference) {
 
 module.exports = {
     uploadAsset,
+    withAssetUploadCleanup,
     deleteAsset,
     isAssetReference,
     parseAssetReference,
+    createAssetDeliveryPath,
+    validateAssetDeliveryRequest,
     createPublicAssetUrl,
     createPrivateAssetUrl
 };
