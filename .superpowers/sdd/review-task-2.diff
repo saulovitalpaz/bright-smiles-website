@@ -1,0 +1,738 @@
+# Review package: 1423bbc..3e641d5
+
+## Commits
+3e641d5 fix: protect clinical uploads and repair document URLs
+
+## Files changed
+ .superpowers/sdd/task-2-report.md                  |  47 +++---
+ server/index.js                                    |   2 +-
+ .../test/file-scheduling-patient-contract.test.js  |   9 ++
+ .../admin/attendance/EvolutionTimeline.tsx         |  99 +++++++++++--
+ src/components/admin/attendance/PhotoGallery.tsx   | 158 +++++++++++++++------
+ src/lib/media.ts                                   |  34 +++++
+ src/pages/AdminDocuments.tsx                       |  14 +-
+ 7 files changed, 273 insertions(+), 90 deletions(-)
+
+## Diff
+diff --git a/.superpowers/sdd/task-2-report.md b/.superpowers/sdd/task-2-report.md
+index 62e7712..147c7b2 100644
+--- a/.superpowers/sdd/task-2-report.md
++++ b/.superpowers/sdd/task-2-report.md
+@@ -1,41 +1,28 @@
+-# Task 2 report: preserve patientId through attendance navigation
++# Task 2 report: protect clinical media and repair document delivery
+ 
+ Status: complete
+ 
+-Initial commit SHA: `aaf2c54`
+-Review-fix commit SHA: `a723f3f`
+-Safety-fix commit SHA: `ebb1f30`
+-Runtime payload fix commit SHA: `e48fe52`
+-
+-Review fix: lead-started attendances now resolve an existing patient by exact normalized phone, then exact CPF when supplied. The authenticated patient list endpoint accepts `phone` and `cpf` identity filters; no name matching is used. Leads without a resolved patient must select one or provide a CPF before saving.
+-
+ ## Changes
+ 
+-- Added `patientId?: number | null` to appointment records and propagated it in both appointment-row and “Ver Evolução” navigation URLs.
+-- Initialized new attendance drafts from the `patientId` query parameter and preserved the fetched appointment relationship when editing an existing attendance.
+-- Kept `PatientPicker` as the explicit patient selector and retained `finalPatientId` in appointment save payloads.
+-- Added contract assertions for patient-aware navigation and evolution-history requests.
++- Added `src/lib/media.ts` with:
++  - `assetDeliveryUrl()` to convert stable `bucket://...` references into encoded `/assets?reference=...` or `/clinical-assets?reference=...` API paths
++  - `mediaUrl()` to normalize absolute URLs, API-relative paths, and local `/images/...` assets
++  - `loadProtectedAsset()` to fetch authenticated clinical media through `fetchClient` and return blob URLs for rendering
++- Updated `PhotoGallery` to upload appointment photos with `scope=clinical`, persist `data.reference` instead of transient delivery URLs, keep a local preview map for newly uploaded files, and resolve persisted clinical references through `loadProtectedAsset()` with object URL cleanup.
++- Updated `EvolutionTimeline` to resolve expanded clinical photo references through the same helper and show per-image failure placeholders instead of breaking the full timeline.
++- Updated `AdminDocuments` to build patient-document links through `mediaUrl(...)`, keep upload auth on the existing protected endpoint, require PDFs client-side, and surface API error bodies on failed uploads.
++- Updated the patient-document history response to preserve legacy `pdfUrl` values when no private `storageKey` exists.
++- Added the Task 2 contract assertion covering clinical upload scope, legacy document fallback, and the clinical delivery route.
+ 
+ ## Verification
+ 
+-- `node --test test/patient-workflow-contract.test.js` (initial run): failed as expected because the new patient-link contract was not implemented.
+-- `node --test test/*.test.js` from `server/`: passed, 3 tests.
+-- `npm run build` from repository root: passed (`vite build`, 3289 modules transformed).
+-- Review-fix contract test: passed, including exact phone/CPF query and lead resolver assertions.
+-- `node --test test/*.test.js` from `server/` after review fix: passed, 4 tests.
+-- `npm run build` from repository root after review fix: passed (`vite build`, 3289 modules transformed).
+-- Safety-fix contract and full server tests: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+-- Frontend build after safety fix: passed (`npm run build` from repository root; `vite build`, 3289 modules transformed).
+-- Server build after safety fix: passed (`npm run build` from `server/`; Prisma Client generated successfully).
+-- Runtime payload regression contract: passed; `AdminAttendanceDetail` now removes temporary `phone` state before POST/PUT while retaining it for patient creation.
+-- Full server tests after runtime payload fix: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+-- Verification rerun on the committed fix: passed, 4 tests (`node --test server/test/*.test.js` from repository root).
+-- Frontend build after runtime payload fix: passed (`npm run build` from repository root; Vite 3289 modules transformed).
+-- Server build after runtime payload fix: passed (`npm run build` from `server/`; Prisma Client generated successfully).
++- RED: `node --test server/test/file-scheduling-patient-contract.test.js` failed first on the new clinical upload / document fallback contract.
++- GREEN: `node --test server/test/file-scheduling-patient-contract.test.js` passed with 7/7 tests.
++- Final verification rerun:
++  - `node --test server/test/file-scheduling-patient-contract.test.js` passed with 7/7 tests.
++  - `npm run build` passed (`vite build`, 3292 modules transformed).
+ 
+ ## Concerns
+ 
+-- Appointment rows without a patient relationship navigate with an empty `patientId` query value; existing-record loading still uses the API's fetched relationship as the source of truth.
+-- Vite reports existing bundle-size and stale Browserslist-data warnings; no build errors.
+-- Invalid `phone`/`cpf` query values now return an empty patient list instead of all patients; lead-created patients retain their phone for future exact matching.
+-- Existing attendance PUT requests previously forwarded temporary `phone` state to Prisma and failed with an unknown-field error; the client now strips `phone` from appointment payloads for both new and existing saves.
++- Clinical photos now render through fetched blob URLs, so they depend on a valid authenticated session at display time; failed private fetches fall back to inline placeholders.
++- The frontend build still reports the pre-existing large-chunk warning and stale Browserslist data warning; build exit code remains 0.
+diff --git a/server/index.js b/server/index.js
+index 4778f5f..b2d6c24 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1335,21 +1335,21 @@ app.delete('/document-templates/:id', async (req, res) => {
+ 
+ // Patient Documents API (History)
+ app.get('/patient-documents/:patientId', authenticateToken, async (req, res) => {
+     try {
+         const docs = await prisma.patientDocument.findMany({
+             where: { patientId: parseInt(req.params.patientId) },
+             orderBy: { date: 'desc' }
+         });
+         res.json(docs.map(doc => ({
+             ...doc,
+-            fileUrl: doc.storageKey ? `/patient-documents/${doc.id}/file` : null
++            fileUrl: doc.storageKey ? `/patient-documents/${doc.id}/file` : doc.pdfUrl || null
+         })));
+     } catch (error) {
+         res.status(500).json({ error: error.message });
+     }
+ });
+ 
+ app.post('/patient-documents', authenticateToken, async (req, res) => {
+     try {
+         const doc = await prisma.patientDocument.create({
+             data: req.body
+diff --git a/server/test/file-scheduling-patient-contract.test.js b/server/test/file-scheduling-patient-contract.test.js
+index 4e74ee4..8b51a24 100644
+--- a/server/test/file-scheduling-patient-contract.test.js
++++ b/server/test/file-scheduling-patient-contract.test.js
+@@ -120,10 +120,19 @@ test('asset storage cleanup helper deletes uploaded assets when response constru
+             },
+             cleanup: async (reference) => {
+                 deletedReferences.push(reference);
+             }
+         }),
+         /response serialization failed/
+     );
+ 
+     assert.deepEqual(deletedReferences, ['bucket://clinical/patients/42/x-ray.jpg']);
+ });
++
++test('clinical photo uploads use the private scope and documents expose legacy pdfUrl', () => {
++    const repoRoot = path.resolve(serverRoot, '..');
++    const gallery = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/PhotoGallery.tsx'), 'utf8');
++    const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
++    assert.match(gallery, /scope.*clinical|clinical.*scope/);
++    assert.match(indexSource, /fileUrl:.*storageKey.*pdfUrl/);
++    assert.match(indexSource, /clinical-assets/);
++});
+diff --git a/src/components/admin/attendance/EvolutionTimeline.tsx b/src/components/admin/attendance/EvolutionTimeline.tsx
+index caf7f64..53d0de4 100644
+--- a/src/components/admin/attendance/EvolutionTimeline.tsx
++++ b/src/components/admin/attendance/EvolutionTimeline.tsx
+@@ -1,20 +1,21 @@
+-import React, { useEffect, useState } from 'react';
+-import { API_URL } from "@/lib/api";
++import React, { useEffect, useRef, useState } from 'react';
++import { fetchClient } from "@/lib/api";
+ import { Card, CardContent } from "@/components/ui/card";
+ import { Badge } from "@/components/ui/badge";
+ import { Calendar, Camera, Stethoscope, ChevronRight, ChevronDown, User } from "lucide-react";
+ import { format } from "date-fns";
+ import { ptBR } from "date-fns/locale";
+ import Odontogram, { ToothData } from "./Odontogram";
+ import FaceMap, { FaceRegionData } from "./FaceMap";
+ import { Button } from "@/components/ui/button";
++import { assetDeliveryUrl, isClinicalAssetReference, loadProtectedAsset, mediaUrl } from "@/lib/media";
+ 
+ interface EvolutionTimelineProps {
+     patientId: number | null;
+     currentAppointmentId?: number | string;
+ }
+ 
+ interface HistoricalAppointment {
+     id: number;
+     date: string;
+     procedure: string;
+@@ -22,46 +23,111 @@ interface HistoricalAppointment {
+     photos: string[];
+     dentalNotes: Record<string, ToothData>;
+     facialNotes: Record<string, FaceRegionData>;
+     appointmentType: string;
+ }
+ 
+ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, currentAppointmentId }) => {
+     const [history, setHistory] = useState<HistoricalAppointment[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
+     const [expandedId, setExpandedId] = useState<number | null>(null);
++    const [resolvedPhotos, setResolvedPhotos] = useState<Record<string, string>>({});
++    const [photoErrors, setPhotoErrors] = useState<Record<string, string>>({});
++    const objectUrlsRef = useRef<string[]>([]);
+ 
+     useEffect(() => {
+         if (patientId) {
+             fetchHistory();
+         }
+     }, [patientId]);
+ 
+     const fetchHistory = async () => {
+         setIsLoading(true);
+         try {
+-            const res = await fetch(`${API_URL}/appointments?patientId=${patientId}`);
++            const res = await fetchClient(`/appointments?patientId=${patientId}`);
+             if (res.ok) {
+                 const data = await res.json();
+                 // Filter out current appointment if needed and sort by date desc
+                 const filtered = data
+                     .filter((app: any) => app.id.toString() !== currentAppointmentId?.toString())
+                     .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                 setHistory(filtered);
+             }
+         } catch (error) {
+             console.error("Error fetching patient history:", error);
+         } finally {
+             setIsLoading(false);
+         }
+     };
+ 
++    useEffect(() => {
++        const expandedAppointment = history.find((app) => app.id === expandedId);
++        let cancelled = false;
++
++        const cleanupObjectUrls = () => {
++            objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
++            objectUrlsRef.current = [];
++        };
++
++        if (!expandedAppointment || expandedAppointment.photos.length === 0) {
++            cleanupObjectUrls();
++            setResolvedPhotos({});
++            setPhotoErrors({});
++            return;
++        }
++
++        const createdObjectUrls: string[] = [];
++
++        const resolveExpandedPhotos = async () => {
++            cleanupObjectUrls();
++            const nextResolved: Record<string, string> = {};
++            const nextErrors: Record<string, string> = {};
++
++            await Promise.all(expandedAppointment.photos.map(async (photo) => {
++                if (isClinicalAssetReference(photo)) {
++                    try {
++                        const protectedUrl = assetDeliveryUrl(photo);
++                        if (!protectedUrl) {
++                            nextErrors[photo] = 'Foto clínica indisponível.';
++                            return;
++                        }
++                        const objectUrl = await loadProtectedAsset(protectedUrl);
++                        createdObjectUrls.push(objectUrl);
++                        nextResolved[photo] = objectUrl;
++                    } catch (error) {
++                        console.error("Evolution photo load error:", error);
++                        nextErrors[photo] = error instanceof Error ? error.message : 'Foto clínica indisponível.';
++                    }
++                    return;
++                }
++
++                nextResolved[photo] = mediaUrl(assetDeliveryUrl(photo) || photo) || photo;
++            }));
++
++            if (cancelled) {
++                createdObjectUrls.forEach((url) => URL.revokeObjectURL(url));
++                return;
++            }
++
++            objectUrlsRef.current = createdObjectUrls;
++            setResolvedPhotos(nextResolved);
++            setPhotoErrors(nextErrors);
++        };
++
++        resolveExpandedPhotos();
++
++        return () => {
++            cancelled = true;
++            cleanupObjectUrls();
++        };
++    }, [expandedId, history]);
++
+     if (isLoading) return <div className="p-8 text-center text-slate-400">Carregando histórico do paciente...</div>;
+     if (!patientId) return <div className="p-8 text-center text-slate-400">Selecione um paciente para ver a evolução.</div>;
+     if (history.length === 0) return (
+         <div className="p-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+             <Calendar className="mx-auto text-slate-300 mb-3" size={32} />
+             <p className="text-slate-500 font-medium">Este é o primeiro atendimento registrado deste paciente.</p>
+             <p className="text-xs text-slate-400 mt-1">Dados de atendimentos futuros aparecerão aqui para comparação.</p>
+         </div>
+     );
+ 
+@@ -131,28 +197,39 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
+ 
+                                     {/* Expanded Content for Comparison */}
+                                     {expandedId === app.id && (
+                                         <div className="mt-6 pt-6 border-t border-slate-100 space-y-8 animate-in slide-in-from-top-4 duration-300">
+                                             
+                                             {/* Photos Comparison mini row */}
+                                             {app.photos.length > 0 && (
+                                                 <div className="space-y-2">
+                                                     <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registros Fotográficos</h5>
+                                                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+-                                                        {app.photos.map((url, i) => (
+-                                                            <img 
+-                                                                key={i} 
+-                                                                src={url} 
+-                                                                alt="Evolução" 
+-                                                                className="w-24 h-24 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
+-                                                            />
+-                                                        ))}
++                                                        {app.photos.map((photo, i) => {
++                                                            const resolvedPhoto = resolvedPhotos[photo];
++                                                            const photoError = photoErrors[photo];
++                                                            return photoError ? (
++                                                                <div
++                                                                    key={i}
++                                                                    className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50 p-2 text-center text-[10px] font-medium text-red-500"
++                                                                >
++                                                                    Falha ao carregar
++                                                                </div>
++                                                            ) : (
++                                                                <img 
++                                                                    key={i} 
++                                                                    src={resolvedPhoto || mediaUrl(assetDeliveryUrl(photo) || photo) || photo}
++                                                                    alt="Evolução" 
++                                                                    className="w-24 h-24 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0"
++                                                                />
++                                                            );
++                                                        })}
+                                                     </div>
+                                                 </div>
+                                             )}
+ 
+                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                 {/* Odontogram Review */}
+                                                 {(app.appointmentType === 'odontologia' || app.appointmentType === 'ambos') && (
+                                                     <div className="space-y-3">
+                                                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado Dentário em {format(new Date(app.date), "dd/MM")}</h5>
+                                                         <div className="scale-75 origin-top-left -mb-16">
+diff --git a/src/components/admin/attendance/PhotoGallery.tsx b/src/components/admin/attendance/PhotoGallery.tsx
+index b540491..5c948c4 100644
+--- a/src/components/admin/attendance/PhotoGallery.tsx
++++ b/src/components/admin/attendance/PhotoGallery.tsx
+@@ -1,18 +1,19 @@
+-import React, { useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
+ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+ import { Label } from "@/components/ui/label";
+ import { Plus, Image as ImageIcon, X, Loader2, Edit3 } from "lucide-react";
+ import { toast } from "sonner";
+-import { API_URL } from "@/lib/api";
++import { fetchClient } from "@/lib/api";
++import { assetDeliveryUrl, isClinicalAssetReference, loadProtectedAsset, mediaUrl } from "@/lib/media";
+ import PhotoEditor from "./PhotoEditor";
+ import DicomViewerModal from "./DicomViewerModal";
+ 
+ interface PhotoGalleryProps {
+     photos: string[];
+     externalLinks?: string[]; // New prop
+     onChange: (photos: string[]) => void;
+     onLinksChange?: (links: string[]) => void; // New prop
+     readOnly?: boolean;
+ }
+@@ -22,94 +23,154 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
+     externalLinks = [], 
+     onChange, 
+     onLinksChange, 
+     readOnly = false 
+ }) => {
+     const [uploading, setUploading] = useState(false);
+     const [isLinkPromptOpen, setIsLinkPromptOpen] = useState(false);
+     const [newLinkUrl, setNewLinkUrl] = useState('');
+     const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
+     const [viewingDicomUrl, setViewingDicomUrl] = useState<string | null>(null);
++    const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
++    const [resolvedPhotos, setResolvedPhotos] = useState<Record<string, string>>({});
++    const objectUrlsRef = useRef<string[]>([]);
++
++    useEffect(() => {
++        setPreviewUrls((current) => {
++            const nextEntries = Object.entries(current).filter(([photo]) => photos.includes(photo));
++            if (nextEntries.length === Object.keys(current).length) {
++                return current;
++            }
++            return Object.fromEntries(nextEntries);
++        });
++    }, [photos]);
++
++    useEffect(() => {
++        let cancelled = false;
++        const createdObjectUrls: string[] = [];
++
++        const cleanupObjectUrls = () => {
++            objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
++            objectUrlsRef.current = [];
++        };
++
++        const resolvePhotos = async () => {
++            cleanupObjectUrls();
++
++            const entries = await Promise.all(photos.map(async (photo) => {
++                if (previewUrls[photo]) {
++                    return [photo, previewUrls[photo]] as const;
++                }
++
++                if (isClinicalAssetReference(photo)) {
++                    try {
++                        const protectedUrl = assetDeliveryUrl(photo);
++                        if (!protectedUrl) return [photo, photo] as const;
++                        const objectUrl = await loadProtectedAsset(protectedUrl);
++                        createdObjectUrls.push(objectUrl);
++                        return [photo, objectUrl] as const;
++                    } catch (error) {
++                        console.error("Clinical photo load error:", error);
++                        return [photo, ''] as const;
++                    }
++                }
++
++                return [photo, mediaUrl(assetDeliveryUrl(photo) || photo) || photo] as const;
++            }));
++
++            if (cancelled) {
++                createdObjectUrls.forEach((url) => URL.revokeObjectURL(url));
++                return;
++            }
++
++            objectUrlsRef.current = createdObjectUrls;
++            setResolvedPhotos(Object.fromEntries(entries));
++        };
++
++        resolvePhotos();
++
++        return () => {
++            cancelled = true;
++            cleanupObjectUrls();
++        };
++    }, [photos, previewUrls]);
++
++    const uploadClinicalPhoto = async (file: Blob, fileName: string) => {
++        const formData = new FormData();
++        formData.append("file", file, fileName);
++        formData.append("scope", "clinical");
++
++        const res = await fetchClient(`/upload`, {
++            method: "POST",
++            body: formData
++        });
++
++        if (!res.ok) {
++            const body = await res.json().catch(() => ({}));
++            throw new Error(body.error || "Erro ao fazer upload da foto.");
++        }
++
++        return res.json();
++    };
+ 
+     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+         if (!e.target.files || e.target.files.length === 0) return;
+ 
+         const file = e.target.files[0];
+         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+         if (!allowedTypes.includes(file.type)) {
+             toast.error("Formato não suportado. Use JPG, PNG ou WEBP.");
+             return;
+         }
+ 
+         setUploading(true);
+-        const formData = new FormData();
+-        formData.append("file", file);
+ 
+         try {
+-            const token = localStorage.getItem("token");
+-            const res = await fetch(`${API_URL}/upload`, {
+-                method: "POST",
+-                headers: {
+-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+-                },
+-                body: formData,
+-                credentials: 'omit' // Usually upload with bearer token
+-            });
+-
+-            if (res.ok) {
+-                const data = await res.json();
+-                onChange([...photos, data.url]);
+-                toast.success("Foto adicionada com sucesso!");
+-            } else {
+-                toast.error("Erro ao fazer upload da foto.");
+-            }
++            const data = await uploadClinicalPhoto(file, file.name);
++            setPreviewUrls((current) => ({ ...current, [data.reference]: data.url }));
++            onChange([...photos, data.reference]);
++            toast.success("Foto adicionada com sucesso!");
+         } catch (error) {
+             console.error("Upload error:", error);
+-            toast.error("Erro de conexão ao enviar foto.");
++            toast.error(error instanceof Error ? error.message : "Erro de conexão ao enviar foto.");
+         } finally {
+             setUploading(false);
+             if(e.target) e.target.value = ''; // Reset input
+         }
+     };
+ 
+     const handleSaveEditedPhoto = async (blob: Blob) => {
+         setUploading(true);
+-        const formData = new FormData();
+-        formData.append("file", blob, `edited_photo_${Date.now()}.png`);
+ 
+         try {
+-            const token = localStorage.getItem("token");
+-            const res = await fetch(`${API_URL}/upload`, {
+-                method: "POST",
+-                headers: {
+-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+-                },
+-                body: formData,
+-            });
+-
+-            if (res.ok) {
+-                const data = await res.json();
+-                onChange([...photos, data.url]);
+-            } else {
+-                throw new Error("Falha no servidor");
+-            }
++            const data = await uploadClinicalPhoto(blob, `edited_photo_${Date.now()}.png`);
++            setPreviewUrls((current) => ({ ...current, [data.reference]: data.url }));
++            onChange([...photos, data.reference]);
+         } catch (error) {
+             console.error("Upload edited error:", error);
+             throw error; // Let the editor catch and toast
+         } finally {
+             setUploading(false);
+         }
+     };
+ 
+     const handleRemove = (index: number) => {
+         const newPhotos = [...photos];
+-        newPhotos.splice(index, 1);
++        const [removedPhoto] = newPhotos.splice(index, 1);
++        if (removedPhoto) {
++            setPreviewUrls((current) => {
++                if (!(removedPhoto in current)) return current;
++                const next = { ...current };
++                delete next[removedPhoto];
++                return next;
++            });
++        }
+         onChange(newPhotos);
+     };
+ 
+     const handleAddLink = () => {
+         if (!newLinkUrl) return;
+         
+         let formattedUrl = newLinkUrl;
+         if (!/^https?:\/\//i.test(formattedUrl)) {
+             formattedUrl = 'https://' + formattedUrl;
+         }
+@@ -138,44 +199,53 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
+                         <ImageIcon className="text-primary" size={20} />
+                         Anexos e Galeria
+                     </div>
+                 </CardTitle>
+                 <CardDescription>
+                     Adicione fotos do antes/depois, exames, ou links externos (Ex: WeTransfer/Laboratório/DICOM).
+                 </CardDescription>
+             </CardHeader>
+             <CardContent className="p-6">
+                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+-                    {photos.map((url, idx) => (
++                    {photos.map((photo, idx) => {
++                        const resolvedPhoto = resolvedPhotos[photo] || mediaUrl(assetDeliveryUrl(photo) || photo) || photo;
++                        return (
+                         <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+-                            <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
++                            {resolvedPhoto ? (
++                                <img src={resolvedPhoto} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
++                            ) : (
++                                <div className="flex h-full items-center justify-center p-3 text-center text-xs font-medium text-slate-400">
++                                    Não foi possível carregar esta foto clínica.
++                                </div>
++                            )}
+                             {!readOnly && (
+                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                    <Button 
+                                        size="sm" 
+                                        variant="secondary" 
+                                        className="h-8 shadow-lg"
+-                                       onClick={(e) => { e.preventDefault(); setEditingPhoto(url); }}
++                                       onClick={(e) => { e.preventDefault(); setEditingPhoto(resolvedPhoto || photo); }}
+                                    >
+                                        <Edit3 size={14} className="mr-1.5" /> Editar
+                                    </Button>
+                                     <button
+                                         onClick={(e) => { e.preventDefault(); handleRemove(idx); }}
+                                         className="h-8 w-8 bg-red-600 hover:bg-red-700 text-white rounded-md shadow-lg flex items-center justify-center transition-colors"
+                                         title="Excluir"
+                                     >
+                                         <X size={14} />
+                                     </button>
+                                 </div>
+                             )}
+                         </div>
+-                    ))}
++                        );
++                    })}
+ 
+                     {!readOnly && (
+                         <label className="relative aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-primary/50 hover:bg-primary/5 cursor-pointer flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-primary transition-all">
+                             {uploading ? (
+                                 <Loader2 className="animate-spin" size={24} />
+                             ) : (
+                                 <>
+                                     <Plus size={24} />
+                                     <span className="text-xs font-bold uppercase tracking-wider">Adicionar</span>
+                                 </>
+diff --git a/src/lib/media.ts b/src/lib/media.ts
+new file mode 100644
+index 0000000..6ba34ae
+--- /dev/null
++++ b/src/lib/media.ts
+@@ -0,0 +1,34 @@
++import { API_URL, fetchClient } from "@/lib/api";
++
++const PUBLIC_REFERENCE_PREFIX = 'bucket://public/';
++const CLINICAL_REFERENCE_PREFIX = 'bucket://clinical/';
++
++export const assetDeliveryUrl = (value?: string | null) => {
++    if (!value) return null;
++    if (value.startsWith(CLINICAL_REFERENCE_PREFIX)) {
++        return `/clinical-assets?reference=${encodeURIComponent(value)}`;
++    }
++    if (value.startsWith(PUBLIC_REFERENCE_PREFIX)) {
++        return `/assets?reference=${encodeURIComponent(value)}`;
++    }
++    return value;
++};
++
++export const mediaUrl = (value?: string | null) => {
++    if (!value) return null;
++    if (/^(https?:|blob:|data:)/i.test(value)) return value;
++    if (value.startsWith('/images/')) return value;
++    return `${API_URL}${value.startsWith('/') ? value : `/${value}`}`;
++};
++
++export const loadProtectedAsset = async (value: string) => {
++    const response = await fetchClient(value);
++    if (!response.ok) {
++        const body = await response.json().catch(() => ({}));
++        throw new Error(body.error || 'Não foi possível carregar o arquivo clínico.');
++    }
++    return URL.createObjectURL(await response.blob());
++};
++
++export const isClinicalAssetReference = (value?: string | null) =>
++    typeof value === 'string' && value.startsWith(CLINICAL_REFERENCE_PREFIX);
+diff --git a/src/pages/AdminDocuments.tsx b/src/pages/AdminDocuments.tsx
+index 927374f..5559017 100644
+--- a/src/pages/AdminDocuments.tsx
++++ b/src/pages/AdminDocuments.tsx
+@@ -12,25 +12,26 @@ import {
+     Upload,
+     Save,
+     Trash2,
+     ChevronRight,
+     Plus,
+     History,
+     Info,
+     FileCheck
+ } from "lucide-react";
+ import { toast } from "sonner";
+-import { API_URL, fetchClient } from "@/lib/api";
++import { fetchClient } from "@/lib/api";
+ import { PatientPicker } from "@/components/admin/PatientPicker";
+ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+ import RichTextEditor from "@/components/admin/RichTextEditor";
+ import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
++import { mediaUrl } from "@/lib/media";
+ 
+ const AdminDocuments = () => {
+     const [patientData, setPatientData] = useState({
+         id: null as number | null,
+         name: "",
+         cpf: "",
+         procedure: "",
+         date: new Date().toLocaleDateString('pt-BR')
+     });
+ 
+@@ -149,38 +150,43 @@ const AdminDocuments = () => {
+             if (res.ok) {
+                 setHistory(prev => prev.filter(h => h.id !== id));
+                 toast.success("Documento excluído!");
+             }
+         } catch (e) {
+             toast.error("Erro ao excluir");
+         }
+     };
+ 
+     const handleUploadSigned = async (docId: number, file: File) => {
++        if (file.type !== 'application/pdf') {
++            toast.error("Apenas arquivos PDF são aceitos.");
++            return;
++        }
++
+         const formData = new FormData();
+         formData.append("file", file);
+ 
+         try {
+             // Upload to the private Railway Bucket through the backend.
+             const uploadRes = await fetchClient(`/patient-documents/${docId}/file`, {
+                 method: "POST",
+                 body: formData
+             });
+             if (!uploadRes.ok) throw new Error((await uploadRes.json().catch(() => null))?.error || "Erro no upload");
+             const { url } = await uploadRes.json();
+ 
+             toast.success("PDF Anexado com sucesso!");
+             // Refresh history locally
+             setHistory(history.map(h => h.id === docId ? { ...h, fileUrl: url } : h));
+         } catch (e) {
+             console.error(e);
+-            toast.error("Erro ao fazer upload.");
++            toast.error(e instanceof Error ? e.message : "Erro ao fazer upload.");
+         }
+     };
+ 
+     return (
+         <AdminLayout title="Termos & Documentos">
+             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-20">
+                 {/* Left Sidebar */}
+                 <div className="lg:col-span-1 space-y-6 no-print">
+ 
+                     {/* Patient Selector */}
+@@ -271,22 +277,22 @@ const AdminDocuments = () => {
+                             </CardHeader>
+                             <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+                                 {history.map(doc => (
+                                     <div key={doc.id} className="p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
+                                         <div className="flex justify-between items-start mb-1">
+                                             <span className="text-xs font-bold text-slate-800">{doc.title}</span>
+                                             <span className="text-[10px] text-slate-400">{new Date(doc.date).toLocaleDateString()}</span>
+                                         </div>
+                                         <div className="flex justify-between items-center mt-2">
+                                             <div className="flex gap-2">
+-                                                {doc.fileUrl || doc.pdfUrl ? (
+-                                                    <a href={(doc.fileUrl || doc.pdfUrl).startsWith('http') ? (doc.fileUrl || doc.pdfUrl) : `${API_URL}${doc.fileUrl || doc.pdfUrl}`} target="_blank" rel="noopener noreferrer" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
++                                                {mediaUrl(doc.fileUrl || doc.pdfUrl) ? (
++                                                    <a href={mediaUrl(doc.fileUrl || doc.pdfUrl) || undefined} target="_blank" rel="noopener noreferrer" className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
+                                                         <FileCheck size={12} /> Assinado
+                                                     </a>
+                                                 ) : (
+                                                     <label className="text-[10px] flex items-center gap-1 text-slate-500 bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 cursor-pointer">
+                                                         <Upload size={12} /> Anexar PDF
+                                                         <input
+                                                             type="file"
+                                                             className="hidden"
+                                                             accept="application/pdf"
+                                                             onChange={(e) => e.target.files?.[0] && handleUploadSigned(doc.id, e.target.files[0])}
