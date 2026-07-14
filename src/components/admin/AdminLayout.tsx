@@ -68,6 +68,18 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
 
     const isManager = currentUser.role === 'manager';
 
+    const contentSubItems = isManager
+        ? [
+            { label: "Comentários", href: "/admin/comentarios" },
+            { label: "Stories", href: "/admin/stories" }
+        ]
+        : [
+            { label: "Comentários", href: "/admin/comentarios" },
+            { label: "Tratamentos", href: "/admin/tratamentos" },
+            { label: "Blog", href: "/admin/blog" },
+            { label: "Stories", href: "/admin/stories" }
+        ];
+
     const allMenuItems = [
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
         { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
@@ -75,13 +87,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             label: "Conteúdo",
             href: "/admin/blog",
             icon: FileText,
-            adminOnly: true,
-            subItems: [
-                { label: "Comentários", href: "/admin/comentarios" },
-                { label: "Tratamentos", href: "/admin/tratamentos" },
-                { label: "Blog", href: "/admin/blog" },
-                { label: "Stories", href: "/admin/stories" }
-            ]
+            subItems: contentSubItems
         },
         {
             label: "Consultas", href: "/admin/consultas", icon: Stethoscope, adminOnly: true, subItems: [

@@ -30,3 +30,32 @@ test('public upload consumers request public scope', () => {
         assert.match(source, /scope.*public|public.*scope/, file);
     }
 });
+
+test('public media consumers resolve dynamic media through mediaUrl', () => {
+    const consumers = [
+        ['src/pages/BlogList.tsx', 'post.image'],
+        ['src/pages/TreatmentList.tsx', 'treatment.image'],
+        ['src/components/sections/Stories.tsx', 'story.url'],
+        ['src/components/layout/Header.tsx', 'settings?.site_logo'],
+        ['src/components/layout/Footer.tsx', 'settings?.site_logo']
+    ];
+
+    for (const [file, value] of consumers) {
+        const source = fs.readFileSync(path.join(repoRoot, file), 'utf8');
+        assert.match(source, new RegExp(`mediaUrl\\(${value.replaceAll('.', '\\.') .replaceAll('?', '\\?')}\\)`), file);
+    }
+
+    const stories = fs.readFileSync(path.join(repoRoot, 'src/components/sections/Stories.tsx'), 'utf8');
+    assert.doesNotMatch(stories, /src=\{(?:story\.url|stories\[selectedStoryIndex\]\.url)\}/);
+    assert.match(stories, /mediaUrl\(stories\[selectedStoryIndex\]\.url\)/);
+});
+
+test('Conteúdo preserves manager-visible and admin-only child routes', () => {
+    const layout = fs.readFileSync(path.join(repoRoot, 'src/components/admin/AdminLayout.tsx'), 'utf8');
+    assert.match(layout, /const contentSubItems\s*=\s*isManager\s*\?/);
+    assert.match(layout, /label:\s*["']Comentários["'][\s\S]*label:\s*["']Stories["']/);
+    assert.match(layout, /label:\s*["']Tratamentos["'][\s\S]*label:\s*["']Blog["']/);
+    const contentItem = layout.match(/\{\s*label:\s*["']Conteúdo["'][\s\S]*?subItems:\s*contentSubItems[\s\S]*?\}/)?.[0];
+    assert.ok(contentItem);
+    assert.doesNotMatch(contentItem, /adminOnly/);
+});
