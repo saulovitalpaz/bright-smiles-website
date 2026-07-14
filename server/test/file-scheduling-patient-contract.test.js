@@ -5,6 +5,31 @@ const path = require('node:path');
 
 const serverRoot = path.resolve(__dirname, '..');
 
+async function withRouteServer(registerRoutes, run) {
+    const express = require('express');
+    const app = express();
+    app.use(express.json());
+    registerRoutes(app);
+
+    let server;
+    await new Promise((resolve, reject) => {
+        server = app.listen(0, '127.0.0.1', resolve);
+        server.on('error', reject);
+    });
+
+    try {
+        const { port } = server.address();
+        await run(`http://127.0.0.1:${port}`);
+    } finally {
+        await new Promise((resolve, reject) => {
+            server.close((error) => {
+                if (error) reject(error);
+                else resolve();
+            });
+        });
+    }
+}
+
 test('general uploads use bucket storage and expose separate public/private delivery routes', () => {
     const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
     assert.match(source, /require\(['"]\.\/utils\/assetStorage['"]\)/);
@@ -156,12 +181,46 @@ test('schedule normalization handles nullable, ISO, and datetime-local values at
     assert.equal(browserValue.getDate(), 13);
     assert.equal(browserValue.getHours(), 9);
     assert.equal(browserValue.getMinutes(), 45);
+
+    const dateOnlyValue = normalizeScheduledAt('2026-07-13');
+    assert.equal(dateOnlyValue instanceof Date, true);
+    assert.equal(dateOnlyValue.toISOString(), '2026-07-13T00:00:00.000Z');
 });
 
 test('schedule normalization rejects invalid scheduled values with the clear contract message', () => {
     const { normalizeScheduledAt } = require('../utils/schedule');
 
     assert.throws(() => normalizeScheduledAt('not-a-date'), /Invalid scheduled date/);
+});
+
+test('lead update route rejects invalid scheduledAt with HTTP 400 JSON before prisma', async () => {
+    const { createUpdateLeadHandler } = require('../routes/leads');
+    let updateCalls = 0;
+    const prisma = {
+        lead: {
+            update: async () => {
+                updateCalls += 1;
+                throw new Error('Prisma should not be reached for invalid scheduledAt');
+            }
+        }
+    };
+
+    await withRouteServer(
+        (app) => app.put('/leads/:id', createUpdateLeadHandler(prisma)),
+        async (baseUrl) => {
+            const response = await fetch(`${baseUrl}/leads/42`, {
+                method: 'PUT',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ scheduledAt: 'not-a-date', status: 'scheduled' })
+            });
+            const body = await response.json();
+
+            assert.equal(response.status, 400);
+            assert.deepEqual(body, { error: 'Invalid scheduled date' });
+        }
+    );
+
+    assert.equal(updateCalls, 0);
 });
 
 test('upcoming schedule helper returns promised fields in ascending order and excludes completed leads', () => {

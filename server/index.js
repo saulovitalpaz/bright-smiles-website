@@ -16,6 +16,7 @@ const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl }
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./utils/encryption');
+const { createUpdateLeadHandler } = require('./routes/leads');
 const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const auditLogger = require('./middleware/auditLogger');
 const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
@@ -23,6 +24,7 @@ const { patientSchema, appointmentSchema, loginSchema } = require('./utils/valid
 const app = express();
 app.set('trust proxy', 1);
 const prisma = new PrismaClient();
+const updateLeadHandler = createUpdateLeadHandler(prisma);
 const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_should_be_in_env';
 
@@ -1016,21 +1018,7 @@ app.get('/leads', async (req, res) => {
     }
 });
 
-app.put('/leads/:id', async (req, res) => {
-    try {
-        const data = { ...req.body };
-        if (data.scheduledAt !== undefined) {
-            data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
-        }
-        const lead = await prisma.lead.update({
-            where: { id: parseInt(req.params.id) },
-            data
-        });
-        res.json(lead);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
+app.put('/leads/:id', updateLeadHandler);
 
 app.delete('/leads/:id', async (req, res) => {
     try {
@@ -1081,21 +1069,7 @@ app.get('/testimonials/:id', async (req, res) => {
     }
 });
 
-app.put('/leads/:id', async (req, res) => {
-    try {
-        const data = { ...req.body };
-        if (data.scheduledAt !== undefined) {
-            data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
-        }
-        const lead = await prisma.lead.update({
-            where: { id: parseInt(req.params.id) },
-            data
-        });
-        res.json(lead);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
+app.put('/leads/:id', updateLeadHandler);
 
 app.delete('/leads/:id', async (req, res) => {
     try {
