@@ -29,18 +29,23 @@ function decrypt(text) {
     if (!text) return text;
     if (!text.includes(':')) return text; // Not encrypted
 
-    const textParts = text.split(':');
-    const iv = Buffer.from(textParts.shift(), 'hex');
-    const encryptedText = Buffer.from(textParts.shift(), 'hex');
-    const authTag = Buffer.from(textParts.shift(), 'hex');
-    
-    const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY), iv);
-    decipher.setAuthTag(authTag);
-    
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    
-    return decrypted.toString();
+    try {
+        const textParts = text.split(':');
+        const iv = Buffer.from(textParts.shift(), 'hex');
+        const encryptedText = Buffer.from(textParts.shift(), 'hex');
+        const authTag = Buffer.from(textParts.shift(), 'hex');
+        
+        const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY), iv);
+        decipher.setAuthTag(authTag);
+        
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        
+        return decrypted.toString();
+    } catch (e) {
+        console.error("Decryption error for text:", text, e);
+        return ""; // Return empty string or raw text to prevent crashing
+    }
 }
 
 module.exports = { encrypt, decrypt };

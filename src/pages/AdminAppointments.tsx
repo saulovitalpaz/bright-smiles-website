@@ -387,6 +387,7 @@ const AdminAppointments = () => {
                             setProfessionalDraft(entry.professional || "");
                         }}
                         onEventDrop={(entry, scheduledAt) => setPendingDrop({ entry, scheduledAt })}
+                        onEventCreate={(date) => navigate(`/admin/consultas/new?date=${encodeURIComponent(date.toISOString())}`)}
                     />
                 </div>
             )}

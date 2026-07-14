@@ -108,9 +108,11 @@ const AdminAttendanceDetail = () => {
     useEffect(() => {
         if (id === 'new') {
             const parsedPatientId = patientIdParam ? Number.parseInt(patientIdParam, 10) : NaN;
+            const dateParam = searchParams.get("date");
             const draft = {
                 ...DEFAULT_APPOINTMENT,
                 patientId: Number.isFinite(parsedPatientId) ? parsedPatientId : null,
+                scheduledAt: dateParam ? new Date(dateParam).toISOString() : null,
                 professional: currentUser.name || "Profissional"
             };
             if (leadId) {
