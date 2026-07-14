@@ -3,9 +3,19 @@ const { normalizeScheduledAt } = require('../utils/schedule');
 function createUpdateLeadHandler(prisma) {
     return async (req, res) => {
         try {
-            const data = { ...req.body };
+            const data = {};
+            for (const field of ['status', 'scheduledAt', 'professional']) {
+                if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+                    data[field] = req.body[field];
+                }
+            }
+
             if (data.scheduledAt !== undefined) {
                 data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
+            }
+
+            if (data.professional === '') {
+                data.professional = null;
             }
 
             const lead = await prisma.lead.update({

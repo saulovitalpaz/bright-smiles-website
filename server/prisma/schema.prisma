@@ -143,6 +143,7 @@ model Lead {
   status       String   @default("new")
   createdAt    DateTime @default(now())
   scheduledAt  DateTime?
+  professional String?
   location     String?
   source       String?
   ageGroup     String?
