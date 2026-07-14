@@ -31,7 +31,7 @@ export const blogPosts: Post[] = [
         image: "/images/botox/Botox capa.png",
         images: [
             "/images/botox/Botox capa.png",
-            "/images/preenchimento/preenchimento - hialuronico (1).png",
+            "/images/preenchimento/hialuronico.png",
             "/images/bioestimulador/Bioestimulador (1).jpg"
         ],
         author: "Dra. Ana Karolina",

@@ -39,7 +39,7 @@ const treatments = [
         title: "Preenchimento Labial",
         description: "Volume e contorno labial com ácido hialurônico para resultados naturais e harmônicos.",
         category: "Harmonização",
-        image: "/images/preenchimento/preenchimento - hialuronico (1).png",
+        image: "/images/preenchimento/hialuronico.png",
         content: "O preenchimento labial é um procedimento estético que utiliza ácido hialurônico para aumentar o volume e definir o contorno dos lábios. O foco é sempre em resultados naturais, respeitando as proporções do seu rosto e proporcionando hidratação profunda.",
         indications: [
             "Pessoas que desejam lábios mais volumosos",
@@ -61,9 +61,9 @@ const treatments = [
             longevity: "8-12 meses"
         },
         results: [
-            { image: "/images/preenchimento/preenchimento - hialuronico (1).png", description: "Resultado 1" },
-            { image: "/images/preenchimento/preenchimento - hialuronico (1).png", description: "Resultado 2" },
-            { image: "/images/preenchimento/preenchimento - hialuronico (1).png", description: "Resultado 3" }
+            { image: "/images/preenchimento/hialuronico.png", description: "Resultado 1" },
+            { image: "/images/preenchimento/hialuronico.png", description: "Resultado 2" },
+            { image: "/images/preenchimento/hialuronico.png", description: "Resultado 3" }
         ]
     },
     {
@@ -198,8 +198,8 @@ const blogPosts = [
         images: [
             "/images/botox/Botox capa.png",
             "/images/botox/Botox capa.png",
-            "/images/preenchimento/preenchimento - hialuronico (1).png",
-            "/images/preenchimento/preenchimento - hialuronico (1).png"
+            "/images/preenchimento/hialuronico.png",
+            "/images/preenchimento/hialuronico.png"
         ],
         author: "Dra. Ana Karolina",
         content: "A harmonização facial não é apenas sobre aplicar produtos, mas sobre entender a simetria e a beleza única de cada rosto. Quando combinamos procedimentos como toxina botulínica e preenchimento com ácido hialurônico, conseguimos suavizar linhas de expressão e realçar traços naturais, criando um sorriso muito mais harmônico e uma aparência descansada.",
