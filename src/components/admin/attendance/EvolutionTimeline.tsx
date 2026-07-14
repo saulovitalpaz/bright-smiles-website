@@ -56,7 +56,9 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                 const data = await res.json();
                 const normalized = data.map((app: any) => ({
                     ...app,
-                    appointmentType: app.appointmentType || "odontologia",
+                    appointmentType: ["odontologia", "harmonizacao", "ambos"].includes(app.appointmentType)
+                        ? app.appointmentType
+                        : "odontologia",
                     photos: Array.isArray(app.photos) ? app.photos : [],
                     dentalNotes: app.dentalNotes && typeof app.dentalNotes === "object" ? app.dentalNotes : {},
                     facialNotes: app.facialNotes && typeof app.facialNotes === "object" ? app.facialNotes : {}

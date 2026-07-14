@@ -390,3 +390,11 @@ test('evolution classification uses appointmentType for clinical panels', () => 
     assert.match(timeline, /Harmonização Facial/);
     assert.doesNotMatch(timeline, /procedure === ['"]odontologia['"]|procedure === ['"]harmonizacao['"]/);
 });
+
+test('evolution normalization defaults unsupported non-empty appointment types to odontologia', () => {
+    const repoRoot = path.resolve(serverRoot, '..');
+    const timeline = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/EvolutionTimeline.tsx'), 'utf8');
+
+    assert.match(timeline, /\["odontologia", "harmonizacao", "ambos"\]\.includes\(app\.appointmentType\)/);
+    assert.match(timeline, /appointmentType:[\s\S]*\? app\.appointmentType[\s\S]*: "odontologia"/);
+});
