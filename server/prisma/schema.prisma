@@ -41,6 +41,7 @@ model Appointment {
   patientName   String
   cpf           String?
   date          DateTime
+  scheduledAt   DateTime?
   procedure     String
   notes         String
   professional  String
@@ -141,6 +142,7 @@ model Lead {
   message      String?
   status       String   @default("new")
   createdAt    DateTime @default(now())
+  scheduledAt  DateTime?
   location     String?
   source       String?
   ageGroup     String?

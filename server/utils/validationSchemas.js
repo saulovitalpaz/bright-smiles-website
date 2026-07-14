@@ -14,6 +14,7 @@ const patientSchema = z.object({
 const appointmentSchema = z.object({
     patientName: z.string().min(1),
     date: z.string().or(z.date()),
+    scheduledAt: z.string().or(z.date()).optional().nullable(),
     procedure: z.string().min(1),
     professional: z.string().min(1),
     notes: z.string().optional(),

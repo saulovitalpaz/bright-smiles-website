@@ -136,3 +136,15 @@ test('clinical photo uploads use the private scope and documents expose legacy p
     assert.match(indexSource, /fileUrl:.*storageKey.*pdfUrl/);
     assert.match(indexSource, /clinical-assets/);
 });
+
+test('schedule fields are persisted and dashboard exposes ascending upcoming schedule', () => {
+    const schema = fs.readFileSync(path.join(serverRoot, 'prisma/schema.prisma'), 'utf8');
+    const validation = fs.readFileSync(path.join(serverRoot, 'utils/validationSchemas.js'), 'utf8');
+    const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    assert.match(schema, /model Lead[\s\S]*scheduledAt\s+DateTime\?/);
+    assert.match(schema, /model Appointment[\s\S]*scheduledAt\s+DateTime\?/);
+    assert.match(validation, /scheduledAt/);
+    assert.match(source, /Invalid scheduled date/);
+    assert.match(source, /upcomingSchedule/);
+    assert.match(source, /orderBy:\s*\{\s*scheduledAt:\s*['"]asc['"]\s*\}/);
+});

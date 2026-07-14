@@ -84,6 +84,13 @@ const authorizeRole = (roles) => {
     };
 };
 
+function parseOptionalDate(value, message) {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) throw new Error(message);
+    return parsed;
+}
+
 app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -379,16 +386,12 @@ app.post('/appointments', authenticateToken, async (req, res) => {
 
     try {
         const payload = { ...result.data };
-        payload.date = new Date(payload.date);
-        if (Number.isNaN(payload.date.getTime())) {
+        payload.date = parseOptionalDate(payload.date, 'Invalid appointment date');
+        if (!payload.date) {
             return res.status(400).json({ error: 'Invalid appointment date' });
         }
-        if (payload.returnDate) {
-            payload.returnDate = new Date(payload.returnDate);
-            if (Number.isNaN(payload.returnDate.getTime())) {
-                return res.status(400).json({ error: 'Invalid return date' });
-            }
-        }
+        payload.returnDate = parseOptionalDate(payload.returnDate, 'Invalid return date');
+        payload.scheduledAt = parseOptionalDate(payload.scheduledAt, 'Invalid scheduled date');
         if (payload.price === '' || payload.price === null || payload.price === undefined) {
             payload.price = null;
         } else {
@@ -428,18 +431,17 @@ app.put('/appointments/:id', async (req, res) => {
         const { id } = req.params;
         const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
 
-        if (data.date) {
-            data.date = new Date(data.date);
-            if (Number.isNaN(data.date.getTime())) {
+        if (data.date !== undefined) {
+            data.date = parseOptionalDate(data.date, 'Invalid appointment date');
+            if (!data.date) {
                 return res.status(400).json({ error: 'Invalid appointment date' });
             }
         }
-        // Handle returnDate if sent as string
-        if (data.returnDate) {
-            data.returnDate = new Date(data.returnDate);
-            if (Number.isNaN(data.returnDate.getTime())) {
-                return res.status(400).json({ error: 'Invalid return date' });
-            }
+        if (data.returnDate !== undefined) {
+            data.returnDate = parseOptionalDate(data.returnDate, 'Invalid return date');
+        }
+        if (data.scheduledAt !== undefined) {
+            data.scheduledAt = parseOptionalDate(data.scheduledAt, 'Invalid scheduled date');
         }
         if (data.price === '') {
             data.price = null;
@@ -925,6 +927,49 @@ app.get('/dashboard/stats', async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
+        const [scheduledAppointments, scheduledLeads] = await Promise.all([
+            prisma.appointment.findMany({
+                where: { scheduledAt: { not: null } },
+                orderBy: { scheduledAt: 'asc' }
+            }),
+            prisma.lead.findMany({
+                where: {
+                    scheduledAt: { not: null },
+                    status: { not: 'completed' }
+                },
+                orderBy: { scheduledAt: 'asc' }
+            })
+        ]);
+
+        const upcomingSchedule = [
+            ...scheduledAppointments.map((appointment) => ({
+                kind: 'appointment',
+                id: appointment.id,
+                patientName: appointment.patientName,
+                treatment: null,
+                procedure: appointment.procedure,
+                appointmentType: appointment.appointmentType,
+                scheduledAt: appointment.scheduledAt,
+                createdAt: appointment.createdAt,
+                patientId: appointment.patientId,
+                leadId: null
+            })),
+            ...scheduledLeads.map((lead) => ({
+                kind: 'lead',
+                id: lead.id,
+                patientName: lead.name,
+                treatment: lead.treatment,
+                procedure: null,
+                appointmentType: null,
+                scheduledAt: lead.scheduledAt,
+                createdAt: lead.createdAt,
+                patientId: null,
+                leadId: lead.id
+            }))
+        ]
+            .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
+            .slice(0, 10);
+
         const recentTestimonials = await prisma.testimonial.findMany({
             take: 5,
             orderBy: { createdAt: 'desc' }
@@ -936,6 +981,7 @@ app.get('/dashboard/stats', async (req, res) => {
             appointments,
             leads,
             testimonials,
+            upcomingSchedule,
             recentAppointments,
             recentLeads,
             recentTestimonials
@@ -1002,9 +1048,13 @@ app.get('/leads', async (req, res) => {
 
 app.put('/leads/:id', async (req, res) => {
     try {
+        const data = { ...req.body };
+        if (data.scheduledAt !== undefined) {
+            data.scheduledAt = parseOptionalDate(data.scheduledAt, 'Invalid scheduled date');
+        }
         const lead = await prisma.lead.update({
             where: { id: parseInt(req.params.id) },
-            data: req.body
+            data
         });
         res.json(lead);
     } catch (error) {
@@ -1063,9 +1113,13 @@ app.get('/testimonials/:id', async (req, res) => {
 
 app.put('/leads/:id', async (req, res) => {
     try {
+        const data = { ...req.body };
+        if (data.scheduledAt !== undefined) {
+            data.scheduledAt = parseOptionalDate(data.scheduledAt, 'Invalid scheduled date');
+        }
         const lead = await prisma.lead.update({
             where: { id: parseInt(req.params.id) },
-            data: req.body
+            data
         });
         res.json(lead);
     } catch (error) {
