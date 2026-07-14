@@ -123,4 +123,8 @@ test('settings writes are admin-only and share the public settings allowlist', (
     assert.match(settingsWrite, /PUBLIC_SETTINGS_KEYS\.has\(key\)/);
     assert.match(settingsPage, /axios\.get\(`\$\{API_URL\}\/settings`, \{ withCredentials: true \}\)/);
     assert.match(settingsPage, /axios\.post\(`\$\{API_URL\}\/settings`, \{ key, value \}, \{ withCredentials: true \}\)/);
+    assert.match(settingsPage, /Object\.entries\(settings\)[\s\S]*\.filter\(\[?\(?\[key\][\s\S]*EDITABLE_SETTING_KEYS\.includes\(key/);
+    for (const key of ['site_logo', 'clinic_name', 'clinic_slogan', 'contact_whatsapp', 'contact_instagram']) {
+        assert.match(settingsPage, new RegExp(`['"]${key}['"]`));
+    }
 });

@@ -11,6 +11,14 @@ import axios from "axios";
 import { API_URL } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 
+const EDITABLE_SETTING_KEYS = [
+    "site_logo",
+    "clinic_name",
+    "clinic_slogan",
+    "contact_whatsapp",
+    "contact_instagram"
+] as const;
+
 const AdminSettings = () => {
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -42,9 +50,11 @@ const AdminSettings = () => {
         setIsSaving(true);
         try {
             // For simplicity, we save each setting in parallel
-            const promises = Object.entries(settings).map(([key, value]) =>
+            const promises = Object.entries(settings)
+                .filter(([key]) => EDITABLE_SETTING_KEYS.includes(key as typeof EDITABLE_SETTING_KEYS[number]))
+                .map(([key, value]) =>
                 axios.post(`${API_URL}/settings`, { key, value }, { withCredentials: true })
-            );
+                );
             await Promise.all(promises);
             toast.success("Configurações salvas!");
         } catch (error) {
