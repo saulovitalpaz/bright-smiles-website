@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, CheckCircle, Clock, Trash2, UserPlus } from "lucide-react";
@@ -8,27 +8,86 @@ import axios from "axios";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
 
+const formatDateTime = (value?: string | null) => {
+    if (!value) return "Não agendado";
+
+    return new Date(value).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+const toDateTimeLocalValue = (value?: string | null) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const localValue = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localValue.toISOString().slice(0, 16);
+};
+
+interface LeadRecord {
+    id: number;
+    name: string;
+    phone: string;
+    email?: string | null;
+    ageGroup?: string | null;
+    source?: string | null;
+    treatment?: string | null;
+    message?: string | null;
+    status: string;
+    createdAt: string;
+    scheduledAt?: string | null;
+    cpf?: string | null;
+}
+
 const AdminLeads = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const [scheduledInputs, setScheduledInputs] = useState<Record<number, string>>({});
+    const [leadErrors, setLeadErrors] = useState<Record<number, string>>({});
 
     const { data: leads, isLoading } = useQuery({
         queryKey: ['leads'],
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/leads`);
-            return res.data;
+            return res.data as LeadRecord[];
         }
     });
 
     const updateStatusMutation = useMutation({
-        mutationFn: async ({ id, status }: { id: number, status: string }) => {
-            await axios.put(`${API_URL}/leads/${id}`, { status });
+        mutationFn: async ({
+            id,
+            status,
+            scheduledAt
+        }: {
+            id: number;
+            status: string;
+            scheduledAt: string | null;
+        }) => {
+            const res = await axios.put(`${API_URL}/leads/${id}`, { status, scheduledAt });
+            return res.data;
         },
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
+            setLeadErrors((current) => {
+                const next = { ...current };
+                delete next[variables.id];
+                return next;
+            });
             queryClient.invalidateQueries({ queryKey: ['leads'] });
             toast.success("Status atualizado!");
         },
-        onError: () => toast.error("Erro ao atualizar status.")
+        onError: (error, variables) => {
+            const message = axios.isAxiosError(error)
+                ? error.response?.data?.error || "Erro ao atualizar status."
+                : "Erro ao atualizar status.";
+            setLeadErrors((current) => ({ ...current, [variables.id]: message }));
+            toast.error(message);
+        }
     });
 
     const deleteMutation = useMutation({
@@ -47,13 +106,55 @@ const AdminLeads = () => {
         window.open(`https://wa.me/55${cleanPhone}`, '_blank');
     };
 
+    const effectiveScheduledInputs = useMemo(
+        () => Object.fromEntries((leads || []).map((lead) => [lead.id, scheduledInputs[lead.id] ?? toDateTimeLocalValue(lead.scheduledAt)])),
+        [leads, scheduledInputs]
+    );
+
+    const handleScheduleChange = (leadId: number, value: string) => {
+        setScheduledInputs((current) => ({ ...current, [leadId]: value }));
+        setLeadErrors((current) => {
+            const next = { ...current };
+            delete next[leadId];
+            return next;
+        });
+    };
+
+    const handleSaveSchedule = (lead: LeadRecord) => {
+        const scheduledValue = effectiveScheduledInputs[lead.id];
+
+        if (!scheduledValue) {
+            updateStatusMutation.mutate({ id: lead.id, status: 'new', scheduledAt: null });
+            return;
+        }
+
+        updateStatusMutation.mutate({
+            id: lead.id,
+            status: 'scheduled',
+            scheduledAt: new Date(scheduledValue).toISOString()
+        });
+    };
+
+    const handleClearSchedule = (leadId: number) => {
+        setScheduledInputs((current) => ({ ...current, [leadId]: "" }));
+        setLeadErrors((current) => {
+            const next = { ...current };
+            delete next[leadId];
+            return next;
+        });
+        updateStatusMutation.mutate({ id: leadId, status: 'new', scheduledAt: null });
+    };
+
     return (
         <AdminLayout title="Solicitações e Agendamentos">
             <div className="space-y-6">
                 {isLoading && <p>Carregando...</p>}
                 {leads?.length === 0 && <p className="text-slate-500">Nenhuma solicitação encontrada.</p>}
 
-                {leads?.map((lead: any) => (
+                {leads?.map((lead) => {
+                    const isSavingSchedule = updateStatusMutation.isPending && updateStatusMutation.variables?.id === lead.id;
+
+                    return (
                     <div key={lead.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold bg-blue-100 text-blue-600">
@@ -64,12 +165,15 @@ const AdminLeads = () => {
                                 <div className="flex items-center gap-4 mt-1">
                                     <span className="flex items-center gap-1 text-xs text-slate-500">
                                         <Clock size={14} />
-                                        {new Date(lead.createdAt).toLocaleDateString('pt-BR')} {new Date(lead.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        Criado em {formatDateTime(lead.createdAt)}
                                     </span>
                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${lead.status === 'scheduled' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
                                         {lead.status === 'new' ? 'Novo' : lead.status === 'contacted' ? 'Contatado' : 'Agendado'}
                                     </span>
                                 </div>
+                                <p className="mt-1 text-xs text-emerald-700 font-medium">
+                                    Agendado para {formatDateTime(lead.scheduledAt)}
+                                </p>
                                 <div className="flex flex-wrap items-center gap-2 mt-2">
                                     <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                                         <Mail size={12} />
@@ -97,6 +201,21 @@ const AdminLeads = () => {
                                 <span className="font-medium text-slate-700">{lead.phone}</span>
                             </div>
 
+                            <div className="flex flex-col gap-2 min-w-[240px]">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    Agendar consulta
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    value={effectiveScheduledInputs[lead.id] ?? ""}
+                                    onChange={(event) => handleScheduleChange(lead.id, event.target.value)}
+                                    className="h-9 rounded-md border border-slate-200 px-3 text-sm text-slate-700"
+                                />
+                                {leadErrors[lead.id] && (
+                                    <p className="text-xs text-red-500">{leadErrors[lead.id]}</p>
+                                )}
+                            </div>
+
                             <div className="flex gap-2">
                                 <Button size="sm" variant="outline" className="gap-2 h-9 border-slate-200" onClick={() => handleWhatsApp(lead.phone)}>
                                     <Phone size={16} /> WhatsApp
@@ -105,11 +224,24 @@ const AdminLeads = () => {
                                 <Button
                                     size="sm"
                                     className={`gap-2 h-9 ${lead.status === 'scheduled' ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                                    onClick={() => updateStatusMutation.mutate({ id: lead.id, status: 'scheduled' })}
+                                    onClick={() => handleSaveSchedule(lead)}
+                                    disabled={isSavingSchedule}
                                 >
                                     <CheckCircle size={16} />
-                                    {lead.status === 'scheduled' ? 'Agendado' : 'Marcar Agendado'}
+                                    {isSavingSchedule ? 'Salvando...' : (lead.status === 'scheduled' ? 'Salvar Agendamento' : 'Marcar Agendado')}
                                 </Button>
+
+                                {lead.scheduledAt && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-2 h-9 border-slate-200"
+                                        onClick={() => handleClearSchedule(lead.id)}
+                                        disabled={isSavingSchedule}
+                                    >
+                                        Remover horário
+                                    </Button>
+                                )}
 
                                 <Button
                                     size="sm"
@@ -127,7 +259,7 @@ const AdminLeads = () => {
                             </div>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         </AdminLayout>
     );

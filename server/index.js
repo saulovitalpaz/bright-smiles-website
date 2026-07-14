@@ -16,12 +16,15 @@ const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl }
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./utils/encryption');
+const { createUpdateLeadHandler } = require('./routes/leads');
+const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const auditLogger = require('./middleware/auditLogger');
 const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
 
 const app = express();
 app.set('trust proxy', 1);
 const prisma = new PrismaClient();
+const updateLeadHandler = createUpdateLeadHandler(prisma);
 const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_should_be_in_env';
 
@@ -379,16 +382,12 @@ app.post('/appointments', authenticateToken, async (req, res) => {
 
     try {
         const payload = { ...result.data };
-        payload.date = new Date(payload.date);
-        if (Number.isNaN(payload.date.getTime())) {
+        payload.date = parseOptionalDate(payload.date, 'Invalid appointment date');
+        if (!payload.date) {
             return res.status(400).json({ error: 'Invalid appointment date' });
         }
-        if (payload.returnDate) {
-            payload.returnDate = new Date(payload.returnDate);
-            if (Number.isNaN(payload.returnDate.getTime())) {
-                return res.status(400).json({ error: 'Invalid return date' });
-            }
-        }
+        payload.returnDate = parseOptionalDate(payload.returnDate, 'Invalid return date');
+        payload.scheduledAt = normalizeScheduledAt(payload.scheduledAt);
         if (payload.price === '' || payload.price === null || payload.price === undefined) {
             payload.price = null;
         } else {
@@ -428,18 +427,17 @@ app.put('/appointments/:id', async (req, res) => {
         const { id } = req.params;
         const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
 
-        if (data.date) {
-            data.date = new Date(data.date);
-            if (Number.isNaN(data.date.getTime())) {
+        if (data.date !== undefined) {
+            data.date = parseOptionalDate(data.date, 'Invalid appointment date');
+            if (!data.date) {
                 return res.status(400).json({ error: 'Invalid appointment date' });
             }
         }
-        // Handle returnDate if sent as string
-        if (data.returnDate) {
-            data.returnDate = new Date(data.returnDate);
-            if (Number.isNaN(data.returnDate.getTime())) {
-                return res.status(400).json({ error: 'Invalid return date' });
-            }
+        if (data.returnDate !== undefined) {
+            data.returnDate = parseOptionalDate(data.returnDate, 'Invalid return date');
+        }
+        if (data.scheduledAt !== undefined) {
+            data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
         }
         if (data.price === '') {
             data.price = null;
@@ -739,20 +737,41 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
     try {
-        const { cpf, history, ...rest } = result.data;
+        const { cpf, history, consentDate, ...rest } = result.data;
 
         // Encrypt Sensitive Data
         // Use deterministic for CPF to allow duplicate check if needed (though we rely on catch error for unique constraint)
         const encryptedCpf = encrypt(cpf, true);
         const encryptedHistory = encrypt(history);
+        const normalizedConsentDate = consentDate === undefined
+            ? undefined
+            : consentDate === null
+                ? null
+                : new Date(consentDate);
+        const data = {
+            ...rest,
+            history: encryptedHistory
+        };
+
+        if (normalizedConsentDate !== undefined) {
+            if (Number.isNaN(normalizedConsentDate?.getTime?.())) {
+                return res.status(400).json({ error: 'Invalid consent date.' });
+            }
+            data.consentDate = normalizedConsentDate;
+        }
 
         const patient = await prisma.patient.upsert({
             where: { cpf: encryptedCpf },
-            update: { ...rest, history: encryptedHistory },
-            create: { ...rest, cpf: encryptedCpf, history: encryptedHistory }
+            update: data,
+            create: { ...data, cpf: encryptedCpf }
         });
 
-        res.json({ ...patient, cpf, history });
+        res.json({
+            id: patient.id,
+            ...patient,
+            cpf: decrypt(patient.cpf),
+            history: decrypt(patient.history)
+        });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
@@ -925,6 +944,25 @@ app.get('/dashboard/stats', async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
+        const [scheduledAppointments, scheduledLeads] = await Promise.all([
+            prisma.appointment.findMany({
+                where: { scheduledAt: { not: null } },
+                orderBy: { scheduledAt: 'asc' }
+            }),
+            prisma.lead.findMany({
+                where: {
+                    scheduledAt: { not: null },
+                    status: { not: 'completed' }
+                },
+                orderBy: { scheduledAt: 'asc' }
+            })
+        ]);
+
+        const upcomingSchedule = buildUpcomingSchedule({
+            appointments: scheduledAppointments,
+            leads: scheduledLeads
+        });
+
         const recentTestimonials = await prisma.testimonial.findMany({
             take: 5,
             orderBy: { createdAt: 'desc' }
@@ -936,6 +974,7 @@ app.get('/dashboard/stats', async (req, res) => {
             appointments,
             leads,
             testimonials,
+            upcomingSchedule,
             recentAppointments,
             recentLeads,
             recentTestimonials
@@ -1000,17 +1039,7 @@ app.get('/leads', async (req, res) => {
     }
 });
 
-app.put('/leads/:id', async (req, res) => {
-    try {
-        const lead = await prisma.lead.update({
-            where: { id: parseInt(req.params.id) },
-            data: req.body
-        });
-        res.json(lead);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
+app.put('/leads/:id', updateLeadHandler);
 
 app.delete('/leads/:id', async (req, res) => {
     try {
@@ -1061,17 +1090,7 @@ app.get('/testimonials/:id', async (req, res) => {
     }
 });
 
-app.put('/leads/:id', async (req, res) => {
-    try {
-        const lead = await prisma.lead.update({
-            where: { id: parseInt(req.params.id) },
-            data: req.body
-        });
-        res.json(lead);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
+app.put('/leads/:id', updateLeadHandler);
 
 app.delete('/leads/:id', async (req, res) => {
     try {

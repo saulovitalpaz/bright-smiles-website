@@ -19,7 +19,31 @@ interface DashboardStats {
     recentAppointments: any[];
     recentLeads: any[];
     recentTestimonials: any[];
+    upcomingSchedule: Array<{
+        kind: 'lead' | 'appointment';
+        id: number;
+        patientName: string;
+        treatment: string | null;
+        procedure: string | null;
+        appointmentType: string | null;
+        scheduledAt: string;
+        createdAt: string;
+        patientId: number | null;
+        leadId: number | null;
+    }>;
 }
+
+const formatDateTime = (value?: string | null) => {
+    if (!value) return "Não informado";
+
+    return new Date(value).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -32,6 +56,7 @@ const AdminDashboard = () => {
         appointments: 0,
         leads: 0,
         testimonials: 0,
+        upcomingSchedule: [],
         recentLeads: [],
         recentAppointments: [],
         recentTestimonials: []
@@ -131,12 +156,12 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-                {/* AGENDAMENTOS CONFIRMADOS */}
+                {/* PRÓXIMA AGENDA */}
                 <div className="admin-card p-5 md:p-8">
                     <div className="flex items-center justify-between mb-6 md:mb-8">
                         <div>
-                            <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Agendamentos</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Confirmados</p>
+                            <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Próxima Agenda</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Horários confirmados</p>
                         </div>
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner">
                             <TrendingUp size={20} className="md:w-6 md:h-6" />
@@ -144,45 +169,62 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="space-y-4">
-                        {stats?.recentLeads?.filter((l: any) => l.status === 'scheduled').length > 0 ? (
-                            stats.recentLeads.filter((l: any) => l.status === 'scheduled').map((lead: any) => (
-                                <div key={lead.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 md:p-5 rounded-3xl border border-slate-50 hover:bg-slate-50 transition-all group hover:border-blue-100/50">
+                        {stats.upcomingSchedule.length > 0 ? (
+                            stats.upcomingSchedule.map((item) => {
+                                const destination = item.kind === 'lead'
+                                    ? `/admin/consultas/new?leadId=${item.leadId}`
+                                    : `/admin/consultas/${item.id}?patientId=${item.patientId ?? ""}`;
+
+                                return (
+                                <div key={`${item.kind}-${item.id}`} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 md:p-5 rounded-3xl border border-slate-50 hover:bg-slate-50 transition-all group hover:border-blue-100/50">
                                     <div className="flex items-center gap-4 w-full sm:w-auto">
                                         <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
-                                            {lead.name.charAt(0).toUpperCase()}
+                                            {item.patientName.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex-1 min-w-0 sm:hidden">
-                                            <p className="font-bold text-slate-900 truncate">{lead.name}</p>
-                                            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{lead.treatment || "Procedimento Geral"}</p>
+                                            <p className="font-bold text-slate-900 truncate">{item.patientName}</p>
+                                            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                            <p className="text-sm font-bold text-blue-700 mt-2">
+                                                {formatDateTime(item.scheduledAt)}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 mt-1">
+                                                Criado em {formatDateTime(item.createdAt)}
+                                            </p>
                                         </div>
                                     </div>
 
                                     <div className="hidden sm:block flex-1 min-w-0">
-                                        <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{lead.name}</p>
-                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{lead.treatment || "Procedimento Geral"}</p>
+                                        <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{item.patientName}</p>
+                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                        <p className="text-sm font-bold text-blue-700 mt-2">
+                                            {formatDateTime(item.scheduledAt)}
+                                        </p>
+                                        <p className="text-[11px] text-slate-400 mt-1">
+                                            Criado em {formatDateTime(item.createdAt)}
+                                        </p>
                                     </div>
 
                                     <div className="flex items-center gap-3 w-full sm:w-auto justify-end mt-2 sm:mt-0">
                                         {!isManager && (
                                             <button
-                                                onClick={() => navigate(`/admin/consultas?leadId=${lead.id}`)}
+                                                onClick={() => navigate(destination)}
                                                 className="w-full sm:w-auto opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all sm:translate-x-4 group-hover:translate-x-0 bg-primary text-white text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
                                             >
-                                                Atender
+                                                {item.kind === 'lead' ? 'Iniciar consulta' : 'Abrir consulta'}
                                             </button>
                                         )}
                                         <div className="hidden sm:flex flex-col items-end whitespace-nowrap">
                                             <span className="text-[9px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold uppercase">
-                                                {lead.source || "Site"}
+                                                {item.kind === 'lead' ? 'Solicitação' : (item.appointmentType || 'Consulta')}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                            ))
+                            )})
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/30 rounded-[2rem] border-2 border-dashed border-slate-100">
                                 <Calendar size={32} className="text-slate-200 mb-3" />
-                                <p className="text-slate-400 text-sm font-semibold">Agenda livre.</p>
+                                <p className="text-slate-400 text-sm font-semibold">Nenhum horário agendado.</p>
                             </div>
                         )}
                     </div>
