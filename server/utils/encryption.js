@@ -1,7 +1,9 @@
 const crypto = require('crypto');
 require('dotenv').config();
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default_secret_key_must_be_32_bytes_long!!'; // Must be 32 chars
+const ENCRYPTION_KEY_RAW = process.env.ENCRYPTION_KEY || 'default_secret_key_must_be_32_bytes_long!!';
+const ENCRYPTION_KEY = Buffer.alloc(32);
+Buffer.from(ENCRYPTION_KEY_RAW).copy(ENCRYPTION_KEY);
 const IV_LENGTH = 16; // For AES, this is always 16
 
 function encrypt(text, deterministic = false) {

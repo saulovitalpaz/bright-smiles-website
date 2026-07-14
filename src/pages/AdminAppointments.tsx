@@ -60,7 +60,9 @@ interface StaffUser {
 const AdminAppointments = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
-    const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+    const [searchParams] = useSearchParams();
+    const initialViewMode = searchParams.get("view") === "calendar" ? "calendar" : "list";
+    const [viewMode, setViewMode] = useState<"list" | "calendar">(initialViewMode);
     const [leads, setLeads] = useState<LeadRecord[]>([]);
     const [staff, setStaff] = useState<StaffUser[]>([]);
     const [calendarDate, setCalendarDate] = useState(new Date());
@@ -69,7 +71,6 @@ const AdminAppointments = () => {
     const [professionalDraft, setProfessionalDraft] = useState("");
     const [isSavingCalendarChange, setIsSavingCalendarChange] = useState(false);
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
     const leadId = searchParams.get("leadId");
 
     const userStr = localStorage.getItem("admin_user");

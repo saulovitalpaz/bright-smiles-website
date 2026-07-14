@@ -163,9 +163,13 @@ const AdminDashboard = () => {
                             <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Próxima Agenda</h3>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Horários confirmados</p>
                         </div>
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner">
-                            <TrendingUp size={20} className="md:w-6 md:h-6" />
-                        </div>
+                        <button 
+                            onClick={() => navigate('/admin/consultas?view=calendar')}
+                            title="Ver Calendário"
+                            className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner hover:bg-blue-100 transition-colors cursor-pointer"
+                        >
+                            <Calendar size={20} className="md:w-6 md:h-6" />
+                        </button>
                     </div>
 
                     <div className="space-y-4">
