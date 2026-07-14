@@ -37,10 +37,13 @@ export const fetchClient = async (endpoint: string, options: RequestInit = {}) =
 
     const response = await fetch(url, config);
 
-    // Global error handling (e.g. 401 logout) could go here
     if (response.status === 401) {
-        // Redirect to login if needed, or let component handle
-        // window.location.href = '/admin'; 
+        // Clear local auth state and redirect to login
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('admin_auth');
+            localStorage.removeItem('admin_user');
+            window.location.href = '/admin';
+        }
     }
 
     return response;
