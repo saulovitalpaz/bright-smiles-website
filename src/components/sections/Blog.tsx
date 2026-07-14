@@ -4,6 +4,7 @@ import { ArrowRight, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 const Blog = () => {
   const [displayedPosts, setDisplayedPosts] = useState([]);
@@ -52,7 +53,7 @@ const Blog = () => {
               <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 flex flex-col">
                 <div className="aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-secondary/5">
                   <img
-                    src={post.image}
+                    src={mediaUrl(post.image) || post.image}
                     alt={post.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />

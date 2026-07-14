@@ -85,7 +85,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
         {
             label: "Conteúdo",
-            href: "/admin/blog",
+            href: isManager ? "/admin/comentarios" : "/admin/blog",
             icon: FileText,
             subItems: contentSubItems
         },

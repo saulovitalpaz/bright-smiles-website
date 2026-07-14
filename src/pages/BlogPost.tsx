@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Clock, Share2, ChevronLeft, ChevronRight, Maximize2, X, BookOpen, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 const BlogPost = () => {
     const { slug } = useParams();
@@ -71,10 +72,10 @@ const BlogPost = () => {
     };
 
     const getPostImageUrl = () => {
-        if (post.images && post.images.length > 0 && post.images[activeImage]) {
-            return post.images[activeImage];
-        }
-        return post.image || "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200";
+        const image = post.images && post.images.length > 0 && post.images[activeImage]
+            ? post.images[activeImage]
+            : post.image || "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200";
+        return mediaUrl(image) || image;
     };
 
     return (
@@ -171,7 +172,7 @@ const BlogPost = () => {
                                                 onClick={() => setActiveImage(i)}
                                                 className={`w-20 md:w-24 aspect-video rounded-xl overflow-hidden border-2 transition-all bg-card ${i === activeImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-40 hover:opacity-100'}`}
                                             >
-                                                <img src={img} alt={`Thumb ${i}`} className="w-full h-full object-contain p-1" />
+                                                <img src={mediaUrl(img) || img} alt={`Thumb ${i}`} className="w-full h-full object-contain p-1" />
                                             </button>
                                         ))}
                                     </div>

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 import { API_URL } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 
 interface Treatment {
   id: number;
@@ -69,7 +70,7 @@ const Services = () => {
                 <div className="aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-secondary/5">
                   {service.image ? (
                     <img
-                      src={service.image}
+                      src={mediaUrl(service.image) || service.image}
                       alt={service.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => (e.target as HTMLImageElement).src = '/placeholder.png'}

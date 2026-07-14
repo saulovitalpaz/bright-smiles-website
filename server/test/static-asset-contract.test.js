@@ -59,3 +59,24 @@ test('Conteúdo preserves manager-visible and admin-only child routes', () => {
     assert.ok(contentItem);
     assert.doesNotMatch(contentItem, /adminOnly/);
 });
+
+test('remaining public media consumers resolve detail, thumbnail, and card media through mediaUrl', () => {
+    const consumers = [
+        ['src/pages/BlogPost.tsx', /return mediaUrl\(image\) \|\| image/, /src=\{mediaUrl\(img\) \|\| img\}/],
+        ['src/pages/TreatmentDetail.tsx', /mediaUrl\(treatment\.image\)/, /mediaUrl\(treatment\.results\[activeResultIndex\]\.image\)/],
+        ['src/components/sections/Blog.tsx', /mediaUrl\(post\.image\)/],
+        ['src/components/sections/Services.tsx', /mediaUrl\(service\.image\)/]
+    ];
+
+    for (const [file, ...expressions] of consumers) {
+        const source = fs.readFileSync(path.join(repoRoot, file), 'utf8');
+        for (const expression of expressions) {
+            assert.match(source, expression, file);
+        }
+    }
+});
+
+test('Conteúdo parent routes managers to a manager-visible child', () => {
+    const layout = fs.readFileSync(path.join(repoRoot, 'src/components/admin/AdminLayout.tsx'), 'utf8');
+    assert.match(layout, /href:\s*isManager\s*\?\s*["']\/admin\/comentarios["']\s*:\s*["']\/admin\/blog["']/);
+});
