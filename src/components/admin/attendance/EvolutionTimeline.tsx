@@ -28,6 +28,13 @@ interface HistoricalAppointment {
 
 type AppointmentType = "odontologia" | "harmonizacao" | "ambos";
 
+type HistoricalAppointmentResponse = Omit<HistoricalAppointment, "appointmentType" | "photos" | "dentalNotes" | "facialNotes"> & {
+    appointmentType: string;
+    photos?: unknown;
+    dentalNotes?: unknown;
+    facialNotes?: unknown;
+};
+
 const categoryLabel = {
     odontologia: "Odontologia",
     harmonizacao: "Harmonização Facial",
@@ -53,15 +60,15 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
         try {
             const res = await fetchClient(`/appointments?patientId=${patientId}`);
             if (res.ok) {
-                const data = await res.json();
-                const normalized = data.map((app: any) => ({
+                const data = await res.json() as HistoricalAppointmentResponse[];
+                const normalized: HistoricalAppointment[] = data.map((app) => ({
                     ...app,
                     appointmentType: ["odontologia", "harmonizacao", "ambos"].includes(app.appointmentType)
                         ? app.appointmentType
                         : "odontologia",
-                    photos: Array.isArray(app.photos) ? app.photos : [],
-                    dentalNotes: app.dentalNotes && typeof app.dentalNotes === "object" ? app.dentalNotes : {},
-                    facialNotes: app.facialNotes && typeof app.facialNotes === "object" ? app.facialNotes : {}
+                    photos: Array.isArray(app.photos) ? app.photos as string[] : [],
+                    dentalNotes: app.dentalNotes && typeof app.dentalNotes === "object" ? app.dentalNotes as Record<string, ToothData> : {},
+                    facialNotes: app.facialNotes && typeof app.facialNotes === "object" ? app.facialNotes as Record<string, FaceRegionData> : {}
                 }));
                 const filtered = normalized
                     .filter((app: any) => app.id.toString() !== currentAppointmentId?.toString())

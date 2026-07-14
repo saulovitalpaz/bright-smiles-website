@@ -16,8 +16,42 @@ export interface CalendarEntry {
     professional: string | null;
 }
 
-export const buildCalendarEntries = (appointments: any[] = [], leads: any[] = []): CalendarEntry[] => [
-    ...appointments.filter((item) => item?.scheduledAt && !Number.isNaN(new Date(item.scheduledAt).getTime())).map((item) => ({
+interface CalendarAppointmentInput {
+    id: number;
+    patientName?: string | null;
+    patient?: { name?: string | null } | null;
+    procedure?: string | null;
+    appointmentType?: string | null;
+    scheduledAt?: string | null;
+    createdAt?: string | null;
+    patientId?: number | null;
+    professional?: string | null;
+}
+
+interface CalendarLeadInput {
+    id: number;
+    name?: string | null;
+    status?: string | null;
+    scheduledAt?: string | null;
+    treatment?: string | null;
+    createdAt?: string | null;
+    professional?: string | null;
+}
+
+type ScheduledCalendarAppointment = CalendarAppointmentInput & { scheduledAt: string };
+type ScheduledCalendarLead = CalendarLeadInput & { scheduledAt: string };
+
+const hasScheduledAppointment = (item: CalendarAppointmentInput): item is ScheduledCalendarAppointment =>
+    typeof item.scheduledAt === "string" && !Number.isNaN(new Date(item.scheduledAt).getTime());
+
+const hasScheduledLead = (item: CalendarLeadInput): item is ScheduledCalendarLead =>
+    typeof item.scheduledAt === "string" && !Number.isNaN(new Date(item.scheduledAt).getTime());
+
+export const buildCalendarEntries = (
+    appointments: CalendarAppointmentInput[] = [],
+    leads: CalendarLeadInput[] = []
+): CalendarEntry[] => [
+    ...appointments.filter(hasScheduledAppointment).map((item) => ({
         kind: "appointment" as const,
         id: item.id,
         patientName: item.patientName || item.patient?.name || "Paciente sem nome",
@@ -30,7 +64,7 @@ export const buildCalendarEntries = (appointments: any[] = [], leads: any[] = []
         leadId: null,
         professional: item.professional || null
     })),
-    ...leads.filter((item) => item?.scheduledAt && item.status !== "completed" && !Number.isNaN(new Date(item.scheduledAt).getTime())).map((item) => ({
+    ...leads.filter((item) => item.status !== "completed" && hasScheduledLead(item)).map((item) => ({
         kind: "lead" as const,
         id: item.id,
         patientName: item.name || "Solicitação sem nome",
