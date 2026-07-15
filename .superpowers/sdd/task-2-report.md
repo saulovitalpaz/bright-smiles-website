@@ -1,28 +1,104 @@
-# Task 2 report: protect clinical media and repair document delivery
+# Task 2 — Relatório de implementação
 
-Status: complete
+## RED observado
 
-## Changes
+Com o teste criado e sem `odontogramModel.ts`, o primeiro comando foi:
 
-- Added `src/lib/media.ts` with:
-  - `assetDeliveryUrl()` to convert stable `bucket://...` references into encoded `/assets?reference=...` or `/clinical-assets?reference=...` API paths
-  - `mediaUrl()` to normalize absolute URLs, API-relative paths, and local `/images/...` assets
-  - `loadProtectedAsset()` to fetch authenticated clinical media through `fetchClient` and return blob URLs for rendering
-- Updated `PhotoGallery` to upload appointment photos with `scope=clinical`, persist `data.reference` instead of transient delivery URLs, keep a local preview map for newly uploaded files, and resolve persisted clinical references through `loadProtectedAsset()` with object URL cleanup.
-- Updated `EvolutionTimeline` to resolve expanded clinical photo references through the same helper and show per-image failure placeholders instead of breaking the full timeline.
-- Updated `AdminDocuments` to build patient-document links through `mediaUrl(...)`, keep upload auth on the existing protected endpoint, require PDFs client-side, and surface API error bodies on failed uploads.
-- Updated the patient-document history response to preserve legacy `pdfUrl` values when no private `storageKey` exists.
-- Added the Task 2 contract assertion covering clinical upload scope, legacy document fallback, and the clinical delivery route.
+```powershell
+npx vitest run src/components/admin/attendance/odontogram/odontogramModel.test.ts
+```
 
-## Verification
+Inicialmente o carregamento do config também encontrou a incompatibilidade de `__dirname` em um projeto ESM (`Access is denied` no subprocesso nativo do esbuild dentro do sandbox). Após repetir fora do sandbox e adaptar o config para ESM/Windows, o RED correto foi observado:
 
-- RED: `node --test server/test/file-scheduling-patient-contract.test.js` failed first on the new clinical upload / document fallback contract.
-- GREEN: `node --test server/test/file-scheduling-patient-contract.test.js` passed with 7/7 tests.
-- Final verification rerun:
-  - `node --test server/test/file-scheduling-patient-contract.test.js` passed with 7/7 tests.
-  - `npm run build` passed (`vite build`, 3292 modules transformed).
+```text
+Test Files  1 failed (1)
+Tests       no tests
+Error: Failed to resolve import "./odontogramModel"
+```
 
-## Concerns
+## GREEN
 
-- Clinical photos now render through fetched blob URLs, so they depend on a valid authenticated session at display time; failed private fetches fall back to inline placeholders.
-- The frontend build still reports the pre-existing large-chunk warning and stale Browserslist data warning; build exit code remains 0.
+Após a implementação mínima do modelo imutável, o mesmo comando passou:
+
+```text
+✓ src/components/admin/attendance/odontogram/odontogramModel.test.ts (4 tests)
+Test Files  1 passed (1)
+Tests       4 passed (4)
+```
+
+A verificação pós-commit repetiu a suite e confirmou novamente 1 arquivo e 4 testes aprovados.
+
+## Testes executados
+
+- `npx vitest run src/components/admin/attendance/odontogram/odontogramModel.test.ts` — RED correto antes do modelo; GREEN depois, 4/4.
+- `npm test` — executou o teste da Task 2 com 4/4, mas terminou com `Test Files 10 failed | 1 passed`; os arquivos que falharam são contratos `server/test` e cópias em `.worktrees`, fora do escopo e baseados em `node:test`, além de uma divergência de contrato de calendário fora desta task.
+- `git diff --cached --check` — sem erros antes do commit.
+
+## Arquivos alterados pelo commit
+
+- `package.json`
+- `package-lock.json`
+- `vitest.config.ts`
+- `src/test/setup.ts`
+- `src/components/admin/attendance/odontogram/odontogramModel.ts`
+- `src/components/admin/attendance/odontogram/odontogramModel.test.ts`
+
+## Auto-revisão
+
+- O modelo exporta `FaceKey`, `ToothFamily`, `ToothStatus`, `ToothData`, `getFaceLabels`, `getToothFamily`, `getTooth`, `updateToothFace` e `updateWholeTooth`.
+- As atualizações criam novos registros e preservam notas/faces existentes; o input não é mutado.
+- O teste cobre famílias FDI, rótulos clínicos e preservação de dados nas duas formas de atualização.
+- O config mantém o caminho/aliases do brief e usa `fileURLToPath(import.meta.url)` para tornar `__dirname` compatível com ESM no Node 22/Windows.
+- Apenas os seis arquivos da Task 2 foram staged/commitados; alterações e planos de terceiros foram preservados e o plano proibido não foi criado.
+
+## Commit
+
+`d8a46a35dc5e5883ca025bf93b32860ebc1720e4 test: add odontogram model coverage`
+
+## Revisão Important — correções da Task 2
+
+### Arquivos sob responsabilidade
+
+- `vitest.config.ts`
+- `src/components/admin/attendance/odontogram/odontogramModel.ts`
+- `src/components/admin/attendance/odontogram/odontogramModel.test.ts`
+- `.superpowers/sdd/task-2-report.md`
+
+### Achados corrigidos
+
+- Achado 1: `FaceStatus` agora é exatamente `"Saudável" | "Tratar" | "Tratado"`; `WholeToothStatus` é exatamente `"Saudável" | "Ausente" | "Implante" | "Ponte"`; `ToothStatus` permanece exportado como a união compatível. `ToothFaceData.status`, `ToothData.status`, `updateToothFace` e `updateWholeTooth` usam os contratos correspondentes. O teste adiciona asserções `expectTypeOf` para verificar esses contratos exatos; nenhuma constante de lista foi criada.
+- Achado 2: o Vitest agora inclui somente `src/**/*.test.{ts,tsx}`, mantendo o novo teste e ignorando `server/test` e `.worktrees`.
+
+### Testes executados
+
+Comando focado:
+
+```powershell
+npx vitest run src/components/admin/attendance/odontogram/odontogramModel.test.ts
+```
+
+Saída:
+
+```text
+Test Files  1 passed (1)
+Tests       5 passed (5)
+```
+
+Suite completa:
+
+```powershell
+npm test
+```
+
+Saída:
+
+```text
+Test Files  1 passed (1)
+Tests       5 passed (5)
+```
+
+### Commit
+
+`ad9bde5095bd8c9bdd7d2354ce25ba6d447f2a8e fix: separate odontogram clinical status contracts`
+
+O plano proibido `docs/superpowers/plans/2026-07-14-calendar-and-task-6-8.md` não foi alterado.
