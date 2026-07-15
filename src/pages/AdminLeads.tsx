@@ -155,13 +155,13 @@ const AdminLeads = () => {
                     const isSavingSchedule = updateStatusMutation.isPending && updateStatusMutation.variables?.id === lead.id;
 
                     return (
-                    <div key={lead.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="flex min-w-0 items-start gap-4">
-                            <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold bg-blue-100 text-blue-600">
+                    <div key={lead.id} className="admin-card flex min-w-0 flex-col items-start justify-between gap-4 p-4 sm:p-6 md:flex-row md:items-center">
+                        <div className="flex w-full min-w-0 items-start gap-3 sm:gap-4 md:flex-1">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-600">
                                 {lead.name.charAt(0).toUpperCase()}
                             </div>
-                            <div className="min-w-0">
-                                <h3 className="font-bold text-slate-900">{lead.name}</h3>
+                            <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                                <h3 className="break-words font-bold text-slate-900">{lead.name}</h3>
                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                     <span className="flex items-center gap-1 text-xs text-slate-500">
                                         <Clock size={14} />
@@ -175,9 +175,9 @@ const AdminLeads = () => {
                                     Agendado para {formatDateTime(lead.scheduledAt)}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                                    <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                                        <Mail size={12} />
-                                        {lead.email || "Sem e-mail"}
+                                    <span className="flex max-w-full min-w-0 items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                                        <Mail className="shrink-0" size={12} />
+                                        <span className="min-w-0 break-words [overflow-wrap:anywhere]">{lead.email || "Sem e-mail"}</span>
                                     </span>
                                     {lead.ageGroup && (
                                         <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold uppercase">
@@ -188,17 +188,17 @@ const AdminLeads = () => {
                                         Origem: {lead.source || "Site"}
                                     </span>
                                 </div>
-                                <div className="text-sm text-slate-600 mt-2">
-                                    <p><strong>Tratamento:</strong> {lead.treatment || "Geral"}</p>
-                                    <p><strong>Mensagem:</strong> {lead.message}</p>
+                                <div className="mt-2 min-w-0 text-sm text-slate-600 [overflow-wrap:anywhere]">
+                                    <p className="break-words"><strong>Tratamento:</strong> {lead.treatment || "Geral"}</p>
+                                    <p className="break-words"><strong>Mensagem:</strong> {lead.message}</p>
                                 </div>
                             </div>
                         </div>
 
-                            <div className="flex w-full flex-wrap gap-3 items-start md:w-auto md:items-center">
-                            <div className="flex flex-col text-sm md:text-right">
+                            <div className="flex w-full min-w-0 flex-wrap items-start gap-3 md:w-auto md:max-w-[520px] md:items-center md:justify-end">
+                            <div className="flex min-w-0 flex-col text-sm md:text-right">
                                 <span className="text-slate-400 text-xs">Telefone</span>
-                                <span className="font-medium text-slate-700">{lead.phone}</span>
+                                <span className="break-words font-medium text-slate-700 [overflow-wrap:anywhere]">{lead.phone}</span>
                             </div>
 
                             <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:min-w-[240px]">
@@ -209,14 +209,14 @@ const AdminLeads = () => {
                                     type="datetime-local"
                                     value={effectiveScheduledInputs[lead.id] ?? ""}
                                     onChange={(event) => handleScheduleChange(lead.id, event.target.value)}
-                                    className="h-9 rounded-md border border-slate-200 px-3 text-sm text-slate-700"
+                                    className="h-9 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm text-slate-700"
                                 />
                                 {leadErrors[lead.id] && (
                                     <p className="text-xs text-red-500">{leadErrors[lead.id]}</p>
                                 )}
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex w-full min-w-0 flex-wrap gap-2 md:justify-end">
                                 <Button size="sm" variant="outline" className="gap-2 h-9 border-slate-200" onClick={() => handleWhatsApp(lead.phone)}>
                                     <Phone size={16} /> WhatsApp
                                 </Button>

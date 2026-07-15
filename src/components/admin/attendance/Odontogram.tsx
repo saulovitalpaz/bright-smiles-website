@@ -159,7 +159,7 @@ const FrontalTooth = ({
   const paths = FRONTAL[pathKey] || FRONTAL.INCISOR;
 
   const crownFill = STATUS_COLORS[status]?.fill ?? 'url(#grad-enamel)';
-  const size = large ? 'w-36 h-56' : 'w-8 h-14';
+  const size = large ? 'w-36 h-56' : 'aspect-[6/13] h-auto w-full max-w-8';
 
   if (status === 'Implante') {
     return (
@@ -230,7 +230,7 @@ const OcclusalTooth = ({
   const status = data.status || 'Saudável';
   const type = getType(toothNumber);
   const paths = OCCLUSAL[type] || OCCLUSAL.INCISOR;
-  const size = large ? 'w-36 h-36' : 'w-9 h-9';
+  const size = large ? 'w-36 h-36' : 'aspect-square h-auto w-full max-w-9';
 
   const overrideAll = ['Ausente', 'Implante', 'Ponte'].includes(status);
 
@@ -264,7 +264,7 @@ const OcclusalTooth = ({
           strokeWidth={large ? "1.5" : "2.5"}
           strokeLinejoin="round"
           className="transition-all hover:brightness-125 cursor-pointer"
-          onClick={(e) => { e.stopPropagation(); onClick?.(face); }}
+          onClick={onClick ? (e) => { e.stopPropagation(); onClick(face); } : undefined}
         />
       ))}
     </svg>
@@ -302,14 +302,15 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
   );
 
   const TeethRow = ({ teeth, upper }: { teeth: number[]; upper: boolean }) => (
-    <div className="flex justify-center gap-0.5 md:gap-1 flex-nowrap">
+    <div className="odontogram-grid">
       {teeth.map(n => {
         const td = get(n);
         return (
-          <div key={n} className="flex flex-col items-center gap-0.5 group">
+          <div key={n} className="group flex min-w-0 flex-col items-center gap-0.5">
             <span className="text-[9px] md:text-[10px] text-slate-500 group-hover:text-slate-300 transition-colors font-mono">{n}</span>
             <button
-              className="relative flex items-center justify-center"
+              type="button"
+              className="relative flex min-h-11 w-full min-w-0 touch-manipulation items-center justify-center"
               onClick={() => !readOnly && (setSelected(n), setActiveFace(null))}
               disabled={readOnly}
               title={`Dente ${n} — ${td.status}`}
@@ -328,29 +329,34 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
   );
 
   const OcclusalRow = ({ teeth }: { teeth: number[] }) => (
-    <div className="flex justify-center gap-0.5 md:gap-1 flex-nowrap">
+    <div className="odontogram-grid">
       {teeth.map(n => (
-        <OcclusalTooth
+        <button
           key={n}
-          toothNumber={n}
-          data={get(n)}
+          type="button"
+          className="flex min-h-11 min-w-0 touch-manipulation items-center justify-center"
           onClick={() => !readOnly && (setSelected(n), setActiveFace(null))}
-        />
+          disabled={readOnly}
+          title={`Dente ${n} — ${get(n).status}`}
+          aria-label={`Selecionar dente ${n}, condição ${get(n).status}`}
+        >
+          <OcclusalTooth toothNumber={n} data={get(n)} />
+        </button>
       ))}
     </div>
   );
 
   return (
-    <Card className="border-slate-800 bg-[#0a1120] text-slate-200 shadow-2xl overflow-hidden">
-      <CardHeader className="border-b border-slate-800/70 pb-4 bg-gradient-to-r from-[#0f172a] to-[#0a1120]">
+    <Card className="odontogram-card overflow-hidden border-slate-800 bg-[#0a1120] text-slate-200 shadow-2xl">
+      <CardHeader className="border-b border-slate-800/70 bg-gradient-to-r from-[#0f172a] to-[#0a1120] p-4 pb-4 sm:p-6 sm:pb-4">
         <CardTitle className="text-xl font-serif tracking-wide text-white">Odontograma</CardTitle>
         <CardDescription className="text-slate-400 text-sm">
           Vista frontal (raízes) e oclusal (faces) interativas por dente.
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="admin-scroll-region p-4 md:p-6">
-        <div className="min-w-[680px] flex flex-col gap-3">
+      <CardContent className="min-w-0 touch-pan-y overflow-x-hidden p-2 min-[360px]:p-3 sm:p-6">
+        <div className="flex w-full min-w-0 flex-col gap-3">
 
           {/* ── UPPER ARCH ── */}
           <p className="text-center text-[10px] font-bold text-slate-500 uppercase tracking-[0.25em]">Arcada Superior</p>
@@ -371,7 +377,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
         </div>
 
         {/* ── LEGEND ── */}
-        <div className="mt-8 flex flex-wrap gap-3 items-center justify-center p-4 rounded-xl border border-slate-800 bg-[#0f172a]">
+        <div className="mt-8 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Legenda:</span>
           {STATUSES.map(s => (
             <div key={s} className="flex items-center gap-1.5 text-[11px] text-slate-300">
@@ -418,7 +424,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
 
       {/* ── DETAIL MODAL ── */}
       <Dialog open={selected !== null} onOpenChange={open => !open && setSelected(null)}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#0a1120] border-slate-800 text-slate-200">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] overscroll-y-contain overflow-y-auto border-slate-800 bg-[#0a1120] text-slate-200">
           <DialogHeader>
             <DialogTitle className="text-lg text-white font-serif">Dente {selected}</DialogTitle>
           </DialogHeader>
@@ -428,12 +434,12 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
             return (
               <div className="flex flex-col gap-5 pt-1">
                 {/* Dual view */}
-                <div className="flex items-center justify-around bg-[#0f172a] rounded-xl border border-slate-800 p-6">
+                <div className="grid min-w-0 grid-cols-1 items-center justify-items-center gap-6 rounded-xl border border-slate-800 bg-[#0f172a] p-4 sm:grid-cols-[1fr_auto_1fr] sm:p-6">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-[9px] uppercase text-slate-500 tracking-wider">Vista Frontal</span>
                     <FrontalTooth toothNumber={selected} data={td} large />
                   </div>
-                  <div className="w-px h-40 bg-slate-800" />
+                  <div className="hidden h-40 w-px bg-slate-800 sm:block" />
                   <div className="flex flex-col items-center gap-2 relative">
                     <span className="text-[9px] uppercase text-slate-500 tracking-wider">Vista Oclusal</span>
                     <div className="relative">

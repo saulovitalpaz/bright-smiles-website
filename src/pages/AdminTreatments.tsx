@@ -219,12 +219,12 @@ const AdminTreatments = () => {
     return (
         <AdminLayout title="Gerenciar Tratamentos">
             <div className="space-y-6">
-                <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <div>
+                <div className="admin-card flex min-w-0 flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
+                    <div className="min-w-0 [overflow-wrap:anywhere]">
                         <h2 className="text-lg font-bold text-slate-800">Seus Tratamentos</h2>
                         <p className="text-slate-500 text-sm">Gerencie os procedimentos e seus resultados</p>
                     </div>
-                    <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2 bg-primary hover:bg-primary/90">
+                    <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="w-full gap-2 bg-primary hover:bg-primary/90 sm:w-auto">
                         <Plus size={18} /> Novo Tratamento
                     </Button>
                 </div>

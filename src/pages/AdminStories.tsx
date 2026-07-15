@@ -147,7 +147,7 @@ const AdminStories = () => {
 
                 {/* active stories */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="admin-card overflow-hidden">
                         <div className="p-6 border-b border-slate-50 flex justify-between items-center">
                             <h3 className="font-serif font-bold text-xl">Stories Ativos</h3>
                             <div className="flex items-center gap-2">

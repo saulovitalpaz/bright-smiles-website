@@ -73,17 +73,17 @@ const AdminUsers = () => {
         <AdminLayout title="Gerenciar Equipe">
             <div className="space-y-6 max-w-6xl mx-auto">
                 
-                <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="flex items-center gap-3">
+                <div className="admin-card flex min-w-0 flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 items-center gap-3">
                         <div className="p-3 bg-primary/10 rounded-lg text-primary">
                             <Users size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0 [overflow-wrap:anywhere]">
                             <h2 className="text-lg font-bold text-slate-900">Membros da Equipe</h2>
                             <p className="text-sm text-slate-500">Gerencie acessos ao sistema e cadastre profissionais.</p>
                         </div>
                     </div>
-                    <Button onClick={() => setIsCreating(!isCreating)} className="gap-2 bg-primary hover:bg-primary/90">
+                    <Button onClick={() => setIsCreating(!isCreating)} className="w-full gap-2 bg-primary hover:bg-primary/90 sm:w-auto">
                         {isCreating ? 'Cancelar' : <><UserPlus size={18} /> Novo Usuário</>}
                     </Button>
                 </div>

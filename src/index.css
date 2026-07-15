@@ -218,6 +218,9 @@
   }
 
   .admin-card {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     border: 1px solid hsl(30 18% 86% / .9);
     border-radius: 1rem;
     background: hsl(30 35% 99%);
@@ -233,6 +236,35 @@
 
   .admin-shell [data-admin-card] {
     @apply admin-card;
+  }
+
+  .admin-shell :where(.admin-card, [data-admin-card]) > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .odontogram-card {
+    container-type: inline-size;
+  }
+
+  .odontogram-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: .25rem;
+    row-gap: .75rem;
+  }
+
+  @container (min-width: 420px) {
+    .odontogram-grid {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 820px) {
+    .odontogram-grid {
+      grid-template-columns: repeat(16, minmax(0, 1fr));
+    }
   }
 
   .admin-shell :where(button, a, input, select, textarea):focus-visible {
