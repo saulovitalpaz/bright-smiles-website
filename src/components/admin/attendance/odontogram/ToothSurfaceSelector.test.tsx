@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
@@ -91,7 +92,7 @@ describe("ToothSurfaceSelector", () => {
   });
 
   it("uses a hatch pattern for a face marked to treat", () => {
-    const { container } = render(
+    render(
       <ToothSurfaceSelector
         toothNumber={16}
         data={{ status: "Saudável", notes: "", faces: { center: { status: "Tratar" } } }}
@@ -100,8 +101,102 @@ describe("ToothSurfaceSelector", () => {
       />,
     );
 
-    const treatedFace = container.querySelector('[data-surface-face="center"] path');
-    expect(treatedFace).not.toBeNull();
-    expect(treatedFace?.getAttribute("style")).toMatch(/^fill: url\(#surface-hatch-/);
+    const control = screen.getByRole("button", { name: /oclusal.*tratar/i });
+    const hatch = control.querySelector("pattern");
+    const treatedFace = control.querySelector(".surface-selector__button-face");
+
+    expect(hatch).toBeInTheDocument();
+    expect(treatedFace).toHaveAttribute("fill", `url(#${hatch?.id})`);
+  });
+
+  it("renders a treated inset inside the treated face button", () => {
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "", faces: { center: { status: "Tratado" } } }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+      />,
+    );
+
+    const control = screen.getByRole("button", { name: /oclusal.*tratado/i });
+    const inset = control.querySelector(".surface-selector__treated-inset");
+
+    expect(inset).toBeInTheDocument();
+    expect(inset).toHaveAttribute("d", ANATOMICAL_GEOMETRY.molar.occlusal.faces.center);
+  });
+
+  it("renders a selected ring inside the selected face button", () => {
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace="center"
+        onSelectFace={() => undefined}
+      />,
+    );
+
+    const control = screen.getByRole("button", { name: /oclusal.*saudável/i });
+    const ring = control.querySelector(".surface-selector__selected-ring");
+
+    expect(ring).toBeInTheDocument();
+    expect(ring).toHaveAttribute("d", ANATOMICAL_GEOMETRY.molar.occlusal.faces.center);
+  });
+
+  it("uses the anatomical path inside every face button", () => {
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+      />,
+    );
+
+    const control = screen.getByRole("button", { name: /oclusal.*saudável/i });
+    expect(control.querySelector(".surface-selector__button-face"))
+      .toHaveAttribute("d", ANATOMICAL_GEOMETRY.molar.occlusal.faces.center);
+  });
+
+  it("selects the focused face with Enter and Space", async () => {
+    const user = userEvent.setup();
+    const onSelectFace = vi.fn();
+
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={onSelectFace}
+      />,
+    );
+
+    const control = screen.getByRole("button", { name: /oclusal.*saudável/i });
+    control.focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+
+    expect(onSelectFace).toHaveBeenNthCalledWith(1, "center");
+    expect(onSelectFace).toHaveBeenNthCalledWith(2, "center");
+  });
+
+  it("keeps the base in its own fallback row before the fluid control grid", () => {
+    const { container } = render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+      />,
+    );
+
+    const wrapper = screen.getByTestId("tooth-surface-selector-container");
+    const selector = screen.getByTestId("tooth-surface-selector");
+    const base = selector.querySelector(".surface-selector__base");
+    const firstControl = screen.getAllByRole("button")[0];
+
+    expect(wrapper).toHaveClass("tooth-surface-selector__container");
+    expect(selector).toHaveClass("tooth-surface-selector");
+    expect(base?.compareDocumentPosition(firstControl)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
