@@ -1,14 +1,16 @@
 export const FACE_KEYS = ["top", "right", "bottom", "left", "center"] as const;
 export type FaceKey = (typeof FACE_KEYS)[number];
 export type ToothFamily = "incisor" | "canine" | "premolar" | "molar";
-export type ToothStatus = "Saudável" | "Tratar" | "Tratado" | "Ausente" | "Implante" | "Ponte";
+export type FaceStatus = "Saudável" | "Tratar" | "Tratado";
+export type WholeToothStatus = "Saudável" | "Ausente" | "Implante" | "Ponte";
+export type ToothStatus = FaceStatus | WholeToothStatus;
 
 export interface ToothFaceData {
-  status: string;
+  status: FaceStatus;
 }
 
 export interface ToothData {
-  status: string;
+  status: WholeToothStatus;
   notes: string;
   faces?: Partial<Record<FaceKey, ToothFaceData>>;
 }
@@ -45,7 +47,7 @@ export function updateToothFace(
   data: Record<string, ToothData>,
   toothNumber: number,
   face: FaceKey,
-  status: ToothStatus,
+  status: FaceStatus,
 ): Record<string, ToothData> {
   const current = getTooth(data, toothNumber);
   return {
@@ -60,7 +62,7 @@ export function updateToothFace(
 export function updateWholeTooth(
   data: Record<string, ToothData>,
   toothNumber: number,
-  status: ToothStatus,
+  status: WholeToothStatus,
 ): Record<string, ToothData> {
   return {
     ...data,

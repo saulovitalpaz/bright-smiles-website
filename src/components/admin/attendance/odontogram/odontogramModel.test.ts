@@ -1,13 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   getFaceLabels,
   getToothFamily,
   updateToothFace,
   updateWholeTooth,
+  type FaceStatus,
+  type ToothFaceData,
+  type ToothStatus,
+  type WholeToothStatus,
   type ToothData,
 } from "./odontogramModel";
 
 describe("odontogramModel", () => {
+  it("keeps face and whole-tooth status contracts distinct", () => {
+    expectTypeOf<ToothFaceData["status"]>().toEqualTypeOf<FaceStatus>();
+    expectTypeOf<ToothData["status"]>().toEqualTypeOf<WholeToothStatus>();
+    expectTypeOf<Parameters<typeof updateToothFace>[3]>().toEqualTypeOf<FaceStatus>();
+    expectTypeOf<Parameters<typeof updateWholeTooth>[2]>().toEqualTypeOf<WholeToothStatus>();
+    expectTypeOf<ToothStatus>().toEqualTypeOf<FaceStatus | WholeToothStatus>();
+  });
+
   it("maps FDI numbers to anatomical families", () => {
     expect(getToothFamily(11)).toBe("incisor");
     expect(getToothFamily(13)).toBe("canine");
