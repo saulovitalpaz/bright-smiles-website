@@ -193,7 +193,7 @@ const AdminPersonalFinance = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
-                    <Card className="border-slate-200 shadow-lg sticky top-24">
+                    <Card className="border-slate-200 shadow-lg lg:sticky lg:top-24">
                         <CardHeader className="bg-slate-50/50 border-b border-slate-100">
                             <CardTitle className="text-lg font-serif">Lançamento de Caixa</CardTitle>
                             <CardDescription className="text-xs">Gestão de gastos e recebimentos pessoais.</CardDescription>
@@ -305,7 +305,7 @@ const AdminPersonalFinance = () => {
 
                 <div className="lg:col-span-2">
                     <Card className="border-slate-200 shadow-sm min-h-[600px]">
-                        <CardHeader className="flex flex-row items-center justify-between bg-white border-b border-slate-100">
+                        <CardHeader className="flex flex-col gap-3 bg-white border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <CardTitle className="text-xl font-serif">Fluxo de Caixa Histórico</CardTitle>
                                 <CardDescription className="text-xs">Listagem detalhada de movimentações.</CardDescription>

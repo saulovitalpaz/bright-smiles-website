@@ -185,8 +185,36 @@
   .admin-shell {
     --admin-sidebar-expanded: 248px;
     --admin-sidebar-collapsed: 76px;
-    --admin-topbar-mobile: 64px;
+    --admin-topbar-mobile: 56px;
+    --admin-gutter: 1rem;
     background: hsl(32 28% 96%);
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .admin-content {
+    min-width: 0;
+    width: 100%;
+    padding-inline: var(--admin-gutter);
+  }
+
+  .admin-scroll-region {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (min-width: 640px) {
+    .admin-shell {
+      --admin-gutter: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .admin-shell {
+      --admin-gutter: 2rem;
+    }
   }
 
   .admin-card {

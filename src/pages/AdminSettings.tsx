@@ -200,7 +200,7 @@ const AdminSettings = () => {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end gap-3 sticky bottom-0 bg-slate-50/80 backdrop-blur-sm p-4 border-t">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:sticky sm:bottom-0 bg-slate-50/80 backdrop-blur-sm p-4 border-t">
                     <Button
                         variant="default"
                         size="lg"

@@ -224,7 +224,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                                             {app.photos.length > 0 && (
                                                 <div className="space-y-2">
                                                     <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registros Fotográficos</h5>
-                                                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                                    <div className="admin-scroll-region flex gap-2 pb-2 scrollbar-hide">
                                                         {app.photos.map((photo, i) => {
                                                             const resolvedPhoto = resolvedPhotos[photo];
                                                             const photoError = photoErrors[photo];

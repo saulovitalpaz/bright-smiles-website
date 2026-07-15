@@ -159,7 +159,8 @@ const AdminStories = () => {
                                 </Button>
                             </div>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div>
+                            <div className="hidden overflow-x-auto lg:block">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 text-slate-500 uppercase text-xs font-bold tracking-wider">
@@ -219,6 +220,22 @@ const AdminStories = () => {
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
+                            <div className="space-y-3 p-4 lg:hidden">
+                                {stories?.map((story) => (
+                                    <article key={`mobile-${story.id}`} className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
+                                            {story.type === 'video' ? <video src={mediaUrl(story.url) || undefined} className="h-full w-full object-cover" /> : <img src={mediaUrl(story.url) || undefined} alt="Story" className="h-full w-full object-cover" />}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="break-words font-semibold text-slate-900">{story.title}</p>
+                                            <p className="mt-1 text-xs text-slate-500">{story.date} · {story.views} visualizações</p>
+                                            <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-bold uppercase ${story.status === "active" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>{story.status === "active" ? "Ativo" : "Expirado"}</span>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-slate-400 hover:text-red-500" aria-label={`Excluir ${story.title}`} onClick={() => deleteMutation.mutate(story.id)} disabled={deleteMutation.isPending}><Trash2 size={16} /></Button>
+                                    </article>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

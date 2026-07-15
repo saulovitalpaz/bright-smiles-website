@@ -136,13 +136,15 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     return (
         <div className="admin-shell min-h-screen bg-background">
             {/* Mobile Header Toggle (Visible only on mobile) */}
-            <div className="admin-mobile-bar no-print lg:hidden fixed inset-x-0 top-0 z-20 h-[var(--admin-topbar-mobile)] px-4 flex items-center">
+            <div className="admin-mobile-bar no-print lg:hidden relative z-20 flex h-[var(--admin-topbar-mobile)] items-center px-4">
                 <Button
                     size="icon"
                     variant="outline"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     className="h-11 w-11 bg-white shadow-md border-slate-200 text-slate-700"
                     aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+                    aria-expanded={isMobileMenuOpen}
+                    aria-controls="admin-navigation"
                 >
                     <Menu size={20} />
                 </Button>
@@ -157,7 +159,12 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             )}
 
             {/* Sidebar - Always fixed position */}
-            <aside className={`admin-sidebar
+            <aside
+                id="admin-navigation"
+                aria-label="Navegação administrativa"
+                role={isMobileMenuOpen ? "dialog" : undefined}
+                aria-modal={isMobileMenuOpen ? true : undefined}
+                className={`admin-sidebar
                 fixed inset-y-0 left-0 z-40 bg-[hsl(30,15%,10%)] text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-[hsl(30,10%,15%)] no-print
                 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
                 lg:translate-x-0 h-screen flex flex-col
@@ -262,13 +269,14 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             </aside>
 
             {/* Main Content - offset by sidebar width on desktop */}
-            <main className={`admin-main min-h-screen bg-background flex flex-col transition-all duration-300 overflow-x-hidden pt-[var(--admin-topbar-mobile)] lg:pt-0
+            <main className={`admin-main min-h-screen min-w-0 bg-background flex flex-col transition-all duration-300 overflow-x-hidden
                 ${isCollapsed ? "lg:ml-[var(--admin-sidebar-collapsed)]" : "lg:ml-[var(--admin-sidebar-expanded)]"}
                 ml-0
             `}>
-                <header className="no-print sticky top-0 bg-background/80 backdrop-blur-md z-10 px-4 md:px-8 py-4 md:py-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200">
-                    <div className="flex flex-col">
-                        <h1 className="text-xl md:text-3xl font-serif font-black text-slate-900 tracking-tight leading-none uppercase truncate max-w-[200px] md:max-w-none">{title}</h1>
+                <header className="no-print border-b border-slate-200 bg-background/95 px-0 py-4 backdrop-blur-md sm:py-5 lg:sticky lg:top-0 lg:z-10">
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="break-words text-xl md:text-3xl font-serif font-black text-slate-900 tracking-tight leading-tight uppercase">{title}</h1>
                         <div className="hidden md:flex items-center gap-2 mt-2">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
@@ -285,9 +293,10 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                             <p className="text-[8px] text-primary font-bold uppercase tracking-widest mt-0.5">{currentUser.cro}</p>
                         </div>
                     </div>
+                    </div>
                 </header>
 
-                <div className="admin-content flex-1 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
+                <div className="admin-content flex-1 py-4 md:py-8 animate-in fade-in slide-in-from-bottom-2 duration-500 overflow-x-hidden">
                     {children}
                 </div>
             </main>
