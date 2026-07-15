@@ -84,7 +84,7 @@ describe("AnatomicalTooth", () => {
       </>,
     );
 
-    const ids = Array.from(document.querySelectorAll("linearGradient, clipPath"))
+    const ids = Array.from(document.querySelectorAll("linearGradient, radialGradient, clipPath"))
       .map((definition) => definition.id);
     expect(ids.every((id) => id.startsWith("tooth-16-"))).toBe(true);
     expect(new Set(ids).size).toBe(ids.length);
