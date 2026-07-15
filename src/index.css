@@ -255,6 +255,29 @@
     row-gap: .75rem;
   }
 
+  .anatomical-tooth {
+    display: block;
+    overflow: visible;
+    filter: drop-shadow(0 2px 2px hsl(30 30% 18% / .18));
+    transition: filter 160ms ease, transform 160ms ease;
+  }
+
+  .anatomical-tooth--arch {
+    width: 100%;
+    height: auto;
+    max-height: 6rem;
+  }
+
+  .anatomical-tooth--editor {
+    width: min(9rem, 100%);
+    height: auto;
+  }
+
+  .anatomical-tooth[data-selected] {
+    filter: drop-shadow(0 0 5px hsl(var(--gold) / .7));
+    transform: translateY(-1px);
+  }
+
   @container (min-width: 420px) {
     .odontogram-grid {
       grid-template-columns: repeat(8, minmax(0, 1fr));
