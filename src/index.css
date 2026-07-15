@@ -345,6 +345,154 @@
   }
 }
 
+.tooth-surface-selector {
+  position: relative;
+  isolation: isolate;
+  inline-size: min(10.5rem, 100%);
+  min-inline-size: min(8.25rem, 100%);
+  aspect-ratio: 1;
+  margin-inline: auto;
+}
+
+.surface-selector__base {
+  position: absolute;
+  z-index: 0;
+  inset: 18%;
+  inline-size: 64%;
+  block-size: 64%;
+  overflow: visible;
+}
+
+.surface-selector__outline {
+  fill: #fffdf6;
+  stroke: #766b59;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+}
+
+.surface-selector__base-face {
+  stroke: #a49783;
+  stroke-linejoin: round;
+  stroke-width: 0.72;
+}
+
+.surface-selector__face--healthy {
+  fill: #f7f0dc;
+}
+
+.surface-selector__face--treat {
+  fill: #fce8e6;
+  stroke: #b42318;
+  stroke-width: 1.05;
+}
+
+.surface-selector__face--treated {
+  fill: #d9eff3;
+  stroke: #0e7490;
+  stroke-width: 2.4;
+}
+
+.surface-selector__treated-inset {
+  fill: none;
+  pointer-events: none;
+  stroke: #fff;
+  stroke-linejoin: round;
+  stroke-width: 0.85;
+}
+
+.surface-selector__selected-ring {
+  fill: none;
+  pointer-events: none;
+  stroke: #0f4c81;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.surface-selector__grooves {
+  fill: none;
+  pointer-events: none;
+  stroke: #806f58;
+  stroke-linecap: round;
+  stroke-width: 0.9;
+}
+
+.surface-selector__control {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  inline-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  block-size: 2.75rem;
+  min-block-size: 2.75rem;
+  place-items: center;
+  margin: 0;
+  padding: 0.2rem;
+  touch-action: manipulation;
+  color: #0f4c81;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.surface-selector__control svg {
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+}
+
+.surface-selector__control path {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: 1;
+}
+
+.surface-selector__control--top {
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
+
+.surface-selector__control--right {
+  inset-block-start: 50%;
+  inset-inline-end: 0;
+  transform: translateY(-50%);
+}
+
+.surface-selector__control--bottom {
+  inset-block-end: 0;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
+
+.surface-selector__control--left {
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+  transform: translateY(-50%);
+}
+
+.surface-selector__control--center {
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.surface-selector__control--selected {
+  background: color-mix(in srgb, #0f4c81 12%, transparent);
+  border-color: #0f4c81;
+}
+
+.surface-selector__control:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+.surface-selector__control:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
 @media print {
   @page {
     size: A4;
