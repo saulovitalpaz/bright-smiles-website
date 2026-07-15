@@ -349,7 +349,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="p-4 md:p-6 overflow-x-auto">
+      <CardContent className="admin-scroll-region p-4 md:p-6">
         <div className="min-w-[680px] flex flex-col gap-3">
 
           {/* ── UPPER ARCH ── */}
@@ -418,7 +418,7 @@ const Odontogram: React.FC<OdontogramProps> = ({ data = {}, onChange, readOnly =
 
       {/* ── DETAIL MODAL ── */}
       <Dialog open={selected !== null} onOpenChange={open => !open && setSelected(null)}>
-        <DialogContent className="sm:max-w-[520px] bg-[#0a1120] border-slate-800 text-slate-200">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#0a1120] border-slate-800 text-slate-200">
           <DialogHeader>
             <DialogTitle className="text-lg text-white font-serif">Dente {selected}</DialogTitle>
           </DialogHeader>

@@ -46,6 +46,7 @@ const AdminFinance = () => {
     const [filterByMonth, setFilterByMonth] = useState(new Date().getMonth() + 1);
     const [filterByYear, setFilterByYear] = useState(new Date().getFullYear());
     const [printMode, setPrintMode] = useState<PrintMode>("compact");
+    const [transactionTypeFilter, setTransactionTypeFilter] = useState<"income" | "expense" | null>(null);
 
     // New Transaction Form State
     const [newDesc, setNewDesc] = useState("");
@@ -57,6 +58,7 @@ const AdminFinance = () => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        setTransactionTypeFilter(null);
         fetchTransactions();
     }, [filterByMonth, filterByYear]);
 
@@ -186,11 +188,42 @@ const AdminFinance = () => {
         toast.success("Relatório CSV gerado!");
     };
 
+    const toggleTransactionTypeFilter = (type: "income" | "expense") => {
+        setTransactionTypeFilter((current) => current === type ? null : type);
+    };
+
+    const resetTransactionTypeFilter = () => setTransactionTypeFilter(null);
+
+    const displayedTransactions = transactionTypeFilter
+        ? transactions.filter((transaction) => transaction.type === transactionTypeFilter)
+        : transactions;
+
+    const activeFilterLabel = transactionTypeFilter === "income"
+        ? "Receitas"
+        : transactionTypeFilter === "expense"
+            ? "Despesas"
+            : null;
+
+    const handleFilterCardKeyDown = (event: React.KeyboardEvent, action: () => void) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            action();
+        }
+    };
+
     return (
         <AdminLayout title="Gestão Financeira">
-            <div className={printDocumentClass(printMode)}>
-            <div className="no-print grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <Card className="border-slate-100 shadow-sm overflow-hidden">
+            <div className={`${printDocumentClass(printMode)} flex flex-col`}>
+            <div className="no-print order-3 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 mb-8 lg:order-1">
+                <Card
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Filtrar fluxo de caixa por receitas"
+                    aria-pressed={transactionTypeFilter === "income"}
+                    onClick={() => toggleTransactionTypeFilter("income")}
+                    onKeyDown={(event) => handleFilterCardKeyDown(event, () => toggleTransactionTypeFilter("income"))}
+                    className={`cursor-pointer border-slate-100 shadow-sm overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${transactionTypeFilter === "income" ? "border-emerald-400 ring-2 ring-emerald-100" : ""}`}
+                >
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600">
@@ -205,7 +238,15 @@ const AdminFinance = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border-slate-100 shadow-sm overflow-hidden">
+                <Card
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Filtrar fluxo de caixa por despesas"
+                    aria-pressed={transactionTypeFilter === "expense"}
+                    onClick={() => toggleTransactionTypeFilter("expense")}
+                    onKeyDown={(event) => handleFilterCardKeyDown(event, () => toggleTransactionTypeFilter("expense"))}
+                    className={`cursor-pointer border-slate-100 shadow-sm overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${transactionTypeFilter === "expense" ? "border-rose-400 ring-2 ring-rose-100" : ""}`}
+                >
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div className="bg-rose-50 p-3 rounded-xl text-rose-600">
@@ -218,7 +259,15 @@ const AdminFinance = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="border-primary/10 shadow-md bg-white border-2">
+                <Card
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Mostrar todas as movimentações do período"
+                    aria-pressed={transactionTypeFilter === null}
+                    onClick={resetTransactionTypeFilter}
+                    onKeyDown={(event) => handleFilterCardKeyDown(event, resetTransactionTypeFilter)}
+                    className={`cursor-pointer border-primary/10 shadow-md bg-white border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${transactionTypeFilter === null ? "ring-2 ring-primary/20" : ""}`}
+                >
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div className="bg-primary/10 p-3 rounded-xl text-primary">
@@ -233,47 +282,8 @@ const AdminFinance = () => {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="no-print lg:col-span-1 space-y-6">
-                    {/* Month Selector */}
-                    <Card className="border-slate-200 shadow-sm">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-serif">Navegação Histórica</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex gap-4">
-                                <div className="flex-1 space-y-2">
-                                    <Label className="text-xs uppercase text-slate-500 font-bold">Mês</Label>
-                                    <Select value={filterByMonth.toString()} onValueChange={(v) => setFilterByMonth(parseInt(v))}>
-                                        <SelectTrigger className="bg-slate-50 border-slate-100">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Array.from({ length: 12 }, (_, i) => (
-                                                <SelectItem key={i + 1} value={(i + 1).toString()}>
-                                                    {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex-1 space-y-2">
-                                    <Label className="text-xs uppercase text-slate-500 font-bold">Ano</Label>
-                                    <Select value={filterByYear.toString()} onValueChange={(v) => setFilterByYear(parseInt(v))}>
-                                        <SelectTrigger className="bg-slate-50 border-slate-100">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {[2024, 2025, 2026].map(year => (
-                                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
+            <div className="order-2 grid grid-cols-1 gap-6 lg:order-2 lg:grid-cols-3 lg:gap-8">
+                <div className="no-print order-2 space-y-6 lg:order-1 lg:col-span-1">
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Nova Transação</CardTitle>
@@ -420,14 +430,49 @@ const AdminFinance = () => {
                     </Card>
                 </div>
 
-                <div className="print-report lg:col-span-2">
+                <div className="print-report order-1 lg:order-2 lg:col-span-2">
                     <Card className="border-slate-200 shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle className="text-xl font-serif">Fluxo de Caixa - {new Date(filterByYear, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle>
-                                <CardDescription>Histórico de movimentações financeiras.</CardDescription>
+                        <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                                <CardTitle className="text-xl font-serif break-words">Fluxo de Caixa - {new Date(filterByYear, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle>
+                                <CardDescription>Histórico de movimentações financeiras{activeFilterLabel ? ` · ${activeFilterLabel}` : ""}.</CardDescription>
+                                <div className="grid grid-cols-2 gap-3 pt-4 sm:max-w-sm">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Mês</Label>
+                                        <Select value={filterByMonth.toString()} onValueChange={(value) => setFilterByMonth(parseInt(value))}>
+                                            <SelectTrigger className="h-11 bg-slate-50 border-slate-100">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Array.from({ length: 12 }, (_, index) => (
+                                                    <SelectItem key={index + 1} value={(index + 1).toString()}>
+                                                        {new Date(0, index).toLocaleString('pt-BR', { month: 'long' })}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Ano</Label>
+                                        <Select value={filterByYear.toString()} onValueChange={(value) => setFilterByYear(parseInt(value))}>
+                                            <SelectTrigger className="h-11 bg-slate-50 border-slate-100">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[2024, 2025, 2026].map(year => (
+                                                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                {activeFilterLabel && (
+                                    <Button type="button" variant="ghost" size="sm" className="mt-2 h-9 px-0 text-xs font-bold text-primary" onClick={resetTransactionTypeFilter}>
+                                        Limpar filtro de {activeFilterLabel.toLowerCase()}
+                                    </Button>
+                                )}
                             </div>
-                            <div className="no-print flex items-center gap-2">
+                            <div className="no-print flex flex-wrap items-center gap-2 lg:justify-end">
                                 <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                                     <span>Formato</span>
                                     <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
@@ -456,7 +501,12 @@ const AdminFinance = () => {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="overflow-x-auto">
+                            {displayedTransactions.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-10 text-center text-sm text-slate-500">
+                                    {activeFilterLabel ? `Nenhuma movimentação de ${activeFilterLabel.toLowerCase()} neste período.` : "Nenhuma movimentação neste período."}
+                                </div>
+                            ) : null}
+                            <div className="admin-scroll-region hidden lg:block">
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-100 text-slate-400 text-left">
@@ -468,7 +518,7 @@ const AdminFinance = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {transactions.map((t) => (
+                                        {displayedTransactions.map((t) => (
                                             <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
                                                 <td className="py-4 text-slate-500 font-mono text-xs">{new Date(t.date).toLocaleDateString()}</td>
                                                 <td className="py-4">
@@ -521,6 +571,32 @@ const AdminFinance = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                            <div className="space-y-3 lg:hidden">
+                                {displayedTransactions.map((t) => (
+                                    <article key={`mobile-${t.id}`} className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                    {t.type === 'income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="break-words font-semibold text-slate-900">{t.description}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">{new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                                                </div>
+                                            </div>
+                                            <p className={`shrink-0 text-right text-sm font-black ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString()}
+                                            </p>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+                                            {t.patient ? <span className="max-w-full truncate rounded bg-blue-50 px-2 py-1 text-blue-600">{t.patient.name}</span> : <span className="text-slate-400">Sem paciente</span>}
+                                            {t.receiptUrl && <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="min-h-8 inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"><Receipt size={11} /> Recibo</a>}
+                                            {t.nfeUrl ? <span className="inline-flex min-h-8 items-center gap-1 text-emerald-600"><CheckCircle2 size={11} /> NF-e emitida</span> : t.type === 'income' ? <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px] font-bold text-rose-500" onClick={() => handleConfirmNfe(t.id)}><Plus size={11} className="mr-1" /> Confirmar NF-e</Button> : null}
+                                            <Button variant="ghost" size="icon" className="ml-auto h-9 w-9 text-slate-400 hover:text-red-500" aria-label={`Excluir ${t.description}`} onClick={() => handleDelete(t.id)}><Trash2 size={15} /></Button>
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
                         </CardContent>
                     </Card>

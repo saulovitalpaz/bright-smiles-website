@@ -328,7 +328,7 @@ const AdminPrescription = () => {
 
                 {/* Editor Area */}
                 <div className="lg:col-span-2 space-y-4">
-                    <Card className="border-slate-200 shadow-sm flex flex-col min-h-[500px] md:min-h-[600px]">
+                    <Card className="min-w-0 border-slate-200 shadow-sm flex flex-col min-h-[420px] sm:min-h-[500px] md:min-h-[600px]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Prescrição Clínica</p>
                             <div className="flex flex-wrap items-center justify-end gap-2">

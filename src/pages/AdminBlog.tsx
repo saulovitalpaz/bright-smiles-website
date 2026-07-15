@@ -159,10 +159,11 @@ const AdminBlog = () => {
                     </Button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div>
                     {isLoading && <p className="p-6">Carregando...</p>}
                     {blogPosts?.length === 0 && <p className="p-6 text-slate-500">Nenhum post encontrado.</p>}
 
+                    <div className="hidden overflow-x-auto lg:block">
                     <table className="w-full min-w-[720px] text-left border-collapse">
                         <thead className={blogPosts?.length === 0 ? "hidden" : ""}>
                             <tr className="bg-slate-50 text-slate-500 uppercase text-xs font-bold tracking-wider">
@@ -211,6 +212,23 @@ const AdminBlog = () => {
                             ))}
                         </tbody>
                     </table>
+                    </div>
+                    <div className="space-y-3 p-4 lg:hidden">
+                        {blogPosts?.map((post) => (
+                            <article key={`mobile-${post.id}`} className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                                {post.image ? <img src={mediaUrl(post.image) || undefined} alt={post.title} className="h-16 w-20 shrink-0 rounded-lg object-cover" /> : <div className="h-16 w-20 shrink-0 rounded-lg bg-slate-100" />}
+                                <div className="min-w-0 flex-1">
+                                    <p className="break-words font-semibold text-slate-900">{post.title}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{post.author} · {new Date(post.date).toLocaleDateString()}</p>
+                                    <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">{post.category}</span>
+                                </div>
+                                <div className="flex shrink-0 flex-col gap-1">
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-primary" aria-label={`Editar ${post.title}`} onClick={() => handleEdit(post)}><Edit2 size={16} /></Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-red-500" aria-label={`Excluir ${post.title}`} onClick={() => deleteMutation.mutate(post.id)}><Trash2 size={16} /></Button>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -218,7 +236,7 @@ const AdminBlog = () => {
                 if (!open) handleClose();
                 else setIsDialogOpen(true);
             }}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingPost ? "Editar Artigo" : "Novo Artigo"}</DialogTitle>
                     </DialogHeader>
@@ -314,7 +332,7 @@ const AdminBlog = () => {
                                             }}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         <Input
                                             placeholder="Autores"
                                             className="col-span-1"
@@ -354,7 +372,7 @@ const AdminBlog = () => {
                                 content={formData.content}
                                 onChange={(content) => setFormData({ ...formData, content })}
                                 placeholder="Escreva seu artigo aqui..."
-                                className="min-h-[400px]"
+                                className="min-h-[280px] md:min-h-[400px]"
                             />
                         </div>
 

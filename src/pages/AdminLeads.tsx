@@ -156,13 +156,13 @@ const AdminLeads = () => {
 
                     return (
                     <div key={lead.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex min-w-0 items-start gap-4">
                             <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold bg-blue-100 text-blue-600">
                                 {lead.name.charAt(0).toUpperCase()}
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <h3 className="font-bold text-slate-900">{lead.name}</h3>
-                                <div className="flex items-center gap-4 mt-1">
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
                                     <span className="flex items-center gap-1 text-xs text-slate-500">
                                         <Clock size={14} />
                                         Criado em {formatDateTime(lead.createdAt)}
@@ -195,13 +195,13 @@ const AdminLeads = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-4 items-center">
-                            <div className="flex flex-col text-sm text-right">
+                            <div className="flex w-full flex-wrap gap-3 items-start md:w-auto md:items-center">
+                            <div className="flex flex-col text-sm md:text-right">
                                 <span className="text-slate-400 text-xs">Telefone</span>
                                 <span className="font-medium text-slate-700">{lead.phone}</span>
                             </div>
 
-                            <div className="flex flex-col gap-2 min-w-[240px]">
+                            <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:min-w-[240px]">
                                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                     Agendar consulta
                                 </label>

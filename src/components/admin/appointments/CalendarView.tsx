@@ -172,7 +172,7 @@ export const CalendarView = ({
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <div className="admin-scroll-region rounded-lg border border-slate-200 bg-white">
                 {viewMode === "month" ? (
                     <div className="min-w-[700px]">
                         <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">

@@ -141,7 +141,7 @@ const FaceMap: React.FC<FaceMapProps> = ({ data = {}, onChange, readOnly = false
 
             {/* Region Detail Dialog */}
             <Dialog open={selectedRegionId !== null} onOpenChange={(open) => !open && setSelectedRegionId(null)}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-[425px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Mapeamento de Região: {selectedRegion?.name}</DialogTitle>
                     </DialogHeader>

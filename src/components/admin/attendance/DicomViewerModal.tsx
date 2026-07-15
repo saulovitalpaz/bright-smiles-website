@@ -110,8 +110,8 @@ const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }
     }
 
     return (
-        <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200">
-            <Card className="w-full h-full md:w-[95vw] md:h-[95vh] flex flex-col bg-slate-900 border-slate-800 shadow-2xl rounded-none md:rounded-xl overflow-hidden">
+        <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+            <Card className="w-full h-full max-h-[100dvh] md:w-[95vw] md:h-[95vh] min-h-0 flex flex-col bg-slate-900 border-slate-800 shadow-2xl rounded-none md:rounded-xl overflow-hidden">
                 <CardHeader className="bg-slate-950 border-b border-slate-800 flex flex-row items-center justify-between py-3 px-4 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-md bg-blue-500/20 flex items-center justify-center text-blue-400">
@@ -146,7 +146,7 @@ const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }
                     </Button>
                 </CardHeader>
                 
-                <CardContent className="p-0 flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+                <CardContent className="p-0 min-h-0 flex-1 relative bg-black flex items-center justify-center overflow-hidden">
                     {isLoading && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-slate-400 bg-black/80">
                             <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4"></div>

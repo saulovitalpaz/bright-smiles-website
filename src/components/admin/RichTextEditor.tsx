@@ -39,7 +39,7 @@ const RichTextEditor = ({ content, onChange, placeholder, className }: RichTextE
 
     return (
         <div className={`border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col ${className}`}>
-            <div className="p-3 border-b border-slate-100 bg-slate-50 flex items-center gap-1 overflow-x-auto no-scrollbar">
+            <div className="min-h-14 p-2 border-b border-slate-100 bg-slate-50 flex items-center gap-1 overflow-x-auto no-scrollbar">
                 <Button variant="ghost" size="sm" onClick={() => handleFormat('bold')} title="Negrito" type="button"><Bold size={16} /></Button>
                 <Button variant="ghost" size="sm" onClick={() => handleFormat('italic')} title="Itálico" type="button"><Italic size={16} /></Button>
                 <Separator orientation="vertical" className="mx-1 h-6" />
@@ -55,11 +55,11 @@ const RichTextEditor = ({ content, onChange, placeholder, className }: RichTextE
                 <Separator orientation="vertical" className="mx-1 h-6" />
                 <Button variant="ghost" size="sm" onClick={() => handleFormat('fontSize', '4')} title="Aumentar Fonte" type="button"><Type size={16} /></Button>
             </div>
-            <div className="p-6 flex-1 bg-white overflow-y-auto">
+            <div className="min-h-0 flex-1 p-4 sm:p-6 bg-white overflow-y-auto">
                 <div
                     ref={editorRef}
                     contentEditable
-                    className="w-full h-full min-h-[300px] outline-none prose prose-slate max-w-none text-slate-800"
+                    className="w-full h-full min-h-[280px] sm:min-h-[360px] lg:min-h-[500px] outline-none prose prose-slate max-w-none text-slate-800"
                     onInput={(e) => onChange(e.currentTarget.innerHTML)}
                     data-placeholder={placeholder}
                 >

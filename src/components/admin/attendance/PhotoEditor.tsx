@@ -66,8 +66,8 @@ const PhotoEditor: React.FC<PhotoEditorProps> = ({ imageUrl, onSave, onClose }) 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-            <Card className="w-full max-w-6xl max-h-[95vh] flex flex-col bg-slate-900 border-slate-800 shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 sm:p-8 animate-in fade-in duration-200">
+            <Card className="w-full max-w-6xl max-h-[100dvh] sm:max-h-[95vh] min-h-0 flex flex-col bg-slate-900 border-slate-800 shadow-2xl overflow-hidden">
                 
                 <CardHeader className="bg-slate-950 border-b border-slate-800 flex flex-row items-center justify-between py-3 px-4 shrink-0">
                     <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ const PhotoEditor: React.FC<PhotoEditorProps> = ({ imageUrl, onSave, onClose }) 
                     </Button>
                 </CardHeader>
 
-                <CardContent className="p-0 flex-1 relative flex flex-col md:flex-row overflow-hidden bg-black/50">
+            <CardContent className="p-0 min-h-0 flex-1 relative flex flex-col md:flex-row overflow-hidden bg-black/50">
                     
                     {/* Toolbar (Left on desktop, Top on Mobile) */}
                     <div className="md:w-16 bg-slate-950 border-r md:border-b-0 border-b border-slate-800 flex md:flex-col items-center p-3 gap-4 shrink-0 z-10 overflow-x-auto custom-scrollbar">

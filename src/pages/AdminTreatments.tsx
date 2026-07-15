@@ -279,7 +279,7 @@ const AdminTreatments = () => {
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+                    <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 md:p-6">
                         <DialogHeader>
                             <DialogTitle>{editingTreatment ? "Editar Tratamento" : "Novo Tratamento"}</DialogTitle>
                         </DialogHeader>
@@ -357,7 +357,7 @@ const AdminTreatments = () => {
                                 </TabsContent>
 
                                 <TabsContent value="details" className="space-y-4 pt-4">
-                                    <div className="grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div className="space-y-2">
                                             <Label>Tempo de Procedimento</Label>
                                             <Input
@@ -410,7 +410,7 @@ const AdminTreatments = () => {
                                         <>
                                             <div className="bg-slate-50 p-4 rounded-lg border border-border">
                                                 <h4 className="font-bold mb-4 text-sm uppercase">Novo Resultado</h4>
-                                                <div className="grid grid-cols-[1fr,2fr,auto] gap-4 items-end">
+                                                <div className="grid grid-cols-1 sm:grid-cols-[1fr,2fr,auto] gap-4 items-end">
                                                     <div className="space-y-1">
                                                         <Label className="text-xs">Mídia (Img/Video)</Label>
                                                         <div className="flex gap-2">
@@ -448,6 +448,7 @@ const AdminTreatments = () => {
 
                                             <div className="space-y-2">
                                                 <h4 className="font-bold text-sm">Resultados Existentes</h4>
+                                                <div className="admin-scroll-region">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
@@ -484,13 +485,14 @@ const AdminTreatments = () => {
                                                         ))}
                                                     </TableBody>
                                                 </Table>
+                                                </div>
                                             </div>
                                         </>
                                     )}
                                 </TabsContent>
                             </Tabs>
 
-                            <DialogFooter className="sticky bottom-0 bg-white pt-4 border-t mt-4">
+                            <DialogFooter className="sm:sticky sm:bottom-0 bg-white pt-4 border-t mt-4">
                                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                                     {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Salvar Alterações

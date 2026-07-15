@@ -228,7 +228,7 @@ const AdminAppointments = () => {
         <AdminLayout title="Atendimentos & Consultas">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full md:w-auto">
-                    <Card className="border-slate-100 shadow-sm min-w-[250px]">
+                    <Card className="border-slate-100 shadow-sm min-w-0">
                         <CardContent className="p-6">
                             <div className="flex items-center gap-4">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
@@ -249,7 +249,7 @@ const AdminAppointments = () => {
                 )}
             </div>
 
-            <div className="mb-6 flex gap-2">
+            <div className="mb-6 flex flex-wrap gap-2">
                 <Button
                     type="button"
                     variant={viewMode === "list" ? "default" : "outline"}

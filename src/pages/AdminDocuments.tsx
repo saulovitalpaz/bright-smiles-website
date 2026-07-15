@@ -217,7 +217,7 @@ const AdminDocuments = () => {
                                     <DialogTrigger asChild>
                                         <Button size="sm" variant="outline" className="h-6 w-6 p-0"><Plus size={14} /></Button>
                                     </DialogTrigger>
-                                    <DialogContent className="max-w-2xl">
+                                    <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
                                         <DialogHeader>
                                             <DialogTitle>Criar Novo Modelo</DialogTitle>
                                             <DialogDescription>Use tags como #NOME, #CPF, #DATA, #PROFISSIONAL para auto-preenchimento.</DialogDescription>
@@ -316,7 +316,7 @@ const AdminDocuments = () => {
 
                 {/* Main Editor */}
                 <div className="lg:col-span-3">
-                    <Card className="border-slate-200 shadow-sm h-full min-h-[600px] lg:min-h-[800px] flex flex-col no-print">
+                    <Card className="min-w-0 border-slate-200 shadow-sm h-full min-h-[420px] sm:min-h-[600px] lg:min-h-[800px] flex flex-col no-print">
                         <div className="p-3 md:p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
@@ -346,7 +346,7 @@ const AdminDocuments = () => {
                             <Textarea
                                 value={documentContent}
                                 onChange={(e) => setDocumentContent(e.target.value)}
-                                className="w-full h-full min-h-[400px] md:min-h-[600px] border-none shadow-none focus-visible:ring-0 font-serif text-base md:text-lg leading-relaxed text-slate-800 p-2 md:p-8"
+                                className="w-full h-full min-h-[280px] sm:min-h-[420px] md:min-h-[600px] border-none shadow-none focus-visible:ring-0 font-serif text-base md:text-lg leading-relaxed text-slate-800 p-2 md:p-8"
                                 placeholder="Selecione um modelo ou comece a digitar..."
                             />
 
