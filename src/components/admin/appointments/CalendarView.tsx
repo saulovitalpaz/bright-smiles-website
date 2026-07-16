@@ -174,7 +174,7 @@ export const CalendarView = ({
 
             <div className="admin-scroll-region rounded-lg border border-slate-200 bg-white">
                 {viewMode === "month" ? (
-                    <div className="min-w-[700px]">
+                    <div className="min-w-full md:min-w-[700px]">
                         <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
                             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
                                 <div key={d} className="px-2 py-2 text-center text-xs font-medium uppercase text-slate-500">
@@ -209,7 +209,7 @@ export const CalendarView = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="min-w-[600px]">
+                    <div className={viewMode === 'day' ? 'min-w-full' : 'min-w-full md:min-w-[600px]'}>
                         <div className={`grid border-b border-slate-200 bg-slate-50 ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
                             <div />
                             {days.map((day) => (

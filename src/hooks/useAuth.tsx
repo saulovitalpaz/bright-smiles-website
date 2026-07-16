@@ -17,6 +17,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const login = async (userData: any) => {
         localStorage.setItem('admin_auth', 'true');
+        if (userData.token) {
+            localStorage.setItem('admin_token', userData.token);
+            delete userData.token;
+        }
         localStorage.setItem('admin_user', JSON.stringify(userData));
         setIsAuthenticated(true);
         return true;
@@ -25,6 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const logout = () => {
         localStorage.removeItem('admin_auth');
         localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_token');
         setIsAuthenticated(false);
         navigate('/admin');
     };

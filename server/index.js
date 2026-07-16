@@ -77,6 +77,16 @@ app.use(cors({
         /https:\/\/.*\.up\.railway\.app$/
     ],
     credentials: true
+
+app.use(cors({
+    origin: [
+        'https://www.odontoeharmonizacao.com.br',
+        'https://odontoeharmonizacao.com.br',
+        'https://bright-smiles-website.vercel.app',
+        'http://localhost:5173',
+        /https:\/\/.*\.up\.railway\.app$/
+    ],
+    credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -84,7 +94,10 @@ app.use(auditLogger);
 
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
-    const token = req.cookies.token;
+    let token = req.cookies.token;
+    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
     if (!token) return res.sendStatus(401);
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -366,7 +379,7 @@ app.post('/login', async (req, res) => {
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
-            res.json(toSafeUser(user));
+            res.json({ ...toSafeUser(user), token });
         } else {
             res.status(401).json({ error: 'Invalid credentials' });
         }

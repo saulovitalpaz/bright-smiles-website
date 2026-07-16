@@ -1,89 +1,210 @@
-### Task 2: Protect clinical media and repair document delivery
+### Task 2: Add test infrastructure and the immutable model
 
 **Files:**
-- Create: `src/lib/media.ts`
-- Modify: `src/components/admin/attendance/PhotoGallery.tsx`
-- Modify: `src/components/admin/attendance/EvolutionTimeline.tsx`
-- Modify: `src/pages/AdminDocuments.tsx`
-- Modify: `server/index.js:1285-1335`
-- Modify: `server/test/file-scheduling-patient-contract.test.js`
+- Modify: package.json
+- Modify: package-lock.json
+- Create: vitest.config.ts
+- Create: src/test/setup.ts
+- Create: src/components/admin/attendance/odontogram/odontogramModel.ts
+- Test: src/components/admin/attendance/odontogram/odontogramModel.test.ts
 
 **Interfaces:**
-- `mediaUrl(value: string | null | undefined) -> string | null` resolves local paths, API-relative paths, and absolute URLs.
-- `loadProtectedAsset(value: string) -> Promise<string>` fetches a private API path with `fetchClient`, converts the response to a blob URL, and throws the server’s error message on failure.
-- Clinical appointment `photos` remain stable `bucket://clinical/...` references in persistence; the server may resolve them to short-lived URLs in authenticated appointment responses.
+- Produces: FaceKey, ToothFamily, ToothStatus, ToothData, getFaceLabels, getToothFamily, getTooth, updateToothFace, updateWholeTooth.
 
-- [ ] **Step 1: Add failing source contracts for privacy and document fallback.**
+- [ ] **Step 1: Install and configure the test runner**
 
-Append tests:
+Run:
 
-```js
-test('clinical photo uploads use the private scope and documents expose legacy pdfUrl', () => {
-    const gallery = fs.readFileSync(path.join(repoRoot, 'src/components/admin/attendance/PhotoGallery.tsx'), 'utf8');
-    const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
-    assert.match(gallery, /scope.*clinical|clinical.*scope/);
-    assert.match(indexSource, /fileUrl:.*storageKey.*pdfUrl/);
-    assert.match(indexSource, /clinical-assets/);
+~~~powershell
+npm install --save-dev vitest@^3.2.4 jsdom@^26.1.0 @testing-library/react@^16.3.0 @testing-library/user-event@^14.6.1 @testing-library/jest-dom@^6.6.3
+~~~
+
+Add scripts:
+
+~~~json
+"test": "vitest run",
+"test:watch": "vitest"
+~~~
+
+Create vitest.config.ts:
+
+~~~ts
+import path from "node:path";
+import react from "@vitejs/plugin-react-swc";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    css: true,
+  },
 });
-```
+~~~
 
-Run `node --test test/file-scheduling-patient-contract.test.js`; expected: FAIL until the consumers and fallback are updated.
+Create src/test/setup.ts:
 
-- [ ] **Step 2: Implement `src/lib/media.ts`.**
+~~~ts
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
 
-Use this behavior:
+afterEach(() => cleanup());
+~~~
 
-```ts
-export const mediaUrl = (value?: string | null) => {
-    if (!value) return null;
-    if (/^https?:\/\//i.test(value)) return value;
-    if (value.startsWith('/images/')) return value;
-    return `${API_URL}${value.startsWith('/') ? value : `/${value}`}`;
-};
+- [ ] **Step 2: Write the failing model tests**
 
-export const loadProtectedAsset = async (value: string) => {
-    const response = await fetchClient(value);
-    if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || 'Não foi possível carregar o arquivo clínico.');
-    }
-    return URL.createObjectURL(await response.blob());
-};
-```
+~~~ts
+import { describe, expect, it } from "vitest";
+import {
+  getFaceLabels,
+  getToothFamily,
+  updateToothFace,
+  updateWholeTooth,
+  type ToothData,
+} from "./odontogramModel";
 
-Track and revoke object URLs in `useEffect` cleanup in components that render private photos.
+describe("odontogramModel", () => {
+  it("maps FDI numbers to anatomical families", () => {
+    expect(getToothFamily(11)).toBe("incisor");
+    expect(getToothFamily(13)).toBe("canine");
+    expect(getToothFamily(15)).toBe("premolar");
+    expect(getToothFamily(18)).toBe("molar");
+  });
 
-- [ ] **Step 3: Store clinical references and resolve them only for logged-in display.**
+  it("maps positional faces to clinical labels", () => {
+    expect(getFaceLabels(11).right).toBe("Mesial");
+    expect(getFaceLabels(31).bottom).toBe("Vestibular");
+  });
 
-In `PhotoGallery`, append `scope=clinical` to the upload `FormData`, persist `data.reference` through `onChange`, and keep the response `url` in a local preview map until the appointment is reloaded. Render local preview URLs for newly uploaded files and call `loadProtectedAsset(mediaUrl(photo) || photo)` for persisted clinical references. Leave legacy absolute photo URLs readable.
+  it("updates one face without erasing other clinical data", () => {
+    const input: Record<string, ToothData> = {
+      "16": {
+        status: "Saudável",
+        notes: "sensibilidade",
+        faces: { left: { status: "Tratado" } },
+      },
+    };
+    const result = updateToothFace(input, 16, "center", "Tratar");
+    expect(result["16"].faces).toEqual({
+      left: { status: "Tratado" },
+      center: { status: "Tratar" },
+    });
+    expect(result["16"].notes).toBe("sensibilidade");
+    expect(input["16"].faces?.center).toBeUndefined();
+  });
 
-In `EvolutionTimeline`, resolve each stored clinical reference through the same loader before rendering expanded comparison photos. Show a small error placeholder for failed individual images instead of failing the entire timeline.
+  it("updates the whole tooth without erasing faces", () => {
+    const input: Record<string, ToothData> = {
+      "21": {
+        status: "Saudável",
+        notes: "controle",
+        faces: { top: { status: "Tratar" } },
+      },
+    };
+    expect(updateWholeTooth(input, 21, "Implante")["21"]).toEqual({
+      status: "Implante",
+      notes: "controle",
+      faces: { top: { status: "Tratar" } },
+    });
+  });
+});
+~~~
 
-- [ ] **Step 4: Make patient document URLs consistent.**
+- [ ] **Step 3: Run RED**
 
-Change the document list response to:
+Run:
 
-```js
-fileUrl: doc.storageKey
-    ? `/patient-documents/${doc.id}/file`
-    : doc.pdfUrl || null
-```
+~~~powershell
+npx vitest run src/components/admin/attendance/odontogram/odontogramModel.test.ts
+~~~
 
-In `AdminDocuments`, use `mediaUrl(doc.fileUrl || doc.pdfUrl)` for links and surface the API response body in upload errors. Keep the upload endpoint authenticated and accept only `application/pdf`.
+Expected: FAIL because odontogramModel.ts does not exist.
 
-- [ ] **Step 5: Run tests and build the frontend.**
+- [ ] **Step 4: Implement the model**
 
-```powershell
-node --test server/test/file-scheduling-patient-contract.test.js
-npm run build
-```
+~~~ts
+export const FACE_KEYS = ["top", "right", "bottom", "left", "center"] as const;
+export type FaceKey = (typeof FACE_KEYS)[number];
+export type ToothFamily = "incisor" | "canine" | "premolar" | "molar";
+export type ToothStatus = "Saudável" | "Tratar" | "Tratado" | "Ausente" | "Implante" | "Ponte";
 
-Expected: contract tests pass and Vite exits with code 0.
+export interface ToothFaceData { status: string; }
+export interface ToothData {
+  status: string;
+  notes: string;
+  faces?: Partial<Record<FaceKey, ToothFaceData>>;
+}
 
-- [ ] **Step 6: Commit clinical media changes.**
+export const EMPTY_TOOTH: ToothData = { status: "Saudável", notes: "" };
 
-```powershell
-git add src/lib/media.ts src/components/admin/attendance/PhotoGallery.tsx src/components/admin/attendance/EvolutionTimeline.tsx src/pages/AdminDocuments.tsx server/index.js server/test/file-scheduling-patient-contract.test.js
-git commit -m "fix: protect clinical uploads and repair document URLs"
-```
+export function getToothFamily(toothNumber: number): ToothFamily {
+  const position = toothNumber % 10;
+  if (position >= 6) return "molar";
+  if (position >= 4) return "premolar";
+  if (position === 3) return "canine";
+  return "incisor";
+}
+
+export function getFaceLabels(toothNumber: number): Record<FaceKey, string> {
+  const upper = toothNumber >= 11 && toothNumber <= 28;
+  const rightQuadrant =
+    (toothNumber >= 11 && toothNumber <= 18) ||
+    (toothNumber >= 41 && toothNumber <= 48);
+  return {
+    top: upper ? "Vestibular" : "Lingual",
+    bottom: upper ? "Palatina" : "Vestibular",
+    left: rightQuadrant ? "Distal" : "Mesial",
+    right: rightQuadrant ? "Mesial" : "Distal",
+    center: "Oclusal / Incisal",
+  };
+}
+
+export function getTooth(data: Record<string, ToothData>, toothNumber: number): ToothData {
+  return data[String(toothNumber)] ?? EMPTY_TOOTH;
+}
+
+export function updateToothFace(
+  data: Record<string, ToothData>,
+  toothNumber: number,
+  face: FaceKey,
+  status: ToothStatus,
+): Record<string, ToothData> {
+  const current = getTooth(data, toothNumber);
+  return {
+    ...data,
+    [toothNumber]: {
+      ...current,
+      faces: { ...current.faces, [face]: { status } },
+    },
+  };
+}
+
+export function updateWholeTooth(
+  data: Record<string, ToothData>,
+  toothNumber: number,
+  status: ToothStatus,
+): Record<string, ToothData> {
+  return {
+    ...data,
+    [toothNumber]: { ...getTooth(data, toothNumber), status },
+  };
+}
+~~~
+
+- [ ] **Step 5: Run GREEN and commit**
+
+Run:
+
+~~~powershell
+npx vitest run src/components/admin/attendance/odontogram/odontogramModel.test.ts
+git add package.json package-lock.json vitest.config.ts src/test/setup.ts src/components/admin/attendance/odontogram
+git commit -m "test: add odontogram model coverage"
+~~~
+
+Expected: four passing tests and one focused commit.
+
+---
 

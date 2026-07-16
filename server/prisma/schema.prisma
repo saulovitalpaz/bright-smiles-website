@@ -60,6 +60,7 @@ model Appointment {
   facialNotes   Json?
   price         Float?
   paymentStatus String?   @default("paid")
+  status        String    @default("scheduled")
   patient       Patient?  @relation(fields: [patientId], references: [id])
 }
 

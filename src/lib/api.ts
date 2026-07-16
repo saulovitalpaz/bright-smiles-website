@@ -26,10 +26,19 @@ export const fetchClient = async (endpoint: string, options: RequestInit = {}) =
         ? {}
         : { 'Content-Type': 'application/json' };
 
+    let authHeaders: HeadersInit = {};
+    if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('admin_token');
+        if (token) {
+            authHeaders = { Authorization: `Bearer ${token}` };
+        }
+    }
+
     const config = {
         ...options,
         headers: {
             ...defaultHeaders,
+            ...authHeaders,
             ...options.headers,
         },
         credentials: 'include' as RequestCredentials, // Enable HttpOnly cookies
@@ -42,6 +51,7 @@ export const fetchClient = async (endpoint: string, options: RequestInit = {}) =
         if (typeof window !== 'undefined') {
             localStorage.removeItem('admin_auth');
             localStorage.removeItem('admin_user');
+            localStorage.removeItem('admin_token');
             window.location.href = '/admin';
         }
     }

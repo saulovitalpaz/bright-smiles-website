@@ -1,0 +1,438 @@
+# Review package: ba04c38..6862c88
+
+## Commits
+6862c88 feat: select odontogram surfaces directly
+
+## Files changed
+ .../odontogram/ToothSurfaceSelector.test.tsx       | 107 +++++++++++++++
+ .../attendance/odontogram/ToothSurfaceSelector.tsx | 134 +++++++++++++++++++
+ src/index.css                                      | 148 +++++++++++++++++++++
+ 3 files changed, 389 insertions(+)
+
+## Diff
+diff --git a/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx
+new file mode 100644
+index 0000000..4310d68
+--- /dev/null
++++ b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx
+@@ -0,0 +1,107 @@
++import { render, screen } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { describe, expect, it, vi } from "vitest";
++import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
++
++describe("ToothSurfaceSelector", () => {
++  it("selects the oclusal face without writing a condition", async () => {
++    const user = userEvent.setup();
++    const onSelectFace = vi.fn();
++
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace={null}
++        onSelectFace={onSelectFace}
++      />,
++    );
++
++    await user.click(screen.getByRole("button", { name: /oclusal.*saudável/i }));
++
++    expect(onSelectFace).toHaveBeenCalledWith("center");
++  });
++
++  it("renders five semantic anatomical face controls", () => {
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace={null}
++        onSelectFace={() => undefined}
++      />,
++    );
++
++    const controls = screen.getAllByRole("button");
++    expect(controls).toHaveLength(5);
++    controls.forEach((control) => {
++      expect(control.querySelector("path")).toBeInTheDocument();
++      expect(control).toHaveAttribute("aria-pressed", "false");
++    });
++  });
++
++  it("announces the selected face", () => {
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace="left"
++        onSelectFace={() => undefined}
++      />,
++    );
++
++    expect(screen.getByRole("button", { name: /distal.*saudável/i }))
++      .toHaveAttribute("aria-pressed", "true");
++  });
++
++  it("does not select in read-only mode", async () => {
++    const user = userEvent.setup();
++    const onSelectFace = vi.fn();
++
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace={null}
++        onSelectFace={onSelectFace}
++        readOnly
++      />,
++    );
++
++    await user.click(screen.getByRole("button", { name: /oclusal/i }));
++
++    expect(onSelectFace).not.toHaveBeenCalled();
++  });
++
++  it.each([
++    ["Tratar", "surface-selector__face--treat"],
++    ["Tratado", "surface-selector__face--treated"],
++  ] as const)("renders the %s face state", (status, className) => {
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "", faces: { center: { status } } }}
++        selectedFace={null}
++        onSelectFace={() => undefined}
++      />,
++    );
++
++    expect(screen.getByRole("button", { name: new RegExp(`oclusal.*${status}`, "i") }))
++      .toHaveClass(className);
++  });
++
++  it("uses a hatch pattern for a face marked to treat", () => {
++    const { container } = render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "", faces: { center: { status: "Tratar" } } }}
++        selectedFace={null}
++        onSelectFace={() => undefined}
++      />,
++    );
++
++    const treatedFace = container.querySelector('[data-surface-face="center"] path');
++    expect(treatedFace).not.toBeNull();
++    expect(treatedFace?.getAttribute("style")).toMatch(/^fill: url\(#surface-hatch-/);
++  });
++});
+diff --git a/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx
+new file mode 100644
+index 0000000..30ff00f
+--- /dev/null
++++ b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx
+@@ -0,0 +1,134 @@
++import { useId, type JSX } from "react";
++import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
++import {
++  FACE_KEYS,
++  getFaceLabels,
++  getToothFamily,
++  type FaceKey,
++  type FaceStatus,
++  type ToothData,
++} from "./odontogramModel";
++
++interface ToothSurfaceSelectorProps {
++  toothNumber: number;
++  data: ToothData;
++  selectedFace: FaceKey | null;
++  onSelectFace: (face: FaceKey) => void;
++  readOnly?: boolean;
++}
++
++const FACE_POSITIONS: Record<FaceKey, string> = {
++  top: "surface-selector__control--top",
++  right: "surface-selector__control--right",
++  bottom: "surface-selector__control--bottom",
++  left: "surface-selector__control--left",
++  center: "surface-selector__control--center",
++};
++
++function getFaceStatus(data: ToothData, face: FaceKey): FaceStatus {
++  return data.faces?.[face]?.status ?? "Saudável";
++}
++
++function getFaceClass(status: FaceStatus): string {
++  if (status === "Tratar") return "surface-selector__face--treat";
++  if (status === "Tratado") return "surface-selector__face--treated";
++  return "surface-selector__face--healthy";
++}
++
++export function ToothSurfaceSelector({
++  toothNumber,
++  data,
++  selectedFace,
++  onSelectFace,
++  readOnly = false,
++}: ToothSurfaceSelectorProps): JSX.Element {
++  const instanceId = useId().replace(/:/g, "");
++  const family = getToothFamily(toothNumber);
++  const anatomy = ANATOMICAL_GEOMETRY[family].occlusal;
++  const labels = getFaceLabels(toothNumber);
++  const hatchId = `surface-hatch-${toothNumber}-${instanceId}`;
++
++  return (
++    <div
++      className="tooth-surface-selector"
++      data-tooth-family={family}
++      data-testid="tooth-surface-selector"
++    >
++      <svg
++        aria-hidden="true"
++        className="surface-selector__base"
++        focusable="false"
++        viewBox={anatomy.viewBox}
++      >
++        <defs>
++          <pattern
++            id={hatchId}
++            width="3"
++            height="3"
++            patternTransform="rotate(45)"
++            patternUnits="userSpaceOnUse"
++          >
++            <line stroke="#b42318" strokeWidth="1.2" x1="0" x2="0" y2="3" />
++          </pattern>
++        </defs>
++        <path className="surface-selector__outline" d={anatomy.outline} />
++        {FACE_KEYS.map((face) => {
++          const status = getFaceStatus(data, face);
++          const isSelected = selectedFace === face;
++
++          return (
++            <g key={face} data-surface-face={face}>
++              <path
++                className={`surface-selector__base-face ${getFaceClass(status)}`}
++                d={anatomy.faces[face]}
++                style={status === "Tratar" ? { fill: `url(#${hatchId})` } : undefined}
++              />
++              {status === "Tratado" ? (
++                <path
++                  aria-hidden="true"
++                  className="surface-selector__treated-inset"
++                  d={anatomy.faces[face]}
++                />
++              ) : null}
++              {isSelected ? (
++                <path
++                  aria-hidden="true"
++                  className="surface-selector__selected-ring"
++                  d={anatomy.faces[face]}
++                />
++              ) : null}
++            </g>
++          );
++        })}
++        <g className="surface-selector__grooves">
++          {anatomy.grooves.map((groove) => (
++            <path d={groove} key={groove} />
++          ))}
++        </g>
++      </svg>
++
++      {FACE_KEYS.map((face) => {
++        const status = getFaceStatus(data, face);
++        const isSelected = selectedFace === face;
++
++        return (
++          <button
++            aria-label={`${labels[face]}: ${status}`}
++            aria-pressed={isSelected}
++            className={`surface-selector__control ${FACE_POSITIONS[face]} ${getFaceClass(status)}${
++              isSelected ? " surface-selector__control--selected" : ""
++            }`}
++            disabled={readOnly}
++            key={face}
++            onClick={() => onSelectFace(face)}
++            type="button"
++          >
++            <svg aria-hidden="true" focusable="false" viewBox={anatomy.viewBox}>
++              <path d={anatomy.faces[face]} />
++            </svg>
++          </button>
++        );
++      })}
++    </div>
++  );
++}
+diff --git a/src/index.css b/src/index.css
+index 191afb1..6ce96e4 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -338,20 +338,168 @@
+       @apply px-4 py-10;
+     }
+     
+     /* Ensure buttons don't overflow */
+     button, .button {
+       max-width: 100%;
+     }
+   }
+ }
+ 
++.tooth-surface-selector {
++  position: relative;
++  isolation: isolate;
++  inline-size: min(10.5rem, 100%);
++  min-inline-size: min(8.25rem, 100%);
++  aspect-ratio: 1;
++  margin-inline: auto;
++}
++
++.surface-selector__base {
++  position: absolute;
++  z-index: 0;
++  inset: 18%;
++  inline-size: 64%;
++  block-size: 64%;
++  overflow: visible;
++}
++
++.surface-selector__outline {
++  fill: #fffdf6;
++  stroke: #766b59;
++  stroke-linejoin: round;
++  stroke-width: 1.2;
++}
++
++.surface-selector__base-face {
++  stroke: #a49783;
++  stroke-linejoin: round;
++  stroke-width: 0.72;
++}
++
++.surface-selector__face--healthy {
++  fill: #f7f0dc;
++}
++
++.surface-selector__face--treat {
++  fill: #fce8e6;
++  stroke: #b42318;
++  stroke-width: 1.05;
++}
++
++.surface-selector__face--treated {
++  fill: #d9eff3;
++  stroke: #0e7490;
++  stroke-width: 2.4;
++}
++
++.surface-selector__treated-inset {
++  fill: none;
++  pointer-events: none;
++  stroke: #fff;
++  stroke-linejoin: round;
++  stroke-width: 0.85;
++}
++
++.surface-selector__selected-ring {
++  fill: none;
++  pointer-events: none;
++  stroke: #0f4c81;
++  stroke-linejoin: round;
++  stroke-width: 1.7;
++}
++
++.surface-selector__grooves {
++  fill: none;
++  pointer-events: none;
++  stroke: #806f58;
++  stroke-linecap: round;
++  stroke-width: 0.9;
++}
++
++.surface-selector__control {
++  position: absolute;
++  z-index: 1;
++  display: grid;
++  inline-size: 2.75rem;
++  min-inline-size: 2.75rem;
++  block-size: 2.75rem;
++  min-block-size: 2.75rem;
++  place-items: center;
++  margin: 0;
++  padding: 0.2rem;
++  touch-action: manipulation;
++  color: #0f4c81;
++  background: transparent;
++  border: 1px solid transparent;
++  border-radius: 999px;
++  cursor: pointer;
++}
++
++.surface-selector__control svg {
++  inline-size: 100%;
++  block-size: 100%;
++  overflow: visible;
++}
++
++.surface-selector__control path {
++  fill: currentColor;
++  stroke: currentColor;
++  stroke-linejoin: round;
++  stroke-width: 1;
++}
++
++.surface-selector__control--top {
++  inset-block-start: 0;
++  inset-inline-start: 50%;
++  transform: translateX(-50%);
++}
++
++.surface-selector__control--right {
++  inset-block-start: 50%;
++  inset-inline-end: 0;
++  transform: translateY(-50%);
++}
++
++.surface-selector__control--bottom {
++  inset-block-end: 0;
++  inset-inline-start: 50%;
++  transform: translateX(-50%);
++}
++
++.surface-selector__control--left {
++  inset-block-start: 50%;
++  inset-inline-start: 0;
++  transform: translateY(-50%);
++}
++
++.surface-selector__control--center {
++  inset-block-start: 50%;
++  inset-inline-start: 50%;
++  transform: translate(-50%, -50%);
++}
++
++.surface-selector__control--selected {
++  background: color-mix(in srgb, #0f4c81 12%, transparent);
++  border-color: #0f4c81;
++}
++
++.surface-selector__control:focus-visible {
++  outline: 3px solid #fbbf24;
++  outline-offset: 2px;
++}
++
++.surface-selector__control:disabled {
++  cursor: default;
++  opacity: 0.58;
++}
++
+ @media print {
+   @page {
+     size: A4;
+     margin: 14mm 14mm 16mm;
+   }
+ 
+   @page compact {
+     size: A4;
+     margin: 9mm;
+   }

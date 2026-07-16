@@ -1,0 +1,509 @@
+# Review package: b3bc9cb..c5f760b
+
+## Commits
+c5f760b fix: use anatomical occlusal geometry
+b5ebe8e fix: harden anatomical tooth rendering
+b24096b feat: add licensed anatomical tooth vectors
+
+## Files changed
+ src/assets/odontogram/THIRD_PARTY_NOTICES.md       |  35 ++++++
+ .../attendance/odontogram/AnatomicalTooth.test.tsx | 119 ++++++++++++++++++
+ .../attendance/odontogram/AnatomicalTooth.tsx      | 130 +++++++++++++++++++
+ .../attendance/odontogram/odontogramGeometry.ts    | 137 +++++++++++++++++++++
+ src/index.css                                      |  23 ++++
+ 5 files changed, 444 insertions(+)
+
+## Diff
+diff --git a/src/assets/odontogram/THIRD_PARTY_NOTICES.md b/src/assets/odontogram/THIRD_PARTY_NOTICES.md
+new file mode 100644
+index 0000000..4b82369
+--- /dev/null
++++ b/src/assets/odontogram/THIRD_PARTY_NOTICES.md
+@@ -0,0 +1,35 @@
++# Third-party notices
++
++## React Odontogram Modul anatomy references
++
++- Project: React Odontogram Modul
++- Source: https://github.com/ZoliQua/React-Odontogram-Modul
++- Copyright: Copyright (c) 2026 Zoltán Dul
++- License: MIT
++- Reference templates: `11.svg`, `13.svg`, `14.svg`, `14_occl.svg`, `16.svg`, `16_occl.svg`
++
++The local odontogram geometry adapts only the anatomical contours needed for
++the component. It does not include source metadata, embedded CSS, scripts, or
++runtime assets.
++
++MIT License
++
++Copyright (c) 2026 Zoltán Dul
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+diff --git a/src/components/admin/attendance/odontogram/AnatomicalTooth.test.tsx b/src/components/admin/attendance/odontogram/AnatomicalTooth.test.tsx
+new file mode 100644
+index 0000000..8b952da
+--- /dev/null
++++ b/src/components/admin/attendance/odontogram/AnatomicalTooth.test.tsx
+@@ -0,0 +1,119 @@
++import { render, screen } from "@testing-library/react";
++import { describe, expect, it } from "vitest";
++import { AnatomicalTooth } from "./AnatomicalTooth";
++import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
++
++describe("AnatomicalTooth", () => {
++  it.each([
++    [11, "incisor"],
++    [13, "canine"],
++    [15, "premolar"],
++    [18, "molar"],
++  ] as const)("renders tooth %s with %s anatomy", (number, family) => {
++    render(
++      <AnatomicalTooth
++        toothNumber={number}
++        data={{ status: "Saudável", notes: "" }}
++      />,
++    );
++
++    const tooth = screen.getByRole("img", {
++      name: new RegExp("dente " + number, "i"),
++    });
++    expect(tooth).toHaveAttribute("data-tooth-family", family);
++    expect(tooth.querySelectorAll("[data-anatomy-layer]").length).toBeGreaterThanOrEqual(6);
++  });
++
++  it("keeps the anatomical paint order and clips the enamel highlight", () => {
++    render(
++      <AnatomicalTooth
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++      />,
++    );
++
++    const tooth = screen.getByRole("img", { name: /dente 16/i });
++    const layers = Array.from(tooth.querySelectorAll("[data-anatomy-layer]"))
++      .map((layer) => layer.getAttribute("data-anatomy-layer"));
++
++    expect(layers).toEqual([
++      "root-shadow",
++      "dentin-roots",
++      "cervical-transition",
++      "enamel-crown",
++      "enamel-highlight",
++      "whole-tooth-overlay",
++    ]);
++    expect(tooth.querySelector('[data-anatomy-layer="enamel-highlight"]'))
++      .toHaveAttribute("clip-path", expect.stringMatching(/^url\(#tooth-16-/));
++  });
++
++  it.each(["Implante", "Ponte", "Ausente"] as const)(
++    "covers roots and crown for %s",
++    (status) => {
++      render(
++        <AnatomicalTooth
++          toothNumber={16}
++          data={{ status, notes: "" }}
++        />,
++      );
++
++      const overlay = screen.getByTestId("whole-tooth-overlay");
++      const expectedPaths = ANATOMICAL_GEOMETRY.molar.frontal.roots.length + 1;
++      expect(overlay).toHaveAttribute("data-status", status);
++      expect(overlay.querySelectorAll("path")).toHaveLength(expectedPaths);
++    },
++  );
++
++  it("uses a visible marker for a missing tooth", () => {
++    render(
++      <AnatomicalTooth
++        toothNumber={16}
++        data={{ status: "Ausente", notes: "" }}
++      />,
++    );
++
++    expect(screen.getByTestId("missing-tooth-mark")).toBeInTheDocument();
++  });
++
++  it("uses unique tooth-prefixed paint ids for repeated instances", () => {
++    render(
++      <>
++        <AnatomicalTooth toothNumber={16} data={{ status: "Saudável", notes: "" }} />
++        <AnatomicalTooth toothNumber={16} data={{ status: "Saudável", notes: "" }} />
++      </>,
++    );
++
++    const ids = Array.from(document.querySelectorAll("linearGradient, clipPath"))
++      .map((definition) => definition.id);
++    expect(ids.every((id) => id.startsWith("tooth-16-"))).toBe(true);
++    expect(new Set(ids).size).toBe(ids.length);
++  });
++
++  it("flips lower teeth and exposes both supported sizes", () => {
++    const { rerender } = render(
++      <AnatomicalTooth
++        toothNumber={36}
++        data={{ status: "Saudável", notes: "" }}
++        size="arch"
++      />,
++    );
++
++    const lowerTooth = screen.getByRole("img", { name: /dente 36/i });
++    expect(lowerTooth).toHaveClass("anatomical-tooth--arch");
++    expect(lowerTooth.querySelector("[data-tooth-orientation]"))
++      .toHaveAttribute("data-tooth-orientation", "lower");
++    expect(lowerTooth.querySelector("[data-tooth-orientation]"))
++      .toHaveAttribute("transform", "translate(0 76) scale(1 -1)");
++
++    rerender(
++      <AnatomicalTooth
++        toothNumber={36}
++        data={{ status: "Saudável", notes: "" }}
++        size="editor"
++      />,
++    );
++    expect(screen.getByRole("img", { name: /dente 36/i }))
++      .toHaveClass("anatomical-tooth--editor");
++  });
++});
+diff --git a/src/components/admin/attendance/odontogram/AnatomicalTooth.tsx b/src/components/admin/attendance/odontogram/AnatomicalTooth.tsx
+new file mode 100644
+index 0000000..8248bd2
+--- /dev/null
++++ b/src/components/admin/attendance/odontogram/AnatomicalTooth.tsx
+@@ -0,0 +1,130 @@
++import { useId, type JSX } from "react";
++import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
++import { getToothFamily, type ToothData } from "./odontogramModel";
++
++interface AnatomicalToothProps {
++  toothNumber: number;
++  data: ToothData;
++  size?: "arch" | "editor";
++  selected?: boolean;
++}
++
++const STATUS_OVERLAYS = {
++  Saudável: "transparent",
++  Implante: "#8b5cf6",
++  Ponte: "#f59e0b",
++} as const;
++
++export function AnatomicalTooth({
++  toothNumber,
++  data,
++  size = "arch",
++  selected = false,
++}: AnatomicalToothProps): JSX.Element {
++  const instanceId = useId().replace(/:/g, "");
++  const family = getToothFamily(toothNumber);
++  const anatomy = ANATOMICAL_GEOMETRY[family].frontal;
++  const idPrefix = `tooth-${toothNumber}-${instanceId}`;
++  const enamelId = `${idPrefix}-enamel`;
++  const rootId = `${idPrefix}-root`;
++  const highlightClipId = `${idPrefix}-highlight-clip`;
++  const overlay = STATUS_OVERLAYS[data.status as keyof typeof STATUS_OVERLAYS] ?? "#e05252";
++  const isMissing = data.status === "Ausente";
++  const viewBoxHeight = anatomy.viewBox.split(/\s+/)[3];
++  const orientationTransform =
++    toothNumber >= 31 && toothNumber <= 48
++      ? `translate(0 ${viewBoxHeight}) scale(1 -1)`
++      : undefined;
++  const isLower = toothNumber >= 31 && toothNumber <= 48;
++
++  return (
++    <svg
++      role="img"
++      aria-label={`Dente ${toothNumber}, ${data.status}`}
++      viewBox={anatomy.viewBox}
++      className={`anatomical-tooth anatomical-tooth--${size}`}
++      data-tooth-family={family}
++      data-selected={selected || undefined}
++    >
++      <defs>
++        <linearGradient id={rootId} x1="0" y1="0" x2="1" y2="1">
++          <stop offset="0" stopColor="#f5e8c9" />
++          <stop offset="0.55" stopColor="#d6b77d" />
++          <stop offset="1" stopColor="#9c7549" />
++        </linearGradient>
++        <radialGradient id={enamelId} cx="31%" cy="20%" r="78%">
++          <stop offset="0" stopColor="#ffffff" />
++          <stop offset="0.48" stopColor="#fbfaf2" />
++          <stop offset="1" stopColor="#d7d0b8" />
++        </radialGradient>
++        <clipPath id={highlightClipId}>
++          <path d={anatomy.crown} />
++        </clipPath>
++      </defs>
++
++      <g
++        data-tooth-orientation={isLower ? "lower" : "upper"}
++        transform={orientationTransform}
++      >
++        <g data-anatomy-layer="root-shadow" opacity="0.22" transform="translate(1 1.5)">
++          {anatomy.roots.map((root) => (
++            <path key={root} d={root} fill="#46331e" />
++          ))}
++        </g>
++        <g data-anatomy-layer="dentin-roots">
++          {anatomy.roots.map((root) => (
++            <path key={root} d={root} fill={`url(#${rootId})`} stroke="#876544" strokeWidth="0.85" />
++          ))}
++        </g>
++        <path
++          data-anatomy-layer="cervical-transition"
++          d={anatomy.cervical}
++          fill="none"
++          stroke="#c38a7a"
++          strokeWidth="2.3"
++          strokeLinecap="round"
++          opacity="0.62"
++        />
++        <path
++          data-anatomy-layer="enamel-crown"
++          d={anatomy.crown}
++          fill={`url(#${enamelId})`}
++          stroke="#867c68"
++          strokeWidth="1"
++          strokeLinejoin="round"
++        />
++        <path
++          data-anatomy-layer="enamel-highlight"
++          d={anatomy.highlight}
++          clipPath={`url(#${highlightClipId})`}
++          fill="#ffffff"
++          opacity="0.58"
++        />
++        <g
++          data-testid="whole-tooth-overlay"
++          data-anatomy-layer="whole-tooth-overlay"
++          data-status={data.status}
++          fill={overlay}
++          opacity={data.status === "Saudável" ? 0 : 0.42}
++        >
++          {anatomy.roots.map((root) => (
++            <path key={root} d={root} />
++          ))}
++          <path d={anatomy.crown} />
++        </g>
++        {isMissing ? (
++          <g
++            data-testid="missing-tooth-mark"
++            data-anatomy-layer="missing-tooth-cross"
++            stroke="#b42318"
++            strokeWidth="3"
++            strokeLinecap="round"
++          >
++            <path d="M10.5 12L37.5 66" />
++            <path d="M37.5 12L10.5 66" />
++          </g>
++        ) : null}
++      </g>
++    </svg>
++  );
++}
+diff --git a/src/components/admin/attendance/odontogram/odontogramGeometry.ts b/src/components/admin/attendance/odontogram/odontogramGeometry.ts
+new file mode 100644
+index 0000000..fce6889
+--- /dev/null
++++ b/src/components/admin/attendance/odontogram/odontogramGeometry.ts
+@@ -0,0 +1,137 @@
++import type { FaceKey, ToothFamily } from "./odontogramModel";
++
++export interface FrontalGeometry {
++  viewBox: string;
++  crown: string;
++  roots: readonly string[];
++  cervical: string;
++  highlight: string;
++}
++
++export interface OcclusalGeometry {
++  viewBox: string;
++  outline: string;
++  faces: Record<FaceKey, string>;
++  grooves: readonly string[];
++}
++
++export interface ToothGeometry {
++  frontal: FrontalGeometry;
++  occlusal: OcclusalGeometry;
++}
++
++const INCISOR: ToothGeometry = {
++  frontal: {
++    viewBox: "0 0 48 76",
++    roots: [
++      "M18.2 43.2C17 34.2 16.1 24.4 17 14.1C17.6 7.5 19.7 3.4 22.6 1.8C25.2 4.1 27.1 9.2 27.6 15.1C28.3 25.5 27.1 35.1 25.9 43.2Z",
++    ],
++    cervical: "M12.8 42.4C16.3 44.2 30.5 44.2 35.2 42.4",
++    crown: "M12.8 42.2C11.1 45.8 10.5 52.7 11.7 60.7C12.4 66 15.3 71.7 20 73.3C22.8 74.2 26.5 74.2 29.3 73.2C34 71.6 36.7 65.7 36.8 60.1C37 52.9 36.1 46.2 35.2 42.2C29.1 44.5 18.4 44.5 12.8 42.2Z",
++    highlight: "M15.2 46.5C13.8 53.1 14.1 61.4 16.4 66.2C18 69.5 20.1 70.2 20.7 68.8C18.2 60.8 19 51 20.7 45.1C18.5 45.2 16.6 45.7 15.2 46.5Z",
++  },
++  occlusal: {
++    viewBox: "0 0 48 48",
++    outline: "M9 14.6C9 10.5 12.2 8.3 16.4 8H31.6C35.8 8.3 39 10.5 39 14.6V33.4C39 37.5 35.8 39.7 31.6 40H16.4C12.2 39.7 9 37.5 9 33.4Z",
++    faces: {
++      top: "M10.2 15.2C10.6 11.8 13.1 9.7 16.8 9.4C20.2 9 27.5 9.2 31.2 9.4C34.8 9.7 37.5 11.8 37.8 15.2C34.4 16.8 32.3 18.5 29.9 19.4C26.8 18.1 21 18.4 18 19.3C15.5 18.4 13.3 16.8 10.2 15.2Z",
++      right: "M37.8 15.2C38.4 20.6 38.3 27.8 37.8 32.8C37.4 36.2 34.8 38.4 31.2 38.6C30.7 35.8 29.1 33.4 28.5 30.8C29.6 27.1 29.7 22.5 29.9 19.4C32.3 18.5 34.4 16.8 37.8 15.2Z",
++      bottom: "M37.8 32.8C37.4 36.2 34.8 38.4 31.2 38.6C27.5 39 20.2 39 16.8 38.6C13.2 38.4 10.6 36.2 10.2 32.8C13.3 31.2 15.5 29.6 18 28.7C21 29.6 26.8 29.9 29.9 28.6C32.3 29.5 34.4 31.2 37.8 32.8Z",
++      left: "M10.2 15.2C13.3 16.8 15.5 18.4 18 19.3C18.3 22.6 18.4 27.1 19.5 30.8C18.9 33.4 17.3 35.8 16.8 38.6C13.2 38.4 10.6 36.2 10.2 32.8C9.7 27.8 9.6 20.6 10.2 15.2Z",
++      center: "M18 19.3C21 18.4 26.8 18.1 29.9 19.4C29.7 22.5 29.6 27.1 28.5 30.8C25.7 31.6 22.1 31.6 19.5 30.8C18.4 27.1 18.3 22.6 18 19.3Z",
++    },
++    grooves: ["M17 24H31", "M24 19.5V30.5"],
++  },
++};
++
++const CANINE: ToothGeometry = {
++  frontal: {
++    viewBox: "0 0 48 76",
++    roots: [
++      "M19.6 45.1C18.4 35.6 18.2 23.9 19.4 12.1C20.1 6.1 21.7 2.2 24.1 0.8C26.9 3.8 28.1 9.4 28.3 15.6C28.8 27.2 27.7 37.2 26.2 45.1Z",
++    ],
++    cervical: "M13.3 44.1C17.4 46.3 30.2 46.2 34.7 44.1",
++    crown: "M13.3 43.8C12.1 48.5 11.9 55.4 13.8 61.7C15.3 67.4 19.4 72.6 23.8 74.1C28.5 72.3 32.8 67.3 34.3 61.5C35.9 55.1 35.8 48.7 34.7 43.8C30.6 42.4 27.2 36.8 24 31.4C20.7 36.9 17.4 42.5 13.3 43.8Z",
++    highlight: "M16.2 48.3C15.5 54.6 17.3 64.2 21.2 68.5C22.5 69.8 23.5 69.7 23.2 68.2C20.5 61.7 21.3 51.6 23.1 39.6C20.4 43.9 18.2 46.8 16.2 48.3Z",
++  },
++  occlusal: {
++    viewBox: "0 0 48 48",
++    outline: "M24 4.5C30.5 5.9 36.9 12 39.4 20.6C41 27.1 37.2 36.2 29.4 41.3C26.1 43.5 21.9 43.5 18.6 41.3C10.8 36.2 7 27.1 8.6 20.6C11.1 12 17.5 5.9 24 4.5Z",
++    faces: {
++      top: "M24 5.8C29.3 7.2 34.2 12.1 36.3 18.1C33.9 18.7 31.5 19.6 29.2 20.6C27.7 19.2 25.5 17.8 24 16.8C22.3 18.1 20.3 19.2 18.8 20.6C16.5 19.6 14.1 18.7 11.7 18.1C13.8 12.1 18.7 7.2 24 5.8Z",
++      right: "M36.3 18.1C38.8 24.4 36 32.9 29.1 38.5C28.1 35.2 27.8 32.2 28.2 29.3C29.5 26.6 30.7 23 30.8 20C32.7 19.4 34.5 18.8 36.3 18.1Z",
++      bottom: "M29.1 38.5C25.8 41.1 22.2 41.1 18.9 38.5C19.3 35.2 19.3 32.1 19.8 29.3C22.1 30.4 25.9 30.4 28.2 29.3C28.4 32.4 28.1 35.2 29.1 38.5Z",
++      left: "M11.7 18.1C13.5 18.8 15.3 19.4 17.2 20C17.3 23 18.5 26.6 19.8 29.3C20.2 32.2 19.9 35.2 18.9 38.5C12 32.9 9.2 24.4 11.7 18.1Z",
++      center: "M18.8 20.6C20.3 19.2 22.3 18.1 24 16.8C25.5 17.8 27.7 19.2 29.2 20.6C30.7 23 29.5 26.6 28.2 29.3C25.9 30.4 22.1 30.4 19.8 29.3C18.5 26.6 17.3 23 18.8 20.6Z",
++    },
++    grooves: ["M24 17.7L24 29.5", "M18.8 22.3L29.2 22.3"],
++  },
++};
++
++const PREMOLAR: ToothGeometry = {
++  frontal: {
++    viewBox: "0 0 48 76",
++    roots: [
++      "M17.1 43.6C15.3 36.1 13.4 26.6 14.3 17.7C14.8 11.9 16.9 7.7 19.2 6.6C21.4 10.5 21.7 17.4 22.5 25.1C23.1 32.2 22.6 38.9 21.2 44Z",
++      "M25.8 44C25.1 36.2 25.8 30.1 26.6 24.1C27.5 16.4 27.5 10.5 29.7 6.5C32.2 8.4 34 12.7 34.4 18.2C35.1 27.2 33.4 36.4 31.2 43.6Z",
++    ],
++    cervical: "M10.8 43.2C14.9 45.6 33.1 45.6 37.2 43.2",
++    crown: "M10.8 42.9C9.7 48.5 10.2 57.3 12.3 63.5C14.4 69.7 18.3 72.9 23.9 73.5C29.6 73 33.8 69.7 35.8 63.5C37.8 57.2 38.3 48.5 37.2 42.9C33.7 40.8 31.5 35.7 29.7 31.2C27.9 35.2 26.4 38.1 23.9 39.6C21.4 38.1 19.9 35.2 18.1 31.2C16.4 35.7 14.1 40.8 10.8 42.9Z",
++    highlight: "M13.5 47.4C12.7 54.6 14.7 64.4 18.2 67.6C19.9 69.2 21 68.5 20.1 66.3C18.2 59.1 18.9 48.4 19.2 38.3C17.1 42.5 15.4 45.5 13.5 47.4Z",
++  },
++  occlusal: {
++    viewBox: "0 0 48.6 41.5",
++    outline: "M21.7,2.9c1.6,0,3.5.3,5.2.5,1.2,0,2.4.2,3.5.7.7.3,1.3.6,2,1,1.1.6,2.2,1.4,3,2.6.8,1.1,1.5,2.4,1.9,3.9.2.6.2,1.3.4,2,.2,1.7.4,3.2.4,4.8s0,2.4-.2,3.6c0,1.6-.2,3.1-.4,4.6-.4,2-.8,4.2-1.5,6-1.1,2.4-3.2,3.8-5.2,4.4-.8.2-1.6.4-2.4.6-1.2.3-2.3.8-3.5,1.2-1,.3-2,.2-2.9,0-.8,0-1.7-.3-2.5-.3-1.5-.2-3-.3-4.2-1.4-1-.9-1.8-2.2-2.4-3.6-.8-1.5-1.3-3.2-1.5-5-.2-1.3-.2-2.7-.2-4s.4-3.5.5-5.3c.3-2.1.4-4.3.8-6.4.4-2.1,1.2-4,2.2-5.6,1.1-1.6,2.5-3,4.1-3.6,1-.3,2.1-.5,3.1-.5h0v-.2s-.2,0-.2,0Z",
++    faces: {
++      top: "M20.5,5.8c.9.5,2.4.7,3.6.7,2,0,3.6-.5,4.5-1.5s.6-.6.6-1c-.8-1.9-9.5-1.2-10.7-.5-.6.6,1.1,1.7,1.9,2.2h0Z",
++      right: "M36,28.6c2.7.2,2.7-14.6,1.6-16.2-.4-1.1-1.5-.3-2.2-.6-1.2-.5-1.5,3.4-2.2,5-.3,1.6-3.6,1.3-2.8,4.1s2.6,1,3,1.9.9,4.1,1.7,5.2l.9.7h0Z",
++      bottom: "M19.9,38c.9.5,2.4.7,3.6.7,2,0,3.6-.5,4.5-1.4s.6-.6.6-1c-.7-1.9-9.5-1.3-10.7-.6-.6.6,1.1,1.7,1.9,2.2h0Z",
++      left: "M14.9,25.9c1.9-.3-.3-3.3,0-5.4.6-3.1,2.1-7.5-.6-7.2-.6.1-1.8-.3-2.2.5-1.8,3-2.4,10.6-.2,12.1,2.2,1.5.5.6.6,1h0c0,.6.5,1,.9.8s.5-.2.6-.4l.9-1.4h0Z",
++      center: "M23.6,25.6c3.1-1,8.9-8.9,5.1-11.9s-6.7-.2-10,3c-3.3,3.2,3.6,9.2,4.9,8.9Z",
++    },
++    grooves: [
++      "M26.3,19.6c.3-.1.9,1,1.2,1.3.8,1.1,3,3.6,3.4,5.1.4,1.3,3.9,4.3,3.5,4.1",
++      "M16.4,31c-1,2.3,1.9-5.9,2.8-7.2.8-1,.4-1.2,1.3-2.2.5-.7,2.2-2.7,2.3-3.7s-.3-1.3-1-2.6c-.5-.5-1.1-2-1.6-2.9s-.3-.8-.3-1.3c-.2-2-3.3-5-2.1-3.8",
++      "M33.5,8.6c.8-1.1-2.8,4.2-5,6.6-.5.7-1.7,3.8-2.3,4.4s-.8.9-1.2.9-.7,0-1-.2c-.6-.2-1.2-.7-1.5-1.5",
++    ],
++  },
++};
++
++const MOLAR: ToothGeometry = {
++  frontal: {
++    viewBox: "0 0 48 76",
++    roots: [
++      "M13.1 42.8C10.4 36.6 7.6 28.7 8.2 20.4C8.6 15.2 10.5 10.4 13 9.5C16 13.2 16.3 20.6 17.2 28.5C18 34.7 17.8 39.7 17 44.1Z",
++      "M20.4 43.7C19.3 35.8 19.1 26.7 20.5 17.8C21.3 11.9 22.9 7.6 24.2 5.9C26.4 8.8 27.4 13.8 27.6 19.7C28 29.6 27 37.8 26 44.2Z",
++      "M30.2 44.1C29.8 36.9 30.7 31.6 31.7 25.7C32.9 18.3 32.9 13 35.5 9.7C38.1 11.2 39.7 15.4 39.8 20.1C40.1 28.7 37.2 36.6 34.7 42.8Z",
++    ],
++    cervical: "M7.2 42.1C12 45.3 36.2 45.3 40.8 42.1",
++    crown: "M7.2 41.8C5.8 48.1 6.5 57.6 9 64.1C11.2 70.1 16.1 73.5 23.9 74.1C31.8 73.5 36.8 70.1 39 64.1C41.5 57.6 42.2 48.1 40.8 41.8C37.3 40.7 34.5 36 32.6 31.3C30.5 36.3 27.7 38.6 23.9 39.3C20.1 38.6 17.5 36.3 15.4 31.3C13.5 36 10.7 40.7 7.2 41.8Z",
++    highlight: "M10.2 46.5C8.9 53.5 11.1 64 15 67.4C17 69.1 18.1 68.1 17.1 65.7C15 58.5 15.2 49.8 16.1 38.2C14 42.2 12.2 45.2 10.2 46.5Z",
++  },
++  occlusal: {
++    viewBox: "0 0 48.2 41.5",
++    outline: "M19.8,2.9c2.1,0,4.5.3,6.7.5,1.5,0,3.1.2,4.5.7.9.3,1.7.6,2.6,1,1.4.6,2.8,1.4,3.9,2.6,1.1,1.1,2,2.4,2.4,3.9.2.6.3,1.3.5,2,.3,1.7.5,3.2.5,4.8s0,2.4-.2,3.6c0,1.6-.2,3.1-.5,4.6-.5,2-1,4.2-2,6-1.4,2.4-4.1,3.8-6.7,4.4-1,.2-2.1.4-3.1.6-1.5.3-3,.8-4.5,1.2-1.3.3-2.6.2-3.8,0-1.1,0-2.2-.3-3.3-.3-1.9-.2-3.9-.3-5.5-1.4-1.3-.9-2.3-2.2-3.1-3.6-1-1.5-1.7-3.2-2-5-.3-1.3-.2-2.7-.2-4s.5-3.5.7-5.3c.4-2.1.5-4.3,1-6.4.5-2.1,1.5-4,2.8-5.6,1.4-1.6,3.3-3,5.3-3.6,1.3-.3,2.7-.5,4-.5h0s0-.2,0-.2Z",
++    faces: {
++      top: "M18.6,5.8c1.1.5,3,.7,4.6.7,2.5,0,4.6-.5,5.7-1.5s.8-.6.8-1c-1-1.9-12-1.2-13.5-.5-.8.6,1.4,1.7,2.4,2.2h0Z",
++      right: "M38.1,28.6c3.4.2,3.4-14.6,2-16.2-.5-1.1-1.9-.3-2.8-.6-1.5-.5-1.9,3.4-2.8,5-.4,1.6-4.6,1.3-3.6,4.1s3.3,1,3.8,1.9c.5.9,1.2,4.1,2.2,5.2l1.1.7h0Z",
++      bottom: "M17.8,38c1.1.5,3,.7,4.6.7,2.5,0,4.6-.5,5.7-1.4s.8-.6.8-1c-.9-1.9-12-1.3-13.5-.6-.8.6,1.4,1.7,2.4,2.2h0Z",
++      left: "M11.4,25.9c2.4-.3-.4-3.3.1-5.4.7-3.1,2.7-7.5-.8-7.2-.8.1-2.3-.3-2.8.5-2.3,3-3,10.6-.3,12.1s.6.6.7,1h0c0,.6.6,1,1.2.8s.6-.2.8-.4l1.2-1.4h0Z",
++      center: "M13.8,27.2c.6.9,3.7,6.3,4.6,6.4.9,0-1.6-4.6-1.5-5.7s.2-3.1.7-3.7c1-1.2,3.2-3.2,3.9-3.3,1.7-.4,6.6,3.4,8.5,3.8,3.1.6-2.3-4.4,2.1-4.2,4.4.2-.3-3.5-.8-5-.9-2-4.9,1.8-7,.6s-1.2-6.5-2.9-6.5-.8,6.4-2.6,7.7-4.6,3.4-6.1,2.4-1.2-1.6-2.3-2.7-1.3,0-1,.7l1.5,3.8,1.2,3,1.6,2.6h0Z",
++    },
++    grooves: [
++      "M20.5,37.3c.3.7-1.1-2.1-1.7-3.1s-1.7-1.9-2.2-3c-.7-1.6-1.8-3-1.8-4.8,0-2.7-2.7-4.7-4.2-6.8-1-1.3-2.3-7.1-1.9-6",
++      "M24.5,18.7c.4-.1,1.2,1,1.5,1.3,1,1.1,3.9,3.6,4.4,5.1.5,1.3,5,4.3,4.6,4.1",
++      "M13.5,23.6c1-1.2,1.8-1.3,3-2.4,1.1-.9,2.2-1.6,3.3-2.5.6-.6,1.2-1.5,1.4-2.4s-.7-1-.5-2.2c0-.5,0-2.1.2-2.5.8-1.7,0-1.5.2-2.2,0-.3-.4-5.7-.4-5.2",
++      "M36.4,21.2c1.2.3-3.8-.9-5.3-1.1-.5,0-2.1-.1-2.5-.4-.4-.2-1.7-.2-2-.5s-1.7-.6-2.1-.5",
++      "M35,12c1-1-2.7,2.2-5.5,4.3-.7.6-3.4,1.5-4.2,2s-.6.4-1.1.4-.9,0-1.3-.2c-.8-.2-1.5-.6-2-1.3",
++    ],
++  },
++};
++
++export const ANATOMICAL_GEOMETRY: Record<ToothFamily, ToothGeometry> = {
++  incisor: INCISOR,
++  canine: CANINE,
++  premolar: PREMOLAR,
++  molar: MOLAR,
++};
+diff --git a/src/index.css b/src/index.css
+index c7fd83f..191afb1 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -248,20 +248,43 @@
+   }
+ 
+   .odontogram-grid {
+     display: grid;
+     width: 100%;
+     grid-template-columns: repeat(4, minmax(0, 1fr));
+     column-gap: .25rem;
+     row-gap: .75rem;
+   }
+ 
++  .anatomical-tooth {
++    display: block;
++    overflow: visible;
++    filter: drop-shadow(0 2px 2px hsl(30 30% 18% / .18));
++    transition: filter 160ms ease, transform 160ms ease;
++  }
++
++  .anatomical-tooth--arch {
++    width: 100%;
++    height: auto;
++    max-height: 6rem;
++  }
++
++  .anatomical-tooth--editor {
++    width: min(9rem, 100%);
++    height: auto;
++  }
++
++  .anatomical-tooth[data-selected] {
++    filter: drop-shadow(0 0 5px hsl(var(--gold) / .7));
++    transform: translateY(-1px);
++  }
++
+   @container (min-width: 420px) {
+     .odontogram-grid {
+       grid-template-columns: repeat(8, minmax(0, 1fr));
+     }
+   }
+ 
+   @container (min-width: 820px) {
+     .odontogram-grid {
+       grid-template-columns: repeat(16, minmax(0, 1fr));
+     }

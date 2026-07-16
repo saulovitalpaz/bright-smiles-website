@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchClient } from "@/lib/api";
+import { toast } from "sonner";
 
 interface DashboardStats {
     users: number;
@@ -210,12 +211,39 @@ const AdminDashboard = () => {
 
                                     <div className="flex items-center gap-3 w-full sm:w-auto justify-end mt-2 sm:mt-0">
                                         {!isManager && (
-                                            <button
-                                                onClick={() => navigate(destination)}
-                                                className="w-full sm:w-auto opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all sm:translate-x-4 group-hover:translate-x-0 bg-primary text-white text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
-                                            >
-                                                {item.kind === 'lead' ? 'Iniciar consulta' : 'Abrir consulta'}
-                                            </button>
+                                            <div className="flex gap-2 w-full sm:w-auto opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all sm:translate-x-4 group-hover:translate-x-0">
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            const endpoint = item.kind === 'lead' ? `/leads/${item.leadId}` : `/appointments/${item.id}`;
+                                                            const payload = item.kind === 'lead' ? { status: 'completed' } : { status: 'attended' };
+                                                            const res = await fetchClient(endpoint, {
+                                                                method: 'PUT',
+                                                                body: JSON.stringify(payload)
+                                                            });
+                                                            if (res.ok) {
+                                                                toast.success("Paciente marcado como atendido.");
+                                                                const resStats = await fetchClient(`/dashboard/stats`);
+                                                                if (resStats.ok) setStats(await resStats.json());
+                                                            } else {
+                                                                toast.error("Erro ao atualizar status.");
+                                                            }
+                                                        } catch (err) {
+                                                            toast.error("Erro de conexão.");
+                                                        }
+                                                    }}
+                                                    className="w-full sm:w-auto bg-slate-200 text-slate-700 text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-slate-300 shadow-sm"
+                                                >
+                                                    ✔ Atendido
+                                                </button>
+                                                <button
+                                                    onClick={() => navigate(destination)}
+                                                    className="w-full sm:w-auto bg-primary text-white text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
+                                                >
+                                                    {item.kind === 'lead' ? 'Iniciar consulta' : 'Abrir consulta'}
+                                                </button>
+                                            </div>
                                         )}
                                         <div className="hidden sm:flex flex-col items-end whitespace-nowrap">
                                             <span className="text-[9px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold uppercase">

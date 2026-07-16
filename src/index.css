@@ -538,6 +538,9 @@
   body {
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     background: white !important;
     color: black !important;
     -webkit-print-color-adjust: exact !important;
@@ -546,7 +549,9 @@
 
   #root {
     display: block !important;
+    height: auto !important;
     min-height: 0 !important;
+    overflow: visible !important;
   }
 
   #root main,
@@ -554,7 +559,10 @@
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     max-width: none !important;
+    overflow: visible !important;
     background: white !important;
   }
 
@@ -578,10 +586,20 @@
 
   .print-document {
     display: block !important;
+    height: auto !important;
     min-height: 0 !important;
     width: 100%;
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Override tailwind height classes that cause extra pages */
+  .min-h-screen, .h-screen, .h-full, .min-h-full, .h-dvh, .min-h-dvh {
+    min-height: 0 !important;
+    height: auto !important;
   }
 
   .print-report {

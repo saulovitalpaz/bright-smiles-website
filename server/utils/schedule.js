@@ -12,7 +12,7 @@ function normalizeScheduledAt(value) {
 function buildUpcomingSchedule({ appointments = [], leads = [], limit = 10 }) {
     return [
         ...appointments
-            .filter((appointment) => appointment.scheduledAt)
+            .filter((appointment) => appointment.scheduledAt && appointment.status !== 'attended')
             .map((appointment) => ({
                 kind: 'appointment',
                 id: appointment.id,
