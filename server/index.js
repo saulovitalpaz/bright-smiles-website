@@ -77,16 +77,6 @@ app.use(cors({
         /https:\/\/.*\.up\.railway\.app$/
     ],
     credentials: true
-
-app.use(cors({
-    origin: [
-        'https://www.odontoeharmonizacao.com.br',
-        'https://odontoeharmonizacao.com.br',
-        'https://bright-smiles-website.vercel.app',
-        'http://localhost:5173',
-        /https:\/\/.*\.up\.railway\.app$/
-    ],
-    credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
