@@ -253,7 +253,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                                                 {(app.appointmentType === 'odontologia' || app.appointmentType === 'ambos') && (
                                                     <div className="space-y-3">
                                                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado Dentário em {format(new Date(app.date), "dd/MM")}</h5>
-                                                        <div className="scale-75 origin-top-left -mb-16">
+                                                        <div className="min-w-0 max-w-full">
                                                             <Odontogram 
                                                                 data={app.dentalNotes} 
                                                                 onChange={() => {}} 

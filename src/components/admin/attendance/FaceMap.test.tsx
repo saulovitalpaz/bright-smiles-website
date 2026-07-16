@@ -117,6 +117,20 @@ describe("FaceMap anatomical interaction", () => {
     expect(getSvgRegion(container, "mento")).toHaveAttribute("data-filled", "true");
   });
 
+  it("renders historical non-string fields without crashing", () => {
+    const legacyData = {
+      frontal: { product: 123, dose: 8, notes: null },
+    } as unknown as Record<string, FaceRegionData>;
+
+    const { container } = render(
+      <FaceMap data={legacyData} onChange={() => undefined} readOnly />,
+    );
+
+    expect(getSvgRegion(container, "frontal")).toHaveAttribute("data-filled", "true");
+    expect(screen.getByText("123")).toBeInTheDocument();
+    expect(screen.getByText("8")).toBeInTheDocument();
+  });
+
   it("does not expose editing or open a form in read-only mode", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -223,7 +237,7 @@ describe("FaceMap anatomical interaction", () => {
           photos: [],
           dentalNotes: {},
           facialNotes: {},
-          appointmentType: "harmonizacao",
+          appointmentType: "ambos",
         },
       ],
     } as Response);
@@ -232,7 +246,9 @@ describe("FaceMap anatomical interaction", () => {
     await user.click(await screen.findByRole("button", { name: /comparar detalhes/i }));
 
     const timelineFaceMap = container.querySelector("[data-face-map]");
+    const timelineOdontogram = container.querySelector(".odontogram-card");
     expect(timelineFaceMap).toHaveAttribute("data-compact", "true");
     expect(timelineFaceMap?.parentElement?.className).not.toMatch(/scale-|-[m][btxy]-/);
+    expect(timelineOdontogram?.parentElement?.className).not.toMatch(/scale-|-[m][btxy]-/);
   });
 });

@@ -43,6 +43,8 @@ Assert-Contains "src/components/admin/attendance/FaceMap.tsx" "touch-manipulatio
 Assert-Contains "src/components/admin/attendance/FaceMap.tsx" "grid-cols-1 gap-4 sm:grid-cols-2" "Face map fields must stack on narrow screens."
 Assert-NotContains "src/components/admin/attendance/EvolutionTimeline.tsx" 'scale-\[0\.6\]' "Historical face maps must not use transform scaling."
 Assert-NotContains "src/components/admin/attendance/EvolutionTimeline.tsx" "-mb-40" "Historical face maps must not rely on negative mobile margins."
+Assert-NotContains "src/components/admin/attendance/EvolutionTimeline.tsx" "scale-75" "Historical odontograms must not use transform scaling."
+Assert-NotContains "src/components/admin/attendance/EvolutionTimeline.tsx" "-mb-16" "Historical odontograms must not rely on negative mobile margins."
 Assert-Contains "src/pages/AdminFinance.tsx" "transactionTypeFilter" "Finance page needs local transaction type filter state."
 Assert-Contains "src/pages/AdminFinance.tsx" "displayedTransactions" "Finance report must render a filtered display collection."
 Assert-Contains "src/pages/AdminFinance.tsx" "aria-pressed" "Finance summary filters need pressed-state semantics."

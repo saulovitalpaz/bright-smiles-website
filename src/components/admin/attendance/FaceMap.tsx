@@ -154,7 +154,9 @@ const REGIONS: FaceRegionDefinition[] = [
 function hasRegionData(region: FaceRegionData | undefined): boolean {
   return Boolean(
     region &&
-      [region.product, region.dose, region.notes].some((value) => value?.trim()),
+      [region.product, region.dose, region.notes].some((value) =>
+        value === null || value === undefined ? false : String(value).trim().length > 0,
+      ),
   );
 }
 
