@@ -267,8 +267,9 @@ export const CalendarView = ({
                                         </div>
                                     );
                                 })}
-                            </div>
-                        ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
