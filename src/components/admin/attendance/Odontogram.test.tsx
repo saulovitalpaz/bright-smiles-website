@@ -90,4 +90,18 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.getByText("Resumo Clínico")).toBeInTheDocument();
     expect(screen.getByText("Oclusal / Incisal: Tratado")).toBeInTheDocument();
   });
+
+  it("closes an open editor when permissions become read-only", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const { rerender } = render(<Odontogram data={{}} onChange={onChange} />);
+
+    await user.click(getToothButton(16));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    rerender(<Odontogram data={{}} onChange={onChange} readOnly />);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

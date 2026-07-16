@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -121,6 +121,13 @@ const Odontogram = ({ data = {}, onChange, readOnly = false }: OdontogramProps):
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [selectedFace, setSelectedFace] = useState<FaceKey | null>(null);
   const [wholeToothOpen, setWholeToothOpen] = useState(false);
+
+  useEffect(() => {
+    if (!readOnly) return;
+    setSelectedTooth(null);
+    setSelectedFace(null);
+    setWholeToothOpen(false);
+  }, [readOnly]);
 
   const openTooth = (toothNumber: number): void => {
     if (readOnly) return;
@@ -301,7 +308,7 @@ const Odontogram = ({ data = {}, onChange, readOnly = false }: OdontogramProps):
         onOpenChange={(open) => {
           if (!open) closeEditor();
         }}
-        open={selectedTooth !== null}
+        open={!readOnly && selectedTooth !== null}
       >
         <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] min-w-0 max-w-[540px] overscroll-y-contain overflow-x-hidden overflow-y-auto border-slate-800 bg-[#0a1120] p-4 text-slate-200 sm:p-6">
           <DialogHeader>
@@ -335,6 +342,7 @@ const Odontogram = ({ data = {}, onChange, readOnly = false }: OdontogramProps):
                     }}
                     selectedFace={selectedFace}
                     toothNumber={selectedTooth}
+                    readOnly={readOnly}
                   />
                 </div>
               </div>
