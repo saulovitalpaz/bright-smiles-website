@@ -20,7 +20,12 @@ const { createUpdateLeadHandler } = require('./routes/leads');
 const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
-const { patientSchema, appointmentSchema, loginSchema } = require('./utils/validationSchemas');
+const {
+    patientSchema,
+    appointmentSchema,
+    loginSchema,
+    updateCurrentUserSchema
+} = require('./utils/validationSchemas');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -222,6 +227,31 @@ app.post('/users', async (req, res) => {
     try {
         const user = await prisma.user.create({
             data: req.body
+        });
+        res.json(user);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.patch('/users/me', authenticateToken, async (req, res) => {
+    const result = updateCurrentUserSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
+    try {
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: result.data,
+            select: {
+                id: true,
+                username: true,
+                name: true,
+                cro: true,
+                signatureUrl: true,
+                role: true,
+                createdAt: true,
+                updatedAt: true
+            }
         });
         res.json(user);
     } catch (error) {

@@ -38,8 +38,15 @@ const loginSchema = z.object({
     password: z.string().min(1)
 });
 
+const updateCurrentUserSchema = z.object({
+    name: z.string().trim().min(1).optional(),
+    cro: z.string().optional().nullable(),
+    signatureUrl: z.string().optional().nullable()
+}).strict();
+
 module.exports = {
     patientSchema,
     appointmentSchema,
-    loginSchema
+    loginSchema,
+    updateCurrentUserSchema
 };
