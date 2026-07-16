@@ -1,6 +1,6 @@
 import { useId, type JSX } from "react";
 import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
-import { getToothFamily, type ToothData } from "./odontogramModel";
+import { FACE_KEYS, getToothFamily, type ToothData } from "./odontogramModel";
 
 interface AnatomicalToothProps {
   toothNumber: number;
@@ -28,6 +28,8 @@ export function AnatomicalTooth({
   const enamelId = `${idPrefix}-enamel`;
   const rootId = `${idPrefix}-root`;
   const highlightClipId = `${idPrefix}-highlight-clip`;
+  const treatPatternId = `${idPrefix}-treat-pattern`;
+  const crownClipId = `${idPrefix}-crown-clip`;
   const overlay = STATUS_OVERLAYS[data.status as keyof typeof STATUS_OVERLAYS] ?? "#e05252";
   const isMissing = data.status === "Ausente";
   const viewBoxHeight = anatomy.viewBox.split(/\s+/)[3];
@@ -60,6 +62,13 @@ export function AnatomicalTooth({
         <clipPath id={highlightClipId}>
           <path d={anatomy.crown} />
         </clipPath>
+        <clipPath id={crownClipId}>
+          <path d={anatomy.crown} />
+        </clipPath>
+        <pattern id={treatPatternId} patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(35)">
+          <rect width="5" height="5" fill="#fce8e6" />
+          <path d="M0 0V5" stroke="#b42318" strokeWidth="2" />
+        </pattern>
       </defs>
 
       <g
@@ -101,11 +110,34 @@ export function AnatomicalTooth({
           opacity="0.58"
         />
         <g
+          clipPath={`url(#${crownClipId})`}
+          data-anatomy-layer="face-overlays"
+        >
+          {FACE_KEYS.map((face) => {
+            const status = data.faces?.[face]?.status ?? "Saudável";
+            if (status === "Saudável") return null;
+
+            const isTreatment = status === "Tratado";
+            return (
+              <path
+                data-face-key={face}
+                data-face-status={status}
+                d={anatomy.surfaces[face]}
+                fill={isTreatment ? "#22d3ee" : `url(#${treatPatternId})`}
+                key={face}
+                opacity={isTreatment ? 0.58 : 0.86}
+                stroke={isTreatment ? "#0e7490" : "#b42318"}
+                strokeWidth="0.7"
+              />
+            );
+          })}
+        </g>
+        <g
           data-testid="whole-tooth-overlay"
           data-anatomy-layer="whole-tooth-overlay"
           data-status={data.status}
           fill={overlay}
-          opacity={data.status === "Saudável" ? 0 : 0.42}
+          opacity={data.status === "Saudável" ? 0 : 0.3}
         >
           {anatomy.roots.map((root) => (
             <path key={root} d={root} />

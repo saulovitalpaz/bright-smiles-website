@@ -91,6 +91,29 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.getByText("Oclusal / Incisal: Tratado")).toBeInTheDocument();
   });
 
+  it("uses the tooth surface colors as the overview status indicator", () => {
+    const { container } = render(
+      <Odontogram
+        data={{
+          "16": {
+            status: "Saudável",
+            notes: "",
+            faces: { center: { status: "Tratar" } },
+          },
+        }}
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(container.querySelector(".bg-blue-400")).not.toBeInTheDocument();
+    expect(screen.getByText("Área a tratar")).toBeInTheDocument();
+    expect(screen.getByText("Área tratada")).toBeInTheDocument();
+    expect(container.querySelector('[data-face-key="center"]')).toHaveAttribute(
+      "data-face-status",
+      "Tratar",
+    );
+  });
+
   it("closes an open editor when permissions become read-only", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

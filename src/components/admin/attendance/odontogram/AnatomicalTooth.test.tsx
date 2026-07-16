@@ -42,10 +42,36 @@ describe("AnatomicalTooth", () => {
       "cervical-transition",
       "enamel-crown",
       "enamel-highlight",
+      "face-overlays",
       "whole-tooth-overlay",
     ]);
     expect(tooth.querySelector('[data-anatomy-layer="enamel-highlight"]'))
       .toHaveAttribute("clip-path", expect.stringMatching(/^url\(#tooth-16-/));
+  });
+
+  it("paints affected faces directly on the anatomical tooth", () => {
+    render(
+      <AnatomicalTooth
+        toothNumber={36}
+        data={{
+          status: "Saudável",
+          notes: "",
+          faces: {
+            center: { status: "Tratar" },
+            right: { status: "Tratado" },
+            left: { status: "Saudável" },
+          },
+        }}
+      />,
+    );
+
+    const tooth = screen.getByRole("img", { name: /dente 36/i });
+    const overlays = tooth.querySelectorAll('[data-anatomy-layer="face-overlays"] [data-face-key]');
+
+    expect(overlays).toHaveLength(2);
+    expect(tooth.querySelector('[data-face-key="center"]')).toHaveAttribute("data-face-status", "Tratar");
+    expect(tooth.querySelector('[data-face-key="right"]')).toHaveAttribute("data-face-status", "Tratado");
+    expect(tooth.querySelector('[data-face-key="left"]')).not.toBeInTheDocument();
   });
 
   it.each(["Implante", "Ponte", "Ausente"] as const)(

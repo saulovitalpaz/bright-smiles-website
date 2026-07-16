@@ -69,7 +69,7 @@ const STATUS_STYLES: Record<ToothStatus, { badge: string; dot: string }> = {
   },
   Tratado: {
     badge: "border-cyan-500/40 bg-cyan-500/15 text-cyan-100",
-    dot: "#0e7490",
+    dot: "#22d3ee",
   },
   Ausente: {
     badge: "border-slate-600 bg-slate-800/60 text-slate-400",
@@ -176,12 +176,6 @@ const Odontogram = ({
           <>
             <span className="font-mono text-[10px] text-slate-500">{toothNumber}</span>
             <AnatomicalTooth toothNumber={toothNumber} data={tooth} />
-            {isRecorded(tooth) ? (
-              <span
-                aria-hidden="true"
-                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,.8)]"
-              />
-            ) : null}
           </>
         );
 
@@ -196,7 +190,9 @@ const Odontogram = ({
         return (
           <button
             aria-label={`Abrir dente ${toothNumber}, condição ${tooth.status}`}
-            className="relative flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg touch-manipulation hover:bg-slate-800/50"
+            className={`relative flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg touch-manipulation hover:bg-slate-800/50 ${
+              isRecorded(tooth) ? "ring-1 ring-blue-400/20" : ""
+            }`}
             key={toothNumber}
             onClick={() => openTooth(toothNumber)}
             type="button"
@@ -246,6 +242,18 @@ const Odontogram = ({
 
         <div className="odontogram-legend mt-7 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+            <span
+              aria-hidden="true"
+              className="h-3 w-3 rounded-sm ring-1 ring-red-300/30"
+              style={{ background: "repeating-linear-gradient(45deg,#b42318 0 2px,#fce8e6 2px 4px)" }}
+            />
+            Área a tratar
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+            <span aria-hidden="true" className="h-3 w-3 rounded-sm bg-cyan-400 ring-1 ring-cyan-200/30" />
+            Área tratada
+          </div>
           {LEGEND_STATUSES.map((status) => (
             <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
               <span
