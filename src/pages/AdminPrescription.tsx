@@ -4,6 +4,7 @@ import { API_URL, fetchClient } from "@/lib/api";
 import Odontogram from "@/components/admin/attendance/Odontogram";
 import type { ToothData } from "@/components/admin/attendance/Odontogram";
 import { DownloadPrescriptionButton } from "@/components/PrescriptionGenerator";
+import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature";
 import { ConsentDialog } from "@/components/ConsentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,26 @@ import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
-import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
+import { printDocumentClass } from "@/lib/print-layout";
+import {
+    hasCompleteProfessionalIdentity,
+    hasUsableProfessionalSignature,
+    readStoredProfessionalIdentity,
+} from "@/lib/professional-signature";
+
+type PrescriptionHistoryItem = {
+    id: number;
+    patient: string;
+    date: string;
+    preview: string;
+    content: string;
+};
+
+type StoredPrescription = {
+    id: number;
+    date: string;
+    content: string;
+};
 
 const AdminPrescription = () => {
     const [searchParams] = useSearchParams();
@@ -41,17 +61,20 @@ const AdminPrescription = () => {
         odontogram: {} as Record<string, ToothData>
     });
 
-    const [prescriptionHistory, setPrescriptionHistory] = useState<any[]>([]);
+    const [prescriptionHistory, setPrescriptionHistory] = useState<PrescriptionHistoryItem[]>([]);
     const [prescriptionContent, setPrescriptionContent] = useState("");
-    const [printMode, setPrintMode] = useState<PrintMode>("clinic");
     const [showConsentDialog, setShowConsentDialog] = useState(false);
     const [patientConsent, setPatientConsent] = useState(false);
     const [includeOdontogram, setIncludeOdontogram] = useState(false);
 
     const editorRef = useRef<HTMLDivElement>(null);
 
-    const userStr = localStorage.getItem("admin_user");
-    const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional", cro: "", username: "admin" };
+    const currentUser = readStoredProfessionalIdentity();
+    const canIssueDocument = hasCompleteProfessionalIdentity(currentUser);
+    const canInsertSignature = hasUsableProfessionalSignature(currentUser);
+    const [includeProfessionalSignature, setIncludeProfessionalSignature] = useState(
+        () => canInsertSignature,
+    );
 
     useEffect(() => {
         if (urlCpf) {
@@ -82,7 +105,7 @@ const AdminPrescription = () => {
                 toast.success("Paciente encontrado!");
                 // Load history if needed
                 if (data.prescriptions) {
-                    setPrescriptionHistory(data.prescriptions.map((p: any) => ({
+                    setPrescriptionHistory(data.prescriptions.map((p: StoredPrescription) => ({
                         id: p.id,
                         patient: data.name,
                         date: new Date(p.date).toLocaleDateString(),
@@ -186,9 +209,11 @@ const AdminPrescription = () => {
     };
 
     const handlePrint = () => {
-        // Check prescriptionContent state directly
         if (!prescriptionContent) {
             return toast.error("Escreva o conteúdo da receita antes de imprimir.");
+        }
+        if (!canIssueDocument) {
+            return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
         }
         window.print();
     };
@@ -338,16 +363,24 @@ const AdminPrescription = () => {
                                 <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
                                     <Printer size={16} /> Print Rápido
                                 </Button>
-                                <label className="no-print inline-flex items-center gap-2 text-sm text-muted-foreground">
-                                    <span>Formato</span>
-                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
-                                        <option value="clinic">A4 clínico</option>
-                                        <option value="compact">A4 compacto</option>
-                                    </select>
-                                </label>
+                                <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
+                                    <Switch
+                                        id="include-professional-signature"
+                                        checked={includeProfessionalSignature}
+                                        onCheckedChange={setIncludeProfessionalSignature}
+                                        disabled={!canInsertSignature}
+                                    />
+                                    <Label htmlFor="include-professional-signature" className="cursor-pointer text-sm text-muted-foreground">
+                                        Inserir assinatura
+                                    </Label>
+                                </div>
                                 {(patientData.name && prescriptionContent) && (
                                     <>
-                                        {!patientConsent ? (
+                                        {!canIssueDocument ? (
+                                            <Button asChild size="sm" variant="outline">
+                                                <Link to="/admin/settings">Configure nome e CRO</Link>
+                                            </Button>
+                                        ) : !patientConsent ? (
                                             <Button size="sm" onClick={() => setShowConsentDialog(true)} className="gap-2 bg-amber-500 text-white hover:bg-amber-600">
                                                 <QrCode size={16} /> Assinar Termo LGPD
                                             </Button>
@@ -358,10 +391,14 @@ const AdminPrescription = () => {
                                                         name: patientData.name,
                                                         cpf: patientData.cpf,
                                                         professionalName: currentUser.name,
-                                                        professionalCro: currentUser.cro
+                                                        professionalCro: currentUser.cro,
+                                                        signatureUrl: currentUser.signatureUrl,
                                                     }}
                                                     content={prescriptionContent}
-                                                    mode={printMode}
+                                                    mode="clinic"
+                                                    includeElectronicSignature={includeProfessionalSignature}
+                                                    includeOdontogram={includeOdontogram}
+                                                    odontogram={patientData.odontogram || {}}
                                                 />
                                             </Button>
                                         )}
@@ -410,7 +447,7 @@ const AdminPrescription = () => {
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className={`hidden print-only ${printDocumentClass(printMode)} flex min-h-screen flex-col text-slate-900`} id="printable-recipe">
+            <div className={`hidden print-only ${printDocumentClass("clinic")} text-slate-900`} id="printable-recipe">
                 {/* Header: compact, single row */}
                 <div className="print-section flex items-center gap-4 border-b border-slate-200 pb-4 mb-5">
                     <img src="/images/logo-oficial.png" alt="Logo" className="w-14 h-14 object-contain" />
@@ -452,23 +489,24 @@ const AdminPrescription = () => {
                 {includeOdontogram && Object.keys(patientData.odontogram || {}).length > 0 && (
                     <div className="print-section mb-5 print-odontogram">
                         <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest mb-2">Mapeamento Dentário</p>
-                        <div className="transform scale-[0.65] origin-top-left -mb-20">
+                        <div className="min-w-0 max-w-full">
                             <Odontogram
                                 data={patientData.odontogram || {}}
                                 onChange={() => {}}
                                 readOnly
+                                printable
                             />
                         </div>
                     </div>
                 )}
 
                 {/* Prescription Body */}
-                <div className="print-section flex-1 py-3 px-5 rounded-xl border border-dotted border-slate-200 mb-6 font-serif text-base leading-relaxed text-slate-800">
+                <div className="print-flow-content py-3 px-5 rounded-xl border border-dotted border-slate-200 mb-6 font-serif text-base leading-relaxed text-slate-800">
                     <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
                 </div>
 
-                {/* Footer: pushed to bottom, NO position:fixed */}
-                <div className="print-signature mt-auto pt-6">
+                {/* Flowing footer: moves intact to the next page when needed. */}
+                <div className="print-signature pt-6">
                     <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-5"></div>
 
                     <div className="flex justify-between items-end">
@@ -478,14 +516,11 @@ const AdminPrescription = () => {
                             <p>Rua Barão do Rio Branco, 461 - Sala 206 - Centro</p>
                             <p>CNPJ: 00.000.000/0001-00 | Razão Social: Karol Paz Me.</p>
                         </div>
-                        <div className="text-center">
-                            <div className="flex flex-col items-center">
-                                <div className="w-56 border-b border-slate-300 mb-2"></div>
-                                <p className="font-bold text-slate-900 text-xs">{currentUser.name}</p>
-                                <p className="text-[8px] uppercase font-black text-primary tracking-[0.15em] mt-0.5">{currentUser.cro}</p>
-                                <p className="text-[6px] font-bold text-slate-300 uppercase mt-1.5 tracking-widest">Assinatura / Carimbo</p>
-                            </div>
-                        </div>
+                        <ProfessionalSignature
+                            professional={currentUser}
+                            includeElectronic={includeProfessionalSignature}
+                            className="w-64"
+                        />
                     </div>
 
                     <div className="mt-4 flex justify-between items-center text-[6px] text-slate-300 font-bold uppercase tracking-[0.25em] pt-3 border-t border-slate-50">

@@ -104,4 +104,21 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("exposes a stable printable presentation without editing controls", () => {
+    const { container } = render(
+      <Odontogram
+        data={{ "16": { status: "Implante", notes: "controle" } }}
+        onChange={() => undefined}
+        readOnly
+        printable
+      />,
+    );
+
+    expect(container.querySelector(".odontogram-card")).toHaveAttribute(
+      "data-printable",
+      "true",
+    );
+    expect(screen.queryByRole("button", { name: /dente 16/i })).not.toBeInTheDocument();
+  });
 });

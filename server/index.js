@@ -20,10 +20,17 @@ const { createUpdateLeadHandler } = require('./routes/leads');
 const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
+const { hashPassword, verifyPassword } = require('./utils/passwords');
+const {
+    SIGNATURE_IMAGE_TYPES,
+    isSupportedSignatureImage,
+    signatureExtension
+} = require('./utils/signatureImage');
 const {
     patientSchema,
     appointmentSchema,
     loginSchema,
+    createUserSchema,
     updateCurrentUserSchema
 } = require('./utils/validationSchemas');
 
@@ -54,6 +61,11 @@ const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (req, file, callback) => callback(null, file.mimetype === 'application/pdf')
+});
+const signatureUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, callback) => callback(null, SIGNATURE_IMAGE_TYPES.has(file.mimetype))
 });
 
 app.use(cors({
@@ -121,6 +133,30 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
         });
     } catch (error) {
         console.error("Upload error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/upload/signature', authenticateToken, signatureUpload.single('file'), async (req, res) => {
+    try {
+        if (!req.file || !isSupportedSignatureImage(req.file.buffer, req.file.mimetype)) {
+            return res.status(400).json({ error: 'A valid JPEG, PNG, or WebP signature image is required.' });
+        }
+
+        const asset = await uploadAsset({
+            scope: 'public',
+            body: req.file.buffer,
+            contentType: req.file.mimetype,
+            extension: signatureExtension(req.file.mimetype),
+            ownerId: req.user.id
+        });
+
+        await withAssetUploadCleanup({
+            uploadedReference: asset.reference,
+            run: async () => res.json({ reference: asset.reference, url: asset.deliveryPath })
+        });
+    } catch (error) {
+        console.error('Signature upload error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -217,16 +253,65 @@ app.get('/health', async (req, res) => {
     }
 });
 
-// Users API
-app.get('/users', async (req, res) => {
-    const users = await prisma.user.findMany();
-    res.json(users);
+const SAFE_USER_SELECT = {
+    id: true,
+    username: true,
+    name: true,
+    cro: true,
+    signatureUrl: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true
+};
+const STAFF_USER_SELECT = {
+    id: true,
+    name: true,
+    role: true
+};
+
+const toSafeUser = (user) => ({
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    cro: user.cro,
+    signatureUrl: user.signatureUrl,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
 });
 
-app.post('/users', async (req, res) => {
+// Users API
+app.get('/staff', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
+        const staff = await prisma.user.findMany({ select: STAFF_USER_SELECT });
+        res.json(staff);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/users', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({ select: SAFE_USER_SELECT });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/users', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+    const result = createUserSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
+    try {
+        const password = await hashPassword(result.data.password);
         const user = await prisma.user.create({
-            data: req.body
+            data: {
+                ...result.data,
+                cro: result.data.cro || null,
+                password
+            },
+            select: SAFE_USER_SELECT
         });
         res.json(user);
     } catch (error) {
@@ -242,16 +327,7 @@ app.patch('/users/me', authenticateToken, async (req, res) => {
         const user = await prisma.user.update({
             where: { id: req.user.id },
             data: result.data,
-            select: {
-                id: true,
-                username: true,
-                name: true,
-                cro: true,
-                signatureUrl: true,
-                role: true,
-                createdAt: true,
-                updatedAt: true
-            }
+            select: SAFE_USER_SELECT
         });
         res.json(user);
     } catch (error) {
@@ -269,8 +345,17 @@ app.post('/login', async (req, res) => {
             where: { username }
         });
 
-        if (user && user.password === password) {
-            const { password, ...userWithoutPassword } = user;
+        const passwordResult = user
+            ? await verifyPassword(password, user.password)
+            : { valid: false, needsUpgrade: false };
+
+        if (user && passwordResult.valid) {
+            if (passwordResult.needsUpgrade) {
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { password: await hashPassword(password) }
+                });
+            }
             const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
 
             const isSecure = process.env.NODE_ENV === 'production' || req.secure;
@@ -281,7 +366,7 @@ app.post('/login', async (req, res) => {
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
-            res.json(userWithoutPassword);
+            res.json(toSafeUser(user));
         } else {
             res.status(401).json({ error: 'Invalid credentials' });
         }

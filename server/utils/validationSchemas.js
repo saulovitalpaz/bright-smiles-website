@@ -38,15 +38,29 @@ const loginSchema = z.object({
     password: z.string().min(1)
 });
 
+const signatureReferenceSchema = z.string().trim().regex(
+    /^bucket:\/\/public\/.+\.(?:jpe?g|png|webp)$/i,
+    'Signature must be a public JPEG, PNG, or WebP asset reference'
+);
+
+const createUserSchema = z.object({
+    name: z.string().trim().min(1),
+    username: z.string().trim().min(3).max(64).regex(/^[a-z0-9._-]+$/i),
+    password: z.string().min(8).max(256),
+    cro: z.string().trim().optional().nullable(),
+    role: z.enum(['admin', 'manager', 'dentist'])
+}).strict();
+
 const updateCurrentUserSchema = z.object({
     name: z.string().trim().min(1).optional(),
-    cro: z.string().optional().nullable(),
-    signatureUrl: z.string().optional().nullable()
+    cro: z.string().trim().min(1).optional(),
+    signatureUrl: signatureReferenceSchema.optional().nullable()
 }).strict();
 
 module.exports = {
     patientSchema,
     appointmentSchema,
     loginSchema,
+    createUserSchema,
     updateCurrentUserSchema
 };

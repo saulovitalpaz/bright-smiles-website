@@ -144,7 +144,7 @@ const AdminAppointments = () => {
         try {
             const [leadsResponse, usersResponse] = await Promise.all([
                 fetchClient("/leads"),
-                fetchClient("/users")
+                fetchClient("/staff")
             ]);
             const [leadsBody, usersBody] = await Promise.all([
                 leadsResponse.json().catch(() => ({})),

@@ -30,6 +30,7 @@ interface OdontogramProps {
   data: Record<string, ToothData>;
   onChange: (data: Record<string, ToothData>) => void;
   readOnly?: boolean;
+  printable?: boolean;
 }
 
 const TEETH_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -117,7 +118,12 @@ function ConditionButton({
   );
 }
 
-const Odontogram = ({ data = {}, onChange, readOnly = false }: OdontogramProps): JSX.Element => {
+const Odontogram = ({
+  data = {},
+  onChange,
+  readOnly = false,
+  printable = false,
+}: OdontogramProps): JSX.Element => {
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [selectedFace, setSelectedFace] = useState<FaceKey | null>(null);
   const [wholeToothOpen, setWholeToothOpen] = useState(false);
@@ -206,8 +212,13 @@ const Odontogram = ({ data = {}, onChange, readOnly = false }: OdontogramProps):
   const selectedLabels = selectedTooth === null ? null : getFaceLabels(selectedTooth);
 
   return (
-    <Card className="odontogram-card overflow-hidden border-slate-800 bg-[#0a1120] text-slate-200 shadow-2xl">
-      <CardHeader className="border-b border-slate-800/70 bg-gradient-to-r from-[#0f172a] to-[#0a1120] p-4 pb-4 sm:p-6 sm:pb-4">
+    <Card
+      className={`odontogram-card overflow-hidden border-slate-800 bg-[#0a1120] text-slate-200 shadow-2xl${
+        printable ? " odontogram-card--printable" : ""
+      }`}
+      data-printable={printable || undefined}
+    >
+      <CardHeader className="odontogram-header border-b border-slate-800/70 bg-gradient-to-r from-[#0f172a] to-[#0a1120] p-4 pb-4 sm:p-6 sm:pb-4">
         <CardTitle className="font-serif text-xl tracking-wide text-white">Odontograma</CardTitle>
         <CardDescription className="text-sm text-slate-400">
           Selecione o dente e depois a face exata antes de registrar a condição.
@@ -233,7 +244,7 @@ const Odontogram = ({ data = {}, onChange, readOnly = false }: OdontogramProps):
           </p>
         </div>
 
-        <div className="mt-7 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
+        <div className="odontogram-legend mt-7 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
           {LEGEND_STATUSES.map((status) => (
             <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>

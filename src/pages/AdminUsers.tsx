@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import { API_URL } from '@/lib/api';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,6 +10,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Users, UserPlus, Shield, Activity, Key, Trash2 } from 'lucide-react';
+
+type TeamUser = {
+    id: number;
+    name: string;
+    username: string;
+    cro?: string | null;
+    role: string;
+    createdAt: string;
+};
 
 const AdminUsers = () => {
     const { toast } = useToast();
@@ -23,7 +32,7 @@ const AdminUsers = () => {
         role: 'dentist'
     });
 
-    const { data: users = [], isLoading } = useQuery({
+    const { data: users = [], isLoading } = useQuery<TeamUser[]>({
         queryKey: ['users'],
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/users`, { withCredentials: true });
@@ -42,7 +51,7 @@ const AdminUsers = () => {
             setIsCreating(false);
             setFormData({ name: '', username: '', password: '', cro: '', role: 'dentist' });
         },
-        onError: (err: any) => {
+        onError: (err: AxiosError<{ error?: string }>) => {
             toast({
                 title: 'Erro',
                 description: err.response?.data?.error || 'Erro ao criar usuário',
@@ -53,7 +62,7 @@ const AdminUsers = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.username || !formData.password) {
+        if (!formData.name || !formData.username || formData.password.length < 8) {
             toast({ title: 'Aviso', description: 'Preencha os campos obrigatórios.', variant: 'warning' });
             return;
         }
@@ -145,10 +154,12 @@ const AdminUsers = () => {
                                     <div className="space-y-2">
                                         <Label>Senha Temporária *</Label>
                                         <Input
-                                            type="text"
+                                            type="password"
                                             value={formData.password}
                                             onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
                                             placeholder="Crie uma senha inicial"
+                                            minLength={8}
+                                            autoComplete="new-password"
                                             required
                                         />
                                     </div>
@@ -167,7 +178,7 @@ const AdminUsers = () => {
                     {isLoading ? (
                         <p className="text-slate-500">Carregando usuários...</p>
                     ) : (
-                        users.map((u: any) => (
+                        users.map((u) => (
                             <Card key={u.id} className="relative overflow-hidden group hover:shadow-md transition-all border-slate-200">
                                 <div className="absolute top-0 right-0 p-4">
                                     {getRoleBadge(u.role)}
