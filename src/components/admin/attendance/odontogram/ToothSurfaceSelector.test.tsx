@@ -92,7 +92,7 @@ describe("ToothSurfaceSelector", () => {
   });
 
   it("uses a hatch pattern for a face marked to treat", () => {
-    render(
+    const { container } = render(
       <ToothSurfaceSelector
         toothNumber={16}
         data={{ status: "Saudável", notes: "", faces: { center: { status: "Tratar" } } }}
@@ -107,6 +107,16 @@ describe("ToothSurfaceSelector", () => {
 
     expect(hatch).toBeInTheDocument();
     expect(treatedFace).toHaveAttribute("fill", `url(#${hatch?.id})`);
+
+    const baseFace = container.querySelector(
+      '.surface-selector__base [data-surface-face="center"] .surface-selector__button-face',
+    );
+    const baseHatch = container.querySelector(
+      '.surface-selector__base [data-surface-face="center"] pattern',
+    );
+
+    expect(baseHatch).toBeInTheDocument();
+    expect(baseFace).toHaveStyle({ fill: `url(#${baseHatch?.id})` });
   });
 
   it("renders a treated inset inside the treated face button", () => {

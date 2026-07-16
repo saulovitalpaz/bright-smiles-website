@@ -68,6 +68,7 @@ function FaceVisual({ path, status, isSelected, hatchId }: FaceVisualProps): JSX
         className={`surface-selector__button-face ${getFaceClass(status)}`}
         d={path}
         fill={status === "Tratar" ? `url(#${hatchId})` : undefined}
+        style={status === "Tratar" ? { fill: `url(#${hatchId})` } : undefined}
       />
       {status === "Tratado" ? (
         <path aria-hidden="true" className="surface-selector__treated-inset" d={path} />
