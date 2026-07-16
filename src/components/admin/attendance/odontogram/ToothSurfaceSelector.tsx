@@ -57,6 +57,13 @@ function HatchPattern({ id }: { id: string }): JSX.Element {
 }
 
 function FaceVisual({ path, status, isSelected, hatchId }: FaceVisualProps): JSX.Element {
+  const visualStyle =
+    status === "Tratar"
+      ? { fill: `url(#${hatchId})` }
+      : status === "Tratado"
+        ? { fill: "#d9eff3", stroke: "#0e7490", strokeWidth: 2.4 }
+        : undefined;
+
   return (
     <>
       {status === "Tratar" ? (
@@ -68,7 +75,7 @@ function FaceVisual({ path, status, isSelected, hatchId }: FaceVisualProps): JSX
         className={`surface-selector__button-face ${getFaceClass(status)}`}
         d={path}
         fill={status === "Tratar" ? `url(#${hatchId})` : undefined}
-        style={status === "Tratar" ? { fill: `url(#${hatchId})` } : undefined}
+        style={visualStyle}
       />
       {status === "Tratado" ? (
         <path aria-hidden="true" className="surface-selector__treated-inset" d={path} />

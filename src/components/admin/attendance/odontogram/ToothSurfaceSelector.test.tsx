@@ -120,7 +120,7 @@ describe("ToothSurfaceSelector", () => {
   });
 
   it("renders a treated inset inside the treated face button", () => {
-    render(
+    const { container } = render(
       <ToothSurfaceSelector
         toothNumber={16}
         data={{ status: "Saudável", notes: "", faces: { center: { status: "Tratado" } } }}
@@ -130,10 +130,16 @@ describe("ToothSurfaceSelector", () => {
     );
 
     const control = screen.getByRole("button", { name: /oclusal.*tratado/i });
+    const treatedFace = control.querySelector(".surface-selector__button-face");
     const inset = control.querySelector(".surface-selector__treated-inset");
+    const baseFace = container.querySelector(
+      '.surface-selector__base [data-surface-face="center"] .surface-selector__button-face',
+    );
 
     expect(inset).toBeInTheDocument();
     expect(inset).toHaveAttribute("d", ANATOMICAL_GEOMETRY.molar.occlusal.faces.center);
+    expect(treatedFace).toHaveStyle({ fill: "#d9eff3", stroke: "#0e7490", strokeWidth: "2.4" });
+    expect(baseFace).toHaveStyle({ fill: "#d9eff3", stroke: "#0e7490", strokeWidth: "2.4" });
   });
 
   it("renders a selected ring inside the selected face button", () => {
