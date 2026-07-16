@@ -391,36 +391,37 @@ const AdminDocuments = () => {
                         </div>
                     </Card>
 
-                    {/* Print Preview (Hidden normally, Visible on Print) */}
-                    <div className={`hidden print-only ${printDocumentClass("clinic")} text-slate-900`}>
-                        <div className="print-section flex flex-col items-center mb-6 text-center border-b border-slate-100 pb-4">
-                            <img src="/images/logo-oficial.png" alt="Logo" className="w-20 h-20 object-contain mb-2" />
-                            <h1 className="text-xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
-                            <p className="text-slate-500 font-medium text-[9px] uppercase tracking-[0.2em] mt-1">Especializado & Harmonização</p>
-                        </div>
-
-                        <div className="print-flow-content whitespace-pre-wrap font-serif text-base leading-[1.6] text-justify text-slate-800 px-4">
-                            {documentContent}
-                        </div>
-
-                        <div className="print-signature break-inside-avoid mt-20 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 text-center">
-                            <div>
-                                <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
-                                <p className="font-bold uppercase text-[10px]">Assinatura do Paciente</p>
-                                <p className="text-[9px] text-slate-500 mt-1">{patientData.name} - {patientData.cpf}</p>
-                            </div>
-                            <ProfessionalSignature
-                                professional={currentUser}
-                                includeElectronic={includeProfessionalSignature}
-                            />
-                        </div>
-
-                        <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-widest text-center">
-                            Governador Valadares, {patientData.date}
-                        </p>
-                    </div>
                 </div>
             </div >
+
+            {/* Keep the printable document outside the editing grid so print pagination is independent of screen layout. */}
+            <div className={`hidden print-only ${printDocumentClass("clinic")} text-slate-900`}>
+                <div className="print-section flex flex-col items-center mb-6 text-center border-b border-slate-100 pb-4">
+                    <img src="/images/logo-oficial.png" alt="Logo" className="w-20 h-20 object-contain mb-2" />
+                    <h1 className="text-xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
+                    <p className="text-slate-500 font-medium text-[9px] uppercase tracking-[0.2em] mt-1">Especializado & Harmonização</p>
+                </div>
+
+                <div className="print-flow-content whitespace-pre-wrap font-serif text-base leading-[1.6] text-justify text-slate-800 px-4">
+                    {documentContent}
+                </div>
+
+                <div className="print-signature break-inside-avoid mt-20 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 text-center">
+                    <div>
+                        <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
+                        <p className="font-bold uppercase text-[10px]">Assinatura do Paciente</p>
+                        <p className="text-[9px] text-slate-500 mt-1">{patientData.name} - {patientData.cpf}</p>
+                    </div>
+                    <ProfessionalSignature
+                        professional={currentUser}
+                        includeElectronic={includeProfessionalSignature}
+                    />
+                </div>
+
+                <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-widest text-center">
+                    Governador Valadares, {patientData.date}
+                </p>
+            </div>
 
         </AdminLayout >
     );

@@ -7,14 +7,16 @@ import axios from "axios";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
 
+interface AdminComment { id: number; name: string; comment?: string; content?: string; approved: boolean; createdAt: string; }
+
 const AdminComments = () => {
     const queryClient = useQueryClient();
 
-    const { data: comments, isLoading } = useQuery({
+    const { data: comments, isLoading } = useQuery<AdminComment[]>({
         queryKey: ['testimonials'],
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/testimonials`); // Get all (approved and unapproved)
-            return res.data;
+            return res.data as AdminComment[];
         }
     });
 
@@ -46,7 +48,7 @@ const AdminComments = () => {
                 {isLoading && <p>Carregando...</p>}
                 {comments?.length === 0 && <p className="text-slate-500">Nenhum comentário encontrado.</p>}
 
-                {comments?.map((comment: any) => (
+                {comments?.map((comment) => (
                 <div key={comment.id} className="admin-card p-6">
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">

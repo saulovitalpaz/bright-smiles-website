@@ -90,6 +90,67 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     facialNotes: {}
 };
 
+interface AppointmentResponse {
+    id?: number | "new";
+    patientId?: number | null;
+    patientName?: string | null;
+    cpf?: string | null;
+    phone?: string | null;
+    patient?: { id?: number; name?: string; cpf?: string; phone?: string } | null;
+    date?: string | null;
+    scheduledAt?: string | null;
+    createdAt?: string | null;
+    returnDate?: string | null;
+    photos?: unknown;
+    externalLinks?: unknown;
+    appointmentType?: unknown;
+    price?: number | string | null;
+    paymentStatus?: string | null;
+    dentalNotes?: unknown;
+    facialNotes?: unknown;
+    weight?: string | null;
+    materials?: string | null;
+    complications?: string | null;
+    notes?: string | null;
+}
+
+interface LeadResponse {
+    id: number;
+    name?: string;
+    cpf?: string;
+    phone?: string;
+    scheduledAt?: string | null;
+    treatment?: string;
+    message?: string;
+}
+
+export const normalizeAppointmentResponse = (fetched: AppointmentResponse): AppointmentData => {
+    const patient = fetched.patient || {};
+
+    return {
+        ...DEFAULT_APPOINTMENT,
+        ...fetched,
+        patientId: fetched.patientId ?? patient.id ?? null,
+        patientName: fetched.patientName || patient.name || "",
+        cpf: fetched.cpf || patient.cpf || "",
+        phone: fetched.phone || patient.phone || "",
+        scheduledAt: fetched.scheduledAt || null,
+        createdAt: fetched.createdAt || undefined,
+        returnDate: fetched.returnDate ? new Date(fetched.returnDate).toISOString().split("T")[0] : "",
+        photos: Array.isArray(fetched.photos) ? fetched.photos : [],
+        externalLinks: Array.isArray(fetched.externalLinks) ? fetched.externalLinks : [],
+        appointmentType: normalizeAppointmentType(fetched.appointmentType),
+        price: fetched.price == null ? "" : String(fetched.price),
+        paymentStatus: fetched.paymentStatus || "paid",
+        dentalNotes: fetched.dentalNotes && typeof fetched.dentalNotes === "object" ? fetched.dentalNotes : {},
+        facialNotes: fetched.facialNotes && typeof fetched.facialNotes === "object" ? fetched.facialNotes : {},
+        weight: fetched.weight || "",
+        materials: fetched.materials || "",
+        complications: fetched.complications || "",
+        notes: fetched.notes || ""
+    };
+};
+
 const AdminAttendanceDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -124,6 +185,8 @@ const AdminAttendanceDetail = () => {
         } else {
             fetchAppointment(id as string);
         }
+    // These loaders are stable for the lifetime of this detail view.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, leadId, patientIdParam]);
 
     const fetchLead = async (leadIdStr: string, draft: AppointmentData) => {
@@ -131,7 +194,7 @@ const AdminAttendanceDetail = () => {
             const res = await fetch(`${API_URL}/leads`);
             if (res.ok) {
                 const leads = await res.json();
-                const lead = leads.find((l: any) => l.id === parseInt(leadIdStr));
+                const lead = (leads as LeadResponse[]).find((l) => l.id === parseInt(leadIdStr));
                 if (lead) {
                     const patientId = await resolveLeadPatient(lead);
                     setData({
@@ -154,7 +217,7 @@ const AdminAttendanceDetail = () => {
         }
     };
 
-    const resolveLeadPatient = async (lead: any): Promise<number | null> => {
+    const resolveLeadPatient = async (lead: LeadResponse): Promise<number | null> => {
         const findPatient = async (endpoint: string): Promise<number | null> => {
             try {
                 const patientRes = await fetchClient(endpoint);
@@ -189,31 +252,7 @@ const AdminAttendanceDetail = () => {
             const res = await fetch(`${API_URL}/appointments/${appId}`);
             if (res.ok) {
                 const fetched = await res.json();
-
-                // Parse date strings for inputs
-                const returnDateStr = fetched.returnDate ? new Date(fetched.returnDate).toISOString().split('T')[0] : '';
-
-                setData({
-                    ...fetched,
-                    patientId: fetched.patientId ?? fetched.patient?.id ?? null,
-                    patientName: fetched.patientName || fetched.patient?.name || "",
-                    cpf: fetched.cpf || fetched.patient?.cpf || "",
-                    phone: fetched.phone || fetched.patient?.phone || "",
-                    scheduledAt: fetched.scheduledAt || null,
-                    createdAt: fetched.createdAt || undefined,
-                    returnDate: returnDateStr,
-                    photos: Array.isArray(fetched.photos) ? fetched.photos : [],
-                    externalLinks: fetched.externalLinks || [],
-                    appointmentType: normalizeAppointmentType(fetched.appointmentType),
-                    price: fetched.price !== undefined ? fetched.price.toString() : "",
-                    paymentStatus: fetched.paymentStatus || "paid",
-                    dentalNotes: fetched.dentalNotes && typeof fetched.dentalNotes === "object" ? fetched.dentalNotes : {},
-                    facialNotes: fetched.facialNotes && typeof fetched.facialNotes === "object" ? fetched.facialNotes : {},
-                    weight: fetched.weight || "",
-                    materials: fetched.materials || "",
-                    complications: fetched.complications || "",
-                    notes: fetched.notes || ""
-                });
+                setData(normalizeAppointmentResponse(fetched));
             } else {
                 toast.error("Atendimento não encontrado.");
                 navigate('/admin/consultas');
@@ -271,18 +310,17 @@ const AdminAttendanceDetail = () => {
             // `phone` is temporary patient-contact state used when creating a
             // patient from a lead. It is not an Appointment Prisma field, so
             // keep it out of both POST and PUT appointment payloads.
-            delete (payload as any).phone;
-            if (!isNew) {
-                delete (payload as any).id; // don't send ID in body explicitly if PUT usually ignores, just safe
-                delete (payload as any).patient;
-                delete (payload as any).createdAt;
-                delete (payload as any).updatedAt;
-            }
+            const {
+                phone: _phone,
+                id: _id,
+                createdAt: _createdAt,
+                ...payloadForRequest
+            } = payload;
 
             const res = await fetchClient(url, {
                 method: method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payloadForRequest)
             });
 
             if (res.ok) {
@@ -330,7 +368,7 @@ const AdminAttendanceDetail = () => {
         }
     };
 
-    const updateField = (field: keyof AppointmentData, value: any) => {
+    const updateField = (field: keyof AppointmentData, value: AppointmentData[keyof AppointmentData]) => {
         if (readOnly) return;
         setData(prev => ({ ...prev, [field]: value }));
     };
@@ -395,9 +433,15 @@ const AdminAttendanceDetail = () => {
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                                             <User size={12} /> Paciente e CPF
                                         </Label>
-                                        {id === 'new' ? (
-                                            <>
+                                        {!readOnly && (
+                                            <div className="space-y-2">
                                                 <PatientPicker
+                                                    selectedPatient={data.patientId ? {
+                                                        id: data.patientId,
+                                                        name: data.patientName,
+                                                        cpf: data.cpf,
+                                                        phone: data.phone,
+                                                    } : null}
                                                     onSelect={(p) => {
                                                         updateField('patientName', p.name);
                                                         updateField('cpf', p.cpf);
@@ -405,6 +449,20 @@ const AdminAttendanceDetail = () => {
                                                         updateField('patientId', p.id);
                                                     }}
                                                 />
+                                                {id !== 'new' && data.patientId && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="h-9 text-xs"
+                                                        onClick={() => navigate(`/admin/pacientes?edit=${data.patientId}`)}
+                                                    >
+                                                        Editar cadastro do paciente
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
+                                        {id === 'new' ? (
+                                            <>
                                                 <div className="grid grid-cols-2 gap-3 pt-2">
                                                     <Input
                                                         value={data.patientName}

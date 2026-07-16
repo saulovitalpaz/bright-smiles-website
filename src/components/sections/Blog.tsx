@@ -6,8 +6,18 @@ import { Button } from "@/components/ui/button";
 import { API_URL } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 
+interface BlogPostSummary {
+  slug: string;
+  title: string;
+  image?: string;
+  category: string;
+  readTime?: string;
+  excerpt?: string;
+  date: string;
+}
+
 const Blog = () => {
-  const [displayedPosts, setDisplayedPosts] = useState([]);
+  const [displayedPosts, setDisplayedPosts] = useState<BlogPostSummary[]>([]);
 
   useEffect(() => {
     fetchPosts();
@@ -17,9 +27,9 @@ const Blog = () => {
     try {
       const res = await fetch(`${API_URL}/posts`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as BlogPostSummary[];
         // Sort by date desc and take 3
-        const sorted = data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setDisplayedPosts(sorted.slice(0, 3));
       }
     } catch (error) {
@@ -48,7 +58,7 @@ const Blog = () => {
 
         {/* Blog Grid */}
         <div className="flex overflow-x-auto pb-6 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 snap-x snap-mandatory no-scrollbar">
-          {displayedPosts.map((post: any) => (
+          {displayedPosts.map((post) => (
             <Link key={post.slug} to={`/blog/${post.slug}`} className="group h-full min-w-[280px] sm:min-w-0 snap-center">
               <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 flex flex-col">
                 <div className="aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-secondary/5">

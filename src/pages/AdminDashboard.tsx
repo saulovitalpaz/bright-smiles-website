@@ -11,15 +11,19 @@ import { useNavigate } from "react-router-dom";
 import { fetchClient } from "@/lib/api";
 import { toast } from "sonner";
 
+interface RecentLead { id: number; status: string; }
+interface RecentTestimonial { name: string; comment?: string; content?: string; }
+interface RecentAppointment { id: number; patientName: string; procedure?: string; professional?: string; date: string; }
+
 interface DashboardStats {
     users: number;
     posts: number;
     appointments: number;
     leads: number;
     testimonials: number;
-    recentAppointments: any[];
-    recentLeads: any[];
-    recentTestimonials: any[];
+    recentAppointments: RecentAppointment[];
+    recentLeads: RecentLead[];
+    recentTestimonials: RecentTestimonial[];
     upcomingSchedule: Array<{
         kind: 'lead' | 'appointment';
         id: number;
@@ -81,7 +85,7 @@ const AdminDashboard = () => {
         fetchStats();
     }, []);
 
-    const pendingLeads = stats?.recentLeads?.filter((l: any) => l.status === 'new' || l.status === 'contacted') || [];
+    const pendingLeads = stats?.recentLeads?.filter((l) => l.status === 'new' || l.status === 'contacted') || [];
     const pendingCount = pendingLeads.length;
 
     if (loading) {
@@ -276,7 +280,7 @@ const AdminDashboard = () => {
 
                     <div className="space-y-4">
                         {(stats?.recentAppointments?.length || 0) > 0 ? (
-                            stats.recentAppointments.map((app: any) => (
+                            stats.recentAppointments.map((app) => (
                                 <div key={app.id} className="flex items-center gap-4 p-4 md:p-5 rounded-3xl border border-slate-50 hover:bg-emerald-50/30 transition-all hover:border-emerald-100/50">
                                     <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-sm">
                                         <Users size={20} className="md:w-6 md:h-6" />

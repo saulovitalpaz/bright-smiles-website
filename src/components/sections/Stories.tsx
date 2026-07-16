@@ -31,7 +31,7 @@ const Stories = () => {
             const res = await fetch(`${API_URL}/stories`);
             if (res.ok) {
                 const data = await res.json();
-                const active = data.filter((s: any) => s.status === 'active');
+                const active = (data as Story[]).filter((s) => s.status === 'active');
                 setStories(active);
             }
         } catch (error) {
@@ -57,7 +57,7 @@ const Stories = () => {
                 })
             }).catch(() => { });
         }
-    }, [selectedStoryIndex]);
+    }, [selectedStoryIndex, stories]);
 
     // Progress Logic
     useEffect(() => {
@@ -87,6 +87,8 @@ const Stories = () => {
         return () => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
         };
+    // handleNext and progress are managed by the same viewer state machine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedStoryIndex, isPaused, stories]);
 
     // Video Handling: Sync progress with video time
@@ -117,6 +119,7 @@ const Stories = () => {
             video.removeEventListener('timeupdate', handleTimeUpdate);
             video.removeEventListener('ended', handleEnded);
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedStoryIndex, isPaused, stories]);
 
     const handleNext = () => {

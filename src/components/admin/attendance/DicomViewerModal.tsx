@@ -8,17 +8,28 @@ interface DicomViewerModalProps {
     onClose: () => void;
 }
 
+interface DwvApp {
+    init: (options: Record<string, unknown>) => void;
+    setTool: (toolName: string) => void;
+    addEventListener: (eventName: string, listener: (event?: unknown) => void) => void;
+    loadURLs: (urls: string[]) => void;
+    resetView: () => void;
+    resetDisplay: () => void;
+}
+
 // Ensure TypeScript knows dwv exists on window
 declare global {
     interface Window {
-        dwv: any;
+        dwv?: {
+            App: new () => DwvApp;
+        };
     }
 }
 
 const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const viewerRef = useRef<any>(null);
+    const viewerRef = useRef<DwvApp | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -44,7 +55,7 @@ const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }
                      app.setTool('WindowLevel');
                 };
 
-                const handleLoadError = (event: any) => {
+                const handleLoadError = (event: unknown) => {
                      console.error("DICOM Load Error:", event);
                      if (isMounted) {
                         setError("Erro ao carregar arquivo DICOM. O link pode ser inválido ou protegido por CORS.");
@@ -89,7 +100,9 @@ const DicomViewerModal: React.FC<DicomViewerModalProps> = ({ dicomUrl, onClose }
                  // Try graceful shutdown
                  try {
                      viewerRef.current.resetView();
-                 } catch (e) {}
+                } catch (error) {
+                     console.warn("Failed to reset DICOM viewer", error);
+                }
              }
              if (script && document.body.contains(script)) {
                  document.body.removeChild(script);

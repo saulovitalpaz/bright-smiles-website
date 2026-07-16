@@ -60,6 +60,8 @@ const AdminFinance = () => {
     useEffect(() => {
         setTransactionTypeFilter(null);
         fetchTransactions();
+    // The fetch function uses the selected month/year from this component state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterByMonth, filterByYear]);
 
     const fetchTransactions = async () => {

@@ -7,9 +7,32 @@ import { useState, useEffect } from "react";
 import { API_URL } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 
+interface BlogReference {
+    title: string;
+    url: string;
+    authors?: string;
+    journal?: string;
+    year?: string | number;
+}
+
+interface BlogPostData {
+    id: number;
+    title: string;
+    slug: string;
+    category: string;
+    readTime?: string;
+    author?: string;
+    date: string;
+    images?: string[];
+    image?: string;
+    excerpt?: string;
+    content: string;
+    references?: BlogReference[];
+}
+
 const BlogPost = () => {
     const { slug } = useParams();
-    const [post, setPost] = useState<any>(null);
+    const [post, setPost] = useState<BlogPostData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
     const [isZoomOpen, setIsZoomOpen] = useState(false);
@@ -19,7 +42,7 @@ const BlogPost = () => {
             fetch(`${API_URL}/posts/${slug}`)
                 .then(res => res.json())
                 .then(data => {
-                    setPost(data);
+                    setPost(data as BlogPostData);
                     setIsLoading(false);
                     // 1. Fire and forget legacy view increment
                     if (data.id) {
@@ -166,7 +189,7 @@ const BlogPost = () => {
                                     </button>
 
                                     <div className="flex flex-wrap justify-center gap-3 mt-8">
-                                        {post.images?.map((img: string, i: number) => (
+                                        {post.images?.map((img, i) => (
                                             <button
                                                 key={i}
                                                 onClick={() => setActiveImage(i)}

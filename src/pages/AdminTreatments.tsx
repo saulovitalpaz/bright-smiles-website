@@ -71,7 +71,7 @@ const AdminTreatments = () => {
 
     // Mutations
     const createMutation = useMutation({
-        mutationFn: (newTreatment: any) => axios.post(`${API_URL}/treatments`, newTreatment),
+        mutationFn: (newTreatment: Partial<Treatment>) => axios.post(`${API_URL}/treatments`, newTreatment),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Tratamento criado com sucesso!");
@@ -82,7 +82,7 @@ const AdminTreatments = () => {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: number, data: any }) => axios.put(`${API_URL}/treatments/${id}`, data),
+        mutationFn: ({ id, data }: { id: number, data: Partial<Treatment> }) => axios.put(`${API_URL}/treatments/${id}`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Tratamento atualizado com sucesso!");
@@ -103,7 +103,7 @@ const AdminTreatments = () => {
 
     // Result Mutations
     const addResultMutation = useMutation({
-        mutationFn: ({ treatmentId, data }: { treatmentId: number, data: any }) => axios.post(`${API_URL}/treatments/${treatmentId}/results`, data),
+        mutationFn: ({ treatmentId, data }: { treatmentId: number, data: Omit<TreatmentResult, "id"> }) => axios.post(`${API_URL}/treatments/${treatmentId}/results`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Resultado adicionado!");
@@ -307,7 +307,7 @@ const AdminTreatments = () => {
                                             <select
                                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                 value={formData.category}
-                                                onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                                                onChange={e => setFormData({ ...formData, category: e.target.value as Treatment["category"] })}
                                             >
                                                 <option value="Odontologia">Odontologia</option>
                                                 <option value="Harmonização">Harmonização</option>

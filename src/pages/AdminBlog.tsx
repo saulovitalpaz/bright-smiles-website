@@ -14,13 +14,24 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 
+interface BlogReference { title: string; url: string; authors: string; journal: string; year: string; }
+interface AdminBlogPost {
+    id: number;
+    title: string;
+    content: string;
+    category: string;
+    author: string;
+    image: string;
+    references?: BlogReference[];
+}
+
 const AdminBlog = () => {
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
 
-    const [editingPost, setEditingPost] = useState<any>(null);
+    const [editingPost, setEditingPost] = useState<AdminBlogPost | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -31,17 +42,17 @@ const AdminBlog = () => {
         image: ""
     });
 
-    const [references, setReferences] = useState<any[]>([
+    const [references, setReferences] = useState<BlogReference[]>([
         { title: "", url: "", authors: "", journal: "", year: "" }
     ]);
 
     const categories = ["Dicas de Saúde", "Harmonização", "Institucional", "Tratamentos", "Novidades"];
 
-    const { data: blogPosts, isLoading } = useQuery({
+    const { data: blogPosts, isLoading } = useQuery<AdminBlogPost[]>({
         queryKey: ['posts'],
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/posts`);
-            return res.data;
+            return res.data as AdminBlogPost[];
         }
     });
 
@@ -97,7 +108,7 @@ const AdminBlog = () => {
         setReferences([{ title: "", url: "", authors: "", journal: "", year: "" }]);
     }
 
-    const handleEdit = (post: any) => {
+    const handleEdit = (post: AdminBlogPost) => {
         setEditingPost(post);
         setFormData({
             title: post.title,
@@ -175,7 +186,7 @@ const AdminBlog = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {blogPosts?.map((post: any) => (
+                                {blogPosts?.map((post) => (
                                 <tr key={post.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4">
                                         {post.image && (

@@ -3,15 +3,24 @@ import { Star, ChevronLeft, ChevronRight, Quote, Smile, Frown, Meh, Heart, Award
 import { Card, CardContent } from "@/components/ui/card";
 import { API_URL } from "@/lib/api";
 
+interface Testimonial {
+    id: number;
+    approved?: boolean;
+    feeling?: string;
+    comment: string;
+    name?: string;
+    rating?: number;
+}
+
 const TestimonialsCarousel = () => {
-    const [testimonials, setTestimonials] = useState([]);
+    const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetch(`${API_URL}/testimonials`)
             .then(res => res.json())
             .then(data => {
-                const approved = data.filter((t: any) => t.approved);
+                const approved = (data as Testimonial[]).filter((t) => t.approved);
                 setTestimonials(approved);
             })
             .catch(err => console.error("Failed to fetch testimonials", err));
@@ -57,7 +66,7 @@ const TestimonialsCarousel = () => {
                         className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-6 sm:pb-8 snap-x snap-mandatory no-scrollbar"
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {testimonials.map((t: any) => {
+                        {testimonials.map((t) => {
                             const FeelingIcon = {
                                 sad: Frown,
                                 neutral: Meh,

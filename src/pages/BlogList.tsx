@@ -9,16 +9,26 @@ import { mediaUrl } from "@/lib/media";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+interface BlogPostSummary {
+    slug: string;
+    title: string;
+    image?: string;
+    category: string;
+    readTime?: string;
+    excerpt?: string;
+    date: string;
+}
+
 const BlogList = () => {
     const [searchQuery, setSearchQuery] = useState("");
-    const [posts, setPosts] = useState<any[]>([]);
+    const [posts, setPosts] = useState<BlogPostSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         fetch(`${API_URL}/posts`)
             .then(res => res.json())
             .then(data => {
-                setPosts(data);
+                setPosts(data as BlogPostSummary[]);
                 setIsLoading(false);
             })
             .catch(err => {

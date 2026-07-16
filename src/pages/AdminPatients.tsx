@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Trash2, RotateCcw, Save, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 
 interface Patient {
     id: number;
@@ -54,6 +55,8 @@ const AdminPatients = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [searchParams] = useSearchParams();
+    const requestedEditId = Number.parseInt(searchParams.get("edit") || "", 10);
 
     const loadPatients = useCallback(async (term: string) => {
         setLoading(true);
@@ -92,7 +95,7 @@ const AdminPatients = () => {
         setEditingId(null);
     };
 
-    const beginEdit = (patient: Patient) => {
+    const beginEdit = useCallback((patient: Patient) => {
         setEditingId(patient.id);
         setForm({
             name: patient.name || "",
@@ -105,7 +108,13 @@ const AdminPatients = () => {
             odontogram: typeof patient.odontogram === "string" ? patient.odontogram : patient.odontogram ? JSON.stringify(patient.odontogram, null, 2) : "",
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+    }, []);
+
+    useEffect(() => {
+        if (!Number.isInteger(requestedEditId) || editingId === requestedEditId) return;
+        const patient = patients.find((item) => item.id === requestedEditId);
+        if (patient) beginEdit(patient);
+    }, [beginEdit, editingId, patients, requestedEditId]);
 
     const savePatient = async (event: React.FormEvent) => {
         event.preventDefault();

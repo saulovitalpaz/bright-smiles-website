@@ -1,9 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+interface AuthUser {
+    token?: string;
+    role?: string;
+    name?: string;
+    username?: string;
+    cro?: string;
+    [key: string]: unknown;
+}
+
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: (userData: any) => Promise<boolean>;
+    login: (userData: AuthUser) => Promise<boolean>;
     logout: () => void;
 }
 
@@ -15,13 +24,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
     const navigate = useNavigate();
 
-    const login = async (userData: any) => {
+    const login = async (userData: AuthUser) => {
         localStorage.setItem('admin_auth', 'true');
-        if (userData.token) {
-            localStorage.setItem('admin_token', userData.token);
-            delete userData.token;
+        const { token, ...user } = userData;
+        if (token) {
+            localStorage.setItem('admin_token', token);
         }
-        localStorage.setItem('admin_user', JSON.stringify(userData));
+        localStorage.setItem('admin_user', JSON.stringify(user));
         setIsAuthenticated(true);
         return true;
     };

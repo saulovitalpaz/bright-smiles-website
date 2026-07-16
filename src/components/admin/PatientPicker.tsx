@@ -27,15 +27,20 @@ interface Patient {
 
 interface PatientPickerProps {
     onSelect: (patient: Patient) => void;
+    selectedPatient?: Patient | null;
     className?: string;
 }
 
-export function PatientPicker({ onSelect, className }: PatientPickerProps) {
+export function PatientPicker({ onSelect, selectedPatient, className }: PatientPickerProps) {
     const [open, setOpen] = useState(false);
-    const [value, setValue] = useState("");
+    const [value, setValue] = useState(selectedPatient?.cpf || "");
     const [query, setQuery] = useState("");
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        setValue(selectedPatient?.cpf || "");
+    }, [selectedPatient?.cpf]);
 
     useEffect(() => {
         const fetchPatients = async () => {
@@ -71,9 +76,9 @@ export function PatientPicker({ onSelect, className }: PatientPickerProps) {
                     aria-expanded={open}
                     className={cn("w-full justify-between", className)}
                 >
-                    {value
+                    {selectedPatient?.name || (value
                         ? patients.find((patient) => patient.cpf === value)?.name || value
-                        : "Buscar paciente (Nome ou CPF)..."}
+                        : "Buscar paciente (Nome ou CPF)...")}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
@@ -99,8 +104,9 @@ export function PatientPicker({ onSelect, className }: PatientPickerProps) {
                                     key={patient.id}
                                     value={patient.cpf}
                                     onSelect={(currentValue) => {
-                                        setValue(patient.name);
+                                        setValue(currentValue);
                                         setOpen(false);
+                                        setQuery("");
                                         onSelect(patient);
                                     }}
                                 >

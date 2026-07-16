@@ -25,13 +25,14 @@ const AdminStories = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
-    const { data: stories, isLoading } = useQuery({
+    const { data: stories, isLoading } = useQuery<AdminStory[]>({
         queryKey: ['stories'],
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/stories`);
             // Map keys if needed or rely on raw response if types match
             // We'll format the date for display
-            return res.data.map((s: any) => ({
+            const rawStories = res.data as Array<AdminStory & { createdAt: string }>;
+            return rawStories.map((s) => ({
                 ...s,
                 date: new Date(s.createdAt).toLocaleDateString('pt-BR')
             })) as AdminStory[];

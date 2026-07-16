@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchClient } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,13 @@ const categoryLabel = {
     ambos: "Odontologia + Harmonização"
 } as const;
 
+export const filterHistoricalAppointments = <T extends { id: number; date: string }>(
+    appointments: T[],
+    currentAppointmentId?: number | string,
+): T[] => appointments
+    .filter((appointment) => String(appointment.id) !== String(currentAppointmentId))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, currentAppointmentId }) => {
     const [history, setHistory] = useState<HistoricalAppointment[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -48,13 +55,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
     const [photoErrors, setPhotoErrors] = useState<Record<string, string>>({});
     const objectUrlsRef = useRef<string[]>([]);
 
-    useEffect(() => {
-        if (patientId) {
-            fetchHistory();
-        }
-    }, [patientId]);
-
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await fetchClient(`/appointments?patientId=${patientId}`);
@@ -67,17 +68,18 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                     dentalNotes: app.dentalNotes && typeof app.dentalNotes === "object" ? app.dentalNotes as Record<string, ToothData> : {},
                     facialNotes: app.facialNotes && typeof app.facialNotes === "object" ? app.facialNotes as Record<string, FaceRegionData> : {}
                 }));
-                const filtered = normalized
-                    .filter((app: any) => app.id.toString() !== currentAppointmentId?.toString())
-                    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setHistory(filtered);
+                setHistory(filterHistoricalAppointments(normalized, currentAppointmentId));
             }
         } catch (error) {
             console.error("Error fetching patient history:", error);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [currentAppointmentId, patientId]);
+
+    useEffect(() => {
+        if (patientId) void fetchHistory();
+    }, [fetchHistory, patientId]);
 
     useEffect(() => {
         const expandedAppointment = history.find((app) => app.id === expandedId);

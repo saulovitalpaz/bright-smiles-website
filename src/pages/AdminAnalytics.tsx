@@ -16,6 +16,17 @@ import {
 import { API_URL } from "@/lib/api";
 import axios from "axios";
 
+interface AnalyticsPost { id: number; title: string; views?: number; }
+interface AnalyticsData {
+    totalVisits: number;
+    uniqueVisitors: number;
+    conversionRate: string;
+    leadsCount: number;
+    sources: Record<string, number>;
+    locations: Record<string, number>;
+    neighborhoods?: Record<string, number>;
+}
+
 const AdminAnalytics = () => {
     const [stats, setStats] = useState({
         visits: 0,
@@ -24,7 +35,7 @@ const AdminAnalytics = () => {
         posts: 0,
         comments: 0,
         leads: 0,
-        topPosts: [],
+        topPosts: [] as AnalyticsPost[],
         sources: [] as { name: string, count: number, percentage: number }[],
         locations: [] as { name: string, count: number, percentage: number }[],
         neighborhoods: [] as { name: string, count: number, percentage: number }[]
@@ -40,26 +51,26 @@ const AdminAnalytics = () => {
                     axios.get(`${API_URL}/analytics/stats`)
                 ]);
 
-                const posts = postsRes.data;
-                const analytics = analyticsRes.data;
-                const topPosts = posts.sort((a: any, b: any) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+                const posts = postsRes.data as AnalyticsPost[];
+                const analytics = analyticsRes.data as AnalyticsData;
+                const topPosts = posts.sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
 
-                const sources = Object.entries(analytics.sources).map(([name, count]: [string, any]) => ({
+                const sources = Object.entries(analytics.sources).map(([name, count]) => ({
                     name,
-                    count: count as number,
-                    percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
+                    count,
+                    percentage: Math.round((count / (analytics.totalVisits || 1)) * 100)
                 })).sort((a, b) => b.count - a.count).slice(0, 6);
 
-                const locations = Object.entries(analytics.locations).map(([name, count]: [string, any]) => ({
+                const locations = Object.entries(analytics.locations).map(([name, count]) => ({
                     name,
-                    count: count as number,
-                    percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
+                    count,
+                    percentage: Math.round((count / (analytics.totalVisits || 1)) * 100)
                 })).sort((a, b) => b.count - a.count).slice(0, 6);
 
-                const neighborhoods = Object.entries(analytics.neighborhoods || {}).map(([name, count]: [string, any]) => ({
+                const neighborhoods = Object.entries(analytics.neighborhoods || {}).map(([name, count]) => ({
                     name,
-                    count: count as number,
-                    percentage: Math.round(((count as number) / (analytics.totalVisits || 1)) * 100)
+                    count,
+                    percentage: Math.round((count / (analytics.totalVisits || 1)) * 100)
                 })).sort((a, b) => b.count - a.count).slice(0, 6);
 
                 setStats({
@@ -130,7 +141,7 @@ const AdminAnalytics = () => {
                     <CardContent>
                         <div className="space-y-4">
                             {stats.topPosts.length > 0 ? (
-                                stats.topPosts.map((post: any, i) => (
+                                stats.topPosts.map((post, i) => (
                                     <div key={post.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
                                         <span className="font-bold text-slate-300 text-lg w-6">#{i + 1}</span>
                                         <div className="flex-1 min-w-0">
