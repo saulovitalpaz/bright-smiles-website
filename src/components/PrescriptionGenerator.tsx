@@ -323,7 +323,8 @@ export function PrescriptionDocument({
     <Document>
       <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
         <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: tokens.sectionGap }}>
-          <Text style={styles.logoText}>Núcleo Odontológico</Text>
+          <Image src={window.location.origin + '/images/logo-oficial.png'} style={{ height: 60, objectFit: 'contain', marginBottom: 12 }} />
+          <Text style={styles.logoText}>NÚCLEO ODONTOLÓGICO</Text>
           <Text style={styles.subLogoText}>Especializado & Harmonização</Text>
         </View>
 

@@ -240,21 +240,26 @@ const AdminAttendanceDetail = () => {
 
             // If new and patient doesn't exist, create it via endpoint
             let finalPatientId = data.patientId;
-            if (isNew && !finalPatientId && data.patientName && data.cpf) {
-                const pRes = await fetchClient(`/patients`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: data.patientName, cpf: data.cpf, phone: data.phone || undefined })
-                });
-                if (pRes.ok) {
-                    const newPatient = await pRes.json();
-                    finalPatientId = newPatient.id;
+            if (isNew && !finalPatientId) {
+                if (data.patientName && data.cpf) {
+                    const pRes = await fetchClient(`/patients`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: data.patientName, cpf: data.cpf, phone: data.phone || undefined })
+                    });
+                    if (pRes.ok) {
+                        const newPatient = await pRes.json();
+                        finalPatientId = newPatient.id;
+                    } else {
+                        toast.error("Erro ao cadastrar paciente. Verifique se o CPF já está em uso.");
+                        setIsSaving(false);
+                        return;
+                    }
+                } else {
+                    toast.error("Selecione um paciente existente ou informe o CPF para cadastrá-lo antes de finalizar.");
+                    setIsSaving(false);
+                    return;
                 }
-            }
-
-            if (isNew && leadId && !finalPatientId) {
-                toast.error("Selecione um paciente existente ou informe o CPF para cadastrá-lo antes de finalizar.");
-                return;
             }
 
             const payload = {

@@ -209,24 +209,44 @@ export const CalendarView = ({
                         </div>
                     </div>
                 ) : (
-                    <div className={viewMode === 'day' ? 'min-w-full' : 'min-w-full md:min-w-[600px]'}>
-                        <div className={`grid border-b border-slate-200 bg-slate-50 ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
+                    <div className="min-w-full">
+                        <div className={`grid border-b border-slate-200 bg-slate-50 ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[45px_repeat(7,minmax(0,1fr))] md:grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
                             <div />
                             {days.map((day) => (
-                                <div key={day.toISOString()} className="border-l border-slate-200 px-3 py-2 text-center">
-                                    <p className="text-xs font-medium uppercase text-slate-500">{format(day, "EEE", { locale: ptBR })}</p>
-                                    <p className={`text-sm font-semibold ${isToday(day) ? 'text-primary' : 'text-slate-900'}`}>{format(day, "dd/MM")}</p>
+                                <div key={day.toISOString()} className="border-l border-slate-200 px-1 md:px-3 py-2 text-center overflow-hidden">
+                                    <p className="text-[10px] md:text-xs font-medium uppercase text-slate-500 truncate">{format(day, "EEE", { locale: ptBR })}</p>
+                                    <p className={`text-[11px] md:text-sm font-semibold ${isToday(day) ? 'text-primary' : 'text-slate-900'} truncate`}>{format(day, "dd/MM")}</p>
                                 </div>
                             ))}
                         </div>
 
-                        {slotMinutes.map((minutes) => (
-                            <div key={minutes} className={`grid ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
-                                <div className="border-b border-slate-200 px-3 py-3 text-xs text-slate-500">
-                                    {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
-                                </div>
-                                {days.map((day) => {
-                                    const slotEntries = entries.filter((entry) => isSameDay(new Date(entry.scheduledAt), day) && eventSlotMinutes(entry.scheduledAt) === minutes);
+                        {slotMinutes.map((minutes) => {
+                            const isFractional = minutes % 60 !== 0;
+                            const hasEntriesInRow = days.some((day) => 
+                                entries.some((entry) => isSameDay(new Date(entry.scheduledAt), day) && eventSlotMinutes(entry.scheduledAt) === minutes)
+                            );
+
+                            // On week view, hide fractional hours that have no appointments to save vertical space
+                            if (viewMode === 'week' && isFractional && !hasEntriesInRow) {
+                                return (
+                                    <div key={minutes} className={`hidden md:grid ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[45px_repeat(7,minmax(0,1fr))] md:grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
+                                        <div className="border-b border-slate-200 px-1 md:px-3 py-3 text-[10px] md:text-xs text-slate-500 text-center md:text-left">
+                                            {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
+                                        </div>
+                                        {days.map((day) => (
+                                            <div key={day.toISOString()} className="min-h-14 border-b border-l border-slate-200 p-1 transition-colors hover:bg-slate-50 cursor-pointer" />
+                                        ))}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div key={minutes} className={`grid ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[45px_repeat(7,minmax(0,1fr))] md:grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
+                                    <div className="border-b border-slate-200 px-1 md:px-3 py-3 text-[10px] md:text-xs text-slate-500 text-center md:text-left">
+                                        {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
+                                    </div>
+                                    {days.map((day) => {
+                                        const slotEntries = entries.filter((entry) => isSameDay(new Date(entry.scheduledAt), day) && eventSlotMinutes(entry.scheduledAt) === minutes);
 
                                     return (
                                         <div
