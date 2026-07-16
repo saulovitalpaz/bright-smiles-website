@@ -267,11 +267,12 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                                                 {(app.appointmentType === 'harmonizacao' || app.appointmentType === 'ambos') && (
                                                     <div className="space-y-3">
                                                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mapeamento Facial em {format(new Date(app.date), "dd/MM")}</h5>
-                                                        <div className="scale-[0.6] origin-top-left -mb-40">
+                                                        <div className="min-w-0 max-w-full">
                                                             <FaceMap 
                                                                 data={app.facialNotes} 
                                                                 onChange={() => {}} 
-                                                                readOnly={true} 
+                                                                readOnly={true}
+                                                                compact
                                                             />
                                                         </div>
                                                     </div>
