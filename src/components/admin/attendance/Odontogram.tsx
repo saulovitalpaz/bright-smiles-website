@@ -14,21 +14,27 @@ import { AnatomicalTooth } from "./odontogram/AnatomicalTooth";
 import {
   getFaceLabels,
   getTooth,
+  normalizeOdontogram,
+  upsertCondition,
   updateToothFace,
   updateWholeTooth,
   type FaceKey,
   type FaceStatus,
+  type ClinicalCondition,
+  type OdontogramData,
+  type OdontogramV2,
   type ToothData,
   type ToothStatus,
   type WholeToothStatus,
 } from "./odontogram/odontogramModel";
 import { ToothSurfaceSelector } from "./odontogram/ToothSurfaceSelector";
+import { ClinicalConditionEditor } from "./odontogram/ClinicalConditionEditor";
 
 export type { ToothData, ToothFaceData } from "./odontogram/odontogramModel";
 
 interface OdontogramProps {
-  data: Record<string, ToothData>;
-  onChange: (data: Record<string, ToothData>) => void;
+  data: OdontogramData;
+  onChange: (data: OdontogramData) => void;
   readOnly?: boolean;
   printable?: boolean;
 }
@@ -124,6 +130,8 @@ const Odontogram = ({
   readOnly = false,
   printable = false,
 }: OdontogramProps): JSX.Element => {
+  const legacyData: Record<string, ToothData> = "version" in data ? {} : data;
+  const layeredData = normalizeOdontogram(data);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [selectedFace, setSelectedFace] = useState<FaceKey | null>(null);
   const [wholeToothOpen, setWholeToothOpen] = useState(false);
@@ -150,28 +158,28 @@ const Odontogram = ({
 
   const setFaceCondition = (status: FaceStatus): void => {
     if (readOnly || selectedTooth === null || selectedFace === null) return;
-    onChange(updateToothFace(data, selectedTooth, selectedFace, status));
+    onChange(updateToothFace(legacyData, selectedTooth, selectedFace, status));
   };
 
   const setWholeToothCondition = (status: WholeToothStatus): void => {
     if (readOnly || selectedTooth === null) return;
-    onChange(updateWholeTooth(data, selectedTooth, status));
+    onChange(updateWholeTooth(legacyData, selectedTooth, status));
   };
 
   const setNotes = (notes: string): void => {
     if (readOnly || selectedTooth === null) return;
     onChange({
-      ...data,
-      [selectedTooth]: { ...getTooth(data, selectedTooth), notes },
+      ...legacyData,
+      [selectedTooth]: { ...getTooth(legacyData, selectedTooth), notes },
     });
   };
 
-  const recorded = Object.keys(data).filter((key) => isRecorded(data[key]));
+  const recorded = Object.keys(legacyData).filter((key) => isRecorded(legacyData[key]));
 
   const TeethRow = ({ teeth }: { teeth: readonly number[] }): JSX.Element => (
     <div className="odontogram-grid">
       {teeth.map((toothNumber) => {
-        const tooth = getTooth(data, toothNumber);
+        const tooth = getTooth(legacyData, toothNumber);
         const content = (
           <>
             <span className="font-mono text-[10px] text-slate-500">{toothNumber}</span>
@@ -204,7 +212,7 @@ const Odontogram = ({
     </div>
   );
 
-  const selectedData = selectedTooth === null ? null : getTooth(data, selectedTooth);
+  const selectedData = selectedTooth === null ? null : getTooth(legacyData, selectedTooth);
   const selectedLabels = selectedTooth === null ? null : getFaceLabels(selectedTooth);
 
   return (
@@ -276,7 +284,7 @@ const Odontogram = ({
             </h4>
             <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {recorded.map((toothNumber) => {
-                const tooth = data[toothNumber];
+                const tooth = legacyData[toothNumber];
                 const labels = getFaceLabels(Number(toothNumber));
 
                 return (
@@ -431,6 +439,16 @@ const Odontogram = ({
                   value={selectedData.notes || ""}
                 />
               </div>
+              <section className="min-w-0 rounded-xl border border-slate-700 bg-slate-950/30 p-3">
+                <h3 className="mb-3 text-sm font-semibold text-white">Registro clínico em camadas</h3>
+                <ClinicalConditionEditor
+                  onCancel={() => undefined}
+                  onSave={(condition: ClinicalCondition) => {
+                    if (selectedTooth !== null) onChange(upsertCondition(layeredData, selectedTooth, condition));
+                  }}
+                  toothNumber={selectedTooth}
+                />
+              </section>
             </div>
           ) : null}
         </DialogContent>
