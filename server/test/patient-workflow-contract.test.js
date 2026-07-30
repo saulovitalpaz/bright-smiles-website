@@ -82,7 +82,8 @@ test('patient schema and routes support safe updates and deletion protection', (
 
     assert.match(schemaSource, /consent:\s*z\.boolean\(\)\.optional\(\)/);
     assert.match(schemaSource, /consentDate:\s*(?:z\.string\(\)\.or\(z\.date\(\)\)|z\.date\(\))\.optional\(\)/);
-    assert.match(schemaSource, /odontogram:\s*z\.any\(\)\.optional\(\)/);
+    assert.match(schemaSource, /odontogram:\s*odontogramSchema\.optional\(\)\.nullable\(\)/);
+    assert.doesNotMatch(schemaSource, /odontogram:\s*z\.any\(\)/);
 
     const updateRoute = readRoute(
         indexSource,
