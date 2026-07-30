@@ -5,6 +5,27 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
+  it("selects a precise cervical region without replacing other selected targets", async () => {
+    const user = userEvent.setup();
+    const onTargetsChange = vi.fn();
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+        selectedTargets={[{ kind: "surface", face: "center", region: "incisalOcclusal" }]}
+        onTargetsChange={onTargetsChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /vestibular.*cervical/i }));
+    expect(onTargetsChange).toHaveBeenCalledWith([
+      { kind: "surface", face: "center", region: "incisalOcclusal" },
+      { kind: "surface", face: "top", region: "cervical" },
+    ]);
+  });
+
   it("selects the oclusal face without writing a condition", async () => {
     const user = userEvent.setup();
     const onSelectFace = vi.fn();

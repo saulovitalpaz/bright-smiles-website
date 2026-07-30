@@ -6,6 +6,7 @@ import {
   getToothFamily,
   type FaceKey,
   type FaceStatus,
+  type ConditionTarget,
   type ToothData,
 } from "./odontogramModel";
 
@@ -15,6 +16,8 @@ interface ToothSurfaceSelectorProps {
   selectedFace: FaceKey | null;
   onSelectFace: (face: FaceKey) => void;
   readOnly?: boolean;
+  selectedTargets?: ConditionTarget[];
+  onTargetsChange?: (targets: ConditionTarget[]) => void;
 }
 
 const FACE_POSITIONS: Record<FaceKey, string> = {
@@ -93,12 +96,23 @@ export function ToothSurfaceSelector({
   selectedFace,
   onSelectFace,
   readOnly = false,
+  selectedTargets,
+  onTargetsChange,
 }: ToothSurfaceSelectorProps): JSX.Element {
   const instanceId = useId().replace(/:/g, "");
   const family = getToothFamily(toothNumber);
   const anatomy = ANATOMICAL_GEOMETRY[family].occlusal;
   const labels = getFaceLabels(toothNumber);
   const hatchId = `surface-hatch-${toothNumber}-${instanceId}`;
+
+  const toggleTarget = (target: ConditionTarget): void => {
+    if (!selectedTargets || !onTargetsChange || readOnly) return;
+    const targetKey = JSON.stringify(target);
+    const next = selectedTargets.some((item) => JSON.stringify(item) === targetKey)
+      ? selectedTargets.filter((item) => JSON.stringify(item) !== targetKey)
+      : [...selectedTargets, target];
+    onTargetsChange(next);
+  };
 
   return (
     <div
@@ -169,6 +183,27 @@ export function ToothSurfaceSelector({
           );
         })}
       </div>
+      {selectedTargets && onTargetsChange ? (
+        <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Regiões anatômicas precisas">
+          {FACE_KEYS.flatMap((face) => (["cervical", "middle", "incisalOcclusal"] as const).map((region) => ({ face, region }))).map(({ face, region }) => {
+            const target: ConditionTarget = { kind: "surface", face, region };
+            const selected = selectedTargets.some((item) => JSON.stringify(item) === JSON.stringify(target));
+            const regionLabel = region === "cervical" ? "cervical" : region === "middle" ? "média" : "incisal ou oclusal";
+            return (
+              <button
+                aria-pressed={selected}
+                className="min-h-11 rounded-md border border-slate-600 px-2 text-xs text-slate-100"
+                disabled={readOnly}
+                key={`${face}-${region}`}
+                onClick={() => toggleTarget(target)}
+                type="button"
+              >
+                {labels[face]} {regionLabel}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
