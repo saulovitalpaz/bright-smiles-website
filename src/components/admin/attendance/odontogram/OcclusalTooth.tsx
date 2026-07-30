@@ -1,6 +1,13 @@
 import type { JSX } from "react";
 import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
-import { FACE_KEYS, getToothFamily, type ToothRecord } from "./odontogramModel";
+import {
+  FACE_KEYS,
+  getClinicalStageLabel,
+  getConditionDisplayName,
+  getFaceLabels,
+  getToothFamily,
+  type ToothRecord,
+} from "./odontogramModel";
 
 interface OcclusalToothProps {
   toothNumber: number;
@@ -9,21 +16,29 @@ interface OcclusalToothProps {
 
 export function OcclusalTooth({ toothNumber, record }: OcclusalToothProps): JSX.Element {
   const anatomy = ANATOMICAL_GEOMETRY[getToothFamily(toothNumber)].occlusal;
+  const faceConditions = FACE_KEYS.map((face) => {
+    const matching = record?.conditions.filter((condition) =>
+      condition.targets.some((target) => target.kind === "surface" && target.face === face),
+    ) ?? [];
+    return { face, matching, last: matching.at(-1) };
+  });
+  const affectedFaces = faceConditions
+    .filter(({ last }) => last)
+    .map(({ face, last }) => `${getFaceLabels(toothNumber)[face]}: ${getConditionDisplayName(last!.type)} (${getClinicalStageLabel(last!.stage)})`);
+  const accessibleName = [
+    `Vista oclusal do dente ${toothNumber}`,
+    affectedFaces.length ? affectedFaces.join("; ") : "sem condições registradas",
+  ].join(". ");
 
   return (
     <svg
-      aria-label={`Vista oclusal do dente ${toothNumber}`}
+      aria-label={accessibleName}
       className="occlusal-tooth occlusal-tooth--arch"
       role="img"
       viewBox={anatomy.viewBox}
     >
       <path className="occlusal-tooth__outline" d={anatomy.outline} />
-      {FACE_KEYS.map((face) => {
-        const matching = record?.conditions.filter((condition) =>
-          condition.targets.some((target) => target.kind === "surface" && target.face === face),
-        ) ?? [];
-        const last = matching.at(-1);
-
+      {faceConditions.map(({ face, matching, last }) => {
         return (
           <path
             data-condition-count={matching.length || undefined}
