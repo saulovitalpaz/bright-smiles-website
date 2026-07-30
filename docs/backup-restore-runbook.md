@@ -21,7 +21,8 @@ Configurar somente no serviço `database-backup`:
 Gere a chave localmente, guarde-a no cofre e cole-a diretamente no Railway. Em PowerShell:
 
 ```powershell
-$bytes = [byte[]](1..32 | ForEach-Object { Get-Random -Minimum 0 -Maximum 256 })
+$bytes = [byte[]]::new(32)
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
 [Convert]::ToBase64String($bytes)
 ```
 
