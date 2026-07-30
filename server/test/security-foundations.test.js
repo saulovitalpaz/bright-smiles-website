@@ -70,6 +70,9 @@ test('server foundations fail closed in production and set API security headers'
     assert.match(source, /Invalid server security configuration\./);
     assert.doesNotMatch(source, /JWT_SECRET \|\| 'super_secret/);
     assert.match(source, /express\.json\(\{ limit: '1mb' \}\)/);
+    assert.match(source, /process\.env\.MAINTENANCE_MODE === 'true'/);
+    assert.match(source, /req\.path !== '\/health'/);
+    assert.match(source, /status\(503\)\.json\(\{ error: 'Service temporarily unavailable\.' \}\)/);
 });
 
 test('browser authentication uses an HttpOnly cookie instead of returning a reusable token', () => {

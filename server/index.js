@@ -118,6 +118,12 @@ app.use((req, res, next) => {
     next();
 });
 app.use(auditLogger);
+app.use((req, res, next) => {
+    if (process.env.MAINTENANCE_MODE === 'true' && req.path !== '/health') {
+        return res.status(503).json({ error: 'Service temporarily unavailable.' });
+    }
+    next();
+});
 
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
