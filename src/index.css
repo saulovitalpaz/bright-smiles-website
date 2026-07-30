@@ -136,6 +136,35 @@
   }
 }
 
+.occlusal-tooth {
+  display: block;
+  overflow: visible;
+}
+
+.occlusal-tooth--arch {
+  width: min(2.5rem, 100%);
+  height: auto;
+}
+
+.occlusal-tooth__outline {
+  fill: #fffdf6;
+  stroke: #766b59;
+  stroke-width: 1.2;
+}
+
+.occlusal-tooth__grooves {
+  fill: none;
+  stroke: #806f58;
+  stroke-linecap: round;
+  stroke-width: 0.9;
+}
+
+@media print {
+  .print-odontogram .occlusal-tooth--arch {
+    width: 7mm;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
