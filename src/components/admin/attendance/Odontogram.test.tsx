@@ -81,6 +81,21 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.queryByRole("button", { name: "A tratar" })).not.toBeInTheDocument();
   });
 
+  it("guides V2 editing through precise clinical-form regions while preserving legacy face guidance", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Odontogram data={{ version: 2, dentition: "permanent", teeth: {} }} onChange={() => undefined} />,
+    );
+
+    await user.click(getToothButton(16));
+    expect(screen.getByText(/selecione as regiões precisas no formulário clínico/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    rerender(<Odontogram data={{}} onChange={() => undefined} />);
+    await user.click(getToothButton(16));
+    expect(screen.getByText("Selecione uma face para registrar sua condição clínica.")).toBeInTheDocument();
+  });
+
   it("opens a tooth without writing clinical data", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -214,5 +229,52 @@ describe("Odontogram face-first workflow", () => {
       "true",
     );
     expect(screen.queryByRole("button", { name: /dente 16/i })).not.toBeInTheDocument();
+  });
+
+  it("prints V2 occurrence details for surface and whole-tooth targets without removal controls", () => {
+    render(
+      <Odontogram
+        data={{
+          version: 2,
+          dentition: "permanent",
+          teeth: {
+            "16": {
+              notes: "",
+              conditions: [
+                {
+                  id: "surface-caries",
+                  category: "achado",
+                  type: "carie",
+                  stage: "planejado",
+                  targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+                  notes: "avaliar profundidade",
+                },
+                {
+                  id: "implant-plan",
+                  category: "protese",
+                  type: "implante",
+                  stage: "concluido",
+                  targets: [{ kind: "tooth" }],
+                  notes: "coroa instalada",
+                },
+              ],
+            },
+          },
+        }}
+        onChange={() => undefined}
+        printable
+        readOnly
+      />,
+    );
+
+    expect(screen.getByText("carie")).toBeInTheDocument();
+    expect(screen.getByText("Planejado")).toBeInTheDocument();
+    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
+    expect(screen.getByText("avaliar profundidade")).toBeInTheDocument();
+    expect(screen.getByText("implante")).toBeInTheDocument();
+    expect(screen.getByText("Concluído")).toBeInTheDocument();
+    expect(screen.getByText("Dente inteiro")).toBeInTheDocument();
+    expect(screen.getByText("coroa instalada")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /remover/i })).not.toBeInTheDocument();
   });
 });

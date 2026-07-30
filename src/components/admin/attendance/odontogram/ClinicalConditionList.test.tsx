@@ -22,8 +22,34 @@ describe("ClinicalConditionList", () => {
     expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
     expect(screen.getByText("acompanhar evolução")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /remover carie/i }));
+    await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*oclusal/i }));
 
     expect(onRemove).toHaveBeenCalledWith("c1");
+  });
+
+  it("uses unique removal labels to remove the second same-type occurrence", async () => {
+    const user = userEvent.setup();
+    const onRemove = vi.fn();
+
+    render(<ClinicalConditionList toothNumber={16} onRemove={onRemove} conditions={[
+      {
+        id: "c1",
+        category: "achado",
+        type: "carie",
+        stage: "planejado",
+        targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+      },
+      {
+        id: "c2",
+        category: "achado",
+        type: "carie",
+        stage: "concluido",
+        targets: [{ kind: "tooth" }],
+      },
+    ]} />);
+
+    await user.click(screen.getByRole("button", { name: /remover carie.*concluído.*dente inteiro/i }));
+
+    expect(onRemove).toHaveBeenCalledWith("c2");
   });
 });

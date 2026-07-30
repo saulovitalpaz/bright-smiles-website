@@ -193,7 +193,12 @@ const Odontogram = ({
     onChange(removeCondition(layeredData, selectedTooth, conditionId));
   };
 
-  const recorded = Object.keys(legacyData).filter((key) => isRecorded(legacyData[key]));
+  const recorded = isLayeredData
+    ? Object.keys(layeredData.teeth).filter((key) => {
+      const tooth = layeredData.teeth[key];
+      return Boolean(tooth.notes || tooth.conditions.length);
+    })
+    : Object.keys(legacyData).filter((key) => isRecorded(legacyData[key]));
 
   const TeethRow = ({ teeth }: { teeth: readonly number[] }): JSX.Element => (
     <div className="odontogram-grid">
@@ -308,6 +313,7 @@ const Odontogram = ({
               {recorded.map((toothNumber) => {
                 const tooth = legacyData[toothNumber];
                 const labels = getFaceLabels(Number(toothNumber));
+                const record = layeredData.teeth[toothNumber];
 
                 return (
                   <article
@@ -318,14 +324,24 @@ const Odontogram = ({
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white">
                         {toothNumber}
                       </span>
-                      <Badge
-                        className={`min-w-0 max-w-full text-[10px] ${STATUS_STYLES[tooth.status].badge}`}
-                        variant="outline"
-                      >
-                        {tooth.status}
-                      </Badge>
+                      {!isLayeredData ? (
+                        <Badge
+                          className={`min-w-0 max-w-full text-[10px] ${STATUS_STYLES[tooth.status].badge}`}
+                          variant="outline"
+                        >
+                          {tooth.status}
+                        </Badge>
+                      ) : null}
                     </div>
-                    {tooth.faces ? (
+                    {isLayeredData ? (
+                      <div className="mt-2">
+                        <ClinicalConditionList
+                          conditions={record.conditions}
+                          readOnly
+                          toothNumber={Number(toothNumber)}
+                        />
+                      </div>
+                    ) : tooth.faces ? (
                       <div className="mt-2 flex min-w-0 flex-wrap gap-1">
                         {Object.entries(tooth.faces)
                           .filter((entry) => entry[1]?.status !== "Saudável")
@@ -340,9 +356,9 @@ const Odontogram = ({
                           ))}
                       </div>
                     ) : null}
-                    {tooth.notes ? (
+                    {(isLayeredData ? record.notes : tooth.notes) ? (
                       <p className="mt-2 break-words border-t border-slate-700 pt-2 text-xs italic text-slate-400">
-                        “{tooth.notes}”
+                        “{isLayeredData ? record.notes : tooth.notes}”
                       </p>
                     ) : null}
                   </article>
@@ -363,7 +379,9 @@ const Odontogram = ({
           <DialogHeader>
             <DialogTitle className="font-serif text-lg text-white">Dente {selectedTooth}</DialogTitle>
             <DialogDescription className="text-slate-400">
-              Selecione uma face para registrar sua condição clínica.
+              {isLayeredData
+                ? "Selecione as regiões precisas no formulário clínico para registrar a ocorrência."
+                : "Selecione uma face para registrar sua condição clínica."}
             </DialogDescription>
           </DialogHeader>
 

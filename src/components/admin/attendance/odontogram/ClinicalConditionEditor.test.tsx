@@ -23,19 +23,28 @@ describe("ClinicalConditionEditor", () => {
     }));
   });
 
-  it("saves from the precise region grid and resets the form", async () => {
+  it("saves from the precise region grid and resets every entered clinical detail", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    await user.click(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i }));
+    const target = screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i });
+    await user.click(target);
     await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
+    await user.type(screen.getByLabelText("Observação da ocorrência"), "acompanhar por seis meses");
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText("Categoria")).toHaveValue("");
+    expect(screen.getByLabelText("Procedimento")).toHaveValue("");
+    expect(screen.getByLabelText("Situação")).toHaveValue("");
+    expect(screen.getByLabelText("Observação da ocorrência")).toHaveValue("");
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
+    await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
+    expect(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("uses readable dark select controls and visibly marks a selected region", async () => {
