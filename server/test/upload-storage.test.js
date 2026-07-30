@@ -89,3 +89,12 @@ test('attendance uploads use unique object keys and append each completed clinic
     assert.match(gallerySource, /onChange\(\[\.\.\.photos, data\.reference\]\)/);
     assert.match(gallerySource, /disabled=\{uploading\}/);
 });
+
+test('Cloudinary is not an active server dependency', () => {
+    const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+    const indexSource = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+
+    assert.equal(packageJson.dependencies.cloudinary, undefined);
+    assert.equal(packageJson.dependencies['multer-storage-cloudinary'], undefined);
+    assert.doesNotMatch(indexSource, /cloudinary/i);
+});
