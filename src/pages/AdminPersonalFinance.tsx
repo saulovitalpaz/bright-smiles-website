@@ -23,6 +23,7 @@ import {
 import axios from "axios";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { mediaUrl } from "@/lib/media";
 
 interface Transaction {
     id: number;
@@ -84,11 +85,11 @@ const AdminPersonalFinance = () => {
             const formData = new FormData();
             formData.append('file', e.target.files[0]);
             try {
-                const res = await axios.post(`${API_URL}/upload`, formData, {
+                const res = await axios.post(`${API_URL}/financial-assets`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     withCredentials: true
                 });
-                setReceiptUrl(res.data.url);
+                setReceiptUrl(res.data.reference);
                 toast.success("Comprovante anexado!");
             } catch (error) {
                 console.error(error);
@@ -353,7 +354,7 @@ const AdminPersonalFinance = () => {
                                                         {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
                                                     </p>
                                                     {t.receiptUrl && (
-                                                        <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-black text-primary uppercase hover:underline">
+                                                        <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-black text-primary uppercase hover:underline">
                                                             <Receipt size={10} /> Ver Recibo
                                                         </a>
                                                     )}

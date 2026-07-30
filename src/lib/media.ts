@@ -2,6 +2,7 @@ import { API_URL, fetchClient } from "@/lib/api";
 
 const PUBLIC_REFERENCE_PREFIX = 'bucket://public/';
 const CLINICAL_REFERENCE_PREFIX = 'bucket://clinical/';
+const FINANCIAL_REFERENCE_PREFIX = 'bucket://financial/';
 
 export const assetDeliveryUrl = (value?: string | null) => {
     if (!value) return null;
@@ -10,6 +11,9 @@ export const assetDeliveryUrl = (value?: string | null) => {
     }
     if (value.startsWith(PUBLIC_REFERENCE_PREFIX)) {
         return `/assets?reference=${encodeURIComponent(value)}`;
+    }
+    if (value.startsWith(FINANCIAL_REFERENCE_PREFIX)) {
+        return `/financial-assets?reference=${encodeURIComponent(value)}`;
     }
     return value;
 };

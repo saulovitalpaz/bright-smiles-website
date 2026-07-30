@@ -38,16 +38,16 @@ function requireStorage() {
 }
 
 function normalizeScope(scope) {
-    return scope === 'clinical' ? 'clinical' : scope === 'public' ? 'public' : null;
+    return ['public', 'clinical', 'financial'].includes(scope) ? scope : null;
 }
 
 function isAssetReference(value) {
-    return typeof value === 'string' && /^bucket:\/\/(public|clinical)\/.+$/.test(value);
+    return typeof value === 'string' && /^bucket:\/\/(public|clinical|financial)\/.+$/.test(value);
 }
 
 function parseAssetReference(value) {
     if (!isAssetReference(value)) return null;
-    const match = value.match(/^bucket:\/\/(public|clinical)\/(.+)$/);
+    const match = value.match(/^bucket:\/\/(public|clinical|financial)\/(.+)$/);
     if (!match) return null;
     return {
         scope: match[1],
@@ -56,7 +56,7 @@ function parseAssetReference(value) {
 }
 
 function getObjectPrefix(scope) {
-    return scope === 'clinical' ? 'private' : 'public';
+    return scope === 'clinical' ? 'private' : scope === 'financial' ? 'financial' : 'public';
 }
 
 function getObjectKey(scope, key) {
@@ -66,7 +66,12 @@ function getObjectKey(scope, key) {
 function createAssetDeliveryPath(reference) {
     const parsed = parseAssetReference(reference);
     if (!parsed) throw new Error('Invalid asset reference.');
-    return `${parsed.scope === 'clinical' ? '/clinical-assets' : '/assets'}?reference=${encodeURIComponent(reference)}`;
+    const route = parsed.scope === 'clinical'
+        ? '/clinical-assets'
+        : parsed.scope === 'financial'
+            ? '/financial-assets'
+            : '/assets';
+    return `${route}?reference=${encodeURIComponent(reference)}`;
 }
 
 function validateAssetDeliveryRequest({ routeScope, reference }) {
@@ -102,10 +107,6 @@ function validateAssetDeliveryRequest({ routeScope, reference }) {
 }
 
 function normalizeExtension(extension, contentType) {
-    if (extension) {
-        return extension.replace(/^\./, '').toLowerCase();
-    }
-
     const contentTypeMap = {
         'image/jpeg': 'jpg',
         'image/png': 'png',
@@ -116,7 +117,7 @@ function normalizeExtension(extension, contentType) {
         'application/pdf': 'pdf'
     };
 
-    return contentTypeMap[contentType] || 'bin';
+    return contentTypeMap[contentType] || (extension ? extension.replace(/^\./, '').toLowerCase() : 'bin');
 }
 
 async function uploadAsset({ scope, body, contentType, extension, ownerId }) {
@@ -192,6 +193,17 @@ async function createPrivateAssetUrl(reference) {
     }), { expiresIn: 300 });
 }
 
+async function createFinancialAssetUrl(reference) {
+    const parsed = parseAssetReference(reference);
+    if (!parsed) throw new Error('Invalid asset reference.');
+    if (parsed.scope !== 'financial') throw new Error('Financial asset route accepts only financial asset references.');
+
+    return getSignedUrl(requireStorage(), new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: getObjectKey(parsed.scope, parsed.key)
+    }), { expiresIn: 300 });
+}
+
 module.exports = {
     uploadAsset,
     withAssetUploadCleanup,
@@ -201,5 +213,6 @@ module.exports = {
     createAssetDeliveryPath,
     validateAssetDeliveryRequest,
     createPublicAssetUrl,
-    createPrivateAssetUrl
+    createPrivateAssetUrl,
+    createFinancialAssetUrl
 };

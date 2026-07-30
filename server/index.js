@@ -9,9 +9,11 @@ const {
     withAssetUploadCleanup,
     createPublicAssetUrl,
     createPrivateAssetUrl,
+    createFinancialAssetUrl,
     validateAssetDeliveryRequest
 } = require('./utils/assetStorage');
 const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl } = require('./utils/patientDocumentStorage');
+const { isSupportedUpload, isSupportedUploadForScope } = require('./utils/uploadValidation');
 
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
@@ -87,6 +89,16 @@ const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (req, file, callback) => callback(null, file.mimetype === 'application/pdf')
+});
+const financialUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (req, file, callback) => callback(null, new Set([
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'application/pdf'
+    ]).has(file.mimetype))
 });
 const signatureUpload = multer({
     storage: multer.memoryStorage(),
@@ -170,8 +182,9 @@ app.post('/upload', authenticateToken, authorizeRole(['admin', 'dentist']), uplo
         }
 
         const scope = req.body?.scope || 'public';
-        if (!['public', 'clinical'].includes(scope)) {
-            return res.status(400).json({ error: 'Invalid scope. Expected public or clinical.' });
+        if (!['public', 'clinical'].includes(scope)
+            || !isSupportedUploadForScope(scope, req.file.buffer, req.file.mimetype)) {
+            return res.status(400).json({ error: 'Invalid file for this storage scope.' });
         }
 
         const asset = await uploadAsset({
@@ -192,6 +205,29 @@ app.post('/upload', authenticateToken, authorizeRole(['admin', 'dentist']), uplo
     } catch (error) {
         console.error("Upload error:", error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/financial-assets', authenticateToken, authorizeRole(['admin', 'manager']), financialUpload.single('file'), async (req, res) => {
+    try {
+        if (!req.file || !isSupportedUploadForScope('financial', req.file.buffer, req.file.mimetype)) {
+            return res.status(400).json({ error: 'A valid receipt image or PDF is required.' });
+        }
+
+        const asset = await uploadAsset({
+            scope: 'financial',
+            body: req.file.buffer,
+            contentType: req.file.mimetype,
+            extension: req.file.originalname ? req.file.originalname.split('.').pop() : undefined,
+            ownerId: req.user.id
+        });
+        await withAssetUploadCleanup({
+            uploadedReference: asset.reference,
+            run: async () => res.json({ reference: asset.reference, url: asset.deliveryPath })
+        });
+    } catch (error) {
+        console.error('Financial receipt upload failed.');
+        res.status(500).json({ error: 'Unable to upload receipt.' });
     }
 });
 
@@ -253,12 +289,32 @@ app.get('/clinical-assets', authenticateToken, authorizeRole(['admin', 'dentist'
     }
 });
 
+app.get('/financial-assets', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+    try {
+        const validation = validateAssetDeliveryRequest({
+            routeScope: 'financial',
+            reference: req.query.reference
+        });
+        if (!validation.ok) {
+            return res.status(validation.statusCode).json({ error: validation.error });
+        }
+
+        return res.redirect(302, await createFinancialAssetUrl(validation.reference));
+    } catch (error) {
+        console.error('Financial asset access failed.');
+        res.status(500).json({ error: 'Unable to access receipt.' });
+    }
+});
+
 // Private patient-document upload. The database stores only the object key;
 // access is granted through the authenticated route below.
 app.post('/patient-documents/:id/file', authenticateToken, authorizeRole(['admin', 'dentist']), documentUpload.single('file'), async (req, res) => {
     let storageKey;
+    let documentUpdated = false;
     try {
-        if (!req.file) return res.status(400).json({ error: 'Only PDF files are accepted.' });
+        if (!req.file || !isSupportedUpload(req.file.buffer, req.file.mimetype)) {
+            return res.status(400).json({ error: 'Only valid PDF files are accepted.' });
+        }
 
         const documentId = Number.parseInt(req.params.id, 10);
         if (!Number.isInteger(documentId)) return res.status(400).json({ error: 'Invalid document id.' });
@@ -266,17 +322,25 @@ app.post('/patient-documents/:id/file', authenticateToken, authorizeRole(['admin
         const document = await prisma.patientDocument.findUnique({ where: { id: documentId } });
         if (!document) return res.status(404).json({ error: 'Document not found.' });
 
+        const previousStorageKey = document.storageKey;
         storageKey = await uploadPatientDocument({ patientId: document.patientId, body: req.file.buffer });
         await prisma.patientDocument.update({
             where: { id: documentId },
             data: { storageKey, pdfUrl: null }
         });
+        documentUpdated = true;
+
+        if (previousStorageKey && previousStorageKey !== storageKey) {
+            await deletePatientDocument(previousStorageKey).catch(() => {
+                console.error('Previous patient document cleanup failed.');
+            });
+        }
 
         res.json({ url: `/patient-documents/${documentId}/file` });
     } catch (error) {
-        if (storageKey) await deletePatientDocument(storageKey).catch(() => {});
-        console.error('Patient document upload error:', error);
-        res.status(500).json({ error: error.message });
+        if (storageKey && !documentUpdated) await deletePatientDocument(storageKey).catch(() => {});
+        console.error('Patient document upload failed.');
+        res.status(500).json({ error: 'Unable to upload document.' });
     }
 });
 
