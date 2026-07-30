@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const storage = require('../utils/assetStorage');
 const {
@@ -55,4 +57,35 @@ test('upload scopes allow only the content appropriate to their audience', () =>
     assert.equal(isSupportedUploadForScope('financial', pdf, 'application/pdf'), true);
     assert.equal(isSupportedUploadForScope('financial', webp, 'image/webp'), true);
     assert.equal(isSupportedUploadForScope('financial', webm, 'video/webm'), false);
+});
+
+test('backend keeps financial and clinical upload authorization separate', () => {
+    const indexSource = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const generalUploadRoute = indexSource.slice(
+        indexSource.indexOf("app.post('/upload'"),
+        indexSource.indexOf("app.post('/upload/signature'")
+    );
+    const patientPdfRoute = indexSource.slice(
+        indexSource.indexOf("app.post('/patient-documents/:id/file'"),
+        indexSource.indexOf("app.get('/patient-documents/:id/file'")
+    );
+
+    assert.match(indexSource, /require\(['"]\.\/utils\/uploadValidation['"]\)/);
+    assert.match(generalUploadRoute, /isSupportedUploadForScope\(scope, req\.file\.buffer, req\.file\.mimetype\)/);
+    assert.match(indexSource, /app\.post\('\/financial-assets', authenticateToken, authorizeRole\(\['admin', 'manager'\]\)/);
+    assert.match(indexSource, /app\.get\('\/financial-assets', authenticateToken, authorizeRole\(\['admin', 'manager'\]\)/);
+    assert.match(patientPdfRoute, /previousStorageKey/);
+    assert.match(patientPdfRoute, /await deletePatientDocument\(previousStorageKey\)/);
+});
+
+test('attendance uploads use unique object keys and append each completed clinical photo', () => {
+    const storageSource = fs.readFileSync(path.resolve(__dirname, '../utils/assetStorage.js'), 'utf8');
+    const gallerySource = fs.readFileSync(
+        path.resolve(__dirname, '../../src/components/admin/attendance/PhotoGallery.tsx'),
+        'utf8'
+    );
+
+    assert.match(storageSource, /\$\{Date\.now\(\)\}-\$\{crypto\.randomUUID\(\)\}/);
+    assert.match(gallerySource, /onChange\(\[\.\.\.photos, data\.reference\]\)/);
+    assert.match(gallerySource, /disabled=\{uploading\}/);
 });
