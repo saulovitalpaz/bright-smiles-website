@@ -12,7 +12,6 @@ import {
     BarChart3,
     ChevronLeft,
     Menu,
-    FileSignature,
     Settings,
     Users
 } from "lucide-react";
@@ -97,8 +96,6 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 { label: "Guia Digital", href: "/admin/digital-guide" }
             ]
         },
-        // Termos & Doc as standalone for manager (since Consultas group is hidden)
-        ...(isManager ? [{ label: "Termos & Doc", href: "/admin/documentos", icon: FileSignature }] : []),
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },

@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { fetchClient } from '@/lib/api';
 
 interface AuthUser {
-    token?: string;
     role?: string;
     name?: string;
     username?: string;
@@ -12,39 +12,61 @@ interface AuthUser {
 
 interface AuthContextType {
     isAuthenticated: boolean;
+    isLoading: boolean;
     login: (userData: AuthUser) => Promise<boolean>;
-    logout: () => void;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        return localStorage.getItem('admin_auth') === 'true';
-    });
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
+    const clearLocalUser = () => {
+        localStorage.removeItem('admin_auth');
+        localStorage.removeItem('admin_user');
+    };
+
+    useEffect(() => {
+        let active = true;
+        const loadSession = async () => {
+            try {
+                const response = await fetchClient('/auth/session');
+                if (!response.ok) throw new Error('No session');
+                const user = await response.json();
+                if (!active) return;
+                localStorage.setItem('admin_user', JSON.stringify(user));
+                setIsAuthenticated(true);
+            } catch {
+                if (active) clearLocalUser();
+            } finally {
+                if (active) setIsLoading(false);
+            }
+        };
+        loadSession();
+        return () => { active = false; };
+    }, []);
+
     const login = async (userData: AuthUser) => {
-        localStorage.setItem('admin_auth', 'true');
-        const { token, ...user } = userData;
-        if (token) {
-            localStorage.setItem('admin_token', token);
-        }
-        localStorage.setItem('admin_user', JSON.stringify(user));
+        localStorage.setItem('admin_user', JSON.stringify(userData));
         setIsAuthenticated(true);
         return true;
     };
 
-    const logout = () => {
-        localStorage.removeItem('admin_auth');
-        localStorage.removeItem('admin_user');
-        localStorage.removeItem('admin_token');
+    const logout = async () => {
+        try {
+            await fetchClient('/logout', { method: 'POST' });
+        } finally {
+            clearLocalUser();
+        }
         setIsAuthenticated(false);
         navigate('/admin');
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
@@ -59,7 +81,9 @@ export const useAuth = () => {
 import { Navigate } from 'react-router-dom';
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) return null;
 
     if (!isAuthenticated) {
         return <Navigate to="/admin" replace />;
@@ -76,12 +100,13 @@ const MANAGER_ALLOWED_ROUTES = [
     '/admin/finance',
     '/admin/personal-finance',
     '/admin/analytics',
-    '/admin/documentos',
 ];
 
 export const RoleProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isLoading } = useAuth();
     const location = useLocation();
+
+    if (isLoading) return null;
 
     if (!isAuthenticated) {
         return <Navigate to="/admin" replace />;

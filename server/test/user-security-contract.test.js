@@ -144,7 +144,7 @@ test('signature upload accepts only public images and settings uses the dedicate
 
     assert.match(source, /const signatureUpload = multer\(/);
     assert.match(source, /SIGNATURE_IMAGE_TYPES\.has\(file\.mimetype\)/);
-    assert.match(source, /app\.post\('\/upload\/signature', authenticateToken, signatureUpload\.single\('file'\)/);
+    assert.match(source, /app\.post\('\/upload\/signature', authenticateToken, authorizeRole\(\['admin'\]\), signatureUpload\.single\('file'\)/);
     assert.match(source, /scope:\s*'public'/);
     assert.match(signatureHandler, /\/upload\/signature/);
     assert.doesNotMatch(signatureHandler, /formData\.append\("scope", "public"\)/);

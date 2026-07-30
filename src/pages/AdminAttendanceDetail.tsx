@@ -191,7 +191,7 @@ const AdminAttendanceDetail = () => {
 
     const fetchLead = async (leadIdStr: string, draft: AppointmentData) => {
         try {
-            const res = await fetch(`${API_URL}/leads`);
+            const res = await fetchClient('/leads');
             if (res.ok) {
                 const leads = await res.json();
                 const lead = (leads as LeadResponse[]).find((l) => l.id === parseInt(leadIdStr));
@@ -249,7 +249,7 @@ const AdminAttendanceDetail = () => {
 
     const fetchAppointment = async (appId: string) => {
         try {
-            const res = await fetch(`${API_URL}/appointments/${appId}`);
+            const res = await fetchClient(`/appointments/${appId}`);
             if (res.ok) {
                 const fetched = await res.json();
                 setData(normalizeAppointmentResponse(fetched));

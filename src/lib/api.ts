@@ -6,13 +6,13 @@ const getApiUrl = () => {
     // Fallback based on the browser URL for deployments without a variable.
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
-        if (hostname.includes("odontoeharmonizacao.com.br") || hostname.includes("railway.app")) {
-            return "https://backend-production-e175.up.railway.app";
+        if (hostname.includes("odontoeharmonizacao.com.br")) {
+            return "https://api.odontoeharmonizacao.com.br";
         }
     }
 
     // Production fallback kept for the current hosted site.
-    return "https://backend-production-e175.up.railway.app";
+    return "https://api.odontoeharmonizacao.com.br";
 };
 
 export const API_URL = getApiUrl();
@@ -26,19 +26,10 @@ export const fetchClient = async (endpoint: string, options: RequestInit = {}) =
         ? {}
         : { 'Content-Type': 'application/json' };
 
-    let authHeaders: HeadersInit = {};
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('admin_token');
-        if (token) {
-            authHeaders = { Authorization: `Bearer ${token}` };
-        }
-    }
-
     const config = {
         ...options,
         headers: {
             ...defaultHeaders,
-            ...authHeaders,
             ...options.headers,
         },
         credentials: 'include' as RequestCredentials, // Enable HttpOnly cookies
@@ -51,8 +42,9 @@ export const fetchClient = async (endpoint: string, options: RequestInit = {}) =
         if (typeof window !== 'undefined') {
             localStorage.removeItem('admin_auth');
             localStorage.removeItem('admin_user');
-            localStorage.removeItem('admin_token');
-            window.location.href = '/admin';
+            if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin') {
+                window.location.href = '/admin';
+            }
         }
     }
 

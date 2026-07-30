@@ -19,6 +19,7 @@ test('clinical, operational and administrative endpoints require least-privilege
     expectsGuard('put', '/appointments/:id', ['admin', 'dentist']);
     expectsGuard('delete', '/appointments/:id', ['admin', 'dentist']);
     expectsGuard('get', '/patients/:cpf', ['admin', 'dentist']);
+    expectsGuard('get', '/patients', ['admin', 'dentist']);
     expectsGuard('post', '/prescriptions', ['admin', 'dentist']);
     expectsGuard('get', '/prescriptions/patient/:patientId', ['admin', 'dentist']);
     expectsGuard('delete', '/prescriptions/:id', ['admin', 'dentist']);
@@ -26,6 +27,10 @@ test('clinical, operational and administrative endpoints require least-privilege
     expectsGuard('get', '/document-templates', ['admin', 'dentist']);
     expectsGuard('post', '/document-templates', ['admin', 'dentist']);
     expectsGuard('delete', '/document-templates/:id', ['admin', 'dentist']);
+    expectsGuard('get', '/patient-documents/:patientId', ['admin', 'dentist']);
+    expectsGuard('post', '/patient-documents', ['admin', 'dentist']);
+    expectsGuard('put', '/patient-documents/:id', ['admin', 'dentist']);
+    expectsGuard('delete', '/patient-documents/:id', ['admin', 'dentist']);
     expectsGuard('get', '/analytics/stats', ['admin', 'manager']);
     expectsGuard('get', '/leads', ['admin', 'manager']);
     expectsGuard('put', '/leads/:id', ['admin', 'manager']);
@@ -65,4 +70,26 @@ test('server foundations fail closed in production and set API security headers'
     assert.match(source, /Invalid server security configuration\./);
     assert.doesNotMatch(source, /JWT_SECRET \|\| 'super_secret/);
     assert.match(source, /express\.json\(\{ limit: '1mb' \}\)/);
+});
+
+test('browser authentication uses an HttpOnly cookie instead of returning a reusable token', () => {
+    const loginStart = source.indexOf("app.post('/login'");
+    const loginEnd = source.indexOf("app.post('/logout'", loginStart);
+    const loginRoute = source.slice(loginStart, loginEnd);
+    assert.match(loginRoute, /httpOnly:\s*true/);
+    assert.match(loginRoute, /sameSite:\s*'lax'/);
+    assert.doesNotMatch(loginRoute, /res\.json\(\{ \.\.\.toSafeUser\(user\), token \}\)/);
+    assert.match(source, /app\.get\('\/auth\/session', authenticateToken/);
+
+    const apiSource = fs.readFileSync(path.resolve(__dirname, '..', '..', 'src', 'lib', 'api.ts'), 'utf8');
+    assert.doesNotMatch(apiSource, /admin_token/);
+    assert.match(apiSource, /credentials:\s*'include'/);
+});
+
+test('public testimonial submission cannot self-approve or mass-assign moderation fields', () => {
+    const start = source.indexOf("app.post('/testimonials'");
+    const end = source.indexOf("app.get('/testimonials'", start);
+    const route = source.slice(start, end);
+    assert.match(route, /approved:\s*false/);
+    assert.doesNotMatch(route, /data:\s*req\.body/);
 });

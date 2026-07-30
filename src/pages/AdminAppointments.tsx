@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { API_URL, fetchClient } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,7 +104,7 @@ const AdminAppointments = () => {
 
     const handleDelete = async (id: number) => {
         try {
-            const res = await fetch(`${API_URL}/appointments/${id}`, {
+            const res = await fetchClient(`/appointments/${id}`, {
                 method: 'DELETE',
             });
             if (res.ok) {

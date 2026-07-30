@@ -55,7 +55,7 @@ test('lead attendance resolves patients by exact contact identity', () => {
     const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
     const patientsRoute = readRoute(
         indexSource,
-        "app.get('/patients', authenticateToken, async (req, res) => {",
+        "app.get('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {",
         "app.get('/patients/:cpf'"
     );
     const attendanceSource = fs.readFileSync(

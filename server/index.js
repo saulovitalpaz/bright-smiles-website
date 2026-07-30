@@ -145,7 +145,7 @@ const authorizeRole = (roles) => {
     };
 };
 
-app.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
+app.post('/upload', authenticateToken, authorizeRole(['admin', 'dentist']), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'Supported image, video, or PDF file is required.' });
@@ -177,7 +177,7 @@ app.post('/upload', authenticateToken, upload.single('file'), async (req, res) =
     }
 });
 
-app.post('/upload/signature', authenticateToken, signatureUpload.single('file'), async (req, res) => {
+app.post('/upload/signature', authenticateToken, authorizeRole(['admin']), signatureUpload.single('file'), async (req, res) => {
     try {
         if (!req.file || !isSupportedSignatureImage(req.file.buffer, req.file.mimetype)) {
             return res.status(400).json({ error: 'A valid JPEG, PNG, or WebP signature image is required.' });
@@ -218,7 +218,7 @@ app.get('/assets', async (req, res) => {
     }
 });
 
-app.get('/clinical-assets', authenticateToken, async (req, res) => {
+app.get('/clinical-assets', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const validation = validateAssetDeliveryRequest({
             routeScope: 'clinical',
@@ -237,7 +237,7 @@ app.get('/clinical-assets', authenticateToken, async (req, res) => {
 
 // Private patient-document upload. The database stores only the object key;
 // access is granted through the authenticated route below.
-app.post('/patient-documents/:id/file', authenticateToken, documentUpload.single('file'), async (req, res) => {
+app.post('/patient-documents/:id/file', authenticateToken, authorizeRole(['admin', 'dentist']), documentUpload.single('file'), async (req, res) => {
     let storageKey;
     try {
         if (!req.file) return res.status(400).json({ error: 'Only PDF files are accepted.' });
@@ -262,7 +262,7 @@ app.post('/patient-documents/:id/file', authenticateToken, documentUpload.single
     }
 });
 
-app.get('/patient-documents/:id/file', authenticateToken, async (req, res) => {
+app.get('/patient-documents/:id/file', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const documentId = Number.parseInt(req.params.id, 10);
         const document = await prisma.patientDocument.findUnique({ where: { id: documentId } });
@@ -406,7 +406,7 @@ app.post('/login', async (req, res) => {
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
-            res.json({ ...toSafeUser(user), token });
+            res.json(toSafeUser(user));
         } else {
             res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -416,8 +416,21 @@ app.post('/login', async (req, res) => {
 });
 
 app.post('/logout', (req, res) => {
-    res.clearCookie('token');
+    res.clearCookie('token', { httpOnly: true, sameSite: 'lax', secure: isProduction });
     res.json({ message: 'Logged out' });
+});
+
+app.get('/auth/session', authenticateToken, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: SAFE_USER_SELECT
+        });
+        if (!user) return res.sendStatus(401);
+        res.json(user);
+    } catch {
+        res.status(500).json({ error: 'Internal server error.' });
+    }
 });
 
 // Protect all API routes below if needed. For now, applying selectively or globally?
@@ -828,7 +841,7 @@ app.post('/settings', authenticateToken, authorizeRole(['admin']), async (req, r
 
 
 // Patients API
-app.get('/patients', authenticateToken, async (req, res) => {
+app.get('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     const { search } = req.query;
     const phone = req.query.phone;
     const cpf = req.query.cpf;
@@ -1021,7 +1034,7 @@ app.delete('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist'
 });
 
 // Consent API
-app.post('/patients/:cpf/consent', authenticateToken, async (req, res) => {
+app.post('/patients/:cpf/consent', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { cpf } = req.params;
         const encryptedCpf = encrypt(cpf, true);
@@ -1226,8 +1239,15 @@ app.delete('/leads/:id', authenticateToken, authorizeRole(['admin', 'manager']),
 // Testimonials API
 app.post('/testimonials', async (req, res) => {
     try {
+        const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 120) : null;
+        const comment = typeof req.body?.comment === 'string' ? req.body.comment.trim().slice(0, 2000) : '';
+        const rating = Number(req.body?.rating);
+        const feeling = typeof req.body?.feeling === 'string' ? req.body.feeling.trim().slice(0, 32) : null;
+        if (!comment || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+            return res.status(400).json({ error: 'Invalid testimonial.' });
+        }
         const testimonial = await prisma.testimonial.create({
-            data: req.body
+            data: { name, comment, rating, feeling, approved: false }
         });
         res.json(testimonial);
     } catch (error) {
@@ -1512,7 +1532,7 @@ app.delete('/document-templates/:id', authenticateToken, authorizeRole(['admin',
 });
 
 // Patient Documents API (History)
-app.get('/patient-documents/:patientId', authenticateToken, async (req, res) => {
+app.get('/patient-documents/:patientId', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const docs = await prisma.patientDocument.findMany({
             where: { patientId: parseInt(req.params.patientId) },
@@ -1527,7 +1547,7 @@ app.get('/patient-documents/:patientId', authenticateToken, async (req, res) => 
     }
 });
 
-app.post('/patient-documents', authenticateToken, async (req, res) => {
+app.post('/patient-documents', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const doc = await prisma.patientDocument.create({
             data: req.body
@@ -1538,7 +1558,7 @@ app.post('/patient-documents', authenticateToken, async (req, res) => {
     }
 });
 
-app.put('/patient-documents/:id', authenticateToken, async (req, res) => {
+app.put('/patient-documents/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const doc = await prisma.patientDocument.update({
             where: { id: parseInt(req.params.id) },
@@ -1550,7 +1570,7 @@ app.put('/patient-documents/:id', authenticateToken, async (req, res) => {
     }
 });
 
-app.delete('/patient-documents/:id', authenticateToken, async (req, res) => {
+app.delete('/patient-documents/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const document = await prisma.patientDocument.findUnique({ where: { id } });
