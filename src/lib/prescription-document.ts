@@ -1,6 +1,9 @@
 import {
   getFaceLabels,
+  getConditionDisplayName,
+  normalizeOdontogram,
   type FaceKey,
+  type OdontogramData,
   type ToothData,
 } from "@/components/admin/attendance/odontogram/odontogramModel";
 
@@ -19,23 +22,20 @@ export function htmlToPlainText(content: string): string {
     .trim();
 }
 
-export function getPdfOdontogramSummary(
-  data: Record<string, ToothData>,
-): string[] {
-  return Object.keys(data)
+export function getPdfOdontogramSummary(data: OdontogramData): string[] {
+  const normalized = normalizeOdontogram(data);
+  return Object.keys(normalized.teeth)
     .sort((left, right) => Number(left) - Number(right))
     .flatMap((toothKey) => {
       const toothNumber = Number(toothKey);
-      const tooth = data[toothKey];
+      const tooth = normalized.teeth[toothKey];
       const labels = getFaceLabels(toothNumber);
       const details: string[] = [];
 
-      if (tooth.status !== "Saudável") details.push(tooth.status);
-      Object.entries(tooth.faces ?? {}).forEach(([face, faceData]) => {
-        if (faceData && faceData.status !== "Saudável") {
-          details.push(`${labels[face as FaceKey]}: ${faceData.status}`);
-        }
-      });
+      tooth.conditions.forEach((condition) => condition.targets.forEach((target) => {
+        const targetLabel = target.kind === "tooth" ? "dente inteiro" : `${labels[target.face as FaceKey]} - ${target.region === "incisalOcclusal" ? "oclusal/incisal" : target.region === "middle" ? "média" : target.region === "cervical" ? "cervical" : "face inteira"}`;
+        details.push(`${getConditionDisplayName(condition.type)} ${condition.stage} (${targetLabel})`);
+      }));
       if (tooth.notes?.trim()) details.push(tooth.notes.trim());
 
       return details.length ? [`${toothKey}: ${details.join("; ")}`] : [];
