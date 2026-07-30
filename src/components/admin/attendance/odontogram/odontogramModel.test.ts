@@ -2,6 +2,9 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   getFaceLabels,
   getToothFamily,
+  createCondition,
+  normalizeOdontogram,
+  upsertCondition,
   updateToothFace,
   updateWholeTooth,
   type FaceStatus,
@@ -12,6 +15,44 @@ import {
 } from "./odontogramModel";
 
 describe("odontogramModel", () => {
+  it("normalizes legacy status, faces and notes without dropping data", () => {
+    const result = normalizeOdontogram({
+      "16": {
+        status: "Implante",
+        notes: "controle anual",
+        faces: { center: { status: "Tratado" } },
+      },
+    });
+
+    expect(result).toMatchObject({ version: 2, dentition: "permanent" });
+    expect(result.teeth["16"].notes).toBe("controle anual");
+    expect(result.teeth["16"].conditions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "implante", targets: [{ kind: "tooth" }] }),
+      expect.objectContaining({
+        type: "legado_tratado",
+        targets: [{ kind: "surface", face: "center", region: "entire" }],
+      }),
+    ]));
+  });
+
+  it("keeps two conditions on the same exact target", () => {
+    const target = [{ kind: "surface" as const, face: "center" as const, region: "incisalOcclusal" as const }];
+    const caries = createCondition({ category: "achado", type: "carie", stage: "planejado", targets: target });
+    const resin = createCondition({ category: "restauracao", type: "resina_composta", stage: "concluido", targets: target });
+
+    const result = upsertCondition(upsertCondition(normalizeOdontogram({}), 16, caries), 16, resin);
+    expect(result.teeth["16"].conditions).toEqual([caries, resin]);
+  });
+
+  it("rejects a partial target for a crown", () => {
+    expect(() => createCondition({
+      category: "protese",
+      type: "coroa_total",
+      stage: "planejado",
+      targets: [{ kind: "surface", face: "center", region: "entire" }],
+    })).toThrow("coroa_total exige o alvo dente inteiro");
+  });
+
   it("keeps face and whole-tooth status contracts distinct", () => {
     expectTypeOf<ToothFaceData["status"]>().toEqualTypeOf<FaceStatus>();
     expectTypeOf<ToothData["status"]>().toEqualTypeOf<WholeToothStatus>();

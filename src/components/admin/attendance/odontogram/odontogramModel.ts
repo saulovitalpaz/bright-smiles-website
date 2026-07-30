@@ -69,3 +69,81 @@ export function updateWholeTooth(
     [toothNumber]: { ...getTooth(data, toothNumber), status },
   };
 }
+
+export const CLINICAL_CATALOG = {
+  achado: ["carie", "lesao_carie_inicial", "infiltracao", "fratura", "trinca", "desgaste", "abrasao", "erosao", "abfracao", "mancha", "hipoplasia", "sensibilidade", "mobilidade", "furca", "retracao_gengival", "dente_ausente"],
+  restauracao: ["resina_composta", "amalgama", "ionomero_vidro", "restauracao_provisoria", "selante", "inlay", "onlay", "overlay", "faceta"],
+  endodontia: ["tratamento_endodontico", "retratamento", "obturacao_radicular", "lesao_periapical", "pino_intrarradicular", "nucleo"],
+  protese: ["coroa_total", "coroa_parcial", "coroa_provisoria", "coroa_sobre_implante", "implante", "ponte_fixa", "protese_removivel", "elemento_pontico"],
+  periodontiaCirurgia: ["gengivectomia", "enxerto", "cirurgia_periodontal", "exodontia_indicada", "exodontia_executada"],
+  ortodontia: ["bracket", "banda", "contencao", "aparelho"],
+} as const;
+
+export type ClinicalCategory = keyof typeof CLINICAL_CATALOG | "legado";
+export type ClinicalConditionType = (typeof CLINICAL_CATALOG)[Exclude<ClinicalCategory, "legado">][number] | "legado_tratar" | "legado_tratado" | "legado_ausente" | "legado_ponte";
+export type ClinicalStage = "aAvaliar" | "planejado" | "emAndamento" | "concluido" | "monitorado" | "suspenso" | "removido";
+export type ConditionTarget = { kind: "tooth" } | { kind: "surface"; face: FaceKey; region: "entire" | "cervical" | "middle" | "incisalOcclusal" };
+export interface ClinicalCondition { id: string; category: ClinicalCategory; type: ClinicalConditionType; targets: ConditionTarget[]; stage: ClinicalStage; notes?: string; }
+export interface ToothRecord { notes: string; conditions: ClinicalCondition[]; }
+export interface OdontogramV2 { version: 2; dentition: "permanent"; teeth: Record<string, ToothRecord>; }
+export type OdontogramData = Record<string, ToothData> | OdontogramV2;
+
+const WHOLE_TOOTH_TYPES = new Set<ClinicalConditionType>(["coroa_total", "implante", "ponte_fixa", "protese_removivel", "elemento_pontico", "exodontia_indicada", "exodontia_executada"]);
+let conditionSequence = 0;
+
+export function getAllowedTargets(type: ClinicalConditionType): readonly ConditionTarget["kind"][] {
+  return WHOLE_TOOTH_TYPES.has(type) ? ["tooth"] : ["surface", "tooth"];
+}
+
+export function createCondition(input: Omit<ClinicalCondition, "id"> & { id?: string }): ClinicalCondition {
+  const targets = input.targets.map((target) => ({ ...target }));
+  if (WHOLE_TOOTH_TYPES.has(input.type) && (targets.length !== 1 || targets[0].kind !== "tooth")) {
+    throw new Error(`${input.type} exige o alvo dente inteiro`);
+  }
+  if (!targets.length) throw new Error("A ocorrência exige ao menos um alvo");
+  return { ...input, id: input.id ?? `condition-${++conditionSequence}`, targets };
+}
+
+function isV2(value: OdontogramData): value is OdontogramV2 {
+  return "version" in value && value.version === 2 && "teeth" in value;
+}
+
+function legacyCondition(type: ClinicalConditionType, target: ConditionTarget): ClinicalCondition {
+  return createCondition({ category: "legado", type, targets: [target], stage: "concluido" });
+}
+
+export function normalizeOdontogram(data: OdontogramData | null | undefined): OdontogramV2 {
+  if (data && isV2(data)) return data;
+  const teeth: Record<string, ToothRecord> = {};
+  for (const [toothNumber, tooth] of Object.entries(data ?? {})) {
+    const conditions: ClinicalCondition[] = [];
+    if (tooth.status === "Implante") conditions.push(legacyCondition("implante", { kind: "tooth" }));
+    if (tooth.status === "Ausente") conditions.push(legacyCondition("legado_ausente", { kind: "tooth" }));
+    if (tooth.status === "Ponte") conditions.push(legacyCondition("legado_ponte", { kind: "tooth" }));
+    for (const face of FACE_KEYS) {
+      const status = tooth.faces?.[face]?.status;
+      if (status === "Tratar") conditions.push(legacyCondition("legado_tratar", { kind: "surface", face, region: "entire" }));
+      if (status === "Tratado") conditions.push(legacyCondition("legado_tratado", { kind: "surface", face, region: "entire" }));
+    }
+    if (conditions.length || tooth.notes) teeth[toothNumber] = { notes: tooth.notes ?? "", conditions };
+  }
+  return { version: 2, dentition: "permanent", teeth };
+}
+
+export function upsertCondition(data: OdontogramV2, toothNumber: number, condition: ClinicalCondition): OdontogramV2 {
+  const current = data.teeth[String(toothNumber)] ?? { notes: "", conditions: [] };
+  const conditions = current.conditions.some((item) => item.id === condition.id)
+    ? current.conditions.map((item) => item.id === condition.id ? condition : item)
+    : [...current.conditions, condition];
+  return { ...data, teeth: { ...data.teeth, [toothNumber]: { ...current, conditions } } };
+}
+
+export function removeCondition(data: OdontogramV2, toothNumber: number, conditionId: string): OdontogramV2 {
+  const current = data.teeth[String(toothNumber)];
+  if (!current) return data;
+  return { ...data, teeth: { ...data.teeth, [toothNumber]: { ...current, conditions: current.conditions.filter((item) => item.id !== conditionId) } } };
+}
+
+export function getConditionDisplayName(type: ClinicalConditionType): string {
+  return type.replace(/^legado_/, "").replaceAll("_", " ");
+}
