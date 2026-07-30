@@ -88,6 +88,16 @@ export interface ToothRecord { notes: string; conditions: ClinicalCondition[]; }
 export interface OdontogramV2 { version: 2; dentition: "permanent"; teeth: Record<string, ToothRecord>; }
 export type OdontogramData = Record<string, ToothData> | OdontogramV2;
 
+const CLINICAL_STAGE_LABELS: Record<ClinicalStage, string> = {
+  aAvaliar: "A avaliar",
+  planejado: "Planejado",
+  emAndamento: "Em andamento",
+  concluido: "Concluído",
+  monitorado: "Monitorado",
+  suspenso: "Suspenso",
+  removido: "Removido",
+};
+
 const WHOLE_TOOTH_TYPES = new Set<ClinicalConditionType>(["coroa_total", "implante", "ponte_fixa", "protese_removivel", "elemento_pontico", "exodontia_indicada", "exodontia_executada"]);
 let conditionSequence = 0;
 
@@ -146,4 +156,16 @@ export function removeCondition(data: OdontogramV2, toothNumber: number, conditi
 
 export function getConditionDisplayName(type: ClinicalConditionType): string {
   return type.replace(/^legado_/, "").replaceAll("_", " ");
+}
+
+export function getClinicalStageLabel(stage: ClinicalStage): string {
+  return CLINICAL_STAGE_LABELS[stage];
+}
+
+export function getConditionTargetLabel(toothNumber: number, target: ConditionTarget): string {
+  if (target.kind === "tooth") return "Dente inteiro";
+  const region = target.region === "incisalOcclusal" ? "oclusal/incisal"
+    : target.region === "middle" ? "média"
+      : target.region === "cervical" ? "cervical" : "face inteira";
+  return `${getFaceLabels(toothNumber)[target.face]} - ${region}`;
 }

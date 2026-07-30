@@ -1,6 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   getFaceLabels,
+  getClinicalStageLabel,
+  getConditionTargetLabel,
   getToothFamily,
   createCondition,
   normalizeOdontogram,
@@ -71,6 +73,13 @@ describe("odontogramModel", () => {
   it("maps positional faces to clinical labels", () => {
     expect(getFaceLabels(11).right).toBe("Mesial");
     expect(getFaceLabels(31).bottom).toBe("Vestibular");
+  });
+
+  it("formats a stage and exact target for a tooth", () => {
+    expect(getClinicalStageLabel("emAndamento")).toBe("Em andamento");
+    expect(getConditionTargetLabel(16, { kind: "surface", face: "center", region: "incisalOcclusal" }))
+      .toBe("Oclusal / Incisal - oclusal/incisal");
+    expect(getConditionTargetLabel(36, { kind: "tooth" })).toBe("Dente inteiro");
   });
 
   it("updates one face without erasing other clinical data", () => {
