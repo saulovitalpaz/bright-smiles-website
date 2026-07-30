@@ -24,7 +24,7 @@ describe("PrescriptionGenerator document helpers", () => {
         },
       }),
     ).toEqual([
-      "16: Implante; Oclusal / Incisal: Tratado; controle",
+      "16: implante concluido (dente inteiro); tratado concluido (Oclusal / Incisal - face inteira); controle",
     ]);
   });
 
