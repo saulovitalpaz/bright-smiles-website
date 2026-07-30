@@ -36,6 +36,15 @@ export const runPgDump = async ({ connection, pgPassFile, outputPath, run = runC
   await run('pg_dump', args, { env: { PGPASSFILE: pgPassFile, PGSSLMODE: connection.sslMode } });
 };
 
+export const runPgRestore = async ({ connection, pgPassFile, dumpPath, run = runCommand }) => {
+  const args = [
+    '--exit-on-error', '--no-owner', '--no-privileges',
+    '--host', connection.host, '--port', connection.port, '--username', connection.user, '--dbname', connection.database,
+    dumpPath
+  ];
+  await run('pg_restore', args, { env: { PGPASSFILE: pgPassFile, PGSSLMODE: connection.sslMode } });
+};
+
 export const validateDump = async ({ dumpPath, run = runCommand }) => {
   await run('pg_restore', ['--list', dumpPath], {});
 };

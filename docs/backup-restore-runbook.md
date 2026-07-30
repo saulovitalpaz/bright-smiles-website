@@ -43,11 +43,20 @@ Não envie a saída a ninguém nem a inclua em arquivo. Sem essa chave, o backup
 
 ## Teste de recuperação (semestral e após mudanças grandes)
 
-1. Crie um PostgreSQL 17 temporário e vazio; nunca aponte o teste ao banco de produção.
-2. Em uma máquina segura com as mesmas seis variáveis, defina `BACKUP_OBJECT_KEY` para uma chave do R2 e execute `npm run inspect --prefix backup`. Isso valida download, manifesto, SHA-256, AES-GCM e a leitura de estrutura pelo `pg_restore`.
-3. Baixe e decifre apenas em diretório temporário controlado. Restaure no banco temporário com PostgreSQL 17, usando `pg_restore --no-owner --no-privileges --dbname <url-do-banco-temporario> <dump>`.
-4. Compare contagens representativas de tabelas e registre apenas o resultado, data e chave do objeto — nunca dados clínicos.
-5. Exclua a instância temporária e os arquivos locais logo após o teste.
+1. Crie um PostgreSQL 17 temporário e vazio no Railway, por exemplo `restore-test-postgres`. Não adicione domínio público ou proxy TCP.
+2. Crie o serviço temporário `database-restore-test` a partir da mesma branch `database-backup`, com raiz `backup`. Em **Start Command**, use `npm run restore-test`.
+3. Copie as variáveis R2 e `BACKUP_ENCRYPTION_KEY` do `database-backup` para o serviço temporário. Adicione também:
+
+   | Variável | Valor |
+   | --- | --- |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — usado somente para impedir que a origem seja escolhida como destino |
+   | `RESTORE_DATABASE_URL` | `${{restore-test-postgres.DATABASE_URL}}` |
+   | `BACKUP_OBJECT_KEY` | A chave exata de um objeto `daily/...dump.enc` existente |
+   | `RESTORE_TEST_CONFIRM` | `RESTORE_TO_TEMPORARY_DATABASE` |
+
+4. Execute uma vez. O comando baixa o objeto, valida manifesto e SHA-256, decifra em diretório temporário, valida o dump e restaura com `pg_restore --exit-on-error --no-owner --no-privileges`. Ele recusa confirmação ausente e um destino igual ao banco de origem.
+5. O log esperado é `Temporary restore completed: ...`. Compare apenas contagens representativas de tabelas e registre resultado, data e chave do objeto — nunca dados clínicos.
+6. Exclua os serviços temporários `database-restore-test` e `restore-test-postgres` logo após o teste, juntamente com as variáveis temporárias.
 
 Uma restauração sobre produção exige janela de manutenção e aprovação explícita separada. O serviço de backup não contém comando que substitua ou apague um banco.
 

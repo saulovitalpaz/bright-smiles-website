@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPgPassFile, runPgDump, validateDump } from '../src/postgres.js';
+import { createPgPassFile, runPgDump, runPgRestore, validateDump } from '../src/postgres.js';
 
 const connection = {
   host: 'postgres.railway.internal',
@@ -43,4 +43,25 @@ test('validates a custom dump with pg_restore before upload', async () => {
   });
 
   assert.deepEqual(calls, [['pg_restore', ['--list', '/tmp/backup.dump'], {}]]);
+});
+
+test('restores only through pg_restore using pgpass instead of credentials in arguments', async () => {
+  const calls = [];
+  await runPgRestore({
+    connection: {
+      host: 'restore-test.railway.internal', port: '5432', database: 'railway', user: 'restore-user', password: 'not-an-argument', sslMode: 'require'
+    },
+    pgPassFile: '/tmp/.pgpass',
+    dumpPath: '/tmp/database.dump',
+    run: async (file, args, options) => calls.push({ file, args, options })
+  });
+
+  assert.equal(calls[0].file, 'pg_restore');
+  assert.deepEqual(calls[0].args, [
+    '--exit-on-error', '--no-owner', '--no-privileges',
+    '--host', 'restore-test.railway.internal', '--port', '5432', '--username', 'restore-user', '--dbname', 'railway',
+    '/tmp/database.dump'
+  ]);
+  assert.deepEqual(calls[0].options.env, { PGPASSFILE: '/tmp/.pgpass', PGSSLMODE: 'require' });
+  assert.doesNotMatch(calls[0].args.join(' '), /not-an-argument/);
 });
