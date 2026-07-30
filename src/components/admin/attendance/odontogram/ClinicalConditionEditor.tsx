@@ -37,11 +37,20 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
   const types = category ? CLINICAL_CATALOG[category] : [];
   const canSave = Boolean(category && type && stage && targets.length);
 
+  function resetForm(): void {
+    setCategory("");
+    setType("");
+    setStage("");
+    setTargets([]);
+    setNotes("");
+  }
+
   return (
     <form className="space-y-3" onSubmit={(event) => {
       event.preventDefault();
       if (!canSave || !category || !type || !stage) return;
       onSave(createCondition({ category, type, stage, targets, notes: notes.trim() || undefined }));
+      resetForm();
     }}>
       <label className="block text-sm">Categoria
         <select aria-label="Categoria" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={category} onChange={(event) => {

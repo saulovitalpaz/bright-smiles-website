@@ -23,6 +23,21 @@ describe("ClinicalConditionEditor", () => {
     }));
   });
 
+  it("saves from the precise region grid and resets the form", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
+    await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
+    await user.click(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i }));
+    await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
+    await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("Categoria")).toHaveValue("");
+  });
+
   it("uses readable dark select controls and visibly marks a selected region", async () => {
     const user = userEvent.setup();
     render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={() => undefined} />);
