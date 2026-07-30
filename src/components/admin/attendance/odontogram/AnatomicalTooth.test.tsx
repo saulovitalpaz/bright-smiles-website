@@ -43,6 +43,7 @@ describe("AnatomicalTooth", () => {
       "enamel-crown",
       "enamel-highlight",
       "face-overlays",
+      "layered-v2-face-overlays",
       "whole-tooth-overlay",
     ]);
     expect(tooth.querySelector('[data-anatomy-layer="enamel-highlight"]'))
@@ -72,6 +73,19 @@ describe("AnatomicalTooth", () => {
     expect(tooth.querySelector('[data-face-key="center"]')).toHaveAttribute("data-face-status", "Tratar");
     expect(tooth.querySelector('[data-face-key="right"]')).toHaveAttribute("data-face-status", "Tratado");
     expect(tooth.querySelector('[data-face-key="left"]')).not.toBeInTheDocument();
+  });
+
+  it("paints a layered v2 condition on its exact anatomical face", () => {
+    render(
+      <AnatomicalTooth
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        record={{ notes: "", conditions: [{ id: "c1", category: "restauracao", type: "resina_composta", stage: "concluido", targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }] }] }}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: /dente 16/i }).querySelector('[data-layered-face="center"]'))
+      .toHaveAttribute("data-condition-type", "resina_composta");
   });
 
   it.each(["Implante", "Ponte", "Ausente"] as const)(

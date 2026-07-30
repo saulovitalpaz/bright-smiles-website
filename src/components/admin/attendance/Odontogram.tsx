@@ -130,7 +130,13 @@ const Odontogram = ({
   readOnly = false,
   printable = false,
 }: OdontogramProps): JSX.Element => {
-  const legacyData: Record<string, ToothData> = "version" in data ? {} : data;
+  const isLayeredData = "version" in data;
+  const legacyData: Record<string, ToothData> = isLayeredData
+    ? Object.fromEntries(Object.entries(data.teeth).map(([toothNumber, record]) => [toothNumber, {
+      status: "Saudável",
+      notes: record.notes,
+    }]))
+    : data;
   const layeredData = normalizeOdontogram(data);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [selectedFace, setSelectedFace] = useState<FaceKey | null>(null);
@@ -168,6 +174,11 @@ const Odontogram = ({
 
   const setNotes = (notes: string): void => {
     if (readOnly || selectedTooth === null) return;
+    if (isLayeredData) {
+      const current = layeredData.teeth[String(selectedTooth)] ?? { notes: "", conditions: [] };
+      onChange({ ...layeredData, teeth: { ...layeredData.teeth, [selectedTooth]: { ...current, notes } } });
+      return;
+    }
     onChange({
       ...legacyData,
       [selectedTooth]: { ...getTooth(legacyData, selectedTooth), notes },
@@ -183,7 +194,7 @@ const Odontogram = ({
         const content = (
           <>
             <span className="font-mono text-[10px] text-slate-500">{toothNumber}</span>
-            <AnatomicalTooth toothNumber={toothNumber} data={tooth} />
+            <AnatomicalTooth record={layeredData.teeth[String(toothNumber)]} toothNumber={toothNumber} data={tooth} />
           </>
         );
 
@@ -352,6 +363,7 @@ const Odontogram = ({
                   <span className="text-[9px] uppercase tracking-wider text-slate-500">Anatomia</span>
                   <AnatomicalTooth
                     data={selectedData}
+                    record={layeredData.teeth[String(selectedTooth)]}
                     selected
                     size="editor"
                     toothNumber={selectedTooth}
@@ -374,7 +386,7 @@ const Odontogram = ({
                 </div>
               </div>
 
-              {selectedFace ? (
+              {!isLayeredData && selectedFace ? (
                 <section className="min-w-0 rounded-xl border border-blue-800/40 bg-blue-900/10 p-3 sm:p-4">
                   <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-blue-300">
                     Face selecionada: {selectedLabels[selectedFace]}
@@ -392,13 +404,13 @@ const Odontogram = ({
                     ))}
                   </div>
                 </section>
-              ) : (
+              ) : !isLayeredData ? (
                 <p className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 p-3 text-center text-sm text-slate-400">
                   Toque primeiro na face exata que será avaliada.
                 </p>
-              )}
+              ) : null}
 
-              <section className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/40">
+              {!isLayeredData ? <section className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/40">
                 <button
                   aria-expanded={wholeToothOpen}
                   className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-200 touch-manipulation hover:bg-slate-800/60"
@@ -422,7 +434,7 @@ const Odontogram = ({
                     ))}
                   </div>
                 ) : null}
-              </section>
+              </section> : null}
 
               <div className="min-w-0 space-y-1.5">
                 <Label

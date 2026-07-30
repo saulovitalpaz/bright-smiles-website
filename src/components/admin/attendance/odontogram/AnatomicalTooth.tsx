@@ -1,12 +1,13 @@
 import { useId, type JSX } from "react";
 import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
-import { FACE_KEYS, getToothFamily, type ToothData } from "./odontogramModel";
+import { FACE_KEYS, getToothFamily, type ToothData, type ToothRecord } from "./odontogramModel";
 
 interface AnatomicalToothProps {
   toothNumber: number;
   data: ToothData;
   size?: "arch" | "editor";
   selected?: boolean;
+  record?: ToothRecord;
 }
 
 const STATUS_OVERLAYS = {
@@ -20,6 +21,7 @@ export function AnatomicalTooth({
   data,
   size = "arch",
   selected = false,
+  record,
 }: AnatomicalToothProps): JSX.Element {
   const instanceId = useId().replace(/:/g, "");
   const family = getToothFamily(toothNumber);
@@ -130,6 +132,14 @@ export function AnatomicalTooth({
                 strokeWidth="0.7"
               />
             );
+          })}
+        </g>
+        <g data-anatomy-layer="layered-v2-face-overlays" clipPath={`url(#${crownClipId})`}>
+          {FACE_KEYS.map((face) => {
+            const matching = record?.conditions.filter((condition) => condition.targets.some((target) => target.kind === "surface" && target.face === face)) ?? [];
+            const condition = matching.at(-1);
+            if (!condition) return null;
+            return <path data-condition-count={matching.length} data-condition-stage={condition.stage} data-condition-type={condition.type} data-layered-face={face} d={anatomy.surfaces[face]} fill={condition.type === "amalgama" ? "#64748b" : condition.type === "carie" ? `url(#${treatPatternId})` : "#38bdf8"} key={face} opacity={condition.stage === "concluido" ? 0.65 : 0.85} stroke={condition.type === "carie" ? "#b42318" : "#0369a1"} strokeWidth="1" />;
           })}
         </g>
         <g
