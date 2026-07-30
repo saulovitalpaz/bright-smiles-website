@@ -22,8 +22,14 @@ Gere a chave localmente, guarde-a no cofre e cole-a diretamente no Railway. Em P
 
 ```powershell
 $bytes = [byte[]]::new(32)
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-[Convert]::ToBase64String($bytes)
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+  $rng.GetBytes($bytes)
+  [Convert]::ToBase64String($bytes)
+}
+finally {
+  $rng.Dispose()
+}
 ```
 
 Não envie a saída a ninguém nem a inclua em arquivo. Sem essa chave, o backup é irrecuperável.
