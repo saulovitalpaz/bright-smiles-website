@@ -92,11 +92,29 @@ test('patient schema and routes support safe updates and deletion protection', (
     assert.match(updateRoute, /authenticateToken/);
     assert.match(updateRoute, /patientSchema\.safeParse\(req\.body\)/);
     assert.match(updateRoute, /Number\.parseInt\(req\.params\.id/);
-    assert.match(updateRoute, /encrypt\(cpf,\s*true\)/);
+    assert.match(updateRoute, /cpfIndex:\s*blindIndex\(cpf\)/);
+    assert.match(updateRoute, /cpf:\s*encrypt\(cpf\)/);
+    assert.doesNotMatch(updateRoute, /encrypt\(cpf,\s*true\)/);
     assert.match(updateRoute, /encrypt\(history\)/);
     assert.match(updateRoute, /prisma\.patient\.update/);
     assert.match(updateRoute, /decrypt\(.*\.cpf\)/s);
     assert.match(updateRoute, /decrypt\(.*\.history\)/s);
+
+    const lookupRoute = readRoute(
+        indexSource,
+        "app.get('/patients/:cpf'",
+        "app.post('/patients'"
+    );
+    assert.match(lookupRoute, /findPatientByCpf\(cpf/);
+
+    const consentRoute = readRoute(
+        indexSource,
+        "app.post('/patients/:cpf/consent'",
+        "// Prescriptions API"
+    );
+    assert.match(consentRoute, /findPatientByCpf\(cpf\)/);
+    assert.match(indexSource, /const findPatientByCpf[\s\S]*where:\s*\{\s*cpfIndex:\s*blindIndex\(cpf\)\s*\}/);
+    assert.match(indexSource, /const findPatientByCpf[\s\S]*prisma\.patient\.findMany/);
 
     const deleteRoute = readRoute(
         indexSource,

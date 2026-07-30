@@ -5,7 +5,9 @@
     "main": "index.js",
     "scripts": {
         "build": "npx prisma generate",
-        "start": "npx prisma generate && npx prisma db push && node index.js",
+        "start": "npx prisma generate && npx prisma migrate deploy && node index.js",
+        "migrate:deploy": "npx prisma migrate deploy",
+        "migrate:patient-encryption": "node scripts/migrate-patient-encryption.js",
         "dev": "nodemon index.js"
     },
     "dependencies": {

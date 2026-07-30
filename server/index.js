@@ -15,7 +15,7 @@ const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl }
 
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
-const { encrypt, decrypt } = require('./utils/encryption');
+const { createEncryption } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
 const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
@@ -54,6 +54,18 @@ const requireProductionSecret = (name) => {
 };
 const JWT_SECRET = requireProductionSecret('JWT_SECRET') || 'development-only-jwt-secret-do-not-use-in-production';
 requireProductionSecret('ENCRYPTION_KEY');
+const { encrypt, decrypt, blindIndex } = createEncryption(process.env);
+const normalizeCpf = (value) => String(value || '').replace(/\D/g, '');
+const findPatientByCpf = async (cpf, include) => {
+    const indexed = await prisma.patient.findUnique({
+        where: { cpfIndex: blindIndex(cpf) },
+        ...(include ? { include } : {})
+    });
+    if (indexed) return indexed;
+
+    const patients = await prisma.patient.findMany(include ? { include } : undefined);
+    return patients.find((patient) => normalizeCpf(decrypt(patient.cpf)) === normalizeCpf(cpf)) || null;
+};
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -894,15 +906,7 @@ app.get('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), asy
 app.get('/patients/:cpf', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { cpf } = req.params;
-        const patient = await prisma.patient.findMany(); // We need to scan all to find matching encrypted CPF if deterministic isn't perfectly trusted or if we search by ID.
-        // Wait, route is /patients/:cpf.
-        // If we use deterministic encryption for CPF, we can search directly.
-
-        const encryptedCpf = encrypt(cpf, true); // Re-derive deterministic
-        const patientByCpf = await prisma.patient.findUnique({
-            where: { cpf: encryptedCpf },
-            include: { appointments: true, prescriptions: true }
-        });
+        const patientByCpf = await findPatientByCpf(cpf, { appointments: true, prescriptions: true });
 
         if (!patientByCpf) return res.status(404).json({ error: 'Patient not found' });
 
@@ -923,9 +927,7 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
     try {
         const { cpf, history, consentDate, ...rest } = result.data;
 
-        // Encrypt Sensitive Data
-        // Use deterministic for CPF to allow duplicate check if needed (though we rely on catch error for unique constraint)
-        const encryptedCpf = encrypt(cpf, true);
+        const encryptedCpf = encrypt(cpf);
         const encryptedHistory = encrypt(history);
         const normalizedConsentDate = consentDate === undefined
             ? undefined
@@ -945,9 +947,9 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
         }
 
         const patient = await prisma.patient.upsert({
-            where: { cpf: encryptedCpf },
+            where: { cpfIndex: blindIndex(cpf) },
             update: data,
-            create: { ...data, cpf: encryptedCpf }
+            create: { ...data, cpf: encryptedCpf, cpfIndex: blindIndex(cpf) }
         });
 
         res.json({
@@ -972,7 +974,8 @@ app.put('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist']),
         const { cpf, history, consentDate, ...rest } = result.data;
         const data = {
             ...rest,
-            cpf: encrypt(cpf, true),
+            cpf: encrypt(cpf),
+            cpfIndex: blindIndex(cpf),
             history: encrypt(history)
         };
 
@@ -1037,17 +1040,14 @@ app.delete('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist'
 app.post('/patients/:cpf/consent', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { cpf } = req.params;
-        const encryptedCpf = encrypt(cpf, true);
 
         // Ensure patient exists
-        const patient = await prisma.patient.findUnique({
-            where: { cpf: encryptedCpf }
-        });
+        const patient = await findPatientByCpf(cpf);
 
         if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
         const updated = await prisma.patient.update({
-            where: { cpf: encryptedCpf },
+            where: { id: patient.id },
             data: {
                 consent: true,
                 consentDate: new Date()
