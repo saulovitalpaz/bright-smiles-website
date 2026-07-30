@@ -67,6 +67,6 @@ test('calendar expands its 30-minute slots for entries outside baseline hours', 
     assert.match(source, /const getVisibleSlotMinutes/);
     assert.match(source, /Math\.min\(8 \* 60/);
     assert.match(source, /Math\.max\(20 \* 60/);
-    assert.match(source, /const slotMinutes = getVisibleSlotMinutes\(entries, days\)/);
+    assert.match(source, /getVisibleSlotMinutes\(entries, days\)/);
     assert.match(source, /getDropDateTime\(day, minutes\)/);
 });

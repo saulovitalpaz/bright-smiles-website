@@ -1,39 +1,37 @@
 const { PrismaClient } = require('@prisma/client');
+
 const prisma = new PrismaClient();
 
-const auditLogger = async (req, res, next) => {
-    // Capture the original send to log status code later if needed, 
-    // but for now we log the request arrival.
+const shouldAudit = (req) => (
+    ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+    || req.originalUrl.startsWith('/patients')
+    || req.originalUrl.startsWith('/appointments')
+    || req.originalUrl.startsWith('/prescriptions')
+    || req.originalUrl.startsWith('/finance')
+);
 
-    const userId = req.user ? req.user.id : null; // Assuming auth middleware sets req.user
-    const method = req.method;
-    const url = req.originalUrl;
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+const trustedIp = (req) => String(req.ip || req.socket.remoteAddress || 'unknown').slice(0, 45);
 
-    // Only log state-changing operations or sensitive reads
-    // You can customize this filter
-    if (method === 'POST' || method === 'PUT' || method === 'DELETE' || url.includes('/patients')) {
-        try {
-            const action = `${method} ${url}`;
-            const resource = url.split('/')[1] || 'root';
+const auditLogger = (req, res, next) => {
+    if (!shouldAudit(req)) return next();
 
-            // Avoid logging sensitive body data directly without sanitization
-            const details = method !== 'GET' ? JSON.stringify(req.body).substring(0, 200) : null;
+    res.once('finish', () => {
+        const action = `${req.method} ${req.baseUrl || ''}${req.route?.path || req.path}`;
+        const resource = req.path.split('/')[1] || 'root';
+        const details = JSON.stringify({ statusCode: res.statusCode });
 
-            await prisma.auditLog.create({
-                data: {
-                    userId: userId,
-                    action: action,
-                    resource: resource,
-                    details: details,
-                    ip: typeof ip === 'string' ? ip : ip[0] // handle array
-                }
-            });
-        } catch (error) {
-            console.error('Audit Log failed:', error);
-            // Don't block the request if audit fails, but consider alerting
-        }
-    }
+        prisma.auditLog.create({
+            data: {
+                userId: req.user?.id ?? null,
+                action,
+                resource,
+                details,
+                ip: trustedIp(req)
+            }
+        }).catch(() => {
+            console.error('Audit log write failed.');
+        });
+    });
 
     next();
 };

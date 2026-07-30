@@ -5,6 +5,67 @@ const path = require('node:path');
 
 const serverRoot = path.resolve(__dirname, '..');
 
+const loadAuthenticateToken = (jwt) => {
+    const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    const start = source.indexOf('const authenticateToken =');
+    const end = source.indexOf('\n};', start) + 3;
+    const declaration = source.slice(start, end);
+
+    return new Function('jwt', 'JWT_SECRET', `${declaration}; return authenticateToken;`)(jwt, 'test-secret');
+};
+
+test('invalid authentication tokens return 401 so the client can renew the session', () => {
+    const authenticateToken = loadAuthenticateToken({
+        verify: (_token, _secret, callback) => callback(new Error('jwt expired'))
+    });
+    let statusCode;
+    let nextCalled = false;
+    const response = {
+        sendStatus: (code) => {
+            statusCode = code;
+        }
+    };
+
+    authenticateToken(
+        { cookies: { token: 'expired-token' }, headers: {} },
+        response,
+        () => { nextCalled = true; }
+    );
+
+    assert.equal(statusCode, 401);
+    assert.equal(nextCalled, false);
+});
+
+test('the current bearer token takes precedence over a stale authentication cookie', () => {
+    let verifiedToken;
+    const authenticateToken = loadAuthenticateToken({
+        verify: (token, _secret, callback) => {
+            verifiedToken = token;
+            callback(token === 'current-token' ? null : new Error('invalid token'), { id: 1 });
+        }
+    });
+    let statusCode;
+    let nextCalled = false;
+    const response = {
+        sendStatus: (code) => {
+            statusCode = code;
+        }
+    };
+
+    authenticateToken(
+        {
+            cookies: { token: 'stale-cookie' },
+            headers: { authorization: 'Bearer current-token' }
+        },
+        response,
+        () => { nextCalled = true; }
+    );
+
+    assert.equal(verifiedToken, 'current-token');
+    assert.equal(statusCode, undefined);
+    assert.equal(nextCalled, true);
+});
+
 test('password utilities hash new passwords and recognize legacy credentials for upgrade', async () => {
     const { hashPassword, verifyPassword } = require('../utils/passwords');
     const password = 'temporary-secret';

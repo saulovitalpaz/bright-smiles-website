@@ -39,7 +39,21 @@ app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const updateLeadHandler = createUpdateLeadHandler(prisma);
 const port = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_should_be_in_env';
+const isProduction = process.env.NODE_ENV === 'production';
+const ALLOWED_ORIGINS = new Set([
+    'https://www.odontoeharmonizacao.com.br',
+    'https://odontoeharmonizacao.com.br',
+    'http://localhost:5173'
+]);
+const requireProductionSecret = (name) => {
+    const value = process.env[name];
+    if (isProduction && (typeof value !== 'string' || value.length < 32)) {
+        throw new Error('Invalid server security configuration.');
+    }
+    return value;
+};
+const JWT_SECRET = requireProductionSecret('JWT_SECRET') || 'development-only-jwt-secret-do-not-use-in-production';
+requireProductionSecret('ENCRYPTION_KEY');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -68,31 +82,54 @@ const signatureUpload = multer({
     fileFilter: (req, file, callback) => callback(null, SIGNATURE_IMAGE_TYPES.has(file.mimetype))
 });
 
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+});
 app.use(cors({
-    origin: [
-        'https://www.odontoeharmonizacao.com.br',
-        'https://odontoeharmonizacao.com.br',
-        'https://bright-smiles-website.vercel.app',
-        'http://localhost:5173',
-        /https:\/\/.*\.up\.railway\.app$/
-    ],
+    origin: [...ALLOWED_ORIGINS],
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+    if (!isProduction || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const origin = req.get('origin');
+    if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+        return res.status(403).json({ error: 'Invalid request origin.' });
+    }
+    next();
+});
 app.use(auditLogger);
 
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
-    let token = req.cookies.token;
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
         token = req.headers.authorization.split(' ')[1];
     }
+    if (!token) token = req.cookies.token;
     if (!token) return res.sendStatus(401);
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+        if (err) return res.sendStatus(401);
         req.user = user;
+        next();
+    });
+};
+
+const optionalAuthenticateToken = (req, _res, next) => {
+    const token = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : req.cookies.token;
+    if (!token) return next();
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (!err) req.user = user;
         next();
     });
 };
@@ -250,9 +287,9 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;
-        res.json({ status: 'ok', database: 'connected', timestamp: new Date() });
+        res.json({ status: 'ok' });
     } catch (error) {
-        res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
+        res.status(503).json({ status: 'error' });
     }
 });
 
@@ -365,7 +402,7 @@ app.post('/login', async (req, res) => {
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: isSecure,
-                sameSite: isSecure ? 'none' : 'lax',
+                sameSite: 'lax',
                 maxAge: 12 * 60 * 60 * 1000 // 12 hours
             });
 
@@ -414,7 +451,7 @@ app.get('/posts/:slug', async (req, res) => {
     }
 });
 
-app.post('/posts', async (req, res) => {
+app.post('/posts', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const post = await prisma.post.create({
             data: req.body
@@ -425,7 +462,7 @@ app.post('/posts', async (req, res) => {
     }
 });
 
-app.put('/posts/:id', async (req, res) => {
+app.put('/posts/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         const { id: _id, createdAt, updatedAt, ...data } = req.body;
@@ -439,7 +476,7 @@ app.put('/posts/:id', async (req, res) => {
     }
 });
 
-app.delete('/posts/:id', async (req, res) => {
+app.delete('/posts/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         await prisma.post.delete({
             where: { id: parseInt(req.params.id) }
@@ -467,7 +504,7 @@ app.post('/posts/:id/view', async (req, res) => {
 
 
 // Appointments API
-app.get('/appointments', async (req, res) => {
+app.get('/appointments', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const patientId = Number.parseInt(req.query.patientId, 10);
         const where = Number.isNaN(patientId) ? {} : { patientId };
@@ -481,7 +518,7 @@ app.get('/appointments', async (req, res) => {
     }
 });
 
-app.get('/appointments/:id', async (req, res) => {
+app.get('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { id } = req.params;
         const item = await prisma.appointment.findUnique({
@@ -495,7 +532,7 @@ app.get('/appointments/:id', async (req, res) => {
     }
 });
 
-app.post('/appointments', authenticateToken, async (req, res) => {
+app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     const result = appointmentSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
@@ -541,7 +578,7 @@ app.post('/appointments', authenticateToken, async (req, res) => {
     }
 });
 
-app.put('/appointments/:id', async (req, res) => {
+app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { id } = req.params;
         const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
@@ -577,7 +614,7 @@ app.put('/appointments/:id', async (req, res) => {
     }
 });
 
-app.delete('/appointments/:id', async (req, res) => {
+app.delete('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { id } = req.params;
         await prisma.appointment.delete({
@@ -624,7 +661,7 @@ app.get('/treatments/:slug', async (req, res) => {
     }
 });
 
-app.post('/treatments', async (req, res) => {
+app.post('/treatments', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         // duration is expected to be a valid JSON object
         const treatment = await prisma.treatment.create({
@@ -639,7 +676,7 @@ app.post('/treatments', async (req, res) => {
     }
 });
 
-app.put('/treatments/:id', async (req, res) => {
+app.put('/treatments/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         // Exclude results from update data if accidentally sent, to avoid schema mismatch errors if not nested write
@@ -655,7 +692,7 @@ app.put('/treatments/:id', async (req, res) => {
     }
 });
 
-app.delete('/treatments/:id', async (req, res) => {
+app.delete('/treatments/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         await prisma.treatment.delete({
@@ -668,7 +705,7 @@ app.delete('/treatments/:id', async (req, res) => {
 });
 
 // Treatment Results API
-app.post('/treatments/:id/results', async (req, res) => {
+app.post('/treatments/:id/results', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         const result = await prisma.treatmentResult.create({
@@ -683,7 +720,7 @@ app.post('/treatments/:id/results', async (req, res) => {
     }
 });
 
-app.delete('/treatment-results/:id', async (req, res) => {
+app.delete('/treatment-results/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         await prisma.treatmentResult.delete({
@@ -696,9 +733,12 @@ app.delete('/treatment-results/:id', async (req, res) => {
 });
 
 // Stories API
-app.get('/stories', async (req, res) => {
+app.get('/stories', optionalAuthenticateToken, async (req, res) => {
     try {
         const stories = await prisma.story.findMany({
+            where: req.user?.role === 'admin'
+                ? {}
+                : { status: 'active', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
             orderBy: { createdAt: 'desc' }
         });
         res.json(stories);
@@ -707,7 +747,7 @@ app.get('/stories', async (req, res) => {
     }
 });
 
-app.post('/stories', async (req, res) => {
+app.post('/stories', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const story = await prisma.story.create({
             data: {
@@ -721,7 +761,7 @@ app.post('/stories', async (req, res) => {
     }
 });
 
-app.delete('/stories/:id', async (req, res) => {
+app.delete('/stories/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         await prisma.story.delete({
@@ -838,7 +878,7 @@ app.get('/patients', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/patients/:cpf', async (req, res) => {
+app.get('/patients/:cpf', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { cpf } = req.params;
         const patient = await prisma.patient.findMany(); // We need to scan all to find matching encrypted CPF if deterministic isn't perfectly trusted or if we search by ID.
@@ -1019,7 +1059,7 @@ app.post('/patients/:cpf/consent', authenticateToken, async (req, res) => {
 });
 
 // Prescriptions API
-app.post('/prescriptions', async (req, res) => {
+app.post('/prescriptions', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const item = await prisma.prescription.create({
             data: req.body
@@ -1030,7 +1070,7 @@ app.post('/prescriptions', async (req, res) => {
     }
 });
 
-app.get('/prescriptions/patient/:patientId', async (req, res) => {
+app.get('/prescriptions/patient/:patientId', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { patientId } = req.params;
         const list = await prisma.prescription.findMany({
@@ -1043,7 +1083,7 @@ app.get('/prescriptions/patient/:patientId', async (req, res) => {
     }
 });
 
-app.delete('/prescriptions/:id', async (req, res) => {
+app.delete('/prescriptions/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         await prisma.prescription.delete({
             where: { id: parseInt(req.params.id) }
@@ -1055,7 +1095,7 @@ app.delete('/prescriptions/:id', async (req, res) => {
 });
 
 // Dashboard Stats API
-app.get('/dashboard/stats', async (req, res) => {
+app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const [users, posts, appointments, leads, testimonials] = await Promise.all([
             prisma.user.count(),
@@ -1158,7 +1198,7 @@ app.post('/leads', async (req, res) => {
     }
 });
 
-app.get('/leads', async (req, res) => {
+app.get('/leads', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const leads = await prisma.lead.findMany({
             where: { status: { not: 'completed' } },
@@ -1170,9 +1210,9 @@ app.get('/leads', async (req, res) => {
     }
 });
 
-app.put('/leads/:id', updateLeadHandler);
+app.put('/leads/:id', authenticateToken, authorizeRole(['admin', 'manager']), updateLeadHandler);
 
-app.delete('/leads/:id', async (req, res) => {
+app.delete('/leads/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         await prisma.lead.delete({
             where: { id: parseInt(req.params.id) }
@@ -1195,10 +1235,9 @@ app.post('/testimonials', async (req, res) => {
     }
 });
 
-app.get('/testimonials', async (req, res) => {
+app.get('/testimonials', optionalAuthenticateToken, async (req, res) => {
     try {
-        const { approved } = req.query;
-        const where = approved ? { approved: approved === 'true' } : {};
+        const where = req.user?.role === 'admin' ? {} : { approved: true };
         const testimonials = await prisma.testimonial.findMany({
             where,
             orderBy: { createdAt: 'desc' }
@@ -1209,11 +1248,13 @@ app.get('/testimonials', async (req, res) => {
     }
 });
 
-app.get('/testimonials/:id', async (req, res) => {
+app.get('/testimonials/:id', optionalAuthenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const item = await prisma.testimonial.findUnique({
-            where: { id: parseInt(id) }
+        const item = await prisma.testimonial.findFirst({
+            where: req.user?.role === 'admin'
+                ? { id: parseInt(id) }
+                : { id: parseInt(id), approved: true }
         });
         res.json(item);
     } catch (error) {
@@ -1221,20 +1262,7 @@ app.get('/testimonials/:id', async (req, res) => {
     }
 });
 
-app.put('/leads/:id', updateLeadHandler);
-
-app.delete('/leads/:id', async (req, res) => {
-    try {
-        await prisma.lead.delete({
-            where: { id: parseInt(req.params.id) }
-        });
-        res.json({ message: 'Lead deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.put('/testimonials/:id', async (req, res) => {
+app.put('/testimonials/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const testimonial = await prisma.testimonial.update({
             where: { id: parseInt(req.params.id) },
@@ -1246,7 +1274,7 @@ app.put('/testimonials/:id', async (req, res) => {
     }
 });
 
-app.delete('/testimonials/:id', async (req, res) => {
+app.delete('/testimonials/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         await prisma.testimonial.delete({
             where: { id: parseInt(req.params.id) }
@@ -1452,7 +1480,7 @@ app.get('/finance/export-pdf', authenticateToken, authorizeRole(['admin', 'manag
 });
 
 // Document Templates API
-app.get('/document-templates', async (req, res) => {
+app.get('/document-templates', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const templates = await prisma.documentTemplate.findMany();
         res.json(templates);
@@ -1461,7 +1489,7 @@ app.get('/document-templates', async (req, res) => {
     }
 });
 
-app.post('/document-templates', async (req, res) => {
+app.post('/document-templates', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const template = await prisma.documentTemplate.create({
             data: req.body
@@ -1472,7 +1500,7 @@ app.post('/document-templates', async (req, res) => {
     }
 });
 
-app.delete('/document-templates/:id', async (req, res) => {
+app.delete('/document-templates/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         await prisma.documentTemplate.delete({
             where: { id: parseInt(req.params.id) }
@@ -1601,7 +1629,7 @@ app.post('/analytics', async (req, res) => {
     }
 });
 
-app.get('/analytics/stats', async (req, res) => {
+app.get('/analytics/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const [events, leadsCount] = await Promise.all([
             prisma.analyticsEvent.findMany({ orderBy: { date: 'desc' } }),

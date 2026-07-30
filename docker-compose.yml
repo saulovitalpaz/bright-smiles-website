@@ -9,7 +9,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=https://backend-production-e175.up.railway.app
+      - VITE_API_URL=https://api.odontoeharmonizacao.com.br
     depends_on:
       - backend
 
@@ -22,8 +22,9 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      # Railway Production Database (Public URL for external access)
-      - DATABASE_URL=postgresql://postgres:jcURnVFNSgiDczpbHTDdyWCvuGBwQPgW@caboose.proxy.rlwy.net:10718/railway
+      - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL in the local environment}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the local environment}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in the local environment}
     volumes:
       - ./server:/app
       - /app/node_modules

@@ -19,12 +19,12 @@ test('appointments can filter history by patient and completed requests are hidd
     const indexSource = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
     const appointmentsRoute = readRoute(
         indexSource,
-        "app.get('/appointments', async (req, res) => {",
+        "app.get('/appointments', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {",
         "app.get('/appointments/:id'"
     );
     const leadsRoute = readRoute(
         indexSource,
-        "app.get('/leads', async (req, res) => {",
+        "app.get('/leads', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {",
         "app.put('/leads/:id'"
     );
 
@@ -73,7 +73,7 @@ test('lead attendance resolves patients by exact contact identity', () => {
     assert.match(attendanceSource, /patients\?phone=/);
     assert.match(attendanceSource, /patients\?cpf=/);
     assert.match(attendanceSource, /phone:\s*data\.phone/);
-    assert.match(attendanceSource, /delete \(payload as any\)\.phone/);
+    assert.match(attendanceSource, /phone:\s*_phone/);
 });
 
 test('patient schema and routes support safe updates and deletion protection', () => {
