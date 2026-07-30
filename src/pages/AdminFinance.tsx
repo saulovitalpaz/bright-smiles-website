@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle2 } from "lucide-react";
 import { DownloadFinanceReportButton } from "@/components/admin/FinanceReportPDF";
 import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
+import { mediaUrl } from "@/lib/media";
 
 interface Transaction {
     id: number;
@@ -101,11 +102,11 @@ const AdminFinance = () => {
             const formData = new FormData();
             formData.append('file', e.target.files[0]);
             try {
-                const res = await axios.post(`${API_URL}/upload`, formData, {
+                const res = await axios.post(`${API_URL}/financial-assets`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     withCredentials: true
                 });
-                setReceiptUrl(res.data.url);
+                setReceiptUrl(res.data.reference);
                 toast.success("Comprovante anexado!");
             } catch (error) {
                 console.error(error);
@@ -533,7 +534,7 @@ const AdminFinance = () => {
                                                         </div>
                                                         <div className="flex gap-2 mt-1 ml-11">
                                                             {t.receiptUrl && (
-                                                                <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-primary uppercase hover:underline flex items-center gap-1">
+                                                                <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-primary uppercase hover:underline flex items-center gap-1">
                                                                     <Receipt size={10} /> Recibo
                                                                 </a>
                                                             )}
@@ -593,7 +594,7 @@ const AdminFinance = () => {
                                         </div>
                                         <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
                                             {t.patient ? <span className="max-w-full truncate rounded bg-blue-50 px-2 py-1 text-blue-600">{t.patient.name}</span> : <span className="text-slate-400">Sem paciente</span>}
-                                            {t.receiptUrl && <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="min-h-8 inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"><Receipt size={11} /> Recibo</a>}
+                                            {t.receiptUrl && <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="min-h-8 inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"><Receipt size={11} /> Recibo</a>}
                                             {t.nfeUrl ? <span className="inline-flex min-h-8 items-center gap-1 text-emerald-600"><CheckCircle2 size={11} /> NF-e emitida</span> : t.type === 'income' ? <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px] font-bold text-rose-500" onClick={() => handleConfirmNfe(t.id)}><Plus size={11} className="mr-1" /> Confirmar NF-e</Button> : null}
                                             <Button variant="ghost" size="icon" className="ml-auto h-9 w-9 text-slate-400 hover:text-red-500" aria-label={`Excluir ${t.description}`} onClick={() => handleDelete(t.id)}><Trash2 size={15} /></Button>
                                         </div>
