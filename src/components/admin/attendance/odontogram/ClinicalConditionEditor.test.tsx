@@ -22,4 +22,18 @@ describe("ClinicalConditionEditor", () => {
       targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
     }));
   });
+
+  it("uses readable dark select controls and visibly marks a selected region", async () => {
+    const user = userEvent.setup();
+    render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={() => undefined} />);
+
+    expect(screen.getByLabelText("Categoria")).toHaveClass("bg-slate-950", "text-slate-100");
+    await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
+    await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
+    const target = screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i });
+    await user.click(target);
+
+    expect(target).toHaveAttribute("aria-pressed", "true");
+    expect(target).toHaveClass("bg-blue-500/20", "border-blue-400");
+  });
 });

@@ -44,7 +44,7 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
       onSave(createCondition({ category, type, stage, targets, notes: notes.trim() || undefined }));
     }}>
       <label className="block text-sm">Categoria
-        <select aria-label="Categoria" className="mt-1 w-full rounded border p-2" value={category} onChange={(event) => {
+        <select aria-label="Categoria" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={category} onChange={(event) => {
           setCategory(event.target.value as EditableCategory); setType(""); setTargets([]);
         }}>
           <option value="">Selecione</option>
@@ -52,20 +52,20 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
         </select>
       </label>
       <label className="block text-sm">Procedimento
-        <select aria-label="Procedimento" className="mt-1 w-full rounded border p-2" disabled={!category} value={type} onChange={(event) => setType(event.target.value as ClinicalConditionType)}>
+        <select aria-label="Procedimento" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100 disabled:opacity-60" disabled={!category} value={type} onChange={(event) => setType(event.target.value as ClinicalConditionType)}>
           <option value="">Selecione</option>
           {types.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
         </select>
       </label>
       {type ? <ToothSurfaceSelector toothNumber={toothNumber} data={{ status: "Saudável", notes: "" }} selectedFace={null} onSelectFace={() => undefined} selectedTargets={targets} onTargetsChange={setTargets} /> : null}
       <label className="block text-sm">Situação
-        <select aria-label="Situação" className="mt-1 w-full rounded border p-2" value={stage} onChange={(event) => setStage(event.target.value as ClinicalStage)}>
+        <select aria-label="Situação" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={stage} onChange={(event) => setStage(event.target.value as ClinicalStage)}>
           <option value="">Selecione</option>
           {STAGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
       </label>
       <label className="block text-sm">Observação da ocorrência
-        <textarea aria-label="Observação da ocorrência" className="mt-1 w-full rounded border p-2" maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <textarea aria-label="Observação da ocorrência" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
       <div className="flex gap-2"><button className="rounded bg-blue-600 px-3 py-2 text-white disabled:opacity-50" disabled={!canSave} type="submit">Salvar ocorrência</button><button className="rounded border px-3 py-2" onClick={onCancel} type="button">Cancelar</button></div>
     </form>

@@ -192,7 +192,7 @@ export function ToothSurfaceSelector({
             return (
               <button
                 aria-pressed={selected}
-                className="min-h-11 rounded-md border border-slate-600 px-2 text-xs text-slate-100"
+                className={`min-h-11 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
                 disabled={readOnly}
                 key={`${face}-${region}`}
                 onClick={() => toggleTarget(target)}
