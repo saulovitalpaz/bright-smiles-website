@@ -15,6 +15,7 @@ import {
   getFaceLabels,
   getTooth,
   normalizeOdontogram,
+  removeCondition,
   upsertCondition,
   updateToothFace,
   updateWholeTooth,
@@ -29,6 +30,8 @@ import {
 } from "./odontogram/odontogramModel";
 import { ToothSurfaceSelector } from "./odontogram/ToothSurfaceSelector";
 import { ClinicalConditionEditor } from "./odontogram/ClinicalConditionEditor";
+import { ClinicalConditionList } from "./odontogram/ClinicalConditionList";
+import { OcclusalTooth } from "./odontogram/OcclusalTooth";
 
 export type { ToothData, ToothFaceData } from "./odontogram/odontogramModel";
 
@@ -185,6 +188,11 @@ const Odontogram = ({
     });
   };
 
+  const removeLayeredCondition = (conditionId: string): void => {
+    if (readOnly || selectedTooth === null) return;
+    onChange(removeCondition(layeredData, selectedTooth, conditionId));
+  };
+
   const recorded = Object.keys(legacyData).filter((key) => isRecorded(legacyData[key]));
 
   const TeethRow = ({ teeth }: { teeth: readonly number[] }): JSX.Element => (
@@ -195,6 +203,7 @@ const Odontogram = ({
           <>
             <span className="font-mono text-[10px] text-slate-500">{toothNumber}</span>
             <AnatomicalTooth record={layeredData.teeth[String(toothNumber)]} toothNumber={toothNumber} data={tooth} />
+            <OcclusalTooth record={layeredData.teeth[String(toothNumber)]} toothNumber={toothNumber} />
           </>
         );
 
@@ -236,7 +245,9 @@ const Odontogram = ({
       <CardHeader className="odontogram-header border-b border-slate-800/70 bg-gradient-to-r from-[#0f172a] to-[#0a1120] p-4 pb-4 sm:p-6 sm:pb-4">
         <CardTitle className="font-serif text-xl tracking-wide text-white">Odontograma</CardTitle>
         <CardDescription className="text-sm text-slate-400">
-          Selecione o dente e depois a face exata antes de registrar a condição.
+          {isLayeredData
+            ? "Selecione o dente para registrar a condição e suas regiões diretamente no formulário clínico."
+            : "Selecione o dente e depois a face exata antes de registrar a condição."}
         </CardDescription>
       </CardHeader>
 
@@ -356,37 +367,39 @@ const Odontogram = ({
             </DialogDescription>
           </DialogHeader>
 
-          {selectedTooth !== null && selectedData && selectedLabels ? (
+          {selectedTooth !== null && selectedData ? (
             <div className="flex min-w-0 flex-col gap-5 pt-1">
-              <div className="grid min-w-0 grid-cols-1 gap-5 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:grid-cols-[minmax(0,.75fr)_minmax(0,1.25fr)] sm:p-5">
-                <div className="flex min-w-0 flex-col items-center gap-2">
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500">Anatomia</span>
-                  <AnatomicalTooth
-                    data={selectedData}
-                    record={layeredData.teeth[String(selectedTooth)]}
-                    selected
-                    size="editor"
-                    toothNumber={selectedTooth}
-                  />
+              {!isLayeredData ? (
+                <div className="grid min-w-0 grid-cols-1 gap-5 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:grid-cols-[minmax(0,.75fr)_minmax(0,1.25fr)] sm:p-5">
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-500">Anatomia</span>
+                    <AnatomicalTooth
+                      data={selectedData}
+                      record={layeredData.teeth[String(selectedTooth)]}
+                      selected
+                      size="editor"
+                      toothNumber={selectedTooth}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <span className="text-center text-[9px] uppercase tracking-wider text-slate-500">
+                      Selecione a face
+                    </span>
+                    <ToothSurfaceSelector
+                      data={selectedData}
+                      onSelectFace={(face) => {
+                        setSelectedFace(face);
+                        setWholeToothOpen(false);
+                      }}
+                      selectedFace={selectedFace}
+                      toothNumber={selectedTooth}
+                      readOnly={readOnly}
+                    />
+                  </div>
                 </div>
-                <div className="flex min-w-0 flex-col gap-2">
-                  <span className="text-center text-[9px] uppercase tracking-wider text-slate-500">
-                    Selecione a face
-                  </span>
-                  <ToothSurfaceSelector
-                    data={selectedData}
-                    onSelectFace={(face) => {
-                      setSelectedFace(face);
-                      setWholeToothOpen(false);
-                    }}
-                    selectedFace={selectedFace}
-                    toothNumber={selectedTooth}
-                    readOnly={readOnly}
-                  />
-                </div>
-              </div>
+              ) : null}
 
-              {!isLayeredData && selectedFace ? (
+              {!isLayeredData && selectedFace && selectedLabels ? (
                 <section className="min-w-0 rounded-xl border border-blue-800/40 bg-blue-900/10 p-3 sm:p-4">
                   <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-blue-300">
                     Face selecionada: {selectedLabels[selectedFace]}
@@ -451,16 +464,26 @@ const Odontogram = ({
                   value={selectedData.notes || ""}
                 />
               </div>
-              <section className="min-w-0 rounded-xl border border-slate-700 bg-slate-950/30 p-3">
-                <h3 className="mb-3 text-sm font-semibold text-white">Registro clínico em camadas</h3>
-                <ClinicalConditionEditor
-                  onCancel={() => undefined}
-                  onSave={(condition: ClinicalCondition) => {
-                    if (selectedTooth !== null) onChange(upsertCondition(layeredData, selectedTooth, condition));
-                  }}
-                  toothNumber={selectedTooth}
-                />
-              </section>
+              {isLayeredData ? (
+                <section className="min-w-0 rounded-xl border border-slate-700 bg-slate-950/30 p-3">
+                  <h3 className="mb-3 text-sm font-semibold text-white">Ocorrências registradas</h3>
+                  <ClinicalConditionList
+                    conditions={layeredData.teeth[String(selectedTooth)]?.conditions ?? []}
+                    onRemove={removeLayeredCondition}
+                    toothNumber={selectedTooth}
+                  />
+                  <div className="mt-5 border-t border-slate-700 pt-5">
+                    <h3 className="mb-3 text-sm font-semibold text-white">Registro clínico em camadas</h3>
+                    <ClinicalConditionEditor
+                      onCancel={() => undefined}
+                      onSave={(condition: ClinicalCondition) => {
+                        if (selectedTooth !== null) onChange(upsertCondition(layeredData, selectedTooth, condition));
+                      }}
+                      toothNumber={selectedTooth}
+                    />
+                  </div>
+                </section>
+              ) : null}
             </div>
           ) : null}
         </DialogContent>

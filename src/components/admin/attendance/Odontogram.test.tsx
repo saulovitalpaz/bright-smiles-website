@@ -10,6 +10,77 @@ function getToothButton(toothNumber: number): HTMLElement {
 }
 
 describe("Odontogram face-first workflow", () => {
+  it("shows saved V2 details and removes only the selected occurrence", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <Odontogram
+        data={{
+          version: 2,
+          dentition: "permanent",
+          teeth: {
+            "16": {
+              notes: "",
+              conditions: [
+                {
+                  id: "c1",
+                  category: "achado",
+                  type: "carie",
+                  stage: "planejado",
+                  targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+                  notes: "reavaliar",
+                },
+                {
+                  id: "c2",
+                  category: "restauracao",
+                  type: "resina_composta",
+                  stage: "concluido",
+                  targets: [{ kind: "surface", face: "top", region: "middle" }],
+                },
+              ],
+            },
+          },
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(getToothButton(16));
+
+    expect(screen.getByText("reavaliar")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /remover carie/i }));
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
+      teeth: expect.objectContaining({
+        "16": expect.objectContaining({
+          conditions: [expect.objectContaining({ id: "c2" })],
+        }),
+      }),
+    }));
+  });
+
+  it("renders an oclusal image under each tooth", () => {
+    const { container } = render(<Odontogram data={{}} onChange={() => undefined} />);
+
+    expect(container.querySelectorAll(".occlusal-tooth--arch")).toHaveLength(32);
+  });
+
+  it("does not show legacy face-first controls for V2 data", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Odontogram
+        data={{ version: 2, dentition: "permanent", teeth: {} }}
+        onChange={() => undefined}
+      />,
+    );
+    await user.click(getToothButton(16));
+
+    expect(screen.queryByText(/Face selecionada:/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "A tratar" })).not.toBeInTheDocument();
+  });
+
   it("opens a tooth without writing clinical data", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
