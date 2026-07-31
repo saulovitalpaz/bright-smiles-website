@@ -237,6 +237,23 @@ npm test -- --run src/pages/AdminAttendanceDetail.test.tsx src/components/admin/
 
 Result: 2 test files passed; 15 tests passed.
 
+---
+
+## Final review coverage update
+
+Updated `src/pages/AdminAttendanceDetail.test.tsx` only:
+
+- The legacy `Tratado` conversion assertion now verifies the mapped condition stage is `concluido`.
+- Added coverage proving a fully specified V2 odontogram, including its condition ID, category, type, target, stage, and notes, is preserved unchanged by `normalizeAppointmentResponse`.
+
+Verification command:
+
+```powershell
+npm test -- --run src/pages/AdminAttendanceDetail.test.tsx src/components/admin/attendance/Odontogram.test.tsx src/components/admin/attendance/odontogram/odontogramModel.test.ts
+```
+
+Result: 3 test files passed; 25 tests passed.
+
 ## Files changed
 
 - `src/pages/AdminAttendanceDetail.tsx`

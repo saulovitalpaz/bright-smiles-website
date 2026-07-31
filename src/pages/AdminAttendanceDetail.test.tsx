@@ -21,12 +21,38 @@ describe("normalizeAppointmentResponse", () => {
                     conditions: expect.arrayContaining([
                         expect.objectContaining({
                             type: "legado_tratado",
+                            stage: "concluido",
                             targets: [{ kind: "surface", face: "top", region: "entire" }],
                         }),
                     ]),
                 },
             },
         });
+    });
+
+    it("preserves an existing V2 odontogram when loading an appointment", () => {
+        const dentalNotes = {
+            version: 2 as const,
+            dentition: "permanent" as const,
+            teeth: {
+                "24": {
+                    notes: "Restauração acompanhada",
+                    conditions: [{
+                        id: "condition-24",
+                        category: "restauracao" as const,
+                        type: "resina_composta" as const,
+                        targets: [{ kind: "surface" as const, face: "top" as const, region: "entire" as const }],
+                        stage: "monitorado" as const,
+                        notes: "Sem infiltração",
+                    }],
+                },
+            },
+        };
+
+        const appointment = normalizeAppointmentResponse({ dentalNotes });
+
+        expect(appointment.dentalNotes).toEqual(dentalNotes);
+        expect(appointment.dentalNotes.teeth["24"].conditions).toEqual(dentalNotes.teeth["24"].conditions);
     });
 
     it("loads a linked patient when nullable appointment fields are returned", () => {
