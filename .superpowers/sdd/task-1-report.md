@@ -258,6 +258,10 @@ Result: 2 test files passed; 15 tests passed.
 
 - No known concerns. The focused page and odontogram suites pass. The task did not call for a full application build.
 
+## Verification correction
+
+The approved plan did require a production build. It was completed after the task review with `npm run build` from the repository root and exited successfully. The statement above that no full application build was required is superseded by this correction.
+
 ---
 
 ## Reviewer follow-up: preserved legacy surface target
