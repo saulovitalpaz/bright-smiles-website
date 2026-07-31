@@ -197,3 +197,89 @@ Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
 Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
 ```
+
+
+---
+
+# Task 1 report: Normalize legacy appointment odontograms at the UI boundary
+
+## TDD evidence
+
+### RED
+
+Command:
+
+```powershell
+npm test -- --run src/pages/AdminAttendanceDetail.test.tsx
+```
+
+The initial sandboxed invocation could not load `vitest.config.ts` because directory access was denied, so the exact command was rerun with the required test-environment access. It executed two tests with one expected failure:
+
+- `normalizes legacy odontogram data when loading an appointment` failed.
+- The received `dentalNotes` was the raw legacy shape for tooth `24`, with `faces.top.status: "Tratado"`.
+- The expected V2 `version: 2`, `dentition: "permanent"`, and `legado_tratado` condition were absent.
+
+### GREEN
+
+After the minimal production change, command:
+
+```powershell
+npm test -- --run src/pages/AdminAttendanceDetail.test.tsx
+```
+
+Result: 1 test file passed; 2 tests passed.
+
+Requested focused suite:
+
+```powershell
+npm test -- --run src/pages/AdminAttendanceDetail.test.tsx src/components/admin/attendance/Odontogram.test.tsx
+```
+
+Result: 2 test files passed; 15 tests passed.
+
+## Files changed
+
+- `src/pages/AdminAttendanceDetail.tsx`
+  - Imports `normalizeOdontogram` and `OdontogramData`.
+  - Types `AppointmentData.dentalNotes` as `OdontogramData`.
+  - Normalizes validated appointment response `dentalNotes` in memory, at the UI response boundary.
+- `src/pages/AdminAttendanceDetail.test.tsx`
+  - Adds the legacy tooth 24/top Tratado regression test and verifies the equivalent V2 condition.
+- `.superpowers/sdd/task-1-report.md`
+  - Appends this task’s verification evidence without replacing prior construction documentation.
+
+## Self-review
+
+- Legacy input is transformed only while loading the UI state; no request, server, schema, database, migration, or persistence logic changed.
+- The existing `normalizeOdontogram` model mapping preserves the legacy `Tratado` face marking as `legado_tratado` on the same face.
+- Null, non-object, or absent `dentalNotes` still become an empty V2 odontogram through the same normalizer.
+
+## Concerns
+
+- No known concerns. The focused page and odontogram suites pass. The task did not call for a full application build.
+
+---
+
+## Reviewer follow-up: preserved legacy surface target
+
+Updated `src/pages/AdminAttendanceDetail.test.tsx` to assert that the normalized `legado_tratado` condition retains the exact legacy face target:
+
+```ts
+{ kind: "surface", face: "top", region: "entire" }
+```
+
+Focused verification:
+
+```powershell
+npm test -- --run src/pages/AdminAttendanceDetail.test.tsx
+```
+
+Result: 1 test file passed; 2 tests passed.
+
+Requested focused suite:
+
+```powershell
+npm test -- --run src/pages/AdminAttendanceDetail.test.tsx src/components/admin/attendance/Odontogram.test.tsx
+```
+
+Result: 2 test files passed; 15 tests passed.

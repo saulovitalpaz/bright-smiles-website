@@ -2,6 +2,33 @@ import { describe, expect, it } from "vitest";
 import { normalizeAppointmentResponse } from "./AdminAttendanceDetail";
 
 describe("normalizeAppointmentResponse", () => {
+    it("normalizes legacy odontogram data when loading an appointment", () => {
+        const appointment = normalizeAppointmentResponse({
+            dentalNotes: {
+                "24": {
+                    status: "Saudável",
+                    notes: "",
+                    faces: { top: { status: "Tratado" } },
+                },
+            },
+        });
+
+        expect(appointment.dentalNotes).toMatchObject({
+            version: 2,
+            dentition: "permanent",
+            teeth: {
+                "24": {
+                    conditions: expect.arrayContaining([
+                        expect.objectContaining({
+                            type: "legado_tratado",
+                            targets: [{ kind: "surface", face: "top", region: "entire" }],
+                        }),
+                    ]),
+                },
+            },
+        });
+    });
+
     it("loads a linked patient when nullable appointment fields are returned", () => {
         const appointment = normalizeAppointmentResponse({
             id: 11,

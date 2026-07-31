@@ -11,12 +11,13 @@ import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import PhotoGallery from "@/components/admin/attendance/PhotoGallery";
-import Odontogram, { ToothData } from "@/components/admin/attendance/Odontogram";
+import Odontogram from "@/components/admin/attendance/Odontogram";
 import FaceMap, { FaceRegionData } from "@/components/admin/attendance/FaceMap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EvolutionTimeline from "@/components/admin/attendance/EvolutionTimeline";
 import { normalizeAppointmentType } from "@/lib/appointmentType";
+import { normalizeOdontogram, OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
 
 // Interfaces
 interface AppointmentData {
@@ -40,7 +41,7 @@ interface AppointmentData {
     appointmentType: string;
     price: string;
     paymentStatus: string;
-    dentalNotes: Record<string, ToothData>;
+    dentalNotes: OdontogramData;
     facialNotes: Record<string, FaceRegionData>;
 }
 
@@ -142,7 +143,11 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
         appointmentType: normalizeAppointmentType(fetched.appointmentType),
         price: fetched.price == null ? "" : String(fetched.price),
         paymentStatus: fetched.paymentStatus || "paid",
-        dentalNotes: fetched.dentalNotes && typeof fetched.dentalNotes === "object" ? fetched.dentalNotes : {},
+        dentalNotes: normalizeOdontogram(
+            fetched.dentalNotes && typeof fetched.dentalNotes === "object"
+                ? fetched.dentalNotes as OdontogramData
+                : {},
+        ),
         facialNotes: fetched.facialNotes && typeof fetched.facialNotes === "object" ? fetched.facialNotes : {},
         weight: fetched.weight || "",
         materials: fetched.materials || "",
