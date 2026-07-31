@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 // API URL
-import { API_URL } from "@/lib/api";
+import { adminApi } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 
 interface AdminStory {
@@ -24,11 +24,19 @@ interface AdminStory {
 const AdminStories = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
+    let currentUser: { role?: string } | null = null;
+    try {
+        const storedUser = localStorage.getItem('admin_user');
+        currentUser = storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+        currentUser = null;
+    }
+    const isAdmin = currentUser?.role === 'admin';
 
     const { data: stories, isLoading } = useQuery<AdminStory[]>({
         queryKey: ['stories'],
         queryFn: async () => {
-            const res = await axios.get(`${API_URL}/stories`);
+            const res = await adminApi.get('/stories');
             // Map keys if needed or rely on raw response if types match
             // We'll format the date for display
             const rawStories = res.data as Array<AdminStory & { createdAt: string }>;
@@ -46,15 +54,14 @@ const AdminStories = () => {
             formData.append("scope", "public");
 
             // 1. Upload File
-            const uploadRes = await axios.post(`${API_URL}/upload`, formData, {
+            const uploadRes = await adminApi.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
-                withCredentials: true
             });
             const fileUrl = uploadRes.data.reference || uploadRes.data.url;
 
             // 2. Create Story Record
             const type = file.type.startsWith('video') ? 'video' : 'image';
-            await axios.post(`${API_URL}/stories`, {
+            await adminApi.post('/stories', {
                 title: file.name,
                 type,
                 url: fileUrl,
@@ -75,7 +82,7 @@ const AdminStories = () => {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id: number) => axios.delete(`${API_URL}/stories/${id}`),
+        mutationFn: (id: number) => adminApi.delete(`/stories/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['stories'] });
             toast.success("Story removido com sucesso!");
@@ -99,7 +106,7 @@ const AdminStories = () => {
         <AdminLayout title="Gerenciar Stories">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Upload Section */}
-                <div className="lg:col-span-1">
+                {isAdmin && <div className="lg:col-span-1">
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Novo Story</CardTitle>
@@ -144,10 +151,10 @@ const AdminStories = () => {
                             </Button>
                         </CardContent>
                     </Card>
-                </div>
+                </div>}
 
                 {/* active stories */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className={`${isAdmin ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-6`}>
                     <div className="admin-card overflow-hidden">
                         <div className="p-6 border-b border-slate-50 flex justify-between items-center">
                             <h3 className="font-serif font-bold text-xl">Stories Ativos</h3>
@@ -169,12 +176,12 @@ const AdminStories = () => {
                                         <th className="px-6 py-4">Título/Ref</th>
                                         <th className="px-6 py-4">Data</th>
                                         <th className="px-6 py-4">Visualizações</th>
-                                        <th className="px-6 py-4 text-right">Ações</th>
+                                        {isAdmin && <th className="px-6 py-4 text-right">Ações</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {isLoading && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Carregando...</td></tr>}
-                                    {stories?.length === 0 && !isLoading && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Nenhum story ativo.</td></tr>}
+                                    {isLoading && <tr><td colSpan={isAdmin ? 5 : 4} className="p-8 text-center text-slate-500">Carregando...</td></tr>}
+                                    {stories?.length === 0 && !isLoading && <tr><td colSpan={isAdmin ? 5 : 4} className="p-8 text-center text-slate-500">Nenhum story ativo.</td></tr>}
 
                                     {stories?.map((story) => (
                                         <tr key={story.id} className="hover:bg-slate-50/50 transition-colors">
@@ -206,7 +213,7 @@ const AdminStories = () => {
                                                     {story.views}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            {isAdmin && <td className="px-6 py-4 text-right">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -216,7 +223,7 @@ const AdminStories = () => {
                                                 >
                                                     <Trash2 size={16} />
                                                 </Button>
-                                            </td>
+                                            </td>}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -233,7 +240,7 @@ const AdminStories = () => {
                                             <p className="mt-1 text-xs text-slate-500">{story.date} · {story.views} visualizações</p>
                                             <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-bold uppercase ${story.status === "active" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>{story.status === "active" ? "Ativo" : "Expirado"}</span>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-slate-400 hover:text-red-500" aria-label={`Excluir ${story.title}`} onClick={() => deleteMutation.mutate(story.id)} disabled={deleteMutation.isPending}><Trash2 size={16} /></Button>
+                                        {isAdmin && <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-slate-400 hover:text-red-500" aria-label={`Excluir ${story.title}`} onClick={() => deleteMutation.mutate(story.id)} disabled={deleteMutation.isPending}><Trash2 size={16} /></Button>}
                                     </article>
                                 ))}
                             </div>

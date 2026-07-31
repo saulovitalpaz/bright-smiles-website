@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 const getApiUrl = () => {
     // Prefer the value injected at build time. This is important when the
     // frontend and API are deployed as separate Railway services.
@@ -16,6 +18,13 @@ const getApiUrl = () => {
 };
 
 export const API_URL = getApiUrl();
+
+// Axios consumers must opt into sending the HttpOnly browser session cookie.
+// Keep this separate from public API requests so unauthenticated pages remain explicit.
+export const adminApi = axios.create({
+    baseURL: API_URL,
+    withCredentials: true,
+});
 
 export const fetchClient = async (endpoint: string, options: RequestInit = {}) => {
     // Determine if endpoint is full URL or relative path

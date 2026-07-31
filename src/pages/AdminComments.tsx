@@ -4,25 +4,33 @@ import { Button } from "@/components/ui/button";
 import { Star, MessageSquare, Trash2, CheckSquare } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { API_URL } from "@/lib/api";
+import { adminApi } from "@/lib/api";
 import { toast } from "sonner";
 
 interface AdminComment { id: number; name: string; comment?: string; content?: string; approved: boolean; createdAt: string; }
 
 const AdminComments = () => {
     const queryClient = useQueryClient();
+    let currentUser: { role?: string } | null = null;
+    try {
+        const storedUser = localStorage.getItem('admin_user');
+        currentUser = storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+        currentUser = null;
+    }
+    const isAdmin = currentUser?.role === 'admin';
 
     const { data: comments, isLoading } = useQuery<AdminComment[]>({
         queryKey: ['testimonials'],
         queryFn: async () => {
-            const res = await axios.get(`${API_URL}/testimonials`); // Get all (approved and unapproved)
+            const res = await adminApi.get('/testimonials'); // Admins receive pending and approved comments.
             return res.data as AdminComment[];
         }
     });
 
     const approveMutation = useMutation({
         mutationFn: async ({ id, approved }: { id: number, approved: boolean }) => {
-            await axios.put(`${API_URL}/testimonials/${id}`, { approved });
+            await adminApi.put(`/testimonials/${id}`, { approved });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['testimonials'] });
@@ -33,7 +41,7 @@ const AdminComments = () => {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
-            await axios.delete(`${API_URL}/testimonials/${id}`);
+            await adminApi.delete(`/testimonials/${id}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['testimonials'] });
@@ -81,7 +89,7 @@ const AdminComments = () => {
                                     Original do Site
                                 </span>
                             </div>
-                            <div className="flex gap-2">
+                            {isAdmin && <div className="flex gap-2">
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -111,7 +119,7 @@ const AdminComments = () => {
                                         Ocultar
                                     </Button>
                                 )}
-                            </div>
+                            </div>}
                         </div>
                     </div>
                 ))}

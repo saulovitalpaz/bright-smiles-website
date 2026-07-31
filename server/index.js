@@ -23,6 +23,7 @@ const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = requi
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
+const sanitizeBlogContent = require('./utils/sanitizeBlogContent');
 const {
     SIGNATURE_IMAGE_TYPES,
     isSupportedSignatureImage,
@@ -525,7 +526,7 @@ app.get('/posts', async (req, res) => {
         const posts = await prisma.post.findMany({
             orderBy: { date: 'desc' }
         });
-        res.json(posts);
+        res.json(posts.map((post) => ({ ...post, content: sanitizeBlogContent(post.content) })));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -540,7 +541,7 @@ app.get('/posts/:slug', async (req, res) => {
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });
         }
-        res.json(post);
+        res.json({ ...post, content: sanitizeBlogContent(post.content) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -549,7 +550,7 @@ app.get('/posts/:slug', async (req, res) => {
 app.post('/posts', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const post = await prisma.post.create({
-            data: req.body
+            data: { ...req.body, content: sanitizeBlogContent(req.body.content) }
         });
         res.json(post);
     } catch (error) {
@@ -563,7 +564,7 @@ app.put('/posts/:id', authenticateToken, authorizeRole(['admin']), async (req, r
         const { id: _id, createdAt, updatedAt, ...data } = req.body;
         const post = await prisma.post.update({
             where: { id: parseInt(id) },
-            data: data
+            data: { ...data, content: sanitizeBlogContent(data.content) }
         });
         res.json(post);
     } catch (error) {

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Eye, Upload, Loader2, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { API_URL } from "@/lib/api";
+import { adminApi } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ const AdminBlog = () => {
     const { data: blogPosts, isLoading } = useQuery<AdminBlogPost[]>({
         queryKey: ['posts'],
         queryFn: async () => {
-            const res = await axios.get(`${API_URL}/posts`);
+            const res = await adminApi.get('/posts');
             return res.data as AdminBlogPost[];
         }
     });
@@ -63,7 +63,7 @@ const AdminBlog = () => {
 
             if (editingPost) {
                 // Update
-                await axios.put(`${API_URL}/posts/${editingPost.id}`, {
+                await adminApi.put(`/posts/${editingPost.id}`, {
                     ...data,
                     readTime,
                     images: data.image ? [data.image] : [],
@@ -71,7 +71,7 @@ const AdminBlog = () => {
                 });
             } else {
                 // Create
-                await axios.post(`${API_URL}/posts`, {
+                await adminApi.post('/posts', {
                     ...data,
                     slug: slug + '-' + Date.now(),
                     excerpt: data.content.substring(0, 150) + "...",
@@ -92,7 +92,7 @@ const AdminBlog = () => {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
-            await axios.delete(`${API_URL}/posts/${id}`);
+            await adminApi.delete(`/posts/${id}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -129,9 +129,8 @@ const AdminBlog = () => {
                 const fd = new FormData();
                 fd.append('file', file);
                 fd.append("scope", "public");
-                const res = await axios.post(`${API_URL}/upload`, fd, {
+                const res = await adminApi.post('/upload', fd, {
                     headers: { 'Content-Type': 'multipart/form-data' },
-                    withCredentials: true
                 });
                 setFormData(prev => ({ ...prev, image: res.data.reference || res.data.url }));
                 e.target.value = "";

@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import axios from "axios";
 
 // API Base URL (adjust if needed via env or direct)
-import { API_URL } from "@/lib/api";
+import { adminApi } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 
 interface TreatmentResult {
@@ -64,14 +64,14 @@ const AdminTreatments = () => {
     const { data: treatments, isLoading, error } = useQuery({
         queryKey: ['treatments'],
         queryFn: async () => {
-            const response = await axios.get(`${API_URL}/treatments`);
+            const response = await adminApi.get('/treatments');
             return response.data;
         }
     });
 
     // Mutations
     const createMutation = useMutation({
-        mutationFn: (newTreatment: Partial<Treatment>) => axios.post(`${API_URL}/treatments`, newTreatment),
+        mutationFn: (newTreatment: Partial<Treatment>) => adminApi.post('/treatments', newTreatment),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Tratamento criado com sucesso!");
@@ -82,7 +82,7 @@ const AdminTreatments = () => {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: number, data: Partial<Treatment> }) => axios.put(`${API_URL}/treatments/${id}`, data),
+        mutationFn: ({ id, data }: { id: number, data: Partial<Treatment> }) => adminApi.put(`/treatments/${id}`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Tratamento atualizado com sucesso!");
@@ -93,7 +93,7 @@ const AdminTreatments = () => {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id: number) => axios.delete(`${API_URL}/treatments/${id}`),
+        mutationFn: (id: number) => adminApi.delete(`/treatments/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Tratamento removido com sucesso!");
@@ -103,7 +103,7 @@ const AdminTreatments = () => {
 
     // Result Mutations
     const addResultMutation = useMutation({
-        mutationFn: ({ treatmentId, data }: { treatmentId: number, data: Omit<TreatmentResult, "id"> }) => axios.post(`${API_URL}/treatments/${treatmentId}/results`, data),
+        mutationFn: ({ treatmentId, data }: { treatmentId: number, data: Omit<TreatmentResult, "id"> }) => adminApi.post(`/treatments/${treatmentId}/results`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Resultado adicionado!");
@@ -112,7 +112,7 @@ const AdminTreatments = () => {
     });
 
     const deleteResultMutation = useMutation({
-        mutationFn: (resultId: number) => axios.delete(`${API_URL}/treatment-results/${resultId}`),
+        mutationFn: (resultId: number) => adminApi.delete(`/treatment-results/${resultId}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['treatments'] });
             toast.success("Resultado removido!");
@@ -168,9 +168,8 @@ const AdminTreatments = () => {
         formData.append("scope", "public");
         try {
             setIsUploading(true);
-            const res = await axios.post(`${API_URL}/upload`, formData, {
+            const res = await adminApi.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
-                withCredentials: true
             });
             return res.data.reference || res.data.url;
         } catch (error: unknown) {
