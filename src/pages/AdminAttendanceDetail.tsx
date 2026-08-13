@@ -94,7 +94,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     externalLinks: [],
     appointmentType: "odontologia",
     price: "",
-    paymentStatus: "paid",
+    paymentStatus: "received",
     dentalNotes: {},
     facialNotes: {}
 };
@@ -162,7 +162,7 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
         externalLinks: Array.isArray(fetched.externalLinks) ? fetched.externalLinks : [],
         appointmentType: normalizeAppointmentType(fetched.appointmentType),
         price: fetched.price == null ? "" : String(fetched.price),
-        paymentStatus: fetched.paymentStatus || "paid",
+        paymentStatus: fetched.paymentStatus === "paid" ? "received" : (fetched.paymentStatus || "received"),
         dentalNotes: normalizeOdontogram(
             fetched.dentalNotes && typeof fetched.dentalNotes === "object"
                 ? fetched.dentalNotes as OdontogramData
@@ -692,8 +692,8 @@ const AdminAttendanceDetail = () => {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="paid" className="text-emerald-600 font-bold">Recebido (Cai no Caixa)</SelectItem>
-                                                    <SelectItem value="pending" className="text-orange-600 font-bold">A Receber (Recepção Cobra)</SelectItem>
+                                                    <SelectItem value="received" className="text-emerald-600 font-bold">Recebido — entra no caixa</SelectItem>
+                                                    <SelectItem value="pending" className="text-orange-600 font-bold">A Receber — pendente de cobrança</SelectItem>
                                                     <SelectItem value="courtesy">Cortesia / Retorno (R$ 0)</SelectItem>
                                                 </SelectContent>
                                             </Select>

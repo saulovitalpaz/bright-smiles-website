@@ -28,6 +28,7 @@ const {
     syncReturnAppointment,
     buildUpcomingSchedule
 } = require('./utils/schedule');
+const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
@@ -41,6 +42,7 @@ const {
     patientSchema,
     appointmentSchema,
     appointmentStatusSchema,
+    appointmentPaymentStatusSchema,
     returnDateSchema,
     loginSchema,
     createUserSchema,
@@ -659,6 +661,7 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
                 return res.status(400).json({ error: 'Invalid price' });
             }
         }
+        payload.paymentStatus = normalizePaymentStatus(payload.paymentStatus);
 
     } catch (error) {
         return res.status(400).json({ error: 'Invalid appointment or return date.' });
@@ -666,27 +669,13 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
 
     try {
         const appointment = await prisma.$transaction(async (tx) => {
-            const createdAppointment = await tx.appointment.create({ data: payload });
-            const returnAppointment = await syncReturnAppointment(tx, createdAppointment, {
+            const appointment = await tx.appointment.create({ data: payload });
+            const returnAppointment = await syncReturnAppointment(tx, appointment, {
                 returnDate: payload.returnDate
             });
-            return { ...createdAppointment, returnAppointment };
+            await syncAppointmentFinance(tx, appointment);
+            return { ...appointment, returnAppointment };
         });
-
-        // Auto-Billing Finance Integration
-        if (payload.price && payload.price > 0) {
-            const statusLabel = payload.paymentStatus === 'pending' ? '[A RECEBER] ' : '';
-            await prisma.financeTransaction.create({
-                data: {
-                    type: 'income',
-                    amount: payload.price,
-                    category: 'Consulta/Procedimento',
-                    description: `${statusLabel}Atendimento: ${payload.procedure} - ${payload.patientName}`,
-                    date: payload.date ? new Date(payload.date) : new Date(),
-                    patientId: payload.patientId
-                }
-            });
-        }
 
         res.json(appointment);
     } catch (error) {
@@ -716,6 +705,16 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
         const statusResult = appointmentStatusSchema.safeParse(data.status);
         if (!statusResult.success) return res.status(400).json({ error: statusResult.error.issues[0].message });
         data.status = statusResult.data;
+    }
+
+    if (data.paymentStatus !== undefined) {
+        if (data.paymentStatus === null) {
+            data.paymentStatus = 'received';
+        } else {
+            const paymentStatusResult = appointmentPaymentStatusSchema.safeParse(data.paymentStatus);
+            if (!paymentStatusResult.success) return res.status(400).json({ error: paymentStatusResult.error.issues[0].message });
+            data.paymentStatus = normalizePaymentStatus(paymentStatusResult.data);
+        }
     }
 
     try {
@@ -774,11 +773,10 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
                 data: hasReturnDate ? { ...data, returnDate } : data,
                 include: { returnAppointment: true }
             });
-            if (!hasReturnDate) return appointment;
-
-            const linkedReturn = await syncReturnAppointment(tx, appointment, {
-                returnDate
-            });
+            const linkedReturn = hasReturnDate
+                ? await syncReturnAppointment(tx, appointment, { returnDate })
+                : appointment.returnAppointment;
+            await syncAppointmentFinance(tx, appointment);
             return { ...appointment, returnAppointment: linkedReturn };
         });
         res.json(appointment);

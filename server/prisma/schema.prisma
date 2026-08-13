@@ -65,6 +65,7 @@ model Appointment {
   patient       Patient?  @relation(fields: [patientId], references: [id])
   parentAppointment Appointment? @relation("AppointmentReturns", fields: [parentAppointmentId], references: [id], onDelete: SetNull)
   returnAppointment Appointment? @relation("AppointmentReturns")
+  financeTransactions FinanceTransaction[]
 }
 
 model Treatment {
@@ -178,9 +179,12 @@ model FinanceTransaction {
   description String
   date        DateTime @default(now())
   patientId   Int?
+  appointmentId Int? @unique
+  paymentStatus String @default("pending")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   patient     Patient? @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   receiptUrl  String?
   nfeUrl      String?
 }

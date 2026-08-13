@@ -33,6 +33,7 @@ const patientSchema = z.object({
 });
 
 const appointmentStatusSchema = z.enum(['scheduled', 'attended', 'cancelled']);
+const appointmentPaymentStatusSchema = z.enum(['received', 'paid', 'pending', 'courtesy', 'voided']);
 const returnDateSchema = z.union([
     z.string().datetime({ offset: true, message: 'Invalid return date' }),
     z.date({ error: 'Invalid return date' }),
@@ -58,7 +59,7 @@ const appointmentSchema = z.object({
     dentalNotes: z.any().optional().nullable(),
     facialNotes: z.any().optional().nullable(),
     price: z.string().or(z.number()).optional().nullable(),
-    paymentStatus: z.string().optional().nullable(),
+    paymentStatus: appointmentPaymentStatusSchema.optional().nullable(),
     status: appointmentStatusSchema.default('scheduled')
 });
 
@@ -90,6 +91,7 @@ module.exports = {
     patientSchema,
     appointmentSchema,
     appointmentStatusSchema,
+    appointmentPaymentStatusSchema,
     returnDateSchema,
     loginSchema,
     createUserSchema,
