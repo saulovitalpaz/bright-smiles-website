@@ -172,6 +172,59 @@
 - [ ] **Step 6: Review the final diff for secrets, patient data, broad endpoint exposure, duplicate finance writes, and accidental generated artifacts.**
 - [ ] **Step 7: Commit `test: verify scheduling and finance integration`.**
 
+### Task 8: Retire the unused Digital Guide mock
+
+**Files:**
+- Modify: `src/App.tsx`
+- Modify: `src/components/admin/AdminLayout.tsx`
+- Delete: `src/pages/AdminDigitalGuide.tsx`
+
+- [ ] Remove the protected route, its navigation submenu and the unused mock page together.
+- [ ] Add a route/navigation regression assertion so the retired path is no longer exposed.
+- [ ] Run the focused frontend test, lint and build.
+
+### Task 9: Make odontogram states visually truthful
+
+**Files:**
+- Modify: `src/components/admin/attendance/Odontogram.tsx`
+- Modify: `src/components/admin/attendance/odontogram/AnatomicalTooth.tsx`
+- Modify: `src/components/admin/attendance/odontogram/OcclusalTooth.tsx`
+- Modify: `src/components/admin/attendance/odontogram/odontogramModel.ts`
+- Test: odontogram component/model tests
+
+- [ ] Centralize visual semantics by clinical stage: evaluation, planned/treat, in progress, completed, monitored and suspended.
+- [ ] Render those semantics consistently in frontal and occlusal views, with a pattern or outline in addition to color.
+- [ ] Replace the duplicated legend with the exact states that can appear on a face; keep whole-tooth states distinct.
+- [ ] Verify accessible names and visual-state tests.
+
+### Task 10: Simplify anatomical face selection
+
+**Files:**
+- Modify: `src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx`
+- Modify: `src/components/admin/attendance/odontogram/ClinicalConditionEditor.tsx`
+- Test: selector/editor tests
+
+- [ ] Replace the 15 repeated face/third combinations with direct selection of the five real dental faces: vestibular, palatina/lingual, mesial, distal and oclusal/incisal.
+- [ ] Store newly selected face targets as `face inteira`, because subregions were not separately drawable in the odontogram.
+- [ ] Restrict whole-tooth procedures to their clinically valid `Dente inteiro` target and retain readable labels for existing records.
+- [ ] Verify keyboard use, screen-reader names and the focused tests.
+
 ## Handoff
+
+### Addendum: Tasks 8–10 — Guia Digital e odontograma
+
+#### Task 8: Remover o mock “Guia Digital”
+
+Remover a página mock, submenu, imports, rotas e referências órfãs do Guia Digital. Confirmar que a navegação administrativa não aponta para a página removida e que o build não mantém bundle/links inacessíveis.
+
+#### Task 9: Tornar a legenda do odontograma clinicamente útil
+
+Revisar o modelo de estados/cores do odontograma para diferenciar achado, tratamento planejado, tratamento concluído, alerta e condição ausente/normal. Exibir uma legenda única e não redundante, com contraste acessível, tooltip/texto alternativo e persistência compatível com dados existentes; não usar uma cor azul genérica para todos os estados.
+
+#### Task 10: Simplificar regiões anatômicas reais
+
+Substituir a grade redundante de regiões por regiões clinicamente reconhecíveis e não duplicadas (vestibular, lingual/palatina, mesial, distal, oclusal/incisal e cervical, conforme aplicável ao dente). Usar rótulos curtos e consistentes, agrupamento visual por face e testes para impedir aliases/duplicatas confusas.
+
+Critérios comuns: preservar dados clínicos legados, não registrar dados sensíveis em testes/logs, manter teclado/zoom/contraste acessíveis e executar testes focados, lint, build e `git diff --check` antes da entrega.
 
 After the plan is reviewed, implement it with `superpowers:subagent-driven-development` or `superpowers:executing-plans`, preserving the task order because migrations and server contracts precede UI consumers.
