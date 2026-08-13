@@ -21,7 +21,6 @@ import AdminStories from "./pages/AdminStories";
 import AdminFinance from "./pages/AdminFinance";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminPrescription from "./pages/AdminPrescription";
-import AdminDigitalGuide from "./pages/AdminDigitalGuide";
 import AdminDocuments from "./pages/AdminDocuments";
 import AdminSettings from "./pages/AdminSettings";
 import AdminPersonalFinance from "./pages/AdminPersonalFinance";
@@ -66,7 +65,6 @@ const App = () => (
             <Route path="/admin/consultas" element={<RoleProtectedRoute><AdminAppointments /></RoleProtectedRoute>} />
             <Route path="/admin/consultas/:id" element={<RoleProtectedRoute><AdminAttendanceDetail /></RoleProtectedRoute>} />
             <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
-            <Route path="/admin/digital-guide" element={<RoleProtectedRoute><AdminDigitalGuide /></RoleProtectedRoute>} />
             <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />
             <Route path="/admin/users" element={<RoleProtectedRoute><AdminUsers /></RoleProtectedRoute>} />
             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
