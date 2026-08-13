@@ -30,5 +30,7 @@ DONE
 
 - Hardened the migration for existing tables by repairing null or invalid legacy statuses before applying the default, `NOT NULL`, and table-scoped check constraint.
 - Replaced appointment-creation error leakage with a generic HTTP 500 response, retained form state on failure, and made fractional calendar slots keyboard and pointer accessible.
+- Server creation errors and their client-side rendering now use generic messages; client validation responses remain actionable.
+- `npx vitest run src/pages/AdminAppointments.test.tsx` — PASS, 2 tests.
 - `node --test server/test/manual-appointment-contract.test.js server/test/calendar-contract.test.js` — PASS, 13 tests.
-- Focused ESLint check — PASS. The sandboxed worktree build could not load `vite.config.ts` because esbuild was denied access outside the worktree; a privileged retry is required to distinguish this environment limitation from a build failure.
+- Focused ESLint check and `npm run build` — PASS. Build output includes only the existing Browserslist freshness and large-chunk warnings.

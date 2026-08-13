@@ -269,7 +269,13 @@ const AdminAppointments = () => {
                 body: JSON.stringify(payload)
             });
             const body = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(body.error || "Não foi possível criar o atendimento.");
+            if (!response.ok) {
+                throw new Error(
+                    response.status >= 500
+                        ? "Não foi possível criar o atendimento."
+                        : body.error || "Não foi possível criar o atendimento."
+                );
+            }
 
             await Promise.all([
                 refreshCalendarRecords(),
