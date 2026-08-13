@@ -25,3 +25,10 @@ DONE
 
 - The Prisma schema already contained the appointment `status` field at the task baseline, so this task adds the missing database migration rather than producing a new schema diff.
 - The build retains pre-existing bundle-size and Browserslist freshness warnings; neither is introduced by this task.
+
+## Review-fix verification
+
+- Hardened the migration for existing tables by repairing null or invalid legacy statuses before applying the default, `NOT NULL`, and table-scoped check constraint.
+- Replaced appointment-creation error leakage with a generic HTTP 500 response, retained form state on failure, and made fractional calendar slots keyboard and pointer accessible.
+- `node --test server/test/manual-appointment-contract.test.js server/test/calendar-contract.test.js` — PASS, 13 tests.
+- Focused ESLint check — PASS. The sandboxed worktree build could not load `vite.config.ts` because esbuild was denied access outside the worktree; a privileged retry is required to distinguish this environment limitation from a build failure.

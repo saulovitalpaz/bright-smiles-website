@@ -252,7 +252,26 @@ export const CalendarView = ({
                                             {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
                                         </div>
                                         {days.map((day) => (
-                                            <div key={day.toISOString()} className="min-h-14 border-b border-l border-slate-200 p-1 transition-colors hover:bg-slate-50 cursor-pointer" />
+                                            <div
+                                                key={day.toISOString()}
+                                                data-drop-minutes={minutes}
+                                                className="min-h-14 border-b border-l border-slate-200 p-1 transition-colors hover:bg-slate-50 cursor-pointer"
+                                                role={onEventCreate ? "button" : undefined}
+                                                tabIndex={onEventCreate ? 0 : undefined}
+                                                aria-label={onEventCreate ? `Criar atendimento em ${format(day, "dd/MM/yyyy")} às ${format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}` : undefined}
+                                                onClick={() => {
+                                                    const newDate = new Date(day);
+                                                    newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+                                                    onEventCreate?.(newDate);
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    const newDate = new Date(day);
+                                                    newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+                                                    handleCreateKeyDown(event, newDate);
+                                                }}
+                                                onDragOver={(event) => event.preventDefault()}
+                                                onDrop={(event) => handleDrop(event, day, minutes)}
+                                            />
                                         ))}
                                     </div>
                                 );

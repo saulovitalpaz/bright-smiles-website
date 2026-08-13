@@ -93,3 +93,25 @@ test('manual calendar creation keeps a complete, controlled appointment contract
     assert.match(calendarHelper, /status\?:\s*['"]scheduled['"]\s*\|\s*['"]attended['"]\s*\|\s*['"]cancelled['"]/);
     assert.match(calendarHelper, /item\.status !== "attended" && item\.status !== "cancelled"/);
 });
+
+test('appointment migration repairs legacy status values before enforcing its contract', () => {
+    const migration = fs.readFileSync(
+        path.join(serverRoot, 'prisma/migrations/20260813000000_add_appointment_status/migration.sql'),
+        'utf8'
+    );
+
+    assert.match(migration, /UPDATE\s+(?:public\.)?"Appointment"[\s\S]*"status"\s+IS\s+NULL/i);
+    assert.match(migration, /"status"\s+NOT\s+IN\s*\(\s*'scheduled'\s*,\s*'attended'\s*,\s*'cancelled'\s*\)/i);
+    assert.match(migration, /ALTER\s+COLUMN\s+"status"\s+SET\s+DEFAULT\s+'scheduled'/i);
+    assert.match(migration, /ALTER\s+COLUMN\s+"status"\s+SET\s+NOT\s+NULL/i);
+    assert.match(migration, /n\.nspname\s*=\s*'public'/i);
+    assert.match(migration, /t\.relname\s*=\s*'Appointment'/i);
+});
+
+test('unexpected appointment persistence errors return a generic server error', () => {
+    const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+    const route = source.slice(source.indexOf("app.post('/appointments'"), source.indexOf("app.put('/appointments/:id'"));
+
+    assert.match(route, /res\.status\(500\)\.json\(\{ error: 'Unable to create appointment\.' \}\)/);
+    assert.doesNotMatch(route, /res\.status\(400\)\.json\(\{ error: error\.message \}\)/);
+});

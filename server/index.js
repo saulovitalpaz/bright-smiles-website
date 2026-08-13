@@ -673,7 +673,7 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
 
         res.json(appointment);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: 'Unable to create appointment.' });
     }
 });
 
