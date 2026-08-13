@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { CalendarView } from "@/components/admin/appointments/CalendarView";
 import { buildCalendarEntries, CalendarEntry } from "@/lib/calendar";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AppointmentRecord {
     id: number;
@@ -35,6 +37,8 @@ interface AppointmentRecord {
     procedure: string;
     notes: string;
     professional: string;
+    status?: "scheduled" | "attended" | "cancelled";
+    parentAppointmentId?: number | null;
     patient?: {
         name: string;
         cpf: string;
@@ -57,7 +61,23 @@ interface StaffUser {
     role: string;
 }
 
+interface ManualAppointmentForm {
+    patientName: string;
+    procedure: string;
+    appointmentType: "odontologia" | "harmonizacao" | "ambos";
+    professional: string;
+    scheduledAt: string;
+    price: string;
+    paymentStatus: "" | "paid" | "pending" | "courtesy";
+}
+
+const toDateTimeLocalValue = (date: Date) => {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return localDate.toISOString().slice(0, 16);
+};
+
 const AdminAppointments = () => {
+    const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState("");
     const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
     const [searchParams] = useSearchParams();
@@ -70,6 +90,18 @@ const AdminAppointments = () => {
     const [pendingDetails, setPendingDetails] = useState<CalendarEntry | null>(null);
     const [professionalDraft, setProfessionalDraft] = useState("");
     const [isSavingCalendarChange, setIsSavingCalendarChange] = useState(false);
+    const [manualAppointmentDate, setManualAppointmentDate] = useState<Date | null>(null);
+    const [manualAppointment, setManualAppointment] = useState<ManualAppointmentForm>({
+        patientName: "",
+        procedure: "",
+        appointmentType: "odontologia",
+        professional: "",
+        scheduledAt: "",
+        price: "",
+        paymentStatus: ""
+    });
+    const [manualAppointmentError, setManualAppointmentError] = useState("");
+    const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
     const navigate = useNavigate();
     const leadId = searchParams.get("leadId");
 
@@ -180,6 +212,84 @@ const AdminAppointments = () => {
 
     const refreshCalendarRecords = async () => {
         await Promise.all([fetchAppointments(), fetchCalendarData()]);
+    };
+
+    const openManualAppointment = (date: Date) => {
+        const defaultProfessional = staff.some((user) => user.name === currentUser.name)
+            ? currentUser.name
+            : staff[0]?.name || "";
+
+        setManualAppointmentDate(date);
+        setManualAppointment({
+            patientName: "",
+            procedure: "",
+            appointmentType: "odontologia",
+            professional: defaultProfessional,
+            scheduledAt: toDateTimeLocalValue(date),
+            price: "",
+            paymentStatus: ""
+        });
+        setManualAppointmentError("");
+    };
+
+    const updateManualAppointment = <K extends keyof ManualAppointmentForm>(
+        field: K,
+        value: ManualAppointmentForm[K]
+    ) => {
+        setManualAppointment((current) => ({ ...current, [field]: value }));
+    };
+
+    const createManualAppointment = async () => {
+        const patientName = manualAppointment.patientName.trim();
+        const procedure = manualAppointment.procedure.trim();
+        const professional = manualAppointment.professional.trim();
+        const scheduledDate = new Date(manualAppointment.scheduledAt);
+
+        if (!patientName || !procedure || !professional || Number.isNaN(scheduledDate.getTime())) {
+            setManualAppointmentError("Preencha paciente, procedimento, profissional, data e horário.");
+            return;
+        }
+
+        const payload: Record<string, string | number> = {
+            patientName,
+            procedure,
+            appointmentType: manualAppointment.appointmentType,
+            professional,
+            date: scheduledDate.toISOString(),
+            scheduledAt: scheduledDate.toISOString()
+        };
+
+        if (manualAppointment.price.trim()) payload.price = Number(manualAppointment.price);
+        if (manualAppointment.paymentStatus) payload.paymentStatus = manualAppointment.paymentStatus;
+
+        setIsCreatingAppointment(true);
+        setManualAppointmentError("");
+        try {
+            const response = await fetchClient("/appointments", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(
+                    response.status >= 500
+                        ? "Não foi possível criar o atendimento."
+                        : body.error || "Não foi possível criar o atendimento."
+                );
+            }
+
+            await Promise.all([
+                refreshCalendarRecords(),
+                queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+                queryClient.invalidateQueries({ queryKey: ["leads"] })
+            ]);
+            setManualAppointmentDate(null);
+            toast.success("Atendimento agendado com sucesso.");
+        } catch (error) {
+            setManualAppointmentError(error instanceof Error ? error.message : "Não foi possível criar o atendimento.");
+        } finally {
+            setIsCreatingAppointment(false);
+        }
     };
 
     const confirmDrop = async () => {
@@ -387,10 +497,146 @@ const AdminAppointments = () => {
                             setProfessionalDraft(entry.professional || "");
                         }}
                         onEventDrop={(entry, scheduledAt) => setPendingDrop({ entry, scheduledAt })}
-                        onEventCreate={(date) => navigate(`/admin/consultas/new?date=${encodeURIComponent(date.toISOString())}`)}
+                        onEventCreate={openManualAppointment}
                     />
                 </div>
             )}
+
+            <Dialog
+                open={Boolean(manualAppointmentDate)}
+                onOpenChange={(open) => {
+                    if (!open && !isCreatingAppointment) {
+                        setManualAppointmentDate(null);
+                        setManualAppointmentError("");
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Novo atendimento</DialogTitle>
+                        <DialogDescription>
+                            Cadastre um atendimento diretamente no horário selecionado da agenda.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-2 sm:grid-cols-2">
+                        <div className="space-y-2 sm:col-span-2">
+                            <Label htmlFor="manual-patient-name">Paciente</Label>
+                            <Input
+                                id="manual-patient-name"
+                                value={manualAppointment.patientName}
+                                onChange={(event) => updateManualAppointment("patientName", event.target.value)}
+                                autoComplete="name"
+                                disabled={isCreatingAppointment}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-procedure">Procedimento</Label>
+                            <Input
+                                id="manual-procedure"
+                                value={manualAppointment.procedure}
+                                onChange={(event) => updateManualAppointment("procedure", event.target.value)}
+                                disabled={isCreatingAppointment}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-appointment-type">Tipo de atendimento</Label>
+                            <Select
+                                value={manualAppointment.appointmentType}
+                                onValueChange={(value: ManualAppointmentForm["appointmentType"]) => updateManualAppointment("appointmentType", value)}
+                                disabled={isCreatingAppointment}
+                            >
+                                <SelectTrigger id="manual-appointment-type">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="odontologia">Odontologia</SelectItem>
+                                    <SelectItem value="harmonizacao">Harmonização facial</SelectItem>
+                                    <SelectItem value="ambos">Ambos</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-professional">Profissional</Label>
+                            <Select
+                                value={manualAppointment.professional}
+                                onValueChange={(value) => updateManualAppointment("professional", value)}
+                                disabled={isCreatingAppointment}
+                            >
+                                <SelectTrigger id="manual-professional">
+                                    <SelectValue placeholder="Selecione o profissional" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {staff.map((user) => (
+                                        <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-scheduled-at">Data e horário</Label>
+                            <Input
+                                id="manual-scheduled-at"
+                                type="datetime-local"
+                                value={manualAppointment.scheduledAt}
+                                onChange={(event) => updateManualAppointment("scheduledAt", event.target.value)}
+                                disabled={isCreatingAppointment}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-price">Valor (opcional)</Label>
+                            <Input
+                                id="manual-price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={manualAppointment.price}
+                                onChange={(event) => updateManualAppointment("price", event.target.value)}
+                                disabled={isCreatingAppointment}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="manual-payment-status">Status do pagamento (opcional)</Label>
+                            <Select
+                                value={manualAppointment.paymentStatus || "unspecified"}
+                                onValueChange={(value) => updateManualAppointment("paymentStatus", value === "unspecified" ? "" : value as ManualAppointmentForm["paymentStatus"])}
+                                disabled={isCreatingAppointment}
+                            >
+                                <SelectTrigger id="manual-payment-status">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unspecified">Não informado</SelectItem>
+                                    <SelectItem value="paid">Recebido</SelectItem>
+                                    <SelectItem value="pending">A receber</SelectItem>
+                                    <SelectItem value="courtesy">Cortesia / retorno</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    {manualAppointmentError && (
+                        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {manualAppointmentError}
+                        </p>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setManualAppointmentDate(null)}
+                            disabled={isCreatingAppointment}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => void createManualAppointment()}
+                            disabled={isCreatingAppointment}
+                        >
+                            {isCreatingAppointment ? "Salvando..." : "Criar atendimento"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog
                 open={Boolean(pendingDrop)}
@@ -447,6 +693,12 @@ const AdminAppointments = () => {
                                 <p className="text-xs font-medium uppercase text-slate-500">Tratamento/procedimento</p>
                                 <p>{pendingDetails.treatment || pendingDetails.procedure || pendingDetails.appointmentType || "Agendamento"}</p>
                             </div>
+                            {pendingDetails.isReturn && (
+                                <div>
+                                    <p className="text-xs font-medium uppercase text-slate-500">Vínculo</p>
+                                    <p className="font-medium text-emerald-700">Retorno vinculado a uma consulta anterior</p>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-xs font-medium uppercase text-slate-500">Data e horário</p>
                                 <p>{formatDate(pendingDetails.scheduledAt)}</p>

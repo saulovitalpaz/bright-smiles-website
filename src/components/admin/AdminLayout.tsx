@@ -93,7 +93,6 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 { label: "Atendimentos", href: "/admin/consultas" },
                 { label: "Prescrição", href: "/admin/prescricao" },
                 { label: "Termos & Doc", href: "/admin/documentos" },
-                { label: "Guia Digital", href: "/admin/digital-guide" }
             ]
         },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },

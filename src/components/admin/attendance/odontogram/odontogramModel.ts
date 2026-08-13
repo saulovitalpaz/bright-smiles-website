@@ -185,12 +185,9 @@ export function getConditionVisual(condition: Pick<ClinicalCondition, "stage">):
 
 export function getClinicalStageVisuals(): ReadonlyArray<ConditionVisual> {
   return [
-    CLINICAL_STAGE_VISUALS.aAvaliar,
-    CLINICAL_STAGE_VISUALS.planejado,
-    CLINICAL_STAGE_VISUALS.emAndamento,
-    CLINICAL_STAGE_VISUALS.concluido,
-    CLINICAL_STAGE_VISUALS.monitorado,
-    CLINICAL_STAGE_VISUALS.suspenso,
+    CLINICAL_STAGE_VISUALS.aAvaliar, CLINICAL_STAGE_VISUALS.planejado,
+    CLINICAL_STAGE_VISUALS.emAndamento, CLINICAL_STAGE_VISUALS.concluido,
+    CLINICAL_STAGE_VISUALS.monitorado, CLINICAL_STAGE_VISUALS.suspenso,
   ];
 }
 

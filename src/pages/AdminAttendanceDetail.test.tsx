@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAppointmentResponse } from "./AdminAttendanceDetail";
+import { formatDateTimeInput, normalizeAppointmentResponse } from "./AdminAttendanceDetail";
 
 describe("normalizeAppointmentResponse", () => {
     it("normalizes legacy odontogram data when loading an appointment", () => {
@@ -82,5 +82,25 @@ describe("normalizeAppointmentResponse", () => {
         expect(appointment.price).toBe("");
         expect(appointment.photos).toEqual([]);
         expect(appointment.externalLinks).toEqual([]);
+    });
+
+    it("preserves return date and linked-return state for the consultation form", () => {
+        const returnDate = "2026-08-20T16:00:00.000Z";
+        const appointment = normalizeAppointmentResponse({
+            returnDate,
+            returnAppointment: {
+                id: 42,
+                scheduledAt: returnDate,
+                status: "scheduled",
+            },
+        });
+
+        expect(appointment.returnDate).toBe(returnDate);
+        expect(formatDateTimeInput(appointment.returnDate)).toMatch(/^2026-08-20T\d{2}:00$/);
+        expect(appointment.returnAppointment).toMatchObject({
+            id: 42,
+            scheduledAt: returnDate,
+            status: "scheduled",
+        });
     });
 });

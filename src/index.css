@@ -3,6 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.calendar-scroll-region { overflow-x: auto; }
+.calendar-event { writing-mode: horizontal-tb; overflow-wrap: anywhere; white-space: normal; }
+.calendar-event__title, .calendar-event__detail, .calendar-event__professional { overflow-wrap: anywhere; white-space: normal; }
+
 /* Núcleo Odontológico Especializado & Harmonização - Design System
    All colors MUST be HSL. Premium dental clinic theme with gold accents.
 */
@@ -234,6 +238,30 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .admin-scroll-region:focus-visible {
+    outline: 2px solid hsl(var(--gold));
+    outline-offset: 2px;
+  }
+
+  .calendar-scroll-region {
+    scrollbar-gutter: stable;
+  }
+
+  .calendar-event,
+  .calendar-event__title,
+  .calendar-event__detail,
+  .calendar-event__professional {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal;
+    writing-mode: horizontal-tb;
+  }
+
+  .calendar-event {
+    touch-action: manipulation;
+  }
+
   @media (min-width: 640px) {
     .admin-shell {
       --admin-gutter: 1.5rem;
@@ -370,6 +398,10 @@
     /* Ensure buttons don't overflow */
     button, .button {
       max-width: 100%;
+    }
+
+    .calendar-scroll-region {
+      margin-inline: -0.25rem;
     }
   }
 }

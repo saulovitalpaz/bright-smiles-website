@@ -70,3 +70,15 @@ test('calendar expands its 30-minute slots for entries outside baseline hours', 
     assert.match(source, /getVisibleSlotMinutes\(entries, days\)/);
     assert.match(source, /getDropDateTime\(day, minutes\)/);
 });
+
+test('visible fractional-hour slots remain keyboard and pointer interactive', () => {
+    const source = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
+    const branchStart = source.indexOf("if (viewMode === 'week' && isFractional && !hasEntriesInRow)");
+    const branchEnd = source.indexOf('\n                            return (', branchStart);
+    const fractionalBranch = source.slice(branchStart, branchEnd);
+
+    assert.match(fractionalBranch, /role=\{onEventCreate \? "button" : undefined\}/);
+    assert.match(fractionalBranch, /tabIndex=\{onEventCreate \? 0 : undefined\}/);
+    assert.match(fractionalBranch, /onClick=/);
+    assert.match(fractionalBranch, /onKeyDown=/);
+});

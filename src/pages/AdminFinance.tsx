@@ -24,6 +24,7 @@ import { Loader2, Upload, CheckCircle2 } from "lucide-react";
 import { DownloadFinanceReportButton } from "@/components/admin/FinanceReportPDF";
 import { printDocumentClass, type PrintMode } from "@/lib/print-layout";
 import { mediaUrl } from "@/lib/media";
+import { financePeriodQuery, financePeriodTitle } from "@/lib/finance";
 
 interface Transaction {
     id: number;
@@ -43,7 +44,7 @@ interface Transaction {
 
 const AdminFinance = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [stats, setStats] = useState({ income: 0, expense: 0, balance: 0 });
+    const [stats, setStats] = useState({ income: 0, pendingIncome: 0, expense: 0, balance: 0 });
     const [filterByMonth, setFilterByMonth] = useState(new Date().getMonth() + 1);
     const [filterByYear, setFilterByYear] = useState(new Date().getFullYear());
     const [printMode, setPrintMode] = useState<PrintMode>("compact");
@@ -68,8 +69,8 @@ const AdminFinance = () => {
     const fetchTransactions = async () => {
         try {
             const [txRes, statsRes] = await Promise.all([
-                fetchClient(`/finance?month=${filterByMonth}&year=${filterByYear}`),
-                fetchClient("/finance/stats")
+                fetchClient(`/finance?${financePeriodQuery(filterByMonth, filterByYear)}`),
+                fetchClient(`/finance/stats?${financePeriodQuery(filterByMonth, filterByYear)}`)
             ]);
 
             if (txRes.ok) setTransactions(await txRes.json());
@@ -236,8 +237,9 @@ const AdminFinance = () => {
                                 <ArrowUpRight size={14} /> Receitas
                             </span>
                         </div>
-                        <p className="text-slate-500 text-sm font-medium mt-4">Receita Total</p>
+                        <p className="text-slate-500 text-sm font-medium mt-4">Receita recebida</p>
                         <p className="text-2xl font-bold text-slate-900 mt-1">R$ {stats.income.toLocaleString()}</p>
+                        <p className="mt-1 text-xs text-amber-700">A receber: R$ {stats.pendingIncome.toLocaleString()}</p>
                     </CardContent>
                 </Card>
 
@@ -281,6 +283,7 @@ const AdminFinance = () => {
                         <p className={`text-2xl font-bold mt-1 ${stats.balance >= 0 ? "text-primary" : "text-rose-600"}`}>
                             R$ {stats.balance.toLocaleString()}
                         </p>
+                        <p className="mt-1 text-xs text-slate-500">Visão geral de {financePeriodTitle(filterByMonth, filterByYear)}</p>
                     </CardContent>
                 </Card>
             </div>

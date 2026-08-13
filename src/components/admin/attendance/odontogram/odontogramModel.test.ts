@@ -78,7 +78,7 @@ describe("odontogramModel", () => {
   it("formats a stage and exact target for a tooth", () => {
     expect(getClinicalStageLabel("emAndamento")).toBe("Em andamento");
     expect(getConditionTargetLabel(16, { kind: "surface", face: "center", region: "incisalOcclusal" }))
-      .toBe("Oclusal / Incisal - oclusal/incisal");
+      .toBe("Oclusal / Incisal - incisal/oclusal");
     expect(getConditionTargetLabel(36, { kind: "tooth" })).toBe("Dente inteiro");
   });
 

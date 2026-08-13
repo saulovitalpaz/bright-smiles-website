@@ -342,7 +342,7 @@ const AdminPrescription = () => {
                             <p className="text-xs text-slate-600 mb-4 leading-relaxed">
                                 Para emitir receitas com validade para farmácias via assinatura digital (ICP-Brasil), utilize o guia oficial.
                             </p>
-                            <Link to="/admin/digital-guide">
+                            <Link to="/admin/consultas">
                                 <Button variant="outline" size="sm" className="w-full border-primary/30 text-primary hover:bg-primary/10 gap-2">
                                     <ExternalLink size={14} /> Ver Passo-a-Passo
                                 </Button>

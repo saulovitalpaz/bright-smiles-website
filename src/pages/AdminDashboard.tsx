@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
     Users,
@@ -8,6 +8,7 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface DashboardStats {
     posts: number;
     appointments: number;
     leads: number;
+    pendingLeadCount?: number;
     testimonials: number;
     recentAppointments: RecentAppointment[];
     recentLeads: RecentLead[];
@@ -38,6 +40,18 @@ interface DashboardStats {
     }>;
 }
 
+const emptyStats: DashboardStats = {
+    users: 0,
+    posts: 0,
+    appointments: 0,
+    leads: 0,
+    testimonials: 0,
+    upcomingSchedule: [],
+    recentLeads: [],
+    recentAppointments: [],
+    recentTestimonials: []
+};
+
 const formatDateTime = (value?: string | null) => {
     if (!value) return "Não informado";
 
@@ -52,41 +66,20 @@ const formatDateTime = (value?: string | null) => {
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const userStr = localStorage.getItem('admin_user');
     const currentUser = userStr ? JSON.parse(userStr) : { role: 'admin' };
     const isManager = currentUser.role === 'manager';
-    const [stats, setStats] = useState<DashboardStats>({
-        users: 0,
-        posts: 0,
-        appointments: 0,
-        leads: 0,
-        testimonials: 0,
-        upcomingSchedule: [],
-        recentLeads: [],
-        recentAppointments: [],
-        recentTestimonials: []
+    const { data: stats = emptyStats, isLoading: loading, refetch: refetchStats } = useQuery({
+        queryKey: ['dashboard-stats'],
+        queryFn: async () => {
+            const res = await fetchClient('/dashboard/stats');
+            if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+            return await res.json() as DashboardStats;
+        }
     });
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await fetchClient(`/dashboard/stats`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setStats(data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch dashboard stats:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
-
-    const pendingLeads = stats?.recentLeads?.filter((l) => l.status === 'new' || l.status === 'contacted') || [];
-    const pendingCount = pendingLeads.length;
+    const pendingCount = stats.pendingLeadCount ?? 0;
 
     if (loading) {
         return (
@@ -144,7 +137,7 @@ const AdminDashboard = () => {
                                         {stats.recentTestimonials[0].name.charAt(0)}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-slate-900 font-bold text-sm leading-tight text-ellipsis overflow-hidden truncate">{stats.recentTestimonials[0].name}</p>
+                                        <p className="min-w-0 break-words text-slate-900 font-bold text-sm leading-tight" title={stats.recentTestimonials[0].name}>{stats.recentTestimonials[0].name}</p>
                                         <p className="text-slate-500 text-xs italic mt-1 line-clamp-2 md:line-clamp-1">"{stats.recentTestimonials[0].comment || stats.recentTestimonials[0].content}"</p>
                                     </div>
                                 </div>
@@ -191,8 +184,8 @@ const AdminDashboard = () => {
                                             {item.patientName.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex-1 min-w-0 sm:hidden">
-                                            <p className="font-bold text-slate-900 truncate">{item.patientName}</p>
-                                            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                            <p className="min-w-0 break-words font-bold text-slate-900" title={item.patientName}>{item.patientName}</p>
+                                            <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={item.treatment || item.procedure || "Procedimento Geral"}>{item.treatment || item.procedure || "Procedimento Geral"}</p>
                                             <p className="text-sm font-bold text-blue-700 mt-2">
                                                 {formatDateTime(item.scheduledAt)}
                                             </p>
@@ -203,8 +196,8 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div className="hidden sm:block flex-1 min-w-0">
-                                        <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{item.patientName}</p>
-                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                        <p className="min-w-0 break-words font-bold text-slate-900 group-hover:text-blue-700 transition-colors" title={item.patientName}>{item.patientName}</p>
+                                        <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={item.treatment || item.procedure || "Procedimento Geral"}>{item.treatment || item.procedure || "Procedimento Geral"}</p>
                                         <p className="text-sm font-bold text-blue-700 mt-2">
                                             {formatDateTime(item.scheduledAt)}
                                         </p>
@@ -228,8 +221,10 @@ const AdminDashboard = () => {
                                                             });
                                                             if (res.ok) {
                                                                 toast.success("Paciente marcado como atendido.");
-                                                                const resStats = await fetchClient(`/dashboard/stats`);
-                                                                if (resStats.ok) setStats(await resStats.json());
+                                                                if (item.kind === 'lead') {
+                                                                    await queryClient.invalidateQueries({ queryKey: ['leads'] });
+                                                                }
+                                                                await refetchStats();
                                                             } else {
                                                                 toast.error("Erro ao atualizar status.");
                                                             }
@@ -286,8 +281,8 @@ const AdminDashboard = () => {
                                         <Users size={20} className="md:w-6 md:h-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-slate-900 truncate">{app.patientName}</p>
-                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{app.procedure}</p>
+                                        <p className="min-w-0 break-words font-bold text-slate-900" title={app.patientName}>{app.patientName}</p>
+                                        <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={app.procedure}>{app.procedure}</p>
                                     </div>
                                     <div className="text-right whitespace-nowrap hidden sm:block">
                                         <div className="flex flex-col items-end">

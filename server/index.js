@@ -19,7 +19,17 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { createEncryption } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
-const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
+const { createDashboardStatsHandler } = require('./routes/dashboard');
+const {
+    parseOptionalDate,
+    normalizeScheduledAt,
+    normalizeReturnDate,
+    normalizeReturnDateForUpdate,
+    syncReturnAppointment,
+    buildUpcomingSchedule
+} = require('./utils/schedule');
+const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
+const { parseFinancePeriod, financePeriodWhere, financeStatsWhere } = require('./utils/financePeriod');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
@@ -32,6 +42,9 @@ const {
 const {
     patientSchema,
     appointmentSchema,
+    appointmentStatusSchema,
+    appointmentPaymentStatusSchema,
+    returnDateSchema,
     loginSchema,
     createUserSchema,
     updateCurrentUserSchema
@@ -41,6 +54,7 @@ const app = express();
 app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const updateLeadHandler = createUpdateLeadHandler(prisma);
+const dashboardStatsHandler = createDashboardStatsHandler(prisma, buildUpcomingSchedule);
 const port = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 const ALLOWED_ORIGINS = new Set([
@@ -619,7 +633,7 @@ app.get('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
         const { id } = req.params;
         const item = await prisma.appointment.findUnique({
             where: { id: parseInt(id) },
-            include: { patient: true }
+            include: { patient: true, returnAppointment: true }
         });
         if (!item) return res.status(404).json({ error: 'Appointment not found' });
         res.json(item);
@@ -632,13 +646,13 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
     const result = appointmentSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
+    const payload = { ...result.data };
     try {
-        const payload = { ...result.data };
         payload.date = parseOptionalDate(payload.date, 'Invalid appointment date');
         if (!payload.date) {
             return res.status(400).json({ error: 'Invalid appointment date' });
         }
-        payload.returnDate = parseOptionalDate(payload.returnDate, 'Invalid return date');
+        payload.returnDate = normalizeReturnDate(payload.returnDate);
         payload.scheduledAt = normalizeScheduledAt(payload.scheduledAt);
         if (payload.price === '' || payload.price === null || payload.price === undefined) {
             payload.price = null;
@@ -648,37 +662,63 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
                 return res.status(400).json({ error: 'Invalid price' });
             }
         }
+        payload.paymentStatus = normalizePaymentStatus(payload.paymentStatus);
 
-        const appointment = await prisma.appointment.create({
-            data: payload
-        });
+    } catch (error) {
+        return res.status(400).json({ error: 'Invalid appointment or return date.' });
+    }
 
-        // Auto-Billing Finance Integration
-        if (payload.price && payload.price > 0) {
-            const statusLabel = payload.paymentStatus === 'pending' ? '[A RECEBER] ' : '';
-            await prisma.financeTransaction.create({
-                data: {
-                    type: 'income',
-                    amount: payload.price,
-                    category: 'Consulta/Procedimento',
-                    description: `${statusLabel}Atendimento: ${payload.procedure} - ${payload.patientName}`,
-                    date: payload.date ? new Date(payload.date) : new Date(),
-                    patientId: payload.patientId
-                }
+    try {
+        const appointment = await prisma.$transaction(async (tx) => {
+            const appointment = await tx.appointment.create({ data: payload });
+            const returnAppointment = await syncReturnAppointment(tx, appointment, {
+                returnDate: payload.returnDate
             });
-        }
+            await syncAppointmentFinance(tx, appointment);
+            return { ...appointment, returnAppointment };
+        });
 
         res.json(appointment);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: 'Unable to create appointment.' });
     }
 });
 
 app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
+    const appointmentId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(appointmentId) || appointmentId <= 0) {
+        return res.status(400).json({ error: 'Invalid appointment id' });
+    }
 
+    const {
+        id: _id,
+        createdAt,
+        updatedAt,
+        patient,
+        parentAppointment,
+        parentAppointmentId,
+        returnAppointment,
+        ...data
+    } = req.body || {};
+    const hasReturnDate = Object.prototype.hasOwnProperty.call(data, 'returnDate');
+
+    if (data.status !== undefined) {
+        const statusResult = appointmentStatusSchema.safeParse(data.status);
+        if (!statusResult.success) return res.status(400).json({ error: statusResult.error.issues[0].message });
+        data.status = statusResult.data;
+    }
+
+    if (data.paymentStatus !== undefined) {
+        if (data.paymentStatus === null) {
+            data.paymentStatus = 'received';
+        } else {
+            const paymentStatusResult = appointmentPaymentStatusSchema.safeParse(data.paymentStatus);
+            if (!paymentStatusResult.success) return res.status(400).json({ error: paymentStatusResult.error.issues[0].message });
+            data.paymentStatus = normalizePaymentStatus(paymentStatusResult.data);
+        }
+    }
+
+    try {
         if (data.date !== undefined) {
             data.date = parseOptionalDate(data.date, 'Invalid appointment date');
             if (!data.date) {
@@ -686,7 +726,11 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
             }
         }
         if (data.returnDate !== undefined) {
-            data.returnDate = parseOptionalDate(data.returnDate, 'Invalid return date');
+            const returnDateResult = returnDateSchema.safeParse(data.returnDate);
+            if (!returnDateResult.success) {
+                return res.status(400).json({ error: returnDateResult.error.issues[0].message });
+            }
+            data.returnDate = returnDateResult.data;
         }
         if (data.scheduledAt !== undefined) {
             data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
@@ -699,14 +743,48 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
                 return res.status(400).json({ error: 'Invalid price' });
             }
         }
+    } catch (error) {
+        return res.status(400).json({ error: 'Invalid appointment or return date.' });
+    }
 
-        const appointment = await prisma.appointment.update({
-            where: { id: parseInt(id) },
-            data: data
+    try {
+        const appointment = await prisma.$transaction(async (tx) => {
+            let returnDate = data.returnDate;
+            if (hasReturnDate) {
+                const persistedAppointment = await tx.appointment.findUnique({
+                    where: { id: appointmentId },
+                    select: { returnDate: true }
+                });
+                if (!persistedAppointment) {
+                    const error = new Error('Appointment not found');
+                    error.code = 'P2025';
+                    throw error;
+                }
+                try {
+                    returnDate = normalizeReturnDateForUpdate(returnDate, persistedAppointment.returnDate);
+                } catch {
+                    const error = new Error('Invalid appointment or return date.');
+                    error.statusCode = 400;
+                    throw error;
+                }
+            }
+
+            const appointment = await tx.appointment.update({
+                where: { id: appointmentId },
+                data: hasReturnDate ? { ...data, returnDate } : data,
+                include: { returnAppointment: true }
+            });
+            const linkedReturn = hasReturnDate
+                ? await syncReturnAppointment(tx, appointment, { returnDate })
+                : appointment.returnAppointment;
+            await syncAppointmentFinance(tx, appointment);
+            return { ...appointment, returnAppointment: linkedReturn };
         });
         res.json(appointment);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid appointment or return date.' });
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Appointment not found' });
+        res.status(500).json({ error: 'Unable to update appointment.' });
     }
 });
 
@@ -1179,65 +1257,7 @@ app.delete('/prescriptions/:id', authenticateToken, authorizeRole(['admin', 'den
 });
 
 // Dashboard Stats API
-app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
-    try {
-        const [users, posts, appointments, leads, testimonials] = await Promise.all([
-            prisma.user.count(),
-            prisma.post.count(),
-            prisma.appointment.count(),
-            prisma.lead.count(),
-            prisma.testimonial.count()
-        ]);
-
-        const recentAppointments = await prisma.appointment.findMany({
-            take: 5,
-            orderBy: { date: 'desc' }
-        });
-
-        const recentLeads = await prisma.lead.findMany({
-            take: 5,
-            orderBy: { createdAt: 'desc' }
-        });
-
-        const [scheduledAppointments, scheduledLeads] = await Promise.all([
-            prisma.appointment.findMany({
-                where: { scheduledAt: { not: null } },
-                orderBy: { scheduledAt: 'asc' }
-            }),
-            prisma.lead.findMany({
-                where: {
-                    scheduledAt: { not: null },
-                    status: { not: 'completed' }
-                },
-                orderBy: { scheduledAt: 'asc' }
-            })
-        ]);
-
-        const upcomingSchedule = buildUpcomingSchedule({
-            appointments: scheduledAppointments,
-            leads: scheduledLeads
-        });
-
-        const recentTestimonials = await prisma.testimonial.findMany({
-            take: 5,
-            orderBy: { createdAt: 'desc' }
-        });
-
-        res.json({
-            users,
-            posts,
-            appointments,
-            leads,
-            testimonials,
-            upcomingSchedule,
-            recentAppointments,
-            recentLeads,
-            recentTestimonials
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager']), dashboardStatsHandler);
 
 // Leads API
 app.post('/leads', async (req, res) => {
@@ -1417,17 +1437,8 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
 // Finance API
 app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const { month, year } = req.query;
-        let where = {};
-
-        if (month && year) {
-            const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-            const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
-            where.date = {
-                gte: startDate,
-                lte: endDate
-            };
-        }
+        const period = parseFinancePeriod(req.query);
+        const where = financePeriodWhere(period);
 
         const transactions = await prisma.financeTransaction.findMany({
             where,
@@ -1436,7 +1447,7 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
         });
         res.json(transactions);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance transactions.' });
     }
 });
 
@@ -1447,7 +1458,8 @@ app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asy
             type,
             description,
             amount: parseFloat(amount),
-            category: category || 'Geral'
+            category: category || 'Geral',
+            paymentStatus: 'received'
         };
         if (patientId) data.patientId = parseInt(patientId);
         if (receiptUrl) data.receiptUrl = receiptUrl;
@@ -1494,21 +1506,26 @@ app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']
 
 app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
+        const period = parseFinancePeriod(req.query);
+        const endExclusive = period.endExclusive;
+        const filters = financeStatsWhere(period);
         const income = await prisma.financeTransaction.aggregate({
-            where: { type: 'income' },
+            where: filters.realizedIncome,
             _sum: { amount: true }
         });
+        const pendingIncome = await prisma.financeTransaction.aggregate({ where: filters.pendingIncome, _sum: { amount: true } });
         const expense = await prisma.financeTransaction.aggregate({
-            where: { type: 'expense' },
+            where: filters.expense,
             _sum: { amount: true }
         });
         res.json({
             income: income._sum.amount || 0,
+            pendingIncome: pendingIncome._sum.amount || 0,
             expense: expense._sum.amount || 0,
             balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance statistics.' });
     }
 });
 

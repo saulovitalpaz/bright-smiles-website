@@ -32,6 +32,14 @@ const patientSchema = z.object({
     odontogram: odontogramSchema.optional().nullable(),
 });
 
+const appointmentStatusSchema = z.enum(['scheduled', 'attended', 'cancelled']);
+const appointmentPaymentStatusSchema = z.enum(['received', 'paid', 'pending', 'courtesy', 'voided']);
+const returnDateSchema = z.union([
+    z.string().datetime({ offset: true, message: 'Invalid return date' }),
+    z.date({ error: 'Invalid return date' }),
+    z.literal('')
+]).nullable();
+
 const appointmentSchema = z.object({
     patientName: z.string().min(1),
     date: z.string().or(z.date()),
@@ -44,14 +52,15 @@ const appointmentSchema = z.object({
     appointmentType: z.string().optional(),
     complications: z.string().optional().nullable(),
     materials: z.string().optional().nullable(),
-    returnDate: z.string().or(z.date()).optional().nullable(),
+    returnDate: returnDateSchema.optional(),
     weight: z.string().optional().nullable(),
     photos: z.array(z.string()).optional(),
     externalLinks: z.array(z.string()).optional(),
     dentalNotes: z.any().optional().nullable(),
     facialNotes: z.any().optional().nullable(),
     price: z.string().or(z.number()).optional().nullable(),
-    paymentStatus: z.string().optional().nullable()
+    paymentStatus: appointmentPaymentStatusSchema.optional().nullable(),
+    status: appointmentStatusSchema.default('scheduled')
 });
 
 const loginSchema = z.object({
@@ -81,6 +90,9 @@ const updateCurrentUserSchema = z.object({
 module.exports = {
     patientSchema,
     appointmentSchema,
+    appointmentStatusSchema,
+    appointmentPaymentStatusSchema,
+    returnDateSchema,
     loginSchema,
     createUserSchema,
     updateCurrentUserSchema
