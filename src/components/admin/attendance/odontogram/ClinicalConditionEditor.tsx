@@ -2,6 +2,7 @@ import { useState, type JSX } from "react";
 import {
   CLINICAL_CATALOG,
   createCondition,
+  getAllowedTargets,
   type ClinicalCategory,
   type ClinicalCondition,
   type ClinicalConditionType,
@@ -35,7 +36,15 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
   const [targets, setTargets] = useState<ConditionTarget[]>([]);
   const [notes, setNotes] = useState("");
   const types = category ? CLINICAL_CATALOG[category] : [];
+  const allowedTargets = type ? getAllowedTargets(type) : [];
+  const allowsSurface = allowedTargets.includes("surface");
+  const allowsWholeTooth = allowedTargets.includes("tooth");
   const canSave = Boolean(category && type && stage && targets.length);
+
+  const selectWholeTooth = (): void => {
+    if (!allowsWholeTooth) return;
+    setTargets((current) => current.some((target) => target.kind === "tooth") ? [] : [{ kind: "tooth" }]);
+  };
 
   function resetForm(): void {
     setCategory("");
@@ -66,7 +75,31 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
           {types.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
         </select>
       </label>
-      {type ? <ToothSurfaceSelector toothNumber={toothNumber} data={{ status: "Saudável", notes: "" }} selectedFace={null} onSelectFace={() => undefined} selectedTargets={targets} onTargetsChange={setTargets} /> : null}
+      {type ? (
+        <fieldset className="space-y-3 rounded-lg border border-slate-700 p-3">
+          <legend className="px-1 text-sm font-medium text-slate-100">Região clínica</legend>
+          {allowsSurface ? (
+            <ToothSurfaceSelector
+              data={{ status: "Saudável", notes: "" }}
+              onSelectFace={() => undefined}
+              onTargetsChange={setTargets}
+              selectedFace={null}
+              selectedTargets={targets.filter((target) => target.kind === "surface")}
+              toothNumber={toothNumber}
+            />
+          ) : null}
+          {allowsWholeTooth ? (
+            <button
+              aria-pressed={targets.some((target) => target.kind === "tooth")}
+              className={`min-h-11 rounded-md border px-3 text-sm font-medium transition-colors ${targets.some((target) => target.kind === "tooth") ? "border-blue-400 bg-blue-500/20 text-white ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"}`}
+              onClick={selectWholeTooth}
+              type="button"
+            >
+              Dente inteiro
+            </button>
+          ) : null}
+        </fieldset>
+      ) : null}
       <label className="block text-sm">Situação
         <select aria-label="Situação" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={stage} onChange={(event) => setStage(event.target.value as ClinicalStage)}>
           <option value="">Selecione</option>

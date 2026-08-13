@@ -86,7 +86,7 @@ export const CalendarView = ({
                     event.dataTransfer.setData("text/calendar-entry-kind", entry.kind);
                 }}
             >
-                <p className="truncate text-[10px] font-semibold text-slate-900">{entry.patientName}</p>
+                <p className="break-words text-[10px] font-semibold leading-4 text-slate-900">{entry.patientName}</p>
                 {viewMode !== 'month' && (
                     <p className="truncate text-[10px] text-slate-500">{entry.procedure || entry.treatment || entry.appointmentType || "Agendamento"}</p>
                 )}

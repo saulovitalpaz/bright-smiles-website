@@ -114,6 +114,8 @@ export function ToothSurfaceSelector({
     onTargetsChange(next);
   };
 
+  const targetForFace = (face: FaceKey): ConditionTarget => ({ kind: "surface", face, region: "entire" });
+
   return (
     <div
       className="tooth-surface-selector__container"
@@ -155,11 +157,13 @@ export function ToothSurfaceSelector({
 
         {FACE_KEYS.map((face) => {
           const status = getFaceStatus(data, face);
-          const isSelected = selectedFace === face;
+          const target = targetForFace(face);
+          const isTargetSelected = selectedTargets?.some((item) => JSON.stringify(item) === JSON.stringify(target)) ?? false;
+          const isSelected = selectedTargets ? isTargetSelected : selectedFace === face;
 
           return (
             <button
-              aria-label={`${labels[face]}: ${status}`}
+              aria-label={selectedTargets ? `Selecionar face ${labels[face]}` : `${labels[face]}: ${status}`}
               aria-pressed={isSelected}
               className={`surface-selector__control ${FACE_POSITIONS[face]} ${getFaceClass(status)}${
                 isSelected ? " surface-selector__control--selected" : ""
@@ -167,7 +171,12 @@ export function ToothSurfaceSelector({
               disabled={readOnly}
               key={face}
               onClick={() => {
-                if (!readOnly) onSelectFace(face);
+                if (readOnly) return;
+                if (selectedTargets && onTargetsChange) {
+                  toggleTarget(target);
+                  return;
+                }
+                onSelectFace(face);
               }}
               type="button"
             >
@@ -183,26 +192,10 @@ export function ToothSurfaceSelector({
           );
         })}
       </div>
-      {selectedTargets && onTargetsChange ? (
-        <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Regiões anatômicas precisas">
-          {FACE_KEYS.flatMap((face) => (["cervical", "middle", "incisalOcclusal"] as const).map((region) => ({ face, region }))).map(({ face, region }) => {
-            const target: ConditionTarget = { kind: "surface", face, region };
-            const selected = selectedTargets.some((item) => JSON.stringify(item) === JSON.stringify(target));
-            const regionLabel = region === "cervical" ? "cervical" : region === "middle" ? "média" : "incisal ou oclusal";
-            return (
-              <button
-                aria-pressed={selected}
-                className={`min-h-11 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
-                disabled={readOnly}
-                key={`${face}-${region}`}
-                onClick={() => toggleTarget(target)}
-                type="button"
-              >
-                {labels[face]} {regionLabel}
-              </button>
-            );
-          })}
-        </div>
+      {selectedTargets ? (
+        <p className="mt-3 text-xs leading-5 text-slate-400">
+          Selecione somente as faces envolvidas. Cada escolha registra a face inteira, que é a região exibida no odontograma.
+        </p>
       ) : null}
     </div>
   );

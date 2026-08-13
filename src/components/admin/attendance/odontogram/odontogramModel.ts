@@ -88,6 +88,13 @@ export interface ToothRecord { notes: string; conditions: ClinicalCondition[]; }
 export interface OdontogramV2 { version: 2; dentition: "permanent"; teeth: Record<string, ToothRecord>; }
 export type OdontogramData = Record<string, ToothData> | OdontogramV2;
 
+export type ConditionVisual = {
+  label: string;
+  fill: string;
+  stroke: string;
+  pattern?: "dots" | "diagonal" | "crosshatch" | "dashed";
+};
+
 const CLINICAL_STAGE_LABELS: Record<ClinicalStage, string> = {
   aAvaliar: "A avaliar",
   planejado: "Planejado",
@@ -96,6 +103,16 @@ const CLINICAL_STAGE_LABELS: Record<ClinicalStage, string> = {
   monitorado: "Monitorado",
   suspenso: "Suspenso",
   removido: "Removido",
+};
+
+const CLINICAL_STAGE_VISUALS: Record<ClinicalStage, ConditionVisual> = {
+  aAvaliar: { label: "A avaliar", fill: "#fef3c7", stroke: "#b45309", pattern: "dots" },
+  planejado: { label: "Planejado / a tratar", fill: "#fce8e6", stroke: "#b42318", pattern: "diagonal" },
+  emAndamento: { label: "Em andamento", fill: "#ffedd5", stroke: "#c2410c", pattern: "crosshatch" },
+  concluido: { label: "Concluído", fill: "#99f6e4", stroke: "#0f766e" },
+  monitorado: { label: "Monitorado", fill: "#ede9fe", stroke: "#6d28d9", pattern: "dashed" },
+  suspenso: { label: "Suspenso", fill: "#e2e8f0", stroke: "#475569", pattern: "dashed" },
+  removido: { label: "Removido", fill: "#cbd5e1", stroke: "#64748b", pattern: "dashed" },
 };
 
 const WHOLE_TOOTH_TYPES = new Set<ClinicalConditionType>(["coroa_total", "implante", "ponte_fixa", "protese_removivel", "elemento_pontico", "exodontia_indicada", "exodontia_executada"]);
@@ -162,9 +179,24 @@ export function getClinicalStageLabel(stage: ClinicalStage): string {
   return CLINICAL_STAGE_LABELS[stage];
 }
 
+export function getConditionVisual(condition: Pick<ClinicalCondition, "stage">): ConditionVisual {
+  return CLINICAL_STAGE_VISUALS[condition.stage];
+}
+
+export function getClinicalStageVisuals(): ReadonlyArray<ConditionVisual> {
+  return [
+    CLINICAL_STAGE_VISUALS.aAvaliar,
+    CLINICAL_STAGE_VISUALS.planejado,
+    CLINICAL_STAGE_VISUALS.emAndamento,
+    CLINICAL_STAGE_VISUALS.concluido,
+    CLINICAL_STAGE_VISUALS.monitorado,
+    CLINICAL_STAGE_VISUALS.suspenso,
+  ];
+}
+
 export function getConditionTargetLabel(toothNumber: number, target: ConditionTarget): string {
   if (target.kind === "tooth") return "Dente inteiro";
-  const region = target.region === "incisalOcclusal" ? "oclusal/incisal"
+  const region = target.region === "incisalOcclusal" ? "incisal/oclusal"
     : target.region === "middle" ? "média"
       : target.region === "cervical" ? "cervical" : "face inteira";
   return `${getFaceLabels(toothNumber)[target.face]} - ${region}`;
