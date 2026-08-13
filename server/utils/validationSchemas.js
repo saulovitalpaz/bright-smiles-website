@@ -32,6 +32,8 @@ const patientSchema = z.object({
     odontogram: odontogramSchema.optional().nullable(),
 });
 
+const appointmentStatusSchema = z.enum(['scheduled', 'attended', 'cancelled']);
+
 const appointmentSchema = z.object({
     patientName: z.string().min(1),
     date: z.string().or(z.date()),
@@ -51,7 +53,8 @@ const appointmentSchema = z.object({
     dentalNotes: z.any().optional().nullable(),
     facialNotes: z.any().optional().nullable(),
     price: z.string().or(z.number()).optional().nullable(),
-    paymentStatus: z.string().optional().nullable()
+    paymentStatus: z.string().optional().nullable(),
+    status: appointmentStatusSchema.default('scheduled')
 });
 
 const loginSchema = z.object({
@@ -81,6 +84,7 @@ const updateCurrentUserSchema = z.object({
 module.exports = {
     patientSchema,
     appointmentSchema,
+    appointmentStatusSchema,
     loginSchema,
     createUserSchema,
     updateCurrentUserSchema

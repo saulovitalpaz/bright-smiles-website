@@ -33,6 +33,7 @@ const {
 const {
     patientSchema,
     appointmentSchema,
+    appointmentStatusSchema,
     loginSchema,
     createUserSchema,
     updateCurrentUserSchema
@@ -680,6 +681,12 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
     try {
         const { id } = req.params;
         const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
+
+        if (data.status !== undefined) {
+            const statusResult = appointmentStatusSchema.safeParse(data.status);
+            if (!statusResult.success) return res.status(400).json({ error: statusResult.error.issues[0].message });
+            data.status = statusResult.data;
+        }
 
         if (data.date !== undefined) {
             data.date = parseOptionalDate(data.date, 'Invalid appointment date');

@@ -55,6 +55,12 @@ export const CalendarView = ({
 }: CalendarViewProps) => {
     const [viewMode, setViewMode] = useState<ViewMode>("week");
 
+    const handleCreateKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, date: Date) => {
+        if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        onEventCreate?.(date);
+    };
+
     const days = viewMode === "day" 
         ? [anchorDate] 
         : viewMode === "week"
@@ -190,7 +196,19 @@ export const CalendarView = ({
                                     <div 
                                         key={idx} 
                                         className={`min-h-[100px] border-b border-r border-slate-200 p-1 cursor-pointer transition-colors hover:bg-slate-50 ${isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'}`}
-                                        onClick={() => onEventCreate && onEventCreate(new Date(day.setHours(9, 0, 0, 0)))}
+                                        role={onEventCreate ? "button" : undefined}
+                                        tabIndex={onEventCreate ? 0 : undefined}
+                                        aria-label={onEventCreate ? `Criar atendimento em ${format(day, "dd/MM/yyyy")} às 09:00` : undefined}
+                                        onClick={() => {
+                                            const createDate = new Date(day);
+                                            createDate.setHours(9, 0, 0, 0);
+                                            onEventCreate?.(createDate);
+                                        }}
+                                        onKeyDown={(event) => {
+                                            const createDate = new Date(day);
+                                            createDate.setHours(9, 0, 0, 0);
+                                            handleCreateKeyDown(event, createDate);
+                                        }}
                                     >
                                         <div className={`text-right text-xs p-1 mb-1 font-semibold ${isToday(day) ? 'text-primary bg-primary/10 rounded w-fit ml-auto px-2' : isCurrentMonth ? 'text-slate-700' : 'text-slate-400'}`}>
                                             {format(day, 'd')}
@@ -253,12 +271,20 @@ export const CalendarView = ({
                                             key={day.toISOString()}
                                             data-drop-minutes={minutes}
                                             className="min-h-14 border-b border-l border-slate-200 p-1 transition-colors hover:bg-slate-50 cursor-pointer"
+                                            role={onEventCreate ? "button" : undefined}
+                                            tabIndex={onEventCreate ? 0 : undefined}
+                                            aria-label={onEventCreate ? `Criar atendimento em ${format(day, "dd/MM/yyyy")} às ${format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}` : undefined}
                                             onClick={() => {
                                                 if (onEventCreate) {
                                                     const newDate = new Date(day);
                                                     newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
                                                     onEventCreate(newDate);
                                                 }
+                                            }}
+                                            onKeyDown={(event) => {
+                                                const newDate = new Date(day);
+                                                newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+                                                handleCreateKeyDown(event, newDate);
                                             }}
                                             onDragOver={(event) => event.preventDefault()}
                                             onDrop={(event) => handleDrop(event, day, minutes)}

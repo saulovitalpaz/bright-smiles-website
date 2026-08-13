@@ -23,6 +23,7 @@ interface CalendarAppointmentInput {
     procedure?: string | null;
     appointmentType?: string | null;
     scheduledAt?: string | null;
+    status?: "scheduled" | "attended" | "cancelled" | null;
     createdAt?: string | null;
     patientId?: number | null;
     professional?: string | null;
@@ -51,7 +52,7 @@ export const buildCalendarEntries = (
     appointments: CalendarAppointmentInput[] = [],
     leads: CalendarLeadInput[] = []
 ): CalendarEntry[] => [
-    ...appointments.filter(hasScheduledAppointment).map((item) => ({
+    ...appointments.filter((item) => hasScheduledAppointment(item) && item.status !== "attended" && item.status !== "cancelled").map((item) => ({
         kind: "appointment" as const,
         id: item.id,
         patientName: item.patientName || item.patient?.name || "Paciente sem nome",
