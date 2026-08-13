@@ -4,9 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Phone, Mail, CheckCircle, Clock, Trash2, UserPlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { API_URL } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 import { toast } from "sonner";
+
+const getResponseError = async (res: Response, fallback: string) => {
+    try {
+        const body: unknown = await res.json();
+        if (typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string') {
+            return body.error;
+        }
+    } catch {
+        // Keep the existing Portuguese fallback when the API has no JSON error body.
+    }
+
+    return fallback;
+};
 
 const formatDateTime = (value?: string | null) => {
     if (!value) return "Não agendado";
@@ -54,8 +66,9 @@ const AdminLeads = () => {
     const { data: leads, isLoading } = useQuery({
         queryKey: ['leads'],
         queryFn: async () => {
-            const res = await axios.get(`${API_URL}/leads`);
-            return res.data as LeadRecord[];
+            const res = await fetchClient('/leads');
+            if (!res.ok) throw new Error(await getResponseError(res, "Erro ao carregar solicitações."));
+            return await res.json() as LeadRecord[];
         }
     });
 
@@ -69,8 +82,12 @@ const AdminLeads = () => {
             status: string;
             scheduledAt: string | null;
         }) => {
-            const res = await axios.put(`${API_URL}/leads/${id}`, { status, scheduledAt });
-            return res.data;
+            const res = await fetchClient(`/leads/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status, scheduledAt })
+            });
+            if (!res.ok) throw new Error(await getResponseError(res, "Erro ao atualizar status."));
+            return await res.json();
         },
         onSuccess: (_data, variables) => {
             setLeadErrors((current) => {
@@ -79,12 +96,11 @@ const AdminLeads = () => {
                 return next;
             });
             queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
             toast.success("Status atualizado!");
         },
         onError: (error, variables) => {
-            const message = axios.isAxiosError(error)
-                ? error.response?.data?.error || "Erro ao atualizar status."
-                : "Erro ao atualizar status.";
+            const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
             setLeadErrors((current) => ({ ...current, [variables.id]: message }));
             toast.error(message);
         }
@@ -92,13 +108,15 @@ const AdminLeads = () => {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
-            await axios.delete(`${API_URL}/leads/${id}`);
+            const res = await fetchClient(`/leads/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(await getResponseError(res, "Erro ao remover."));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
             toast.success("Solicitação removida.");
         },
-        onError: () => toast.error("Erro ao remover.")
+        onError: (error) => toast.error(error instanceof Error ? error.message : "Erro ao remover.")
     });
 
     const handleWhatsApp = (phone: string) => {

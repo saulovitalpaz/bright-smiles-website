@@ -1181,12 +1181,15 @@ app.delete('/prescriptions/:id', authenticateToken, authorizeRole(['admin', 'den
 // Dashboard Stats API
 app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const [users, posts, appointments, leads, testimonials] = await Promise.all([
+        const [users, posts, appointments, leads, testimonials, pendingLeadCount] = await Promise.all([
             prisma.user.count(),
             prisma.post.count(),
             prisma.appointment.count(),
             prisma.lead.count(),
-            prisma.testimonial.count()
+            prisma.testimonial.count(),
+            prisma.lead.count({
+                where: { status: { in: ['new', 'contacted', 'scheduled'] } }
+            })
         ]);
 
         const recentAppointments = await prisma.appointment.findMany({
@@ -1228,6 +1231,7 @@ app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager'
             posts,
             appointments,
             leads,
+            pendingLeadCount,
             testimonials,
             upcomingSchedule,
             recentAppointments,

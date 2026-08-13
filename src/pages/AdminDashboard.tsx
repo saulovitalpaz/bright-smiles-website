@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
     Users,
@@ -8,6 +8,7 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { fetchClient } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface DashboardStats {
     posts: number;
     appointments: number;
     leads: number;
+    pendingLeadCount?: number;
     testimonials: number;
     recentAppointments: RecentAppointment[];
     recentLeads: RecentLead[];
@@ -38,6 +40,18 @@ interface DashboardStats {
     }>;
 }
 
+const emptyStats: DashboardStats = {
+    users: 0,
+    posts: 0,
+    appointments: 0,
+    leads: 0,
+    testimonials: 0,
+    upcomingSchedule: [],
+    recentLeads: [],
+    recentAppointments: [],
+    recentTestimonials: []
+};
+
 const formatDateTime = (value?: string | null) => {
     if (!value) return "Não informado";
 
@@ -55,38 +69,16 @@ const AdminDashboard = () => {
     const userStr = localStorage.getItem('admin_user');
     const currentUser = userStr ? JSON.parse(userStr) : { role: 'admin' };
     const isManager = currentUser.role === 'manager';
-    const [stats, setStats] = useState<DashboardStats>({
-        users: 0,
-        posts: 0,
-        appointments: 0,
-        leads: 0,
-        testimonials: 0,
-        upcomingSchedule: [],
-        recentLeads: [],
-        recentAppointments: [],
-        recentTestimonials: []
+    const { data: stats = emptyStats, isLoading: loading, refetch: refetchStats } = useQuery({
+        queryKey: ['dashboard-stats'],
+        queryFn: async () => {
+            const res = await fetchClient('/dashboard/stats');
+            if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+            return await res.json() as DashboardStats;
+        }
     });
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await fetchClient(`/dashboard/stats`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setStats(data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch dashboard stats:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
-
-    const pendingLeads = stats?.recentLeads?.filter((l) => l.status === 'new' || l.status === 'contacted') || [];
-    const pendingCount = pendingLeads.length;
+    const pendingCount = stats.pendingLeadCount ?? 0;
 
     if (loading) {
         return (
@@ -228,8 +220,7 @@ const AdminDashboard = () => {
                                                             });
                                                             if (res.ok) {
                                                                 toast.success("Paciente marcado como atendido.");
-                                                                const resStats = await fetchClient(`/dashboard/stats`);
-                                                                if (resStats.ok) setStats(await resStats.json());
+                                                                await refetchStats();
                                                             } else {
                                                                 toast.error("Erro ao atualizar status.");
                                                             }
