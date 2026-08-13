@@ -5,7 +5,7 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
-  it("selects a precise cervical region without replacing other selected targets", async () => {
+  it("selects one real anatomical face without replacing other selected targets", async () => {
     const user = userEvent.setup();
     const onTargetsChange = vi.fn();
     render(
@@ -19,10 +19,10 @@ describe("ToothSurfaceSelector", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /vestibular.*cervical/i }));
+    await user.click(screen.getByRole("button", { name: "Vestibular", exact: true }));
     expect(onTargetsChange).toHaveBeenCalledWith([
       { kind: "surface", face: "center", region: "incisalOcclusal" },
-      { kind: "surface", face: "top", region: "cervical" },
+      { kind: "surface", face: "top", region: "entire" },
     ]);
   });
 
