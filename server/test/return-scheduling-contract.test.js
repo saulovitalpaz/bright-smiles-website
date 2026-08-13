@@ -128,6 +128,38 @@ test('return reconciliation updates the same child and cancellation preserves hi
     assert.equal(cleared.status, 'cancelled');
 });
 
+test('saving the source with an unchanged return date preserves terminal child status', async () => {
+    const { syncReturnAppointment } = require('../utils/schedule');
+    const store = createAppointmentStore();
+    const returnDate = new Date('2026-08-20T16:00:00.000Z');
+
+    const created = await syncReturnAppointment(store.tx, sourceAppointment, { returnDate });
+    created.status = 'attended';
+    const savedAgain = await syncReturnAppointment(store.tx, sourceAppointment, { returnDate });
+
+    assert.equal(savedAgain.id, created.id);
+    assert.equal(savedAgain.status, 'attended');
+});
+
+test('unchanged source saves preserve terminal return state, while a new time reactivates it', async () => {
+    const { syncReturnAppointment } = require('../utils/schedule');
+    const store = createAppointmentStore();
+    const returnDate = new Date('2026-08-20T16:00:00.000Z');
+    const changedDate = new Date('2026-08-27T13:30:00.000Z');
+
+    await syncReturnAppointment(store.tx, sourceAppointment, { returnDate });
+    for (const terminalStatus of ['attended', 'cancelled']) {
+        store.appointments[0].status = terminalStatus;
+        const unchanged = await syncReturnAppointment(store.tx, sourceAppointment, { returnDate });
+
+        assert.equal(unchanged.status, terminalStatus);
+    }
+
+    const reactivated = await syncReturnAppointment(store.tx, sourceAppointment, { returnDate: changedDate });
+    assert.equal(reactivated.status, 'scheduled');
+    assert.equal(reactivated.scheduledAt, changedDate);
+});
+
 test('upcoming schedule includes active returns once in existing chronological order', () => {
     const { buildUpcomingSchedule } = require('../utils/schedule');
     const returnAppointment = {

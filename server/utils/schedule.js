@@ -69,7 +69,17 @@ async function syncReturnAppointment(tx, sourceAppointment, { returnDate }) {
         });
     }
 
-    const data = buildReturnAppointmentData(sourceAppointment, returnDate);
+    const existingReturn = await tx.appointment.findUnique({
+        where: { parentAppointmentId: sourceAppointment.id }
+    });
+    const unchangedDate = existingReturn?.scheduledAt
+        && new Date(existingReturn.scheduledAt).getTime() === returnDate.getTime();
+    const preservesTerminalStatus = unchangedDate
+        && (existingReturn.status === 'attended' || existingReturn.status === 'cancelled');
+    const data = {
+        ...buildReturnAppointmentData(sourceAppointment, returnDate),
+        status: preservesTerminalStatus ? existingReturn.status : 'scheduled'
+    };
     return tx.appointment.upsert({
         where: { parentAppointmentId: sourceAppointment.id },
         create: data,
