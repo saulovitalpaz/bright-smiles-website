@@ -137,7 +137,7 @@ const AdminDashboard = () => {
                                         {stats.recentTestimonials[0].name.charAt(0)}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-slate-900 font-bold text-sm leading-tight text-ellipsis overflow-hidden truncate">{stats.recentTestimonials[0].name}</p>
+                                        <p className="min-w-0 break-words text-slate-900 font-bold text-sm leading-tight" title={stats.recentTestimonials[0].name}>{stats.recentTestimonials[0].name}</p>
                                         <p className="text-slate-500 text-xs italic mt-1 line-clamp-2 md:line-clamp-1">"{stats.recentTestimonials[0].comment || stats.recentTestimonials[0].content}"</p>
                                     </div>
                                 </div>
@@ -184,8 +184,8 @@ const AdminDashboard = () => {
                                             {item.patientName.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex-1 min-w-0 sm:hidden">
-                                            <p className="font-bold text-slate-900 truncate">{item.patientName}</p>
-                                            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                            <p className="min-w-0 break-words font-bold text-slate-900" title={item.patientName}>{item.patientName}</p>
+                                            <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={item.treatment || item.procedure || "Procedimento Geral"}>{item.treatment || item.procedure || "Procedimento Geral"}</p>
                                             <p className="text-sm font-bold text-blue-700 mt-2">
                                                 {formatDateTime(item.scheduledAt)}
                                             </p>
@@ -196,8 +196,8 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <div className="hidden sm:block flex-1 min-w-0">
-                                        <p className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{item.patientName}</p>
-                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{item.treatment || item.procedure || "Procedimento Geral"}</p>
+                                        <p className="min-w-0 break-words font-bold text-slate-900 group-hover:text-blue-700 transition-colors" title={item.patientName}>{item.patientName}</p>
+                                        <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={item.treatment || item.procedure || "Procedimento Geral"}>{item.treatment || item.procedure || "Procedimento Geral"}</p>
                                         <p className="text-sm font-bold text-blue-700 mt-2">
                                             {formatDateTime(item.scheduledAt)}
                                         </p>
@@ -281,8 +281,8 @@ const AdminDashboard = () => {
                                         <Users size={20} className="md:w-6 md:h-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-slate-900 truncate">{app.patientName}</p>
-                                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{app.procedure}</p>
+                                        <p className="min-w-0 break-words font-bold text-slate-900" title={app.patientName}>{app.patientName}</p>
+                                        <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={app.procedure}>{app.procedure}</p>
                                     </div>
                                     <div className="text-right whitespace-nowrap hidden sm:block">
                                         <div className="flex flex-col items-end">
