@@ -29,6 +29,7 @@ const {
     buildUpcomingSchedule
 } = require('./utils/schedule');
 const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
+const { parseFinancePeriod, financePeriodWhere, financeStatsWhere } = require('./utils/financePeriod');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
@@ -1436,17 +1437,8 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
 // Finance API
 app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const { month, year } = req.query;
-        let where = {};
-
-        if (month && year) {
-            const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-            const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
-            where.date = {
-                gte: startDate,
-                lte: endDate
-            };
-        }
+        const period = parseFinancePeriod(req.query);
+        const where = financePeriodWhere(period);
 
         const transactions = await prisma.financeTransaction.findMany({
             where,
@@ -1455,7 +1447,7 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
         });
         res.json(transactions);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance transactions.' });
     }
 });
 
@@ -1466,7 +1458,8 @@ app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asy
             type,
             description,
             amount: parseFloat(amount),
-            category: category || 'Geral'
+            category: category || 'Geral',
+            paymentStatus: 'received'
         };
         if (patientId) data.patientId = parseInt(patientId);
         if (receiptUrl) data.receiptUrl = receiptUrl;
@@ -1513,21 +1506,26 @@ app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']
 
 app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
+        const period = parseFinancePeriod(req.query);
+        const endExclusive = period.endExclusive;
+        const filters = financeStatsWhere(period);
         const income = await prisma.financeTransaction.aggregate({
-            where: { type: 'income' },
+            where: filters.realizedIncome,
             _sum: { amount: true }
         });
+        const pendingIncome = await prisma.financeTransaction.aggregate({ where: filters.pendingIncome, _sum: { amount: true } });
         const expense = await prisma.financeTransaction.aggregate({
-            where: { type: 'expense' },
+            where: filters.expense,
             _sum: { amount: true }
         });
         res.json({
             income: income._sum.amount || 0,
+            pendingIncome: pendingIncome._sum.amount || 0,
             expense: expense._sum.amount || 0,
             balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance statistics.' });
     }
 });
 
