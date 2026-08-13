@@ -184,21 +184,20 @@ export function ToothSurfaceSelector({
         })}
       </div>
       {selectedTargets && onTargetsChange ? (
-        <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Regiões anatômicas precisas">
-          {FACE_KEYS.flatMap((face) => (["cervical", "middle", "incisalOcclusal"] as const).map((region) => ({ face, region }))).map(({ face, region }) => {
-            const target: ConditionTarget = { kind: "surface", face, region };
+        <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Faces anatômicas">
+          {FACE_KEYS.map((face) => {
+            const target: ConditionTarget = { kind: "surface", face, region: "entire" };
             const selected = selectedTargets.some((item) => JSON.stringify(item) === JSON.stringify(target));
-            const regionLabel = region === "cervical" ? "cervical" : region === "middle" ? "média" : "incisal ou oclusal";
             return (
               <button
                 aria-pressed={selected}
                 className={`min-h-11 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
                 disabled={readOnly}
-                key={`${face}-${region}`}
+                key={face}
                 onClick={() => toggleTarget(target)}
                 type="button"
               >
-                {labels[face]} {regionLabel}
+                {labels[face]}
               </button>
             );
           })}
