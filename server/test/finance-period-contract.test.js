@@ -40,4 +40,5 @@ test('finance list and stats use the shared parser and remain private', () => {
     }
     assert.match(statsRoute, /pendingIncome/);
     assert.match(statsRoute, /endExclusive/);
+    assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus:\s*'received'/);
 });
