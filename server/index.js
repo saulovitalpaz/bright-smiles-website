@@ -24,6 +24,7 @@ const {
     parseOptionalDate,
     normalizeScheduledAt,
     normalizeReturnDate,
+    normalizeReturnDateForUpdate,
     syncReturnAppointment,
     buildUpcomingSchedule
 } = require('./utils/schedule');
@@ -729,7 +730,7 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
             if (!returnDateResult.success) {
                 return res.status(400).json({ error: returnDateResult.error.issues[0].message });
             }
-            data.returnDate = normalizeReturnDate(returnDateResult.data);
+            data.returnDate = returnDateResult.data;
         }
         if (data.scheduledAt !== undefined) {
             data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
@@ -748,20 +749,41 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
 
     try {
         const appointment = await prisma.$transaction(async (tx) => {
+            let returnDate = data.returnDate;
+            if (hasReturnDate) {
+                const persistedAppointment = await tx.appointment.findUnique({
+                    where: { id: appointmentId },
+                    select: { returnDate: true }
+                });
+                if (!persistedAppointment) {
+                    const error = new Error('Appointment not found');
+                    error.code = 'P2025';
+                    throw error;
+                }
+                try {
+                    returnDate = normalizeReturnDateForUpdate(returnDate, persistedAppointment.returnDate);
+                } catch {
+                    const error = new Error('Invalid appointment or return date.');
+                    error.statusCode = 400;
+                    throw error;
+                }
+            }
+
             const appointment = await tx.appointment.update({
                 where: { id: appointmentId },
-                data,
+                data: hasReturnDate ? { ...data, returnDate } : data,
                 include: { returnAppointment: true }
             });
             if (!hasReturnDate) return appointment;
 
             const linkedReturn = await syncReturnAppointment(tx, appointment, {
-                returnDate: data.returnDate
+                returnDate
             });
             return { ...appointment, returnAppointment: linkedReturn };
         });
         res.json(appointment);
     } catch (error) {
+        if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid appointment or return date.' });
         if (error.code === 'P2025') return res.status(404).json({ error: 'Appointment not found' });
         res.status(500).json({ error: 'Unable to update appointment.' });
     }

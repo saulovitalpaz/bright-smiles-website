@@ -23,6 +23,22 @@ function normalizeReturnDate(value, now = new Date()) {
     return parsed;
 }
 
+function normalizeReturnDateForUpdate(value, persistedReturnDate, now = new Date()) {
+    if (value === undefined || value === null || value === '') return null;
+    if (!(value instanceof Date) && (typeof value !== 'string' || !ISO_DATE_TIME_PATTERN.test(value))) {
+        throw new Error('Invalid return date');
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) throw new Error('Invalid return date');
+
+    const persisted = persistedReturnDate ? new Date(persistedReturnDate) : null;
+    if (persisted && !Number.isNaN(persisted.getTime()) && parsed.getTime() === persisted.getTime()) {
+        return parsed;
+    }
+    return normalizeReturnDate(value, now);
+}
+
 function buildReturnAppointmentData(sourceAppointment, returnDate) {
     return {
         parentAppointmentId: sourceAppointment.id,
@@ -42,11 +58,10 @@ function buildReturnAppointmentData(sourceAppointment, returnDate) {
 }
 
 async function syncReturnAppointment(tx, sourceAppointment, { returnDate }) {
-    const existingReturn = await tx.appointment.findUnique({
-        where: { parentAppointmentId: sourceAppointment.id }
-    });
-
     if (!returnDate) {
+        const existingReturn = await tx.appointment.findUnique({
+            where: { parentAppointmentId: sourceAppointment.id }
+        });
         if (!existingReturn) return null;
         return tx.appointment.update({
             where: { id: existingReturn.id },
@@ -55,10 +70,11 @@ async function syncReturnAppointment(tx, sourceAppointment, { returnDate }) {
     }
 
     const data = buildReturnAppointmentData(sourceAppointment, returnDate);
-    if (existingReturn) {
-        return tx.appointment.update({ where: { id: existingReturn.id }, data });
-    }
-    return tx.appointment.create({ data });
+    return tx.appointment.upsert({
+        where: { parentAppointmentId: sourceAppointment.id },
+        create: data,
+        update: data
+    });
 }
 
 function buildUpcomingSchedule({ appointments = [], leads = [], limit = 10 }) {
@@ -106,6 +122,7 @@ module.exports = {
     parseOptionalDate,
     normalizeScheduledAt,
     normalizeReturnDate,
+    normalizeReturnDateForUpdate,
     syncReturnAppointment,
     buildUpcomingSchedule
 };

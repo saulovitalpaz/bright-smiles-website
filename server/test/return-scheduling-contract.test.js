@@ -19,9 +19,11 @@ const sourceAppointment = {
 const createAppointmentStore = () => {
     const appointments = [];
     let nextId = 100;
+    let upsertCalls = 0;
 
     return {
         appointments,
+        get upsertCalls() { return upsertCalls; },
         tx: {
             appointment: {
                 findUnique: async ({ where }) => appointments.find(
@@ -29,6 +31,19 @@ const createAppointmentStore = () => {
                 ) || null,
                 create: async ({ data }) => {
                     const appointment = { id: nextId++, ...data };
+                    appointments.push(appointment);
+                    return appointment;
+                },
+                upsert: async ({ where, create, update }) => {
+                    upsertCalls += 1;
+                    const existing = appointments.find(
+                        (appointment) => appointment.parentAppointmentId === where.parentAppointmentId
+                    );
+                    if (existing) {
+                        Object.assign(existing, update);
+                        return existing;
+                    }
+                    const appointment = { id: nextId++, ...create };
                     appointments.push(appointment);
                     return appointment;
                 },
@@ -43,7 +58,7 @@ const createAppointmentStore = () => {
 };
 
 test('return date normalization requires a future ISO date and time', () => {
-    const { normalizeReturnDate } = require('../utils/schedule');
+    const { normalizeReturnDate, normalizeReturnDateForUpdate } = require('../utils/schedule');
     const now = new Date('2026-08-13T12:00:00.000Z');
 
     assert.equal(normalizeReturnDate(null, now), null);
@@ -54,6 +69,14 @@ test('return date normalization requires a future ISO date and time', () => {
     assert.throws(() => normalizeReturnDate('2026-08-14', now), /Invalid return date/);
     assert.throws(() => normalizeReturnDate('not-a-date', now), /Invalid return date/);
     assert.throws(() => normalizeReturnDate('2026-08-13T11:59:59.000Z', now), /future/);
+    assert.equal(
+        normalizeReturnDateForUpdate('2026-08-13T11:59:59.000Z', '2026-08-13T11:59:59.000Z', now).toISOString(),
+        '2026-08-13T11:59:59.000Z'
+    );
+    assert.throws(
+        () => normalizeReturnDateForUpdate('2026-08-13T11:59:58.000Z', '2026-08-13T11:59:59.000Z', now),
+        /future/
+    );
 });
 
 test('return reconciliation creates one linked child and repeated saves stay idempotent', async () => {
@@ -66,6 +89,7 @@ test('return reconciliation creates one linked child and repeated saves stay ide
 
     assert.equal(store.appointments.length, 1);
     assert.equal(repeated.id, created.id);
+    assert.equal(store.upsertCalls, 2);
     assert.deepEqual(store.appointments[0], {
         id: created.id,
         parentAppointmentId: 41,
@@ -162,6 +186,8 @@ test('authenticated appointment update reconciles returns inside its persistence
     assert.match(route, /authenticateToken/);
     assert.match(route, /authorizeRole\(\['admin', 'dentist'\]\)/);
     assert.match(route, /normalizeReturnDate/);
+    assert.match(route, /normalizeReturnDateForUpdate/);
+    assert.match(route, /tx\.appointment\.findUnique/);
     assert.match(route, /prisma\.\$transaction\(async \(tx\)/);
-    assert.match(route, /syncReturnAppointment\(tx, appointment, \{\s*returnDate:/);
+    assert.match(route, /syncReturnAppointment\(tx, appointment, \{\s*returnDate\b/);
 });
