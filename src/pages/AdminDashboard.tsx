@@ -8,7 +8,7 @@ import {
     ArrowUpRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -66,6 +66,7 @@ const formatDateTime = (value?: string | null) => {
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const userStr = localStorage.getItem('admin_user');
     const currentUser = userStr ? JSON.parse(userStr) : { role: 'admin' };
     const isManager = currentUser.role === 'manager';
@@ -220,6 +221,9 @@ const AdminDashboard = () => {
                                                             });
                                                             if (res.ok) {
                                                                 toast.success("Paciente marcado como atendido.");
+                                                                if (item.kind === 'lead') {
+                                                                    await queryClient.invalidateQueries({ queryKey: ['leads'] });
+                                                                }
                                                                 await refetchStats();
                                                             } else {
                                                                 toast.error("Erro ao atualizar status.");

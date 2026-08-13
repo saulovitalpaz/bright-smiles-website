@@ -22,3 +22,29 @@
 
 - No schema, finance, calendar-creation, role, or authorization changes.
 - The existing authenticated dashboard and lead route guards remain unchanged.
+
+## Review follow-up
+
+- The dashboard's successful lead-completion action now invalidates `['leads']` before refetching dashboard stats, so the request list cannot retain a completed lead in its cache.
+- Extracted the dashboard stats handler into `server/routes/dashboard.js` with injected Prisma and schedule dependencies. This keeps the existing authenticated route wiring intact while making its response contract testable without a database.
+- Replaced the source-only checks with runtime coverage: the test evaluates the actual `fetchClient` implementation against a mocked `fetch` and invokes the dashboard handler against a deterministic mocked Prisma client. No patient data is created or asserted.
+
+### Review follow-up verification output
+
+`node --test server/test/requests-dashboard-contract.test.js`
+
+```text
+1..3
+# tests 3
+# pass 3
+# fail 0
+```
+
+`npm run lint -- --no-warn-ignored src/pages/AdminLeads.tsx src/pages/AdminDashboard.tsx`
+
+```text
+> vite_react_shadcn_ts@0.0.0 lint
+> eslint . --no-warn-ignored src/pages/AdminLeads.tsx src/pages/AdminDashboard.tsx
+```
+
+`git diff --check` completed with exit code 0.

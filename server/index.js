@@ -19,6 +19,7 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { createEncryption } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
+const { createDashboardStatsHandler } = require('./routes/dashboard');
 const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
@@ -41,6 +42,7 @@ const app = express();
 app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const updateLeadHandler = createUpdateLeadHandler(prisma);
+const dashboardStatsHandler = createDashboardStatsHandler(prisma, buildUpcomingSchedule);
 const port = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 const ALLOWED_ORIGINS = new Set([
@@ -1179,69 +1181,7 @@ app.delete('/prescriptions/:id', authenticateToken, authorizeRole(['admin', 'den
 });
 
 // Dashboard Stats API
-app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
-    try {
-        const [users, posts, appointments, leads, testimonials, pendingLeadCount] = await Promise.all([
-            prisma.user.count(),
-            prisma.post.count(),
-            prisma.appointment.count(),
-            prisma.lead.count(),
-            prisma.testimonial.count(),
-            prisma.lead.count({
-                where: { status: { in: ['new', 'contacted', 'scheduled'] } }
-            })
-        ]);
-
-        const recentAppointments = await prisma.appointment.findMany({
-            take: 5,
-            orderBy: { date: 'desc' }
-        });
-
-        const recentLeads = await prisma.lead.findMany({
-            take: 5,
-            orderBy: { createdAt: 'desc' }
-        });
-
-        const [scheduledAppointments, scheduledLeads] = await Promise.all([
-            prisma.appointment.findMany({
-                where: { scheduledAt: { not: null } },
-                orderBy: { scheduledAt: 'asc' }
-            }),
-            prisma.lead.findMany({
-                where: {
-                    scheduledAt: { not: null },
-                    status: { not: 'completed' }
-                },
-                orderBy: { scheduledAt: 'asc' }
-            })
-        ]);
-
-        const upcomingSchedule = buildUpcomingSchedule({
-            appointments: scheduledAppointments,
-            leads: scheduledLeads
-        });
-
-        const recentTestimonials = await prisma.testimonial.findMany({
-            take: 5,
-            orderBy: { createdAt: 'desc' }
-        });
-
-        res.json({
-            users,
-            posts,
-            appointments,
-            leads,
-            pendingLeadCount,
-            testimonials,
-            upcomingSchedule,
-            recentAppointments,
-            recentLeads,
-            recentTestimonials
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+app.get('/dashboard/stats', authenticateToken, authorizeRole(['admin', 'manager']), dashboardStatsHandler);
 
 // Leads API
 app.post('/leads', async (req, res) => {
