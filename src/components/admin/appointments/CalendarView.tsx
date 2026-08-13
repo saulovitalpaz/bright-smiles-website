@@ -30,6 +30,9 @@ const professionalClasses = {
 
 type ViewMode = "day" | "week" | "month";
 
+const weekGridColumns = "grid-cols-[4.5rem_repeat(7,minmax(8.75rem,1fr))]";
+const dayGridColumns = "grid-cols-[4.5rem_minmax(18rem,1fr)]";
+
 const eventSlotMinutes = (scheduledAt: string) => {
     const date = new Date(scheduledAt);
     return Math.floor((date.getHours() * 60 + date.getMinutes()) / 30) * 30;
@@ -80,24 +83,28 @@ export const CalendarView = ({
 
     const renderEvent = (entry: CalendarEntry) => {
         const color = professionalColor(entry.professional);
+        const procedure = entry.procedure || entry.treatment || entry.appointmentType || "Agendamento";
+        const eventLabel = `${entry.patientName}. ${procedure}. ${entry.professional || "Sem profissional"}.`;
         return (
             <button
                 key={`${entry.kind}-${entry.id}`}
                 type="button"
                 draggable
-                className={`mb-1 w-full rounded-md border border-slate-200 bg-white p-2 text-left shadow-sm hover:border-slate-300 ${viewMode === 'month' ? 'truncate p-1' : ''}`}
+                title={eventLabel}
+                aria-label={`Abrir agendamento: ${eventLabel}`}
+                className={`calendar-event mb-1 w-full min-w-0 rounded-md border border-slate-200 bg-white p-2 text-left shadow-sm hover:border-slate-300 ${viewMode === "month" ? "p-1.5" : ""}`}
                 onClick={(e) => { e.stopPropagation(); onEventOpen(entry); }}
                 onDragStart={(event) => {
                     event.dataTransfer.setData("text/calendar-entry-id", String(entry.id));
                     event.dataTransfer.setData("text/calendar-entry-kind", entry.kind);
                 }}
             >
-                <p className="truncate text-[10px] font-semibold text-slate-900">{entry.patientName}</p>
+                <p className="calendar-event__title text-[11px] font-semibold text-slate-900">{entry.patientName}</p>
                 {viewMode !== 'month' && (
-                    <p className="truncate text-[10px] text-slate-500">{entry.procedure || entry.treatment || entry.appointmentType || "Agendamento"}</p>
+                    <p className="calendar-event__detail mt-0.5 text-[10px] text-slate-600">{procedure}</p>
                 )}
                 {viewMode !== 'month' && (
-                    <span className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[9px] font-medium ${professionalClasses[color]}`}>
+                    <span title={entry.professional || "Sem profissional"} className={`calendar-event__professional mt-1 inline-flex rounded px-1.5 py-0.5 text-[9px] font-medium ${professionalClasses[color]}`}>
                         {entry.professional || "Sem prof."}
                     </span>
                 )}
@@ -178,9 +185,9 @@ export const CalendarView = ({
                 </div>
             </div>
 
-            <div className="admin-scroll-region rounded-lg border border-slate-200 bg-white">
+            <div className="admin-scroll-region calendar-scroll-region rounded-lg border border-slate-200 bg-white" tabIndex={0} aria-label="Agenda. Deslize horizontalmente para ver todos os dias.">
                 {viewMode === "month" ? (
-                    <div className="min-w-full md:min-w-[700px]">
+                    <div className="calendar-month-surface min-w-[52rem]">
                         <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
                             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
                                 <div key={d} className="px-2 py-2 text-center text-xs font-medium uppercase text-slate-500">
@@ -213,7 +220,7 @@ export const CalendarView = ({
                                         <div className={`text-right text-xs p-1 mb-1 font-semibold ${isToday(day) ? 'text-primary bg-primary/10 rounded w-fit ml-auto px-2' : isCurrentMonth ? 'text-slate-700' : 'text-slate-400'}`}>
                                             {format(day, 'd')}
                                         </div>
-                                        <div className="flex flex-col gap-1 overflow-y-auto max-h-[80px]">
+                                        <div className="flex max-h-[112px] flex-col gap-1 overflow-y-auto">
                                             {dayEntries.slice(0, 4).map(renderEvent)}
                                             {dayEntries.length > 4 && (
                                                 <div className="text-[10px] text-slate-500 text-center font-medium bg-slate-100 rounded py-0.5">
@@ -227,13 +234,13 @@ export const CalendarView = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="min-w-full">
-                        <div className={`grid border-b border-slate-200 bg-slate-50 ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[45px_repeat(7,minmax(0,1fr))] md:grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
+                    <div className={viewMode === "day" ? "calendar-day-surface min-w-[22.5rem]" : "calendar-week-surface min-w-[65.75rem]"}>
+                        <div className={`grid border-b border-slate-200 bg-slate-50 ${viewMode === "day" ? dayGridColumns : weekGridColumns}`}>
                             <div />
                             {days.map((day) => (
-                                <div key={day.toISOString()} className="border-l border-slate-200 px-1 md:px-3 py-2 text-center overflow-hidden">
-                                    <p className="text-[10px] md:text-xs font-medium uppercase text-slate-500 truncate">{format(day, "EEE", { locale: ptBR })}</p>
-                                    <p className={`text-[11px] md:text-sm font-semibold ${isToday(day) ? 'text-primary' : 'text-slate-900'} truncate`}>{format(day, "dd/MM")}</p>
+                                <div key={day.toISOString()} className="min-w-0 border-l border-slate-200 px-2 py-2 text-center">
+                                    <p className="text-xs font-medium uppercase text-slate-500" title={format(day, "EEEE", { locale: ptBR })}>{format(day, "EEE", { locale: ptBR })}</p>
+                                    <p className={`text-sm font-semibold ${isToday(day) ? "text-primary" : "text-slate-900"}`}>{format(day, "dd/MM")}</p>
                                 </div>
                             ))}
                         </div>
@@ -247,8 +254,8 @@ export const CalendarView = ({
                             // On week view, hide fractional hours that have no appointments to save vertical space
                             if (viewMode === 'week' && isFractional && !hasEntriesInRow) {
                                 return (
-                                    <div key={minutes} className={`hidden md:grid ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[45px_repeat(7,minmax(0,1fr))] md:grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
-                                        <div className="border-b border-slate-200 px-1 md:px-3 py-3 text-[10px] md:text-xs text-slate-500 text-center md:text-left">
+                                    <div key={minutes} className={`hidden md:grid ${viewMode === "day" ? dayGridColumns : weekGridColumns}`}>
+                                        <div className="border-b border-slate-200 px-3 py-3 text-xs text-slate-500 text-left">
                                             {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
                                         </div>
                                         {days.map((day) => (
@@ -278,8 +285,8 @@ export const CalendarView = ({
                             }
 
                             return (
-                                <div key={minutes} className={`grid ${viewMode === 'day' ? 'grid-cols-[72px_1fr]' : 'grid-cols-[45px_repeat(7,minmax(0,1fr))] md:grid-cols-[72px_repeat(7,minmax(120px,1fr))]'}`}>
-                                    <div className="border-b border-slate-200 px-1 md:px-3 py-3 text-[10px] md:text-xs text-slate-500 text-center md:text-left">
+                                <div key={minutes} className={`grid ${viewMode === "day" ? dayGridColumns : weekGridColumns}`}>
+                                    <div className="border-b border-slate-200 px-3 py-3 text-xs text-slate-500 text-left">
                                         {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
                                     </div>
                                     {days.map((day) => {
