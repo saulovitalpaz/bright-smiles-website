@@ -61,7 +61,10 @@ model Appointment {
   price         Float?
   paymentStatus String?   @default("paid")
   status        String    @default("scheduled")
+  parentAppointmentId Int? @unique
   patient       Patient?  @relation(fields: [patientId], references: [id])
+  parentAppointment Appointment? @relation("AppointmentReturns", fields: [parentAppointmentId], references: [id], onDelete: SetNull)
+  returnAppointment Appointment? @relation("AppointmentReturns")
 }
 
 model Treatment {

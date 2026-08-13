@@ -9,10 +9,68 @@ function normalizeScheduledAt(value) {
     return parseOptionalDate(value, 'Invalid scheduled date');
 }
 
+const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function normalizeReturnDate(value, now = new Date()) {
+    if (value === undefined || value === null || value === '') return null;
+    if (!(value instanceof Date) && (typeof value !== 'string' || !ISO_DATE_TIME_PATTERN.test(value))) {
+        throw new Error('Invalid return date');
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) throw new Error('Invalid return date');
+    if (parsed.getTime() <= now.getTime()) throw new Error('Return date must be in the future');
+    return parsed;
+}
+
+function buildReturnAppointmentData(sourceAppointment, returnDate) {
+    return {
+        parentAppointmentId: sourceAppointment.id,
+        patientId: sourceAppointment.patientId,
+        patientName: sourceAppointment.patientName,
+        cpf: sourceAppointment.cpf,
+        date: returnDate,
+        scheduledAt: returnDate,
+        procedure: `Retorno: ${sourceAppointment.procedure}`,
+        notes: `Retorno vinculado ao atendimento #${sourceAppointment.id}.`,
+        professional: sourceAppointment.professional,
+        appointmentType: sourceAppointment.appointmentType,
+        status: 'scheduled',
+        price: null,
+        paymentStatus: 'courtesy'
+    };
+}
+
+async function syncReturnAppointment(tx, sourceAppointment, { returnDate }) {
+    const existingReturn = await tx.appointment.findUnique({
+        where: { parentAppointmentId: sourceAppointment.id }
+    });
+
+    if (!returnDate) {
+        if (!existingReturn) return null;
+        return tx.appointment.update({
+            where: { id: existingReturn.id },
+            data: { status: 'cancelled' }
+        });
+    }
+
+    const data = buildReturnAppointmentData(sourceAppointment, returnDate);
+    if (existingReturn) {
+        return tx.appointment.update({ where: { id: existingReturn.id }, data });
+    }
+    return tx.appointment.create({ data });
+}
+
 function buildUpcomingSchedule({ appointments = [], leads = [], limit = 10 }) {
+    const seenAppointmentIds = new Set();
     return [
         ...appointments
-            .filter((appointment) => appointment.scheduledAt && appointment.status !== 'attended' && appointment.status !== 'cancelled')
+            .filter((appointment) => {
+                if (!appointment.scheduledAt || appointment.status === 'attended' || appointment.status === 'cancelled') return false;
+                if (seenAppointmentIds.has(appointment.id)) return false;
+                seenAppointmentIds.add(appointment.id);
+                return true;
+            })
             .map((appointment) => ({
                 kind: 'appointment',
                 id: appointment.id,
@@ -47,5 +105,7 @@ function buildUpcomingSchedule({ appointments = [], leads = [], limit = 10 }) {
 module.exports = {
     parseOptionalDate,
     normalizeScheduledAt,
+    normalizeReturnDate,
+    syncReturnAppointment,
     buildUpcomingSchedule
 };

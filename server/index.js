@@ -20,7 +20,13 @@ const jwt = require('jsonwebtoken');
 const { createEncryption } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
 const { createDashboardStatsHandler } = require('./routes/dashboard');
-const { parseOptionalDate, normalizeScheduledAt, buildUpcomingSchedule } = require('./utils/schedule');
+const {
+    parseOptionalDate,
+    normalizeScheduledAt,
+    normalizeReturnDate,
+    syncReturnAppointment,
+    buildUpcomingSchedule
+} = require('./utils/schedule');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
@@ -34,6 +40,7 @@ const {
     patientSchema,
     appointmentSchema,
     appointmentStatusSchema,
+    returnDateSchema,
     loginSchema,
     createUserSchema,
     updateCurrentUserSchema
@@ -622,7 +629,7 @@ app.get('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
         const { id } = req.params;
         const item = await prisma.appointment.findUnique({
             where: { id: parseInt(id) },
-            include: { patient: true }
+            include: { patient: true, returnAppointment: true }
         });
         if (!item) return res.status(404).json({ error: 'Appointment not found' });
         res.json(item);
@@ -635,13 +642,13 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
     const result = appointmentSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
+    const payload = { ...result.data };
     try {
-        const payload = { ...result.data };
         payload.date = parseOptionalDate(payload.date, 'Invalid appointment date');
         if (!payload.date) {
             return res.status(400).json({ error: 'Invalid appointment date' });
         }
-        payload.returnDate = parseOptionalDate(payload.returnDate, 'Invalid return date');
+        payload.returnDate = normalizeReturnDate(payload.returnDate);
         payload.scheduledAt = normalizeScheduledAt(payload.scheduledAt);
         if (payload.price === '' || payload.price === null || payload.price === undefined) {
             payload.price = null;
@@ -652,8 +659,17 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
             }
         }
 
-        const appointment = await prisma.appointment.create({
-            data: payload
+    } catch (error) {
+        return res.status(400).json({ error: 'Invalid appointment or return date.' });
+    }
+
+    try {
+        const appointment = await prisma.$transaction(async (tx) => {
+            const createdAppointment = await tx.appointment.create({ data: payload });
+            const returnAppointment = await syncReturnAppointment(tx, createdAppointment, {
+                returnDate: payload.returnDate
+            });
+            return { ...createdAppointment, returnAppointment };
         });
 
         // Auto-Billing Finance Integration
@@ -678,16 +694,30 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
 });
 
 app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    const appointmentId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(appointmentId) || appointmentId <= 0) {
+        return res.status(400).json({ error: 'Invalid appointment id' });
+    }
+
+    const {
+        id: _id,
+        createdAt,
+        updatedAt,
+        patient,
+        parentAppointment,
+        parentAppointmentId,
+        returnAppointment,
+        ...data
+    } = req.body || {};
+    const hasReturnDate = Object.prototype.hasOwnProperty.call(data, 'returnDate');
+
+    if (data.status !== undefined) {
+        const statusResult = appointmentStatusSchema.safeParse(data.status);
+        if (!statusResult.success) return res.status(400).json({ error: statusResult.error.issues[0].message });
+        data.status = statusResult.data;
+    }
+
     try {
-        const { id } = req.params;
-        const { id: _id, createdAt, updatedAt, patient, ...data } = req.body;
-
-        if (data.status !== undefined) {
-            const statusResult = appointmentStatusSchema.safeParse(data.status);
-            if (!statusResult.success) return res.status(400).json({ error: statusResult.error.issues[0].message });
-            data.status = statusResult.data;
-        }
-
         if (data.date !== undefined) {
             data.date = parseOptionalDate(data.date, 'Invalid appointment date');
             if (!data.date) {
@@ -695,7 +725,11 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
             }
         }
         if (data.returnDate !== undefined) {
-            data.returnDate = parseOptionalDate(data.returnDate, 'Invalid return date');
+            const returnDateResult = returnDateSchema.safeParse(data.returnDate);
+            if (!returnDateResult.success) {
+                return res.status(400).json({ error: returnDateResult.error.issues[0].message });
+            }
+            data.returnDate = normalizeReturnDate(returnDateResult.data);
         }
         if (data.scheduledAt !== undefined) {
             data.scheduledAt = normalizeScheduledAt(data.scheduledAt);
@@ -708,14 +742,28 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
                 return res.status(400).json({ error: 'Invalid price' });
             }
         }
+    } catch (error) {
+        return res.status(400).json({ error: 'Invalid appointment or return date.' });
+    }
 
-        const appointment = await prisma.appointment.update({
-            where: { id: parseInt(id) },
-            data: data
+    try {
+        const appointment = await prisma.$transaction(async (tx) => {
+            const appointment = await tx.appointment.update({
+                where: { id: appointmentId },
+                data,
+                include: { returnAppointment: true }
+            });
+            if (!hasReturnDate) return appointment;
+
+            const linkedReturn = await syncReturnAppointment(tx, appointment, {
+                returnDate: data.returnDate
+            });
+            return { ...appointment, returnAppointment: linkedReturn };
         });
         res.json(appointment);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Appointment not found' });
+        res.status(500).json({ error: 'Unable to update appointment.' });
     }
 });
 

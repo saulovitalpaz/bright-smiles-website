@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Save, Trash2, Calendar, User, Clock, Stethoscope, CreditCard, Activity } from "lucide-react";
+import { ChevronLeft, Save, Trash2, Calendar, CalendarCheck, User, Clock, Stethoscope, CreditCard, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
@@ -36,6 +36,7 @@ interface AppointmentData {
     materials: string;
     complications: string;
     returnDate: string;
+    returnAppointment: LinkedReturnAppointment | null;
     photos: string[];
     externalLinks: string[];
     appointmentType: string;
@@ -45,7 +46,13 @@ interface AppointmentData {
     facialNotes: Record<string, FaceRegionData>;
 }
 
-const formatDateTimeInput = (value?: string | null) => {
+interface LinkedReturnAppointment {
+    id: number;
+    scheduledAt: string | null;
+    status: "scheduled" | "attended" | "cancelled";
+}
+
+export const formatDateTimeInput = (value?: string | null) => {
     if (!value) return "";
 
     const date = new Date(value);
@@ -82,6 +89,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     materials: "",
     complications: "",
     returnDate: "",
+    returnAppointment: null,
     photos: [],
     externalLinks: [],
     appointmentType: "odontologia",
@@ -102,6 +110,11 @@ interface AppointmentResponse {
     scheduledAt?: string | null;
     createdAt?: string | null;
     returnDate?: string | null;
+    returnAppointment?: {
+        id?: number;
+        scheduledAt?: string | null;
+        status?: "scheduled" | "attended" | "cancelled" | null;
+    } | null;
     photos?: unknown;
     externalLinks?: unknown;
     appointmentType?: unknown;
@@ -137,7 +150,14 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
         phone: fetched.phone || patient.phone || "",
         scheduledAt: fetched.scheduledAt || null,
         createdAt: fetched.createdAt || undefined,
-        returnDate: fetched.returnDate ? new Date(fetched.returnDate).toISOString().split("T")[0] : "",
+        returnDate: fetched.returnDate || "",
+        returnAppointment: fetched.returnAppointment?.id
+            ? {
+                id: fetched.returnAppointment.id,
+                scheduledAt: fetched.returnAppointment.scheduledAt || null,
+                status: fetched.returnAppointment.status || "scheduled",
+            }
+            : null,
         photos: Array.isArray(fetched.photos) ? fetched.photos : [],
         externalLinks: Array.isArray(fetched.externalLinks) ? fetched.externalLinks : [],
         appointmentType: normalizeAppointmentType(fetched.appointmentType),
@@ -342,6 +362,8 @@ const AdminAttendanceDetail = () => {
                 toast.success(isNew ? "Atendimento registrado com sucesso!" : "Alterações salvas.");
                 if (isNew) {
                     navigate(`/admin/consultas/${saved.id}`, { replace: true });
+                } else {
+                    setData(normalizeAppointmentResponse(saved));
                 }
             } else {
                 const error = await res.json().catch(() => null);
@@ -542,12 +564,30 @@ const AdminAttendanceDetail = () => {
                                             <Calendar size={12} /> Retorno Desejado
                                         </Label>
                                         <Input
-                                            type="date"
-                                            value={data.returnDate}
-                                            onChange={(e) => updateField('returnDate', e.target.value)}
+                                            type="datetime-local"
+                                            value={formatDateTimeInput(data.returnDate)}
+                                            onChange={(e) => updateField('returnDate', e.target.value ? new Date(e.target.value).toISOString() : "")}
                                             className="h-10 font-bold bg-slate-50 border-slate-100"
                                             disabled={readOnly}
                                         />
+                                        {data.returnAppointment ? (
+                                            <p className={
+                                                `flex items-start gap-1.5 text-xs leading-5 ${
+                                                    data.returnAppointment.status === "cancelled" ? "text-slate-500" : "text-emerald-700"
+                                                }`
+                                            }>
+                                                <CalendarCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                                <span>
+                                                    {data.returnAppointment.status === "cancelled"
+                                                        ? "Retorno vinculado cancelado."
+                                                        : `Retorno #${data.returnAppointment.id} incluído na agenda para ${formatDateTimeLabel(data.returnAppointment.scheduledAt)}.`}
+                                                </span>
+                                            </p>
+                                        ) : data.returnDate ? (
+                                            <p className="text-xs leading-5 text-slate-500">
+                                                Ao salvar, este retorno será incluído na agenda futura.
+                                            </p>
+                                        ) : null}
                                     </div>
 
                                     {id !== 'new' && (

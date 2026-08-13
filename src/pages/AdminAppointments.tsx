@@ -38,6 +38,7 @@ interface AppointmentRecord {
     notes: string;
     professional: string;
     status?: "scheduled" | "attended" | "cancelled";
+    parentAppointmentId?: number | null;
     patient?: {
         name: string;
         cpf: string;
@@ -692,6 +693,12 @@ const AdminAppointments = () => {
                                 <p className="text-xs font-medium uppercase text-slate-500">Tratamento/procedimento</p>
                                 <p>{pendingDetails.treatment || pendingDetails.procedure || pendingDetails.appointmentType || "Agendamento"}</p>
                             </div>
+                            {pendingDetails.isReturn && (
+                                <div>
+                                    <p className="text-xs font-medium uppercase text-slate-500">Vínculo</p>
+                                    <p className="font-medium text-emerald-700">Retorno vinculado a uma consulta anterior</p>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-xs font-medium uppercase text-slate-500">Data e horário</p>
                                 <p>{formatDate(pendingDetails.scheduledAt)}</p>

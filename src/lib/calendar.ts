@@ -14,6 +14,7 @@ export interface CalendarEntry {
     patientId: number | null;
     leadId: number | null;
     professional: string | null;
+    isReturn: boolean;
 }
 
 interface CalendarAppointmentInput {
@@ -27,6 +28,7 @@ interface CalendarAppointmentInput {
     createdAt?: string | null;
     patientId?: number | null;
     professional?: string | null;
+    parentAppointmentId?: number | null;
 }
 
 interface CalendarLeadInput {
@@ -63,7 +65,8 @@ export const buildCalendarEntries = (
         createdAt: item.createdAt || null,
         patientId: item.patientId ?? null,
         leadId: null,
-        professional: item.professional || null
+        professional: item.professional || null,
+        isReturn: Boolean(item.parentAppointmentId)
     })),
     ...leads.filter((item) => item.status !== "completed" && hasScheduledLead(item)).map((item) => ({
         kind: "lead" as const,
@@ -76,7 +79,8 @@ export const buildCalendarEntries = (
         createdAt: item.createdAt || null,
         patientId: null,
         leadId: item.id,
-        professional: item.professional || null
+        professional: item.professional || null,
+        isReturn: false
     }))
 ].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 

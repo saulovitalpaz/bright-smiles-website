@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchClient } from "@/lib/api";
+import { buildCalendarEntries } from "@/lib/calendar";
 import AdminAppointments from "./AdminAppointments";
 
 const { invalidateQueriesMock, navigateMock } = vi.hoisted(() => ({
@@ -101,5 +102,20 @@ describe("AdminAppointments manual calendar creation", () => {
         expect(fetchClientMock.mock.calls.filter(([path]) => path === "/leads")).toHaveLength(2);
         expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["dashboard-stats"] });
         expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["leads"] });
+    });
+});
+
+describe("AdminAppointments return calendar state", () => {
+    it("carries the linked-source marker into the calendar detail entry", () => {
+        const entries = buildCalendarEntries([{
+            id: 42,
+            patientName: "Marina Alves",
+            procedure: "Retorno: Avaliação",
+            scheduledAt: "2026-08-20T16:00:00.000Z",
+            parentAppointmentId: 41,
+        }]);
+
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({ isReturn: true });
     });
 });

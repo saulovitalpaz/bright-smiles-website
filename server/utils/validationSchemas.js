@@ -33,6 +33,11 @@ const patientSchema = z.object({
 });
 
 const appointmentStatusSchema = z.enum(['scheduled', 'attended', 'cancelled']);
+const returnDateSchema = z.union([
+    z.string().datetime({ offset: true, message: 'Invalid return date' }),
+    z.date({ error: 'Invalid return date' }),
+    z.literal('')
+]).nullable();
 
 const appointmentSchema = z.object({
     patientName: z.string().min(1),
@@ -46,7 +51,7 @@ const appointmentSchema = z.object({
     appointmentType: z.string().optional(),
     complications: z.string().optional().nullable(),
     materials: z.string().optional().nullable(),
-    returnDate: z.string().or(z.date()).optional().nullable(),
+    returnDate: returnDateSchema.optional(),
     weight: z.string().optional().nullable(),
     photos: z.array(z.string()).optional(),
     externalLinks: z.array(z.string()).optional(),
@@ -85,6 +90,7 @@ module.exports = {
     patientSchema,
     appointmentSchema,
     appointmentStatusSchema,
+    returnDateSchema,
     loginSchema,
     createUserSchema,
     updateCurrentUserSchema
