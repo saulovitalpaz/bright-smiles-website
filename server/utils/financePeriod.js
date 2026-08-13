@@ -43,7 +43,7 @@ const financePeriodWhere = (period = {}) => period.overview !== false ? {} : {
 const financeStatsWhere = (period) => {
     const periodWhere = financePeriodWhere(period);
     return {
-        realizedIncome: { ...periodWhere, type: 'income', paymentStatus: 'received' },
+        realizedIncome: { ...periodWhere, type: 'income', paymentStatus: { notIn: ['pending', 'voided'] } },
         pendingIncome: { ...periodWhere, type: 'income', paymentStatus: 'pending' },
         expense: { ...periodWhere, type: 'expense', paymentStatus: { not: 'voided' } }
     };

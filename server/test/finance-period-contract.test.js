@@ -22,7 +22,7 @@ test('parseFinancePeriod supports explicit overview and rejects partial or inval
 
 test('finance stats distinguish realized and pending cash without counting voided rows', () => {
     assert.deepEqual(financeStatsWhere(parseFinancePeriod({})), {
-        realizedIncome: { type: 'income', paymentStatus: 'received' },
+        realizedIncome: { type: 'income', paymentStatus: { notIn: ['pending', 'voided'] } },
         pendingIncome: { type: 'income', paymentStatus: 'pending' },
         expense: { type: 'expense', paymentStatus: { not: 'voided' } }
     });

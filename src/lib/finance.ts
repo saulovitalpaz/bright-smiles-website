@@ -3,4 +3,4 @@ export const financePeriodQuery = (month: number, year: number) =>
 
 export const financePeriodTitle = (month: number, year: number) =>
   new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })
-    .format(new Date(Date.UTC(year, month - 1, 1)));
+    .format(new Date(Date.UTC(year, month - 1, 15)));
