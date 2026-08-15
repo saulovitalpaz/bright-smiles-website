@@ -20,6 +20,7 @@ const jwt = require('jsonwebtoken');
 const { createEncryption } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
 const { createDashboardStatsHandler } = require('./routes/dashboard');
+const { createAnalyticsHandlers } = require('./routes/analytics');
 const {
     parseOptionalDate,
     normalizeScheduledAt,
@@ -72,6 +73,11 @@ const requireProductionSecret = (name) => {
 const JWT_SECRET = requireProductionSecret('JWT_SECRET') || 'development-only-jwt-secret-do-not-use-in-production';
 requireProductionSecret('ENCRYPTION_KEY');
 const { encrypt, decrypt, blindIndex } = createEncryption(process.env);
+const analyticsHandlers = createAnalyticsHandlers({
+    prisma,
+    secret: JWT_SECRET,
+    geoLookup: undefined
+});
 const normalizeCpf = (value) => String(value || '').replace(/\D/g, '');
 const findPatientByCpf = async (cpf, include) => {
     const indexed = await prisma.patient.findUnique({
@@ -1672,124 +1678,8 @@ app.delete('/patient-documents/:id', authenticateToken, authorizeRole(['admin', 
 });
 
 // Analytics API
-app.post('/analytics', async (req, res) => {
-    try {
-        const { source, path, type } = req.body;
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-
-        // Detailed Location Lookup
-        let location = "Desconhecido";
-        let geoInfo = {};
-        try {
-            const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '127.0.0.1';
-            const userAgent = (req.headers['user-agent'] || '').toLowerCase();
-
-            // BOT/SERVER FILTER: Ignore common cloud provider locations or bot strings
-            const isBot = userAgent.includes('bot') || userAgent.includes('crawler') || userAgent.includes('spider');
-
-            if (cleanIp !== '127.0.0.1' && cleanIp !== '::1' && !cleanIp.startsWith('192.168.') && !isBot) {
-                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,district,lat,lon,as`);
-                const geoData = await geoRes.json();
-
-                // Advanced Filter: Ignore data centers (Amazon, Google, Hetzner, etc)
-                const isDataCenter = geoData.as && (
-                    geoData.as.toLowerCase().includes('amazon') ||
-                    geoData.as.toLowerCase().includes('google') ||
-                    geoData.as.toLowerCase().includes('hetzner') ||
-                    geoData.as.toLowerCase().includes('microsoft') ||
-                    geoData.as.toLowerCase().includes('digitalocean')
-                );
-
-                if (geoData.status === 'success' && !isDataCenter) {
-                    location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
-                    geoInfo = {
-                        city: geoData.city,
-                        state: geoData.regionName,
-                        neighborhood: geoData.district || "Desconhecido",
-                        latitude: geoData.lat,
-                        longitude: geoData.lon
-                    };
-                } else if (isDataCenter) {
-                    return res.status(200).json({ status: 'ignored' }); // Ignore bot/server hits
-                }
-            } else if (isBot) {
-                return res.status(200).json({ status: 'ignored' });
-            }
-        } catch (geoErr) {
-            console.error("Geo lookup failed:", geoErr);
-        }
-
-        const event = await prisma.analyticsEvent.create({
-            data: {
-                type: type || 'pageview',
-                path: path || '/',
-                source: source || 'Direto',
-                location: location,
-                ip: typeof ip === 'string' ? ip.substring(0, 45) : 'unknown',
-                userAgent: req.headers['user-agent'],
-                ...geoInfo
-            }
-        });
-        res.json(event);
-    } catch (error) {
-        console.error("Analytics Error:", error);
-        res.status(200).json({ status: 'ignored' });
-    }
-});
-
-app.get('/analytics/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
-    try {
-        const [events, leadsCount] = await Promise.all([
-            prisma.analyticsEvent.findMany({ orderBy: { date: 'desc' } }),
-            prisma.lead.count()
-        ]);
-
-        const totalVisits = events.filter(e => e.type === 'pageview').length;
-        const uniqueIps = new Set(events.map(e => e.ip)).size;
-        const conversionRate = uniqueIps > 0 ? ((leadsCount / uniqueIps) * 100).toFixed(2) : 0;
-
-        // Group by Source
-        const sources = events.reduce((acc, e) => {
-            const s = e.source || 'Direto';
-            acc[s] = (acc[s] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Group by Location (City/State)
-        const locations = events.reduce((acc, e) => {
-            const loc = e.location || 'Brasil';
-            acc[loc] = (acc[loc] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Group by Neighborhood (Bairro) - NEW
-        const neighborhoods = events.reduce((acc, e) => {
-            if (e.neighborhood && e.neighborhood !== 'Desconhecido') {
-                acc[e.neighborhood] = (acc[e.neighborhood] || 0) + 1;
-            }
-            return acc;
-        }, {});
-
-        // Collect coordinates for heat map potentially
-        const coordinates = events
-            .filter(e => e.latitude && e.longitude)
-            .map(e => ({ lat: e.latitude, lng: e.longitude }));
-
-        res.json({
-            totalVisits,
-            uniqueVisitors: uniqueIps,
-            leadsCount,
-            conversionRate,
-            sources,
-            locations,
-            neighborhoods,
-            coordinates: coordinates.slice(0, 100), // Recent 100 coordinates
-            recentEvents: events.slice(0, 50)
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+app.post('/analytics', analyticsHandlers.collect);
+app.get('/analytics/stats', authenticateToken, authorizeRole(['admin', 'manager']), analyticsHandlers.stats);
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
