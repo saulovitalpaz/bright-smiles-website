@@ -122,7 +122,7 @@ const AdminAnalytics = () => {
 
     const cards = [
         { label: "Visitas Totais", value: analytics.totalVisits, icon: Eye, color: "text-blue-600", bg: "bg-blue-100" },
-        { label: "Vistantes Únicos", value: analytics.uniqueVisitors, icon: Users, color: "text-indigo-600", bg: "bg-indigo-100" },
+        { label: "Visitantes Únicos", value: analytics.uniqueVisitors, icon: Users, color: "text-indigo-600", bg: "bg-indigo-100" },
         { label: "Solicitações (Leads)", value: analytics.leadsCount, icon: Calendar, color: "text-orange-600", bg: "bg-orange-100" },
         { label: "Taxa de Conversão", value: `${analytics.conversionRate}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-100" },
     ];
