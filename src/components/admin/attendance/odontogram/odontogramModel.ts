@@ -83,6 +83,7 @@ export type ClinicalCategory = keyof typeof CLINICAL_CATALOG | "legado";
 export type ClinicalConditionType = (typeof CLINICAL_CATALOG)[Exclude<ClinicalCategory, "legado">][number] | "legado_tratar" | "legado_tratado" | "legado_ausente" | "legado_ponte";
 export type ClinicalStage = "aAvaliar" | "planejado" | "emAndamento" | "concluido" | "monitorado" | "suspenso" | "removido";
 export type ConditionTarget = { kind: "tooth" } | { kind: "surface"; face: FaceKey; region: "entire" | "cervical" | "middle" | "incisalOcclusal" };
+export const MAX_CONDITION_TARGETS = 5;
 export interface ClinicalCondition { id: string; category: ClinicalCategory; type: ClinicalConditionType; targets: ConditionTarget[]; stage: ClinicalStage; notes?: string; }
 export interface ToothRecord { notes: string; conditions: ClinicalCondition[]; }
 export interface OdontogramV2 { version: 2; dentition: "permanent"; teeth: Record<string, ToothRecord>; }

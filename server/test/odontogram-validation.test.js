@@ -20,6 +20,30 @@ test('accepts a bounded permanent layered odontogram', () => {
   assert.equal(odontogramSchema.safeParse(valid).success, true);
 });
 
+test('rejects a clinical condition with more than five targets', () => {
+  const tooManyTargets = {
+    ...valid,
+    teeth: {
+      '16': {
+        notes: '',
+        conditions: [{
+          ...valid.teeth['16'].conditions[0],
+          targets: [
+            { kind: 'surface', face: 'top', region: 'cervical' },
+            { kind: 'surface', face: 'top', region: 'middle' },
+            { kind: 'surface', face: 'right', region: 'cervical' },
+            { kind: 'surface', face: 'right', region: 'middle' },
+            { kind: 'surface', face: 'bottom', region: 'cervical' },
+            { kind: 'surface', face: 'bottom', region: 'middle' },
+          ],
+        }],
+      },
+    },
+  };
+
+  assert.equal(odontogramSchema.safeParse(tooManyTargets).success, false);
+});
+
 test('rejects invalid teeth, HTML notes and unknown condition fields', () => {
   for (const input of [
     { ...valid, teeth: { '51': valid.teeth['16'] } },

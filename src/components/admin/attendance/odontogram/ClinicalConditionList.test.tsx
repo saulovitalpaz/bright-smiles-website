@@ -93,4 +93,27 @@ describe("ClinicalConditionList", () => {
 
     expect(onRemove).toHaveBeenCalledWith("c2");
   });
+
+  it("keeps removal labels unique for identical occurrences", () => {
+    render(<ClinicalConditionList toothNumber={16} onRemove={() => undefined} conditions={[
+      {
+        id: "c1",
+        category: "achado",
+        type: "carie",
+        stage: "planejado",
+        targets: [{ kind: "tooth" }],
+      },
+      {
+        id: "c2",
+        category: "achado",
+        type: "carie",
+        stage: "planejado",
+        targets: [{ kind: "tooth" }],
+      },
+    ]} />);
+
+    const buttons = screen.getAllByRole("button", { name: /remover carie.*dente inteiro/i });
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).not.toHaveAccessibleName(buttons[1].getAttribute("aria-label") ?? "");
+  });
 });

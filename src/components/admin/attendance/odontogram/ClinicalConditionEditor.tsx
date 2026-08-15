@@ -3,6 +3,7 @@ import {
   CLINICAL_CATALOG,
   createCondition,
   getAllowedTargets,
+  MAX_CONDITION_TARGETS,
   type ClinicalCategory,
   type ClinicalCondition,
   type ClinicalConditionType,
@@ -34,15 +35,26 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
   const [type, setType] = useState<ClinicalConditionType | "">("");
   const [stage, setStage] = useState<ClinicalStage | "">("");
   const [targets, setTargets] = useState<ConditionTarget[]>([]);
+  const [targetError, setTargetError] = useState("");
   const [notes, setNotes] = useState("");
   const types = category ? CLINICAL_CATALOG[category] : [];
   const allowedTargets = type ? getAllowedTargets(type) : [];
   const allowsSurface = allowedTargets.includes("surface");
   const allowsWholeTooth = allowedTargets.includes("tooth");
-  const canSave = Boolean(category && type && stage && targets.length);
+  const canSave = Boolean(category && type && stage && targets.length && !targetError);
+
+  const handleTargetsChange = (nextTargets: ConditionTarget[]): void => {
+    if (nextTargets.length > MAX_CONDITION_TARGETS) {
+      setTargetError(`Uma ocorrência pode ter no máximo ${MAX_CONDITION_TARGETS} regiões.`);
+      return;
+    }
+    setTargetError("");
+    setTargets(nextTargets);
+  };
 
   const selectWholeTooth = (): void => {
     if (!allowsWholeTooth) return;
+    setTargetError("");
     setTargets((current) => current.some((target) => target.kind === "tooth") ? [] : [{ kind: "tooth" }]);
   };
 
@@ -51,6 +63,7 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
     setType("");
     setStage("");
     setTargets([]);
+    setTargetError("");
     setNotes("");
   }
 
@@ -63,14 +76,14 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
     }}>
       <label className="block text-sm">Categoria
         <select aria-label="Categoria" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={category} onChange={(event) => {
-          setCategory(event.target.value as EditableCategory); setType(""); setTargets([]);
+          setCategory(event.target.value as EditableCategory); setType(""); setTargets([]); setTargetError("");
         }}>
           <option value="">Selecione</option>
           {Object.keys(CLINICAL_CATALOG).map((value) => <option key={value} value={value}>{value}</option>)}
         </select>
       </label>
       <label className="block text-sm">Procedimento
-        <select aria-label="Procedimento" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100 disabled:opacity-60" disabled={!category} value={type} onChange={(event) => setType(event.target.value as ClinicalConditionType)}>
+        <select aria-label="Procedimento" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100 disabled:opacity-60" disabled={!category} value={type} onChange={(event) => { setType(event.target.value as ClinicalConditionType); setTargets([]); setTargetError(""); }}>
           <option value="">Selecione</option>
           {types.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
         </select>
@@ -82,12 +95,13 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
             <ToothSurfaceSelector
               data={{ status: "Saudável", notes: "" }}
               onSelectFace={() => undefined}
-              onTargetsChange={setTargets}
+              onTargetsChange={handleTargetsChange}
               selectedFace={null}
               selectedTargets={targets.filter((target) => target.kind === "surface")}
               toothNumber={toothNumber}
             />
           ) : null}
+          {targetError ? <p className="text-sm text-amber-300" role="alert">{targetError}</p> : null}
           {allowsWholeTooth ? (
             <button
               aria-pressed={targets.some((target) => target.kind === "tooth")}

@@ -66,4 +66,28 @@ describe("ClinicalConditionEditor", () => {
     expect(target).toHaveAttribute("aria-pressed", "true");
     expect(target).toHaveClass("surface-selector__control--selected");
   });
+
+  it("blocks saving when the selected regions exceed the backend limit", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
+    await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
+    for (const name of [
+      /vestibular.*cervical/i,
+      /vestibular.*média/i,
+      /mesial.*cervical/i,
+      /mesial.*média/i,
+      /distal.*cervical/i,
+      /distal.*média/i,
+    ]) {
+      await user.click(screen.getByRole("button", { name }));
+    }
+    await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("no máximo 5 regiões");
+    expect(screen.getByRole("button", { name: "Salvar ocorrência" })).toBeDisabled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });

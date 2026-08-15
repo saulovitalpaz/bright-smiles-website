@@ -20,6 +20,9 @@ interface ToothSurfaceSelectorProps {
   onTargetsChange?: (targets: ConditionTarget[]) => void;
 }
 
+type SurfaceTarget = Extract<ConditionTarget, { kind: "surface" }>;
+type SurfaceRegion = SurfaceTarget["region"];
+
 const FACE_POSITIONS: Record<FaceKey, string> = {
   top: "surface-selector__control--top",
   right: "surface-selector__control--right",
@@ -28,7 +31,7 @@ const FACE_POSITIONS: Record<FaceKey, string> = {
   center: "surface-selector__control--center",
 };
 
-const FACE_REGION_OPTIONS: Readonly<Record<FaceKey, readonly ConditionTarget["region"][]>> = {
+const FACE_REGION_OPTIONS: Readonly<Record<FaceKey, readonly SurfaceRegion[]>> = {
   top: ["cervical", "middle"],
   right: ["cervical", "middle"],
   bottom: ["cervical", "middle"],
@@ -46,11 +49,11 @@ function getFaceClass(status: FaceStatus): string {
   return "surface-selector__face--healthy";
 }
 
-function getDefaultRegion(face: FaceKey): ConditionTarget["region"] {
+function getDefaultRegion(face: FaceKey): SurfaceRegion {
   return face === "center" ? "incisalOcclusal" : "entire";
 }
 
-function getRegionLabel(region: ConditionTarget["region"]): string {
+function getRegionLabel(region: SurfaceRegion): string {
   if (region === "incisalOcclusal") return "incisal ou oclusal";
   if (region === "middle") return "média";
   if (region === "cervical") return "cervical";
@@ -177,7 +180,7 @@ export function ToothSurfaceSelector({
           <path className="surface-selector__outline" d={anatomy.outline} />
           {FACE_KEYS.map((face) => {
             const status = getFaceStatus(data, face);
-            const target: ConditionTarget = { kind: "surface", face, region: getDefaultRegion(face) };
+            const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
             const isSelected = layeredMode
               ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
               : selectedFace === face;
@@ -202,7 +205,7 @@ export function ToothSurfaceSelector({
 
         {FACE_KEYS.map((face) => {
           const status = getFaceStatus(data, face);
-          const target: ConditionTarget = { kind: "surface", face, region: getDefaultRegion(face) };
+          const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
           const isSelected = layeredMode
             ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
             : selectedFace === face;
@@ -245,7 +248,7 @@ export function ToothSurfaceSelector({
         <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Regiões anatômicas">
           {FACE_KEYS.flatMap((face) =>
             FACE_REGION_OPTIONS[face].map((region) => {
-              const target: ConditionTarget = { kind: "surface", face, region };
+              const target: SurfaceTarget = { kind: "surface", face, region };
               const selected = isSelectedTarget(selectedTargets, target);
               const label = `${labels[face]} - ${getRegionLabel(region)}`;
               return (

@@ -75,7 +75,7 @@ export function ClinicalConditionList({
 
   return (
     <ol aria-label={`Ocorrências clínicas do dente ${toothNumber}`} className="space-y-2">
-      {conditions.map((condition) => {
+      {conditions.map((condition, index) => {
         const name = getConditionDisplayName(condition.type);
         const stage = getClinicalStageLabel(condition.stage);
         const targets = formatConditionTargets(toothNumber, condition.targets);
@@ -88,7 +88,7 @@ export function ClinicalConditionList({
             </p>
             {condition.notes ? <p className="mt-2 text-xs text-slate-400">{condition.notes}</p> : null}
             {!readOnly && onRemove ? (
-              <button aria-label={`Remover ${name}: ${stage}; ${targets}`} onClick={() => onRemove(condition.id)} type="button">Remover</button>
+              <button aria-label={`Remover ${name}: ${stage}; ${targets} (ocorrência ${index + 1})`} onClick={() => onRemove(condition.id)} type="button">Remover</button>
             ) : null}
           </li>
         );
