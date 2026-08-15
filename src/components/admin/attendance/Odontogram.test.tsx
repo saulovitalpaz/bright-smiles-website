@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import Odontogram from "./Odontogram";
@@ -192,12 +192,32 @@ describe("Odontogram face-first workflow", () => {
     );
 
     expect(container.querySelector(".bg-blue-400")).not.toBeInTheDocument();
-    expect(screen.getByText("Área a tratar")).toBeInTheDocument();
-    expect(screen.getByText("Área tratada")).toBeInTheDocument();
+    expect(screen.getByText("Tratar")).toBeInTheDocument();
+    expect(screen.getByText("Tratado")).toBeInTheDocument();
     expect(container.querySelector('[data-face-key="center"]')).toHaveAttribute(
       "data-face-status",
       "Tratar",
     );
+  });
+
+  it("shows each legend status once and explains region selection without alternate target names", () => {
+    const { container } = render(<Odontogram data={{}} onChange={() => undefined} />);
+    const legend = container.querySelector(".odontogram-legend");
+
+    expect(legend).not.toBeNull();
+    expect(within(legend as HTMLElement).getAllByText(/^Saudável$/)).toHaveLength(1);
+    expect(within(legend as HTMLElement).getAllByText(/^Tratar$/)).toHaveLength(1);
+    expect(within(legend as HTMLElement).getAllByText(/^Tratado$/)).toHaveLength(1);
+    expect(within(legend as HTMLElement).getAllByText(/^Ausente$/)).toHaveLength(1);
+    expect(within(legend as HTMLElement).getAllByText(/^Implante$/)).toHaveLength(1);
+    expect(within(legend as HTMLElement).getAllByText(/^Ponte$/)).toHaveLength(1);
+    expect(within(legend as HTMLElement).queryByText("Área a tratar")).not.toBeInTheDocument();
+    expect(within(legend as HTMLElement).queryByText("Área tratada")).not.toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/face inteira/i)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/cervical/i)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/média/i)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/incisal\/oclusal/i)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/mais de uma região/i)).toBeInTheDocument();
   });
 
   it("closes an open editor when permissions become read-only", async () => {
@@ -269,7 +289,7 @@ describe("Odontogram face-first workflow", () => {
 
     expect(screen.getByText("carie")).toBeInTheDocument();
     expect(screen.getByText("Planejado")).toBeInTheDocument();
-    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
+    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
     expect(screen.getByText("avaliar profundidade")).toBeInTheDocument();
     expect(screen.getByText("implante")).toBeInTheDocument();
     expect(screen.getByText("Concluído")).toBeInTheDocument();

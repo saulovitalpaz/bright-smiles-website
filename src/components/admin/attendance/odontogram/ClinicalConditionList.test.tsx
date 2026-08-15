@@ -19,12 +19,28 @@ describe("ClinicalConditionList", () => {
 
     expect(screen.getByText("carie")).toBeInTheDocument();
     expect(screen.getByText("Planejado")).toBeInTheDocument();
-    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
+    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
     expect(screen.getByText("acompanhar evolução")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*oclusal/i }));
 
     expect(onRemove).toHaveBeenCalledWith("c1");
+  });
+
+  it("groups repeated faces into concise multi-region summaries", () => {
+    render(<ClinicalConditionList toothNumber={16} conditions={[{
+      id: "c1",
+      category: "achado",
+      type: "carie",
+      stage: "planejado",
+      targets: [
+        { kind: "surface", face: "top", region: "cervical" },
+        { kind: "surface", face: "top", region: "middle" },
+        { kind: "surface", face: "center", region: "incisalOcclusal" },
+      ],
+    }]} />);
+
+    expect(screen.getByText("Vestibular (cervical, média), Oclusal / Incisal")).toBeInTheDocument();
   });
 
   it("uses unique removal labels to remove the second same-type occurrence", async () => {
@@ -37,18 +53,21 @@ describe("ClinicalConditionList", () => {
         category: "achado",
         type: "carie",
         stage: "planejado",
-        targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+        targets: [
+          { kind: "surface", face: "top", region: "cervical" },
+          { kind: "surface", face: "top", region: "middle" },
+        ],
       },
       {
         id: "c2",
         category: "achado",
         type: "carie",
-        stage: "concluido",
+        stage: "planejado",
         targets: [{ kind: "tooth" }],
       },
     ]} />);
 
-    await user.click(screen.getByRole("button", { name: /remover carie.*concluído.*dente inteiro/i }));
+    await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*dente inteiro/i }));
 
     expect(onRemove).toHaveBeenCalledWith("c2");
   });

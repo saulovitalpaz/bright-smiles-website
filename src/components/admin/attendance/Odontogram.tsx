@@ -94,6 +94,15 @@ const STATUS_STYLES: Record<ToothStatus, { badge: string; dot: string }> = {
   },
 };
 
+const STATUS_EXPLANATIONS: Record<ToothStatus, string> = {
+  Saudável: "sem marcação clínica",
+  Tratar: "área listrada",
+  Tratado: "área azul",
+  Ausente: "dente ausente",
+  Implante: "reabilitação com implante",
+  Ponte: "elemento protético",
+};
+
 function isRecorded(tooth: ToothData): boolean {
   return (
     tooth.status !== "Saudável" ||
@@ -275,30 +284,27 @@ const Odontogram = ({
           </p>
         </div>
 
-        <div className="odontogram-legend mt-7 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 rounded-sm ring-1 ring-red-300/30"
-              style={{ background: "repeating-linear-gradient(45deg,#b42318 0 2px,#fce8e6 2px 4px)" }}
-            />
-            Área a tratar
-          </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
-            <span aria-hidden="true" className="h-3 w-3 rounded-sm bg-cyan-400 ring-1 ring-cyan-200/30" />
-            Área tratada
-          </div>
-          {LEGEND_STATUSES.map((status) => (
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
-              <span
-                aria-hidden="true"
-                className="h-3 w-3 rounded-full ring-1 ring-white/15"
-                style={{ background: STATUS_STYLES[status].dot }}
-              />
-              {status}
+        <div className="odontogram-legend mt-7 min-w-0 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
+              {LEGEND_STATUSES.map((status) => (
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
+                  <span
+                    aria-hidden="true"
+                    className="h-3 w-3 rounded-full ring-1 ring-white/15"
+                    style={{ background: STATUS_STYLES[status].dot }}
+                  />
+                  <span>{status}</span>
+                  <span className="text-slate-500">— {STATUS_EXPLANATIONS[status]}</span>
+                </div>
+              ))}
             </div>
-          ))}
+            <p className="text-center text-[11px] text-slate-400">
+              Regiões: face inteira, cervical, média e incisal/oclusal. Se necessário, selecione mais de
+              uma região para a mesma ocorrência.
+            </p>
+          </div>
         </div>
 
         {readOnly && recorded.length > 0 ? (
