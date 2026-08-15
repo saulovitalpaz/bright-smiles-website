@@ -5,6 +5,23 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
+  it("exposes an explicit incisal ou oclusal label for the center control in layered mode", () => {
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+        selectedTargets={[]}
+        onTargetsChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }),
+    ).toBeInTheDocument();
+  });
+
   it("selects one real anatomical face without replacing other selected targets", async () => {
     const user = userEvent.setup();
     const onTargetsChange = vi.fn();
@@ -19,10 +36,31 @@ describe("ToothSurfaceSelector", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Vestibular", exact: true }));
+    await user.click(screen.getByRole("button", { name: /vestibular.*face inteira/i }));
     expect(onTargetsChange).toHaveBeenCalledWith([
       { kind: "surface", face: "center", region: "incisalOcclusal" },
       { kind: "surface", face: "top", region: "entire" },
+    ]);
+  });
+
+  it("replaces an overlapping entire target when a subregion is selected", async () => {
+    const user = userEvent.setup();
+    const onTargetsChange = vi.fn();
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+        selectedTargets={[{ kind: "surface", face: "top", region: "entire" }]}
+        onTargetsChange={onTargetsChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /vestibular.*cervical/i }));
+
+    expect(onTargetsChange).toHaveBeenCalledWith([
+      { kind: "surface", face: "top", region: "cervical" },
     ]);
   });
 

@@ -4,14 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import { ClinicalConditionEditor } from "./ClinicalConditionEditor";
 
 describe("ClinicalConditionEditor", () => {
-  it("creates a completed resin condition for the selected precise region", async () => {
+  it("creates a completed resin condition for multiple precise regions", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
-    await user.click(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i }));
+    await user.click(screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }));
+    await user.click(screen.getByRole("button", { name: /vestibular.*face inteira/i }));
     await user.selectOptions(screen.getByLabelText("Situação"), "concluido");
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
 
@@ -19,7 +20,10 @@ describe("ClinicalConditionEditor", () => {
       category: "restauracao",
       type: "resina_composta",
       stage: "concluido",
-      targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+      targets: [
+        { kind: "surface", face: "center", region: "incisalOcclusal" },
+        { kind: "surface", face: "top", region: "entire" },
+      ],
     }));
   });
 
@@ -30,7 +34,7 @@ describe("ClinicalConditionEditor", () => {
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    const target = screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i });
+    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
     await user.click(target);
     await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
     await user.type(screen.getByLabelText("Observação da ocorrência"), "acompanhar por seis meses");
@@ -44,7 +48,9 @@ describe("ClinicalConditionEditor", () => {
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    expect(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i })).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }),
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("uses readable dark select controls and visibly marks a selected region", async () => {
@@ -54,10 +60,10 @@ describe("ClinicalConditionEditor", () => {
     expect(screen.getByLabelText("Categoria")).toHaveClass("bg-slate-950", "text-slate-100");
     await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
-    const target = screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i });
+    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
     await user.click(target);
 
     expect(target).toHaveAttribute("aria-pressed", "true");
-    expect(target).toHaveClass("bg-blue-500/20", "border-blue-400");
+    expect(target).toHaveClass("surface-selector__control--selected");
   });
 });
