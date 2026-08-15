@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search, User, History, Plus, Trash2, Stethoscope } from "lucide-react";
+import { toast } from "sonner";
+
 import AdminLayout from "@/components/admin/AdminLayout";
 import { fetchClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, User, History, Plus, Trash2, Stethoscope } from "lucide-react";
-import { toast } from "sonner";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -19,12 +20,6 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { CalendarView } from "@/components/admin/appointments/CalendarView";
-import { buildCalendarEntries, CalendarEntry } from "@/lib/calendar";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface AppointmentRecord {
     id: number;
@@ -38,70 +33,29 @@ interface AppointmentRecord {
     notes: string;
     professional: string;
     status?: "scheduled" | "attended" | "cancelled";
-    parentAppointmentId?: number | null;
     patient?: {
         name: string;
         cpf: string;
     };
 }
 
-interface LeadRecord {
-    id: number;
-    name?: string | null;
-    status?: string | null;
-    scheduledAt?: string | null;
-    treatment?: string | null;
-    createdAt?: string | null;
-    professional?: string | null;
-}
+const getLocalCalendarDay = (value?: string | null) => {
+    if (!value) return "";
 
-interface StaffUser {
-    id: number;
-    name: string;
-    role: string;
-}
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
 
-interface ManualAppointmentForm {
-    patientName: string;
-    procedure: string;
-    appointmentType: "odontologia" | "harmonizacao" | "ambos";
-    professional: string;
-    scheduledAt: string;
-    price: string;
-    paymentStatus: "" | "paid" | "pending" | "courtesy";
-}
-
-const toDateTimeLocalValue = (date: Date) => {
-    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return localDate.toISOString().slice(0, 16);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 };
 
 const AdminAppointments = () => {
-    const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState("");
+    const [dateFilter, setDateFilter] = useState("");
     const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
     const [searchParams] = useSearchParams();
-    const initialViewMode = searchParams.get("view") === "calendar" ? "calendar" : "list";
-    const [viewMode, setViewMode] = useState<"list" | "calendar">(initialViewMode);
-    const [leads, setLeads] = useState<LeadRecord[]>([]);
-    const [staff, setStaff] = useState<StaffUser[]>([]);
-    const [calendarDate, setCalendarDate] = useState(new Date());
-    const [pendingDrop, setPendingDrop] = useState<{ entry: CalendarEntry; scheduledAt: string } | null>(null);
-    const [pendingDetails, setPendingDetails] = useState<CalendarEntry | null>(null);
-    const [professionalDraft, setProfessionalDraft] = useState("");
-    const [isSavingCalendarChange, setIsSavingCalendarChange] = useState(false);
-    const [manualAppointmentDate, setManualAppointmentDate] = useState<Date | null>(null);
-    const [manualAppointment, setManualAppointment] = useState<ManualAppointmentForm>({
-        patientName: "",
-        procedure: "",
-        appointmentType: "odontologia",
-        professional: "",
-        scheduledAt: "",
-        price: "",
-        paymentStatus: ""
-    });
-    const [manualAppointmentError, setManualAppointmentError] = useState("");
-    const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
     const navigate = useNavigate();
     const leadId = searchParams.get("leadId");
 
@@ -109,24 +63,8 @@ const AdminAppointments = () => {
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional" };
 
     useEffect(() => {
-        fetchAppointments();
-        fetchCalendarData();
+        void fetchAppointments();
     }, []);
-
-    const fetchAppointments = async () => {
-        try {
-            const res = await fetchClient("/appointments");
-            if (res.ok) {
-                const data = await res.json();
-                setAppointments(data);
-            } else {
-                toast.error("Erro ao carregar atendimentos.");
-            }
-        } catch (error) {
-            console.error("Failed to fetch appointments:", error);
-            toast.error("Erro ao carregar atendimentos.");
-        }
-    };
 
     useEffect(() => {
         if (leadId) {
@@ -134,205 +72,70 @@ const AdminAppointments = () => {
         }
     }, [leadId, navigate]);
 
+    const fetchAppointments = async () => {
+        try {
+            const res = await fetchClient("/appointments");
+            if (!res.ok) {
+                toast.error("Erro ao carregar atendimentos.");
+                return;
+            }
+
+            const data = await res.json();
+            setAppointments(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error("Failed to fetch appointments:", error);
+            toast.error("Erro ao carregar atendimentos.");
+        }
+    };
+
     const handleDelete = async (id: number) => {
         try {
             const res = await fetchClient(`/appointments/${id}`, {
-                method: 'DELETE',
+                method: "DELETE",
             });
-            if (res.ok) {
-                toast.success("Atendimento excluído com sucesso.");
-                fetchAppointments();
-            } else {
+
+            if (!res.ok) {
                 toast.error("Erro ao excluir atendimento.");
+                return;
             }
+
+            toast.success("Atendimento excluído com sucesso.");
+            await fetchAppointments();
         } catch (error) {
             console.error("Error deleting appointment:", error);
             toast.error("Erro de conexão ao excluir.");
         }
     };
 
-    const filteredAppointments = appointments.filter(record => {
-        const name = (record.patientName || record.patient?.name || "").toLowerCase();
-        const cpf = (record.cpf || record.patient?.cpf || "");
-        const term = searchTerm.toLowerCase();
-        return name.includes(term) || cpf.includes(term);
-    });
+    const filteredAppointments = useMemo(() => {
+        const normalizedTerm = searchTerm.trim().toLowerCase();
+
+        return appointments.filter((record) => {
+            const patientName = (record.patientName || record.patient?.name || "").toLowerCase();
+            const cpf = record.cpf || record.patient?.cpf || "";
+            const matchesSearch = !normalizedTerm || patientName.includes(normalizedTerm) || cpf.includes(normalizedTerm);
+            const matchesDate = !dateFilter || getLocalCalendarDay(record.scheduledAt || record.date) === dateFilter;
+            return matchesSearch && matchesDate;
+        });
+    }, [appointments, dateFilter, searchTerm]);
 
     const formatDate = (dateStr: string) => {
         try {
-            return new Date(dateStr).toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+            return new Date(dateStr).toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
             });
-        } catch (e) {
+        } catch {
             return dateStr;
-        }
-    };
-
-    const fetchCalendarData = async () => {
-        try {
-            const [leadsResponse, usersResponse] = await Promise.all([
-                fetchClient("/leads"),
-                fetchClient("/staff")
-            ]);
-            const [leadsBody, usersBody] = await Promise.all([
-                leadsResponse.json().catch(() => ({})),
-                usersResponse.json().catch(() => ({}))
-            ]);
-
-            if (!leadsResponse.ok || !usersResponse.ok) {
-                throw new Error(leadsBody.error || usersBody.error || "Erro ao carregar agenda.");
-            }
-
-            const calendarLeads = Array.isArray(leadsBody) ? leadsBody as LeadRecord[] : [];
-            const calendarStaff = Array.isArray(usersBody) ? usersBody as StaffUser[] : [];
-            setLeads(calendarLeads);
-            setStaff(calendarStaff.filter((user) => user.role !== "manager"));
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Erro ao carregar agenda.");
-        }
-    };
-
-    const updateCalendarEntry = async (
-        entry: CalendarEntry,
-        payload: { scheduledAt?: string | null; professional?: string | null }
-    ) => {
-        const endpoint = entry.kind === "lead" ? "/leads/" + entry.leadId : "/appointments/" + entry.id;
-        const response = await fetchClient(endpoint, {
-            method: "PUT",
-            body: JSON.stringify(payload)
-        });
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(body.error || "Não foi possível atualizar a agenda.");
-        return body;
-    };
-
-    const refreshCalendarRecords = async () => {
-        await Promise.all([fetchAppointments(), fetchCalendarData()]);
-    };
-
-    const openManualAppointment = (date: Date) => {
-        const defaultProfessional = staff.some((user) => user.name === currentUser.name)
-            ? currentUser.name
-            : staff[0]?.name || "";
-
-        setManualAppointmentDate(date);
-        setManualAppointment({
-            patientName: "",
-            procedure: "",
-            appointmentType: "odontologia",
-            professional: defaultProfessional,
-            scheduledAt: toDateTimeLocalValue(date),
-            price: "",
-            paymentStatus: ""
-        });
-        setManualAppointmentError("");
-    };
-
-    const updateManualAppointment = <K extends keyof ManualAppointmentForm>(
-        field: K,
-        value: ManualAppointmentForm[K]
-    ) => {
-        setManualAppointment((current) => ({ ...current, [field]: value }));
-    };
-
-    const createManualAppointment = async () => {
-        const patientName = manualAppointment.patientName.trim();
-        const procedure = manualAppointment.procedure.trim();
-        const professional = manualAppointment.professional.trim();
-        const scheduledDate = new Date(manualAppointment.scheduledAt);
-
-        if (!patientName || !procedure || !professional || Number.isNaN(scheduledDate.getTime())) {
-            setManualAppointmentError("Preencha paciente, procedimento, profissional, data e horário.");
-            return;
-        }
-
-        const payload: Record<string, string | number> = {
-            patientName,
-            procedure,
-            appointmentType: manualAppointment.appointmentType,
-            professional,
-            date: scheduledDate.toISOString(),
-            scheduledAt: scheduledDate.toISOString()
-        };
-
-        if (manualAppointment.price.trim()) payload.price = Number(manualAppointment.price);
-        if (manualAppointment.paymentStatus) payload.paymentStatus = manualAppointment.paymentStatus;
-
-        setIsCreatingAppointment(true);
-        setManualAppointmentError("");
-        try {
-            const response = await fetchClient("/appointments", {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-            const body = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(
-                    response.status >= 500
-                        ? "Não foi possível criar o atendimento."
-                        : body.error || "Não foi possível criar o atendimento."
-                );
-            }
-
-            await Promise.all([
-                refreshCalendarRecords(),
-                queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
-                queryClient.invalidateQueries({ queryKey: ["leads"] })
-            ]);
-            setManualAppointmentDate(null);
-            toast.success("Atendimento agendado com sucesso.");
-        } catch (error) {
-            setManualAppointmentError(error instanceof Error ? error.message : "Não foi possível criar o atendimento.");
-        } finally {
-            setIsCreatingAppointment(false);
-        }
-    };
-
-    const confirmDrop = async () => {
-        if (!pendingDrop) return;
-
-        setIsSavingCalendarChange(true);
-        try {
-            await updateCalendarEntry(pendingDrop.entry, { scheduledAt: pendingDrop.scheduledAt });
-            await refreshCalendarRecords();
-            setPendingDrop(null);
-            toast.success("Horário atualizado com sucesso.");
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
-        } finally {
-            setIsSavingCalendarChange(false);
-        }
-    };
-
-    const saveProfessional = async () => {
-        if (!pendingDetails) return;
-
-        const professional = professionalDraft.trim();
-        if (pendingDetails.kind === "appointment" && !professional) {
-            toast.error("Selecione um profissional para o atendimento.");
-            return;
-        }
-
-        setIsSavingCalendarChange(true);
-        try {
-            await updateCalendarEntry(pendingDetails, { professional: professional || null });
-            await refreshCalendarRecords();
-            setPendingDetails(null);
-            toast.success("Profissional atualizado com sucesso.");
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
-        } finally {
-            setIsSavingCalendarChange(false);
         }
     };
 
     const formatScheduledAt = (record: AppointmentRecord) => formatDate(record.scheduledAt || record.date);
     const formatClinicalDate = (record: AppointmentRecord) => formatDate(record.date);
-    const formatCreatedAt = (record: AppointmentRecord) => record.createdAt ? formatDate(record.createdAt) : null;
+    const formatCreatedAt = (record: AppointmentRecord) => (record.createdAt ? formatDate(record.createdAt) : null);
 
     return (
         <AdminLayout title="Atendimentos & Consultas">
@@ -352,54 +155,61 @@ const AdminAppointments = () => {
                         </CardContent>
                     </Card>
                 </div>
-                {currentUser.role !== 'manager' && (
-                    <Button onClick={() => navigate('/admin/consultas/new')} className="bg-primary hover:bg-primary/90 h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 w-full md:w-auto">
+                {currentUser.role !== "manager" && (
+                    <Button
+                        onClick={() => navigate("/admin/consultas/new")}
+                        className="bg-primary hover:bg-primary/90 h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 w-full md:w-auto"
+                    >
                         <Plus size={20} /> Novo Atendimento
                     </Button>
                 )}
             </div>
 
-            <div className="mb-6 flex flex-wrap gap-2">
-                <Button
-                    type="button"
-                    variant={viewMode === "list" ? "default" : "outline"}
-                    onClick={() => setViewMode("list")}
-                >
-                    Lista
-                </Button>
-                <Button
-                    type="button"
-                    variant={viewMode === "calendar" ? "default" : "outline"}
-                    onClick={() => setViewMode("calendar")}
-                >
-                    Calendário
-                </Button>
-            </div>
-
-            {viewMode === "list" && (
             <div className="admin-card p-6 w-full">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                     <div>
                         <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900">Histórico de Pacientes</h2>
                         <p className="text-sm text-slate-500">Consulte ou acompanhe registros evolutivos.</p>
                     </div>
-                    <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <Input
-                            placeholder="Pesquisar paciente ou CPF..."
-                            className="pl-10 h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                    <div className="grid w-full lg:w-auto gap-3 md:grid-cols-2">
+                        <div className="relative w-full lg:w-96">
+                            <label htmlFor="appointments-search" className="sr-only">Pesquisar paciente ou CPF</label>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <Input
+                                id="appointments-search"
+                                aria-label="Pesquisar paciente ou CPF"
+                                placeholder="Pesquisar paciente ou CPF..."
+                                className="pl-10 h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                            />
+                        </div>
+                        <div className="w-full lg:w-52">
+                            <label htmlFor="appointments-date-filter" className="sr-only">Filtrar por data</label>
+                            <Input
+                                id="appointments-date-filter"
+                                aria-label="Filtrar por data"
+                                type="date"
+                                className="h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
+                                value={dateFilter}
+                                onChange={(event) => setDateFilter(event.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
 
                 <div className="divide-y divide-slate-100">
                     {filteredAppointments.length > 0 ? (
                         filteredAppointments.map((record) => (
-                            <div key={record.id} className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4 group">
+                            <div
+                                key={record.id}
+                                className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4 group"
+                            >
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer" onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}>
+                                    <div
+                                        className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer"
+                                        onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}
+                                    >
                                         <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
                                             <User size={24} />
                                         </div>
@@ -408,8 +218,10 @@ const AdminAppointments = () => {
                                                 <h3 className="font-bold text-slate-900 text-lg leading-tight truncate">
                                                     {record.patientName || record.patient?.name}
                                                 </h3>
-                                                {currentUser.role === 'manager' && (
-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-100">Controle</Badge>
+                                                {currentUser.role === "manager" && (
+                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-100">
+                                                        Controle
+                                                    </Badge>
                                                 )}
                                             </div>
                                             <div className="flex flex-wrap items-center gap-3 mt-1">
@@ -440,10 +252,14 @@ const AdminAppointments = () => {
                                     </div>
 
                                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                        {currentUser.role !== 'manager' && (
+                                        {currentUser.role !== "manager" && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                                    >
                                                         <Trash2 size={18} />
                                                     </Button>
                                                 </AlertDialogTrigger>
@@ -484,246 +300,6 @@ const AdminAppointments = () => {
                     )}
                 </div>
             </div>
-            )}
-
-            {viewMode === "calendar" && (
-                <div className="admin-card p-6 w-full">
-                    <CalendarView
-                        entries={buildCalendarEntries(appointments, leads)}
-                        anchorDate={calendarDate}
-                        onAnchorDateChange={setCalendarDate}
-                        onEventOpen={(entry) => {
-                            setPendingDetails(entry);
-                            setProfessionalDraft(entry.professional || "");
-                        }}
-                        onEventDrop={(entry, scheduledAt) => setPendingDrop({ entry, scheduledAt })}
-                        onEventCreate={openManualAppointment}
-                    />
-                </div>
-            )}
-
-            <Dialog
-                open={Boolean(manualAppointmentDate)}
-                onOpenChange={(open) => {
-                    if (!open && !isCreatingAppointment) {
-                        setManualAppointmentDate(null);
-                        setManualAppointmentError("");
-                    }
-                }}
-            >
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Novo atendimento</DialogTitle>
-                        <DialogDescription>
-                            Cadastre um atendimento diretamente no horário selecionado da agenda.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-2 sm:grid-cols-2">
-                        <div className="space-y-2 sm:col-span-2">
-                            <Label htmlFor="manual-patient-name">Paciente</Label>
-                            <Input
-                                id="manual-patient-name"
-                                value={manualAppointment.patientName}
-                                onChange={(event) => updateManualAppointment("patientName", event.target.value)}
-                                autoComplete="name"
-                                disabled={isCreatingAppointment}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-procedure">Procedimento</Label>
-                            <Input
-                                id="manual-procedure"
-                                value={manualAppointment.procedure}
-                                onChange={(event) => updateManualAppointment("procedure", event.target.value)}
-                                disabled={isCreatingAppointment}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-appointment-type">Tipo de atendimento</Label>
-                            <Select
-                                value={manualAppointment.appointmentType}
-                                onValueChange={(value: ManualAppointmentForm["appointmentType"]) => updateManualAppointment("appointmentType", value)}
-                                disabled={isCreatingAppointment}
-                            >
-                                <SelectTrigger id="manual-appointment-type">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="odontologia">Odontologia</SelectItem>
-                                    <SelectItem value="harmonizacao">Harmonização facial</SelectItem>
-                                    <SelectItem value="ambos">Ambos</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-professional">Profissional</Label>
-                            <Select
-                                value={manualAppointment.professional}
-                                onValueChange={(value) => updateManualAppointment("professional", value)}
-                                disabled={isCreatingAppointment}
-                            >
-                                <SelectTrigger id="manual-professional">
-                                    <SelectValue placeholder="Selecione o profissional" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {staff.map((user) => (
-                                        <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-scheduled-at">Data e horário</Label>
-                            <Input
-                                id="manual-scheduled-at"
-                                type="datetime-local"
-                                value={manualAppointment.scheduledAt}
-                                onChange={(event) => updateManualAppointment("scheduledAt", event.target.value)}
-                                disabled={isCreatingAppointment}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-price">Valor (opcional)</Label>
-                            <Input
-                                id="manual-price"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={manualAppointment.price}
-                                onChange={(event) => updateManualAppointment("price", event.target.value)}
-                                disabled={isCreatingAppointment}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manual-payment-status">Status do pagamento (opcional)</Label>
-                            <Select
-                                value={manualAppointment.paymentStatus || "unspecified"}
-                                onValueChange={(value) => updateManualAppointment("paymentStatus", value === "unspecified" ? "" : value as ManualAppointmentForm["paymentStatus"])}
-                                disabled={isCreatingAppointment}
-                            >
-                                <SelectTrigger id="manual-payment-status">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="unspecified">Não informado</SelectItem>
-                                    <SelectItem value="paid">Recebido</SelectItem>
-                                    <SelectItem value="pending">A receber</SelectItem>
-                                    <SelectItem value="courtesy">Cortesia / retorno</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    {manualAppointmentError && (
-                        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                            {manualAppointmentError}
-                        </p>
-                    )}
-                    <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setManualAppointmentDate(null)}
-                            disabled={isCreatingAppointment}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={() => void createManualAppointment()}
-                            disabled={isCreatingAppointment}
-                        >
-                            {isCreatingAppointment ? "Salvando..." : "Criar atendimento"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <AlertDialog
-                open={Boolean(pendingDrop)}
-                onOpenChange={(open) => {
-                    if (!open && !isSavingCalendarChange) setPendingDrop(null);
-                }}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar novo horário</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {pendingDrop && (
-                                <>
-                                    Você deseja mover {pendingDrop.entry.patientName} de {formatDate(pendingDrop.entry.scheduledAt)} para {formatDate(pendingDrop.scheduledAt)}?
-                                </>
-                            )}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSavingCalendarChange}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            disabled={isSavingCalendarChange}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                void confirmDrop();
-                            }}
-                        >
-                            Confirmar novo horário
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <Dialog
-                open={Boolean(pendingDetails)}
-                onOpenChange={(open) => {
-                    if (!open && !isSavingCalendarChange) setPendingDetails(null);
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Detalhes do agendamento</DialogTitle>
-                        <DialogDescription>
-                            {pendingDetails && "Altere somente o profissional responsável por este agendamento."}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {pendingDetails && (
-                        <div className="space-y-4 text-sm text-slate-700">
-                            <div>
-                                <p className="text-xs font-medium uppercase text-slate-500">Paciente</p>
-                                <p className="font-semibold text-slate-900">{pendingDetails.patientName}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs font-medium uppercase text-slate-500">Tratamento/procedimento</p>
-                                <p>{pendingDetails.treatment || pendingDetails.procedure || pendingDetails.appointmentType || "Agendamento"}</p>
-                            </div>
-                            {pendingDetails.isReturn && (
-                                <div>
-                                    <p className="text-xs font-medium uppercase text-slate-500">Vínculo</p>
-                                    <p className="font-medium text-emerald-700">Retorno vinculado a uma consulta anterior</p>
-                                </div>
-                            )}
-                            <div>
-                                <p className="text-xs font-medium uppercase text-slate-500">Data e horário</p>
-                                <p>{formatDate(pendingDetails.scheduledAt)}</p>
-                            </div>
-                            <div className="space-y-2">
-                                <p className="text-xs font-medium uppercase text-slate-500">Profissional</p>
-                                <Select value={professionalDraft || (pendingDetails.kind === "lead" ? "unassigned" : "")} onValueChange={(value) => setProfessionalDraft(value === "unassigned" ? "" : value)}>
-                                    <SelectTrigger><SelectValue placeholder="Selecione o profissional" /></SelectTrigger>
-                                    <SelectContent>
-                                        {pendingDetails.kind === "lead" && (
-                                            <SelectItem value="unassigned">Sem profissional</SelectItem>
-                                        )}
-                                        {staff.map((user) => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <p className="text-xs text-slate-500">Altere data e horário arrastando o cartão na agenda ou no formulário de consulta existente.</p>
-                        </div>
-                    )}
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setPendingDetails(null)} disabled={isSavingCalendarChange}>Cancelar</Button>
-                        <Button type="button" onClick={() => void saveProfessional()} disabled={isSavingCalendarChange}>Salvar profissional</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </AdminLayout>
     );
 };
