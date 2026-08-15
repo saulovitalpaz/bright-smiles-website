@@ -33,6 +33,14 @@ test('appointment validation accepts known statuses and rejects unknown status v
     assert.equal(appointmentSchema.safeParse({ ...minimumAppointment, status: 'rescheduled' }).success, false);
 });
 
+test('appointment validation supplies the database-required notes field for calendar creation', () => {
+    const { appointmentSchema } = require('../utils/validationSchemas');
+    const result = appointmentSchema.safeParse(minimumAppointment);
+
+    assert.equal(result.success, true);
+    assert.equal(result.data.notes, '');
+});
+
 test('appointments route remains private to authenticated administrators and dentists', () => {
     const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
     const route = source.slice(source.indexOf("app.post('/appointments'"), source.indexOf("app.put('/appointments/:id'"));
@@ -91,7 +99,8 @@ test('manual calendar creation keeps a complete, controlled appointment contract
     assert.match(calendarPage, /paymentStatus/);
     assert.match(calendarPage, /refreshCalendarRecords/);
     assert.match(calendarHelper, /status\?:\s*['"]scheduled['"]\s*\|\s*['"]attended['"]\s*\|\s*['"]cancelled['"]/);
-    assert.match(calendarHelper, /item\.status !== "attended" && item\.status !== "cancelled"/);
+    assert.match(calendarHelper, /item\.status === "attended" \|\| item\.status === "cancelled"/);
+    assert.match(calendarHelper, /item\.scheduledAt, item\.date/);
 });
 
 test('appointment migration repairs legacy status values before enforcing its contract', () => {
@@ -106,6 +115,17 @@ test('appointment migration repairs legacy status values before enforcing its co
     assert.match(migration, /ALTER\s+COLUMN\s+"status"\s+SET\s+NOT\s+NULL/i);
     assert.match(migration, /n\.nspname\s*=\s*'public'/i);
     assert.match(migration, /t\.relname\s*=\s*'Appointment'/i);
+});
+
+test('appointment migration adds and backfills the scheduled date for legacy records', () => {
+    const migration = fs.readFileSync(
+        path.join(serverRoot, 'prisma/migrations/20260815170000_reconcile_appointment_schedule/migration.sql'),
+        'utf8'
+    );
+
+    assert.match(migration, /ADD COLUMN IF NOT EXISTS "scheduledAt" TIMESTAMP\(3\)/i);
+    assert.match(migration, /SET "scheduledAt"\s*=\s*"date"/i);
+    assert.match(migration, /WHERE "scheduledAt" IS NULL/i);
 });
 
 test('unexpected appointment persistence errors return a generic server error', () => {

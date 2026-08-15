@@ -23,6 +23,7 @@ interface CalendarAppointmentInput {
     patient?: { name?: string | null } | null;
     procedure?: string | null;
     appointmentType?: string | null;
+    date?: string | null;
     scheduledAt?: string | null;
     status?: "scheduled" | "attended" | "cancelled" | null;
     createdAt?: string | null;
@@ -41,11 +42,14 @@ interface CalendarLeadInput {
     professional?: string | null;
 }
 
-type ScheduledCalendarAppointment = CalendarAppointmentInput & { scheduledAt: string };
 type ScheduledCalendarLead = CalendarLeadInput & { scheduledAt: string };
 
-const hasScheduledAppointment = (item: CalendarAppointmentInput): item is ScheduledCalendarAppointment =>
-    typeof item.scheduledAt === "string" && !Number.isNaN(new Date(item.scheduledAt).getTime());
+const getAppointmentScheduledAt = (item: CalendarAppointmentInput) => {
+    const candidates = [item.scheduledAt, item.date];
+    return candidates.find((value): value is string =>
+        typeof value === "string" && !Number.isNaN(new Date(value).getTime())
+    ) || null;
+};
 
 const hasScheduledLead = (item: CalendarLeadInput): item is ScheduledCalendarLead =>
     typeof item.scheduledAt === "string" && !Number.isNaN(new Date(item.scheduledAt).getTime());
@@ -54,20 +58,25 @@ export const buildCalendarEntries = (
     appointments: CalendarAppointmentInput[] = [],
     leads: CalendarLeadInput[] = []
 ): CalendarEntry[] => [
-    ...appointments.filter((item) => hasScheduledAppointment(item) && item.status !== "attended" && item.status !== "cancelled").map((item) => ({
-        kind: "appointment" as const,
-        id: item.id,
-        patientName: item.patientName || item.patient?.name || "Paciente sem nome",
-        treatment: null,
-        procedure: item.procedure || null,
-        appointmentType: item.appointmentType || "odontologia",
-        scheduledAt: item.scheduledAt,
-        createdAt: item.createdAt || null,
-        patientId: item.patientId ?? null,
-        leadId: null,
-        professional: item.professional || null,
-        isReturn: Boolean(item.parentAppointmentId)
-    })),
+    ...appointments.flatMap((item) => {
+        const scheduledAt = getAppointmentScheduledAt(item);
+        if (!scheduledAt || item.status === "attended" || item.status === "cancelled") return [];
+
+        return [{
+            kind: "appointment" as const,
+            id: item.id,
+            patientName: item.patientName || item.patient?.name || "Paciente sem nome",
+            treatment: null,
+            procedure: item.procedure || null,
+            appointmentType: item.appointmentType || "odontologia",
+            scheduledAt,
+            createdAt: item.createdAt || null,
+            patientId: item.patientId ?? null,
+            leadId: null,
+            professional: item.professional || null,
+            isReturn: Boolean(item.parentAppointmentId)
+        }];
+    }),
     ...leads.filter((item) => item.status !== "completed" && hasScheduledLead(item)).map((item) => ({
         kind: "lead" as const,
         id: item.id,

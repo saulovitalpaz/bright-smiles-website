@@ -99,7 +99,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 { label: "Termos e Documentos", href: "/admin/documentos" },
             ]
         },
-        { label: "Calendário", href: "/admin/calendario", icon: Calendar, adminOnly: true },
+        { label: "Agenda", href: "/admin/calendario", icon: Calendar, adminOnly: true },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },

@@ -113,4 +113,20 @@ describe("AdminCalendar return calendar state", () => {
         expect(entries).toHaveLength(1);
         expect(entries[0]).toMatchObject({ isReturn: true });
     });
+
+    it("keeps legacy appointments that only have the original date field", () => {
+        const entries = buildCalendarEntries([{
+            id: 43,
+            patientName: "Paciente legado",
+            procedure: "Avaliação histórica",
+            date: "2026-08-21T10:30:00.000Z",
+        }]);
+
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({
+            id: 43,
+            patientName: "Paciente legado",
+            scheduledAt: "2026-08-21T10:30:00.000Z",
+        });
+    });
 });

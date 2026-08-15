@@ -22,7 +22,7 @@ describe("admin navigation source contract", () => {
 
     it("keeps attendances and settings grouped in the sidebar", () => {
         expect(layoutSource).toMatch(/label:\s*["']Atendimentos["']/);
-        expect(layoutSource).toMatch(/label:\s*["']Calendário["'][\s\S]*href:\s*["']\/admin\/calendario["']/);
+        expect(layoutSource).toMatch(/label:\s*["']Agenda["'][\s\S]*href:\s*["']\/admin\/calendario["']/);
         expect(layoutSource).toMatch(/label:\s*["']Pacientes["'][\s\S]*href:\s*["']\/admin\/pacientes["']/);
         expect(layoutSource).toMatch(/label:\s*["']Configurações["']/);
         expect(layoutSource).toMatch(/label:\s*["']Equipe["'][\s\S]*href:\s*["']\/admin\/users["']/);
