@@ -22,6 +22,23 @@ describe("ToothSurfaceSelector", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not expose an ambiguous center face inteira option in the layered region grid", () => {
+    render(
+      <ToothSurfaceSelector
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        selectedFace={null}
+        onSelectFace={() => undefined}
+        selectedTargets={[]}
+        onTargetsChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /oclusal \/ incisal.*face inteira/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("selects one real anatomical face without replacing other selected targets", async () => {
     const user = userEvent.setup();
     const onTargetsChange = vi.fn();

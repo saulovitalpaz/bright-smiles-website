@@ -33,7 +33,7 @@ const FACE_REGION_OPTIONS: Readonly<Record<FaceKey, readonly ConditionTarget["re
   right: ["cervical", "middle"],
   bottom: ["cervical", "middle"],
   left: ["cervical", "middle"],
-  center: ["entire"],
+  center: [],
 };
 
 function getFaceStatus(data: ToothData, face: FaceKey): FaceStatus {

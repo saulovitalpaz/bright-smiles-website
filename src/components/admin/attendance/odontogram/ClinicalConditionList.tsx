@@ -45,9 +45,16 @@ function formatConditionTargets(
     const orderedRegions = REGION_ORDER.filter((region) => regions.has(region));
     const faceLabel = faceLabels[face as keyof typeof faceLabels];
 
-    if (orderedRegions.length === 1 && (orderedRegions[0] === "entire" || faceLabel === "Oclusal / Incisal")) {
-      targetLabels.push(faceLabel);
-      return;
+    if (orderedRegions.length === 1) {
+      const [region] = orderedRegions;
+      if (region === "incisalOcclusal") {
+        targetLabels.push(faceLabel);
+        return;
+      }
+      if (region === "entire" && face !== "center") {
+        targetLabels.push(faceLabel);
+        return;
+      }
     }
 
     targetLabels.push(`${faceLabel} (${orderedRegions.map((region) => REGION_LABELS[region]).join(", ")})`);

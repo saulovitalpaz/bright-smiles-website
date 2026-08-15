@@ -43,6 +43,28 @@ describe("ClinicalConditionList", () => {
     expect(screen.getByText("Vestibular (cervical, média), Oclusal / Incisal")).toBeInTheDocument();
   });
 
+  it("distinguishes a legacy whole-center target from an incisal occlusal target", () => {
+    render(<ClinicalConditionList toothNumber={16} conditions={[
+      {
+        id: "c1",
+        category: "achado",
+        type: "carie",
+        stage: "planejado",
+        targets: [{ kind: "surface", face: "center", region: "entire" }],
+      },
+      {
+        id: "c2",
+        category: "restauracao",
+        type: "resina_composta",
+        stage: "concluido",
+        targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+      },
+    ]} />);
+
+    expect(screen.getByText("Oclusal / Incisal (face inteira)")).toBeInTheDocument();
+    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
+  });
+
   it("uses unique removal labels to remove the second same-type occurrence", async () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();
