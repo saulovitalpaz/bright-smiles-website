@@ -12,8 +12,7 @@ import {
     BarChart3,
     ChevronLeft,
     Menu,
-    Settings,
-    Users
+    Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -89,18 +88,31 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             subItems: contentSubItems
         },
         {
-            label: "Consultas", href: "/admin/consultas", icon: Stethoscope, adminOnly: true, subItems: [
-                { label: "Atendimentos", href: "/admin/consultas" },
+            label: "Atendimentos",
+            href: "/admin/consultas",
+            icon: Stethoscope,
+            adminOnly: true,
+            subItems: [
+                { label: "Consultas", href: "/admin/consultas" },
+                { label: "Pacientes", href: "/admin/pacientes" },
                 { label: "Prescrição", href: "/admin/prescricao" },
-                { label: "Termos & Doc", href: "/admin/documentos" },
+                { label: "Termos e Documentos", href: "/admin/documentos" },
             ]
         },
+        { label: "Calendário", href: "/admin/calendario", icon: Calendar, adminOnly: true },
         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-        { label: "Equipe", href: "/admin/users", icon: Users, adminOnly: true },
-        { label: "Pacientes", href: "/admin/pacientes", icon: Users, adminOnly: true },
-        { label: "Configurações", href: "/admin/settings", icon: Settings, adminOnly: true },
+        {
+            label: "Configurações",
+            href: "/admin/settings",
+            icon: Settings,
+            adminOnly: true,
+            subItems: [
+                { label: "Geral", href: "/admin/settings" },
+                { label: "Equipe", href: "/admin/users" },
+            ]
+        },
     ];
 
     // Filter: manager only sees items without adminOnly flag

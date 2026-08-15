@@ -162,7 +162,7 @@ const AdminDashboard = () => {
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Horários confirmados</p>
                         </div>
                         <button 
-                            onClick={() => navigate('/admin/consultas?view=calendar')}
+                            onClick={() => navigate('/admin/calendario')}
                             title="Ver Calendário"
                             className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner hover:bg-blue-100 transition-colors cursor-pointer"
                         >
