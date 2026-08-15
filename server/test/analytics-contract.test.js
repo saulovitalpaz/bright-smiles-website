@@ -97,6 +97,36 @@ test('collect accepts valid events, persists a fingerprint, stores geo fields an
     assert.ok(!('id' in res.body));
 });
 
+test('collect returns 429 without persisting when the request is throttled', async () => {
+    let createCalls = 0;
+    const prisma = {
+        analyticsEvent: {
+            create: async () => {
+                createCalls += 1;
+                return { id: 1 };
+            }
+        }
+    };
+    const handlers = createAnalyticsHandlers({
+        prisma,
+        secret: 'analytics-secret',
+        geoLookup: async () => {
+            throw new Error('geoLookup should not run for throttled requests');
+        },
+        rateLimiter: { consume: () => false }
+    });
+    const res = createResponse();
+
+    await handlers.collect({
+        body: { type: 'pageview', path: '/implants', source: 'Instagram' },
+        headers: { 'user-agent': 'Mozilla/5.0' },
+        ip: '8.8.8.8'
+    }, res);
+
+    assert.equal(res.statusCode, 429);
+    assert.equal(createCalls, 0);
+});
+
 test('stats aggregates only pageviews, excludes story events from sources and omits individual event payloads', async () => {
     const prisma = {
         analyticsEvent: {

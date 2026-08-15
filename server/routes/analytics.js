@@ -314,7 +314,7 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
             const fingerprint = buildVisitorFingerprint(secret, ip);
 
             if (!limiter.consume(fingerprint)) {
-                return res.status(202).json({ status: 'accepted' });
+                return res.sendStatus(429);
             }
 
             let geoInfo = null;
