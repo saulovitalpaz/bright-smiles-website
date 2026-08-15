@@ -8,6 +8,9 @@ const GEO_LOOKUP_TIMEOUT_MS = 1500;
 const MAX_PATH_LENGTH = 512;
 const MAX_SOURCE_LENGTH = 120;
 const MAX_USER_AGENT_LENGTH = 512;
+const DEFAULT_PRUNE_BATCH_SIZE = 64;
+const DEFAULT_RATE_LIMIT_ENTRIES = 4096;
+const DEFAULT_GEO_CACHE_ENTRIES = 4096;
 
 const BOT_PATTERN = /(bot|crawler|spider|slurp|bingpreview|mediapartners-google|facebookexternalhit|whatsapp|telegrambot|preview|headless|uptime|monitor)/i;
 const TABLET_PATTERN = /(ipad|tablet|kindle|playbook|silk|sm-t|tab)/i;
@@ -114,18 +117,53 @@ const buildVisitorFingerprint = (secret, ip) => crypto
 
 const isBotUserAgent = (userAgent) => BOT_PATTERN.test(userAgent || '');
 
-const createMemoryRateLimiter = ({ limit = 60, windowMs = 60 * 1000, now = () => Date.now() } = {}) => {
-    const buckets = new Map();
+const pruneExpiredEntries = (store, currentTime, pruneBatchSize = DEFAULT_PRUNE_BATCH_SIZE) => {
+    let removed = 0;
 
-    return {
+    for (const [key, entry] of store) {
+        if (removed >= pruneBatchSize) break;
+        if (!entry || entry.expiresAt <= currentTime) {
+            store.delete(key);
+            removed += 1;
+        }
+    }
+
+    return removed;
+};
+
+const enforceMaxEntries = (store, maxEntries) => {
+    while (store.size > maxEntries) {
+        const oldestKey = store.keys().next().value;
+        if (oldestKey === undefined) break;
+        store.delete(oldestKey);
+    }
+};
+
+const inspectStore = (store) => ({
+    size: store.size,
+    keys: Array.from(store.keys())
+});
+
+const createMemoryRateLimiter = ({
+    limit = 60,
+    windowMs = 60 * 1000,
+    now = () => Date.now(),
+    maxEntries = DEFAULT_RATE_LIMIT_ENTRIES,
+    pruneBatchSize = DEFAULT_PRUNE_BATCH_SIZE,
+    buckets = new Map()
+} = {}) => {
+
+    const limiter = {
         consume(key) {
             const currentTime = now();
+            pruneExpiredEntries(buckets, currentTime, pruneBatchSize);
             const windowStart = currentTime - (currentTime % windowMs);
             const expiresAt = windowStart + windowMs;
             const existing = buckets.get(key);
 
             if (!existing || existing.expiresAt <= currentTime) {
                 buckets.set(key, { count: 1, expiresAt });
+                enforceMaxEntries(buckets, maxEntries);
                 return true;
             }
 
@@ -137,6 +175,10 @@ const createMemoryRateLimiter = ({ limit = 60, windowMs = 60 * 1000, now = () =>
             return true;
         }
     };
+
+    limiter.inspect = () => inspectStore(buckets);
+
+    return limiter;
 };
 
 const formatLocation = (geoInfo) => {
@@ -144,17 +186,23 @@ const formatLocation = (geoInfo) => {
     return `${geoInfo.city}, ${geoInfo.state} - ${geoInfo.country}`;
 };
 
-const createDefaultGeoLookup = (secret) => {
-    const cache = new Map();
-
-    return async (ip) => {
+const createDefaultGeoLookup = (secret, {
+    now = () => Date.now(),
+    fetchImpl = fetch,
+    cache = new Map(),
+    cacheTtlMs = GEO_CACHE_TTL_MS,
+    maxEntries = DEFAULT_GEO_CACHE_ENTRIES,
+    pruneBatchSize = DEFAULT_PRUNE_BATCH_SIZE
+} = {}) => {
+    const lookup = async (ip) => {
         const normalizedIp = normalizeIp(ip);
         if (!normalizedIp || isPrivateOrReservedIp(normalizedIp)) return null;
 
         const fingerprint = buildVisitorFingerprint(secret, normalizedIp);
-        const now = Date.now();
+        const currentTime = now();
+        pruneExpiredEntries(cache, currentTime, pruneBatchSize);
         const cached = cache.get(fingerprint);
-        if (cached && cached.expiresAt > now) {
+        if (cached && cached.expiresAt > currentTime) {
             return cached.value;
         }
 
@@ -162,7 +210,7 @@ const createDefaultGeoLookup = (secret) => {
         const timeout = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
 
         try {
-            const response = await fetch(
+            const response = await fetchImpl(
                 `https://ipwho.is/${encodeURIComponent(normalizedIp)}?fields=success,city,region,country,latitude,longitude`,
                 {
                     method: 'GET',
@@ -171,13 +219,15 @@ const createDefaultGeoLookup = (secret) => {
             );
 
             if (!response.ok) {
-                cache.set(fingerprint, { value: null, expiresAt: now + GEO_CACHE_TTL_MS });
+                cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
+                enforceMaxEntries(cache, maxEntries);
                 return null;
             }
 
             const payload = await response.json();
             if (!payload || payload.success !== true) {
-                cache.set(fingerprint, { value: null, expiresAt: now + GEO_CACHE_TTL_MS });
+                cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
+                enforceMaxEntries(cache, maxEntries);
                 return null;
             }
 
@@ -190,19 +240,26 @@ const createDefaultGeoLookup = (secret) => {
             };
 
             if (!geoInfo.city && !geoInfo.state && !geoInfo.country) {
-                cache.set(fingerprint, { value: null, expiresAt: now + GEO_CACHE_TTL_MS });
+                cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
+                enforceMaxEntries(cache, maxEntries);
                 return null;
             }
 
-            cache.set(fingerprint, { value: geoInfo, expiresAt: now + GEO_CACHE_TTL_MS });
+            cache.set(fingerprint, { value: geoInfo, expiresAt: currentTime + cacheTtlMs });
+            enforceMaxEntries(cache, maxEntries);
             return geoInfo;
         } catch {
-            cache.set(fingerprint, { value: null, expiresAt: now + GEO_CACHE_TTL_MS });
+            cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
+            enforceMaxEntries(cache, maxEntries);
             return null;
         } finally {
             clearTimeout(timeout);
         }
     };
+
+    lookup.inspect = () => inspectStore(cache);
+
+    return lookup;
 };
 
 const normalizeStoredFingerprint = (secret, rawValue) => {
@@ -338,5 +395,9 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
 }
 
 module.exports = {
-    createAnalyticsHandlers
+    createAnalyticsHandlers,
+    __private: {
+        createMemoryRateLimiter,
+        createDefaultGeoLookup
+    }
 };

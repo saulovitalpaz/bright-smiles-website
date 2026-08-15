@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { createAnalyticsHandlers } = require('../routes/analytics');
+const { createAnalyticsHandlers, __private } = require('../routes/analytics');
 
 const createResponse = () => {
     const response = {
@@ -170,4 +170,60 @@ test('stats aggregates only pageviews, excludes story events from sources and om
     });
     assert.ok(!('recentEvents' in res.body));
     assert.ok(!('events' in res.body));
+});
+
+test('memory rate limiter prunes expired buckets before growing indefinitely', () => {
+    let nowMs = 0;
+    const limiter = __private.createMemoryRateLimiter({
+        limit: 1,
+        windowMs: 1000,
+        now: () => nowMs,
+        maxEntries: 2,
+        pruneBatchSize: 2
+    });
+
+    assert.equal(limiter.consume('visitor-a'), true);
+    assert.equal(limiter.consume('visitor-b'), true);
+    assert.equal(limiter.inspect().size, 2);
+
+    nowMs = 2000;
+
+    assert.equal(limiter.consume('visitor-c'), true);
+    assert.deepEqual(limiter.inspect().keys, ['visitor-c']);
+});
+
+test('default geo lookup prunes expired cache entries and reuses bounded storage', async () => {
+    let nowMs = 0;
+    let fetchCalls = 0;
+    const geoLookup = __private.createDefaultGeoLookup('geo-secret', {
+        now: () => nowMs,
+        maxEntries: 2,
+        pruneBatchSize: 2,
+        fetchImpl: async () => {
+            fetchCalls += 1;
+            return {
+                ok: true,
+                json: async () => ({
+                    success: true,
+                    city: `City ${fetchCalls}`,
+                    region: `Region ${fetchCalls}`,
+                    country: 'BR',
+                    latitude: -19.9234,
+                    longitude: -43.9456
+                })
+            };
+        }
+    });
+
+    await geoLookup('8.8.8.8');
+    await geoLookup('1.1.1.1');
+
+    assert.equal(geoLookup.inspect().size, 2);
+
+    nowMs = (24 * 60 * 60 * 1000) + 1;
+
+    await geoLookup('9.9.9.9');
+
+    assert.equal(fetchCalls, 3);
+    assert.equal(geoLookup.inspect().size, 1);
 });
