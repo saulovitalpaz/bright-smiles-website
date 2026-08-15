@@ -80,8 +80,8 @@ test('password utilities hash new passwords and recognize legacy credentials for
 
 test('user management is admin-only, validated, hashed, and never selects password', () => {
     const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
-    const appointments = fs.readFileSync(
-        path.resolve(serverRoot, '..', 'src/pages/AdminAppointments.tsx'),
+    const calendarPage = fs.readFileSync(
+        path.resolve(serverRoot, '..', 'src/pages/AdminCalendar.tsx'),
         'utf8'
     );
     const adminUsers = fs.readFileSync(
@@ -100,7 +100,7 @@ test('user management is admin-only, validated, hashed, and never selects passwo
     assert.doesNotMatch(routes, /data:\s*req\.body|findMany\(\s*\)/);
     assert.match(source, /app\.get\('\/staff', authenticateToken, authorizeRole\(\['admin', 'dentist'\]\)/);
     assert.match(source, /select:\s*STAFF_USER_SELECT/);
-    assert.match(appointments, /fetchClient\("\/staff"\)/);
+    assert.match(calendarPage, /fetchClient\("\/staff"\)/);
     assert.match(adminUsers, /type="password"/);
     assert.match(adminUsers, /minLength=\{8\}/);
 

@@ -75,21 +75,21 @@ test('only scheduled appointments remain in dashboard-facing upcoming state', ()
 
 test('manual calendar creation keeps a complete, controlled appointment contract', () => {
     const repoRoot = path.resolve(serverRoot, '..');
-    const appointmentsPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
+    const calendarPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminCalendar.tsx'), 'utf8');
     const calendar = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
     const calendarHelper = fs.readFileSync(path.join(repoRoot, 'src/lib/calendar.ts'), 'utf8');
 
     assert.match(calendar, /onEventCreate/);
-    assert.match(appointmentsPage, /setManualAppointmentDate/);
-    assert.match(appointmentsPage, /DialogTitle>.*Novo atendimento/);
-    assert.match(appointmentsPage, /fetchClient\(['"]\/appointments['"],\s*\{\s*method:\s*['"]POST['"]/);
-    assert.match(appointmentsPage, /patientName/);
-    assert.match(appointmentsPage, /procedure/);
-    assert.match(appointmentsPage, /appointmentType/);
-    assert.match(appointmentsPage, /professional/);
-    assert.match(appointmentsPage, /scheduledAt/);
-    assert.match(appointmentsPage, /paymentStatus/);
-    assert.match(appointmentsPage, /refreshCalendarRecords/);
+    assert.match(calendarPage, /setManualAppointmentDate/);
+    assert.match(calendarPage, /DialogTitle>.*Novo atendimento/);
+    assert.match(calendarPage, /fetchClient\(['"]\/appointments['"],\s*\{\s*method:\s*['"]POST['"]/);
+    assert.match(calendarPage, /patientName/);
+    assert.match(calendarPage, /procedure/);
+    assert.match(calendarPage, /appointmentType/);
+    assert.match(calendarPage, /professional/);
+    assert.match(calendarPage, /scheduledAt/);
+    assert.match(calendarPage, /paymentStatus/);
+    assert.match(calendarPage, /refreshCalendarRecords/);
     assert.match(calendarHelper, /status\?:\s*['"]scheduled['"]\s*\|\s*['"]attended['"]\s*\|\s*['"]cancelled['"]/);
     assert.match(calendarHelper, /item\.status !== "attended" && item\.status !== "cancelled"/);
 });

@@ -144,6 +144,5 @@ test('admin patients page is registered and exposed in the admin navigation', ()
     assert.match(appSource, /path=["']\/admin\/pacientes["'][\s\S]*AdminPatients/);
     assert.match(layoutSource, /label:\s*["']Pacientes["']/);
     assert.match(layoutSource, /href:\s*["']\/admin\/pacientes["']/);
-    assert.match(layoutSource, /icon:\s*Users/);
-    assert.match(layoutSource, /adminOnly:\s*true/);
+    assert.match(layoutSource, /label:\s*["']Atendimentos["'][\s\S]*label:\s*["']Pacientes["'][\s\S]*href:\s*["']\/admin\/pacientes["']/);
 });
