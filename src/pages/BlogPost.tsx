@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Clock, Share2, ChevronLeft, ChevronRight, Maximize2, X, BookOpen, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/lib/api";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { mediaUrl } from "@/lib/media";
 
 interface BlogReference {
@@ -48,16 +49,11 @@ const BlogPost = () => {
                     if (data.id) {
                         fetch(`${API_URL}/posts/${data.id}/view`, { method: 'POST' }).catch(() => { });
                     }
-                    // 2. Log to unified Analytics system
-                    fetch(`${API_URL}/analytics`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            path: `/blog/${slug}`,
-                            type: 'blog_view',
-                            source: 'Direto'
-                        })
-                    }).catch(() => { });
+                    trackAnalyticsEvent({
+                        path: `/blog/${slug}`,
+                        type: "blog_view",
+                        source: "Direto",
+                    });
                 })
                 .catch(err => {
                     console.error(err);

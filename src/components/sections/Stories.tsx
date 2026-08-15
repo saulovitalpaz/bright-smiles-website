@@ -3,6 +3,7 @@ import { X, Play, Pause } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "@/lib/api";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { mediaUrl } from "@/lib/media";
 
 interface Story {
@@ -46,16 +47,11 @@ const Stories = () => {
             // 1. Fire and forget legacy view increment
             fetch(`${API_URL}/stories/${story.id}/view`, { method: 'POST' }).catch(() => { });
 
-            // 2. Log to unified Analytics system
-            fetch(`${API_URL}/analytics`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    path: `/story/${story.id}`,
-                    type: 'story_view',
-                    source: 'Direto' // PageTracker handles UTMs on entry, here we mark as direct interaction
-                })
-            }).catch(() => { });
+            trackAnalyticsEvent({
+                path: `/story/${story.id}`,
+                type: "story_view",
+                source: "Direto",
+            });
         }
     }, [selectedStoryIndex, stories]);
 
