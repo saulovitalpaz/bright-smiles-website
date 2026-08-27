@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { API_URL, fetchClient } from "@/lib/api";
 import Odontogram from "@/components/admin/attendance/Odontogram";
-import type { OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
+import { normalizeOdontogram, type OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
 import { DownloadPrescriptionButton } from "@/components/PrescriptionGenerator";
 import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature";
 import { ConsentDialog } from "@/components/ConsentDialog";
@@ -48,6 +48,8 @@ type StoredPrescription = {
     content: string;
 };
 
+type PrintTarget = "prescription" | "odontogram";
+
 const AdminPrescription = () => {
     const [searchParams] = useSearchParams();
     const urlCpf = searchParams.get("cpf");
@@ -68,6 +70,7 @@ const AdminPrescription = () => {
     const [showConsentDialog, setShowConsentDialog] = useState(false);
     const [patientConsent, setPatientConsent] = useState(false);
     const [includeOdontogram, setIncludeOdontogram] = useState(false);
+    const [printTarget, setPrintTarget] = useState<PrintTarget | null>(null);
 
     const editorRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +80,22 @@ const AdminPrescription = () => {
     const [includeProfessionalSignature, setIncludeProfessionalSignature] = useState(
         () => canInsertSignature,
     );
+
+    const normalizedOdontogram = normalizeOdontogram(patientData.odontogram);
+    const isPrescriptionPrint = printTarget === "prescription";
+
+    useEffect(() => {
+        if (!printTarget) return;
+
+        const clearPrintTarget = () => setPrintTarget(null);
+        window.addEventListener("afterprint", clearPrintTarget);
+        const frame = window.requestAnimationFrame(() => window.print());
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.removeEventListener("afterprint", clearPrintTarget);
+        };
+    }, [printTarget]);
 
     useEffect(() => {
         if (urlCpf) {
@@ -238,14 +257,24 @@ const AdminPrescription = () => {
         if (!canIssueDocument) {
             return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
         }
-        window.print();
+        setPrintTarget("prescription");
+    };
+
+    const handlePrintOdontogram = () => {
+        if (!Object.keys(normalizedOdontogram.teeth).length) {
+            return toast.error("Nenhum odontograma registrado para este paciente.");
+        }
+        if (!canIssueDocument) {
+            return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
+        }
+        setPrintTarget("odontogram");
     };
 
     return (
         <AdminLayout title="Prescrição Clínica">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-20 no-print">
                 {/* Patient Info Form */}
-                <div className="lg:col-span-1 space-y-6">
+                <div className="min-w-0 lg:col-span-1 space-y-6">
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Dados do Paciente</CardTitle>
@@ -377,7 +406,7 @@ const AdminPrescription = () => {
                 </div>
 
                 {/* Editor Area */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="min-w-0 lg:col-span-2 space-y-4">
                     <Card className="min-w-0 border-slate-200 shadow-sm flex flex-col min-h-[420px] sm:min-h-[500px] md:min-h-[600px]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Prescrição Clínica</p>
@@ -443,8 +472,8 @@ const AdminPrescription = () => {
                     </Card>
 
                     {/* Optional Odontogram Toggle */}
-                    <Card className="border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-4 flex items-center justify-between bg-slate-50/50 border-b border-slate-100">
+                    <Card className="admin-card overflow-hidden">
+                        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3">
                                 <Switch
                                     id="include-odontogram"
@@ -455,9 +484,20 @@ const AdminPrescription = () => {
                                     Incluir Odontograma na Receita
                                 </Label>
                             </div>
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">
-                                {includeOdontogram ? 'Visível na impressão' : 'Opcional'}
-                            </span>
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                                    {includeOdontogram ? 'Visível na impressão' : 'Opcional'}
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="min-h-11 w-full gap-2 sm:w-auto"
+                                    onClick={handlePrintOdontogram}
+                                >
+                                    <Printer size={16} /> Imprimir odontograma
+                                </Button>
+                            </div>
                         </div>
                         {includeOdontogram && (
                             <CardContent className="p-4">
@@ -473,89 +513,118 @@ const AdminPrescription = () => {
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} id="printable-recipe">
-                {/* The odontogram is an independent print page; patient and prescription content start on the next page. */}
-                {includeOdontogram && Object.keys(patientData.odontogram || {}).length > 0 && (
-                    <div className="print-section print-page-odontogram print-odontogram">
-                        <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest mb-2">Mapeamento Dentário</p>
-                        <div className="min-w-0 max-w-full">
-                            <Odontogram
-                                data={patientData.odontogram || {}}
-                                onChange={() => {}}
-                                readOnly
-                                printable
-                                birthDate={patientData.birthDate}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Header: compact, single row */}
-                <div className="print-section flex items-center gap-4 border-b border-slate-200 pb-4 mb-5">
-                    <img src="/images/logo-oficial.png" alt="Logo" className="w-14 h-14 object-contain" />
-                    <div>
-                        <h1 className="text-lg font-serif font-black text-slate-900 tracking-wider uppercase leading-tight">Núcleo Odontológico</h1>
-                        <p className="text-slate-400 font-medium text-[8px] uppercase tracking-[0.2em]">Especializado & Harmonização</p>
-                    </div>
-                    <div className="ml-auto text-right">
-                        <p className="text-[7px] uppercase font-bold text-slate-400 tracking-wider">Prescrição emitida em</p>
-                        <p className="text-xs font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                    </div>
-                </div>
-
-                {/* Patient Info Block: clean grid */}
-                <div className="print-patient-block bg-slate-50 p-3 rounded-lg mb-5 border border-slate-100">
-                    <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-                        <div className="col-span-7">
-                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.15em] mb-0.5">Paciente</p>
-                            <p className="text-sm font-serif font-bold text-slate-900">{patientData.name || "________________________________"}</p>
-                        </div>
-                        <div className="col-span-3">
-                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.15em] mb-0.5">CPF</p>
-                            <p className="text-[11px] font-mono font-bold text-slate-700">{patientData.cpf || "___.___.___-__"}</p>
-                        </div>
-                        <div className="col-span-2 text-right">
-                            <p className="text-[7px] uppercase font-black text-primary tracking-[0.15em] mb-0.5">Telefone</p>
-                            <p className="text-[10px] font-mono text-slate-600">{patientData.phone || "—"}</p>
-                        </div>
-                        {patientData.address && (
-                            <div className="col-span-12 border-t border-slate-200/60 pt-1.5">
-                                <p className="text-[7px] uppercase font-black text-primary tracking-[0.15em] mb-0.5">Endereço</p>
-                                <p className="text-[10px] text-slate-600 italic">{patientData.address}</p>
+            {printTarget && (
+                <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} data-print-target={printTarget} id="printable-recipe">
+                    {printTarget === "odontogram" ? (
+                        <>
+                            <div className="print-section mb-5 flex items-center gap-4 border-b border-slate-200 pb-4">
+                                <img src="/images/logo-oficial.png" alt="Logo" className="h-14 w-14 object-contain" />
+                                <div>
+                                    <h1 className="text-lg font-serif font-black uppercase leading-tight tracking-wider text-slate-900">Núcleo Odontológico</h1>
+                                    <p className="text-[8px] font-medium uppercase tracking-[0.2em] text-slate-400">Especializado & Harmonização</p>
+                                </div>
+                                <div className="ml-auto text-right">
+                                    <p className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Odontograma emitido em</p>
+                                    <p className="text-xs font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                </div>
                             </div>
-                        )}
-                    </div>
+                            <div className="print-patient-block mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                <p className="text-[7px] font-black uppercase tracking-[0.15em] text-primary">Paciente</p>
+                                <p className="font-serif text-sm font-bold text-slate-900">{patientData.name || "________________________________"}</p>
+                                <p className="mt-1 font-mono text-[11px] font-bold text-slate-700">CPF: {patientData.cpf || "___.___.___-__"}</p>
+                            </div>
+                            <div className="print-odontogram">
+                                <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Mapeamento Dentário</p>
+                                <Odontogram
+                                    data={patientData.odontogram}
+                                    onChange={() => {}}
+                                    readOnly
+                                    printable
+                                    birthDate={patientData.birthDate}
+                                />
+                            </div>
+                        </>
+                    ) : isPrescriptionPrint ? (
+                        <>
+                            {/* The odontogram is an independent print page; prescription starts on the next page. */}
+                            {includeOdontogram && Object.keys(normalizedOdontogram.teeth).length > 0 && (
+                                <div className="print-section print-page-odontogram print-odontogram">
+                                    <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Mapeamento Dentário</p>
+                                    <div className="min-w-0 max-w-full">
+                                        <Odontogram
+                                            data={patientData.odontogram}
+                                            onChange={() => {}}
+                                            readOnly
+                                            printable
+                                            birthDate={patientData.birthDate}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="print-section mb-5 flex items-center gap-4 border-b border-slate-200 pb-4">
+                                <img src="/images/logo-oficial.png" alt="Logo" className="h-14 w-14 object-contain" />
+                                <div>
+                                    <h1 className="text-lg font-serif font-black uppercase leading-tight tracking-wider text-slate-900">Núcleo Odontológico</h1>
+                                    <p className="text-[8px] font-medium uppercase tracking-[0.2em] text-slate-400">Especializado & Harmonização</p>
+                                </div>
+                                <div className="ml-auto text-right">
+                                    <p className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Prescrição emitida em</p>
+                                    <p className="text-xs font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                </div>
+                            </div>
+
+                            <div className="print-patient-block mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+                                    <div className="col-span-7">
+                                        <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">Paciente</p>
+                                        <p className="font-serif text-sm font-bold text-slate-900">{patientData.name || "________________________________"}</p>
+                                    </div>
+                                    <div className="col-span-3">
+                                        <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">CPF</p>
+                                        <p className="font-mono text-[11px] font-bold text-slate-700">{patientData.cpf || "___.___.___-__"}</p>
+                                    </div>
+                                    <div className="col-span-2 text-right">
+                                        <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">Telefone</p>
+                                        <p className="font-mono text-[10px] text-slate-600">{patientData.phone || "—"}</p>
+                                    </div>
+                                    {patientData.address && (
+                                        <div className="col-span-12 border-t border-slate-200/60 pt-1.5">
+                                            <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">Endereço</p>
+                                            <p className="text-[10px] italic text-slate-600">{patientData.address}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="print-flow-content mb-6 rounded-xl border border-dotted border-slate-200 px-5 py-3 font-serif text-base leading-relaxed text-slate-800">
+                                <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
+                            </div>
+
+                            <div className="print-signature pt-6">
+                                <div className="mb-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+                                <div className="flex items-end justify-between">
+                                    <div className="space-y-0.5 text-[8px] text-slate-500">
+                                        <p className="mb-1 text-[9px] font-black uppercase tracking-wider text-slate-800">Unidade de Atendimento</p>
+                                        <p className="font-semibold text-slate-600">Governador Valadares - MG</p>
+                                        <p>Rua Barão do Rio Branco, 461 - Sala 206 - Centro</p>
+                                        <p>CNPJ: 00.000.000/0001-00 | Razão Social: Karol Paz Me.</p>
+                                    </div>
+                                    <ProfessionalSignature
+                                        professional={currentUser}
+                                        includeElectronic={includeProfessionalSignature}
+                                        className="w-64"
+                                    />
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3 text-[6px] font-bold uppercase tracking-[0.25em] text-slate-300">
+                                    <p>Documento Oficial NOEH</p>
+                                    <p>{new Date().toLocaleDateString('pt-BR')} • {new Date().toLocaleTimeString('pt-BR')}</p>
+                                </div>
+                            </div>
+                        </>
+                    ) : null}
                 </div>
-
-                {/* Prescription Body */}
-                <div className="print-flow-content py-3 px-5 rounded-xl border border-dotted border-slate-200 mb-6 font-serif text-base leading-relaxed text-slate-800">
-                    <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
-                </div>
-
-                {/* Flowing footer: moves intact to the next page when needed. */}
-                <div className="print-signature pt-6">
-                    <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-5"></div>
-
-                    <div className="flex justify-between items-end">
-                        <div className="text-[8px] text-slate-500 space-y-0.5">
-                            <p className="font-black text-slate-800 uppercase tracking-wider text-[9px] mb-1">Unidade de Atendimento</p>
-                            <p className="font-semibold text-slate-600">Governador Valadares - MG</p>
-                            <p>Rua Barão do Rio Branco, 461 - Sala 206 - Centro</p>
-                            <p>CNPJ: 00.000.000/0001-00 | Razão Social: Karol Paz Me.</p>
-                        </div>
-                        <ProfessionalSignature
-                            professional={currentUser}
-                            includeElectronic={includeProfessionalSignature}
-                            className="w-64"
-                        />
-                    </div>
-
-                    <div className="mt-4 flex justify-between items-center text-[6px] text-slate-300 font-bold uppercase tracking-[0.25em] pt-3 border-t border-slate-50">
-                        <p>Documento Oficial NOEH</p>
-                        <p>{new Date().toLocaleDateString('pt-BR')} • {new Date().toLocaleTimeString('pt-BR')}</p>
-                    </div>
-                </div>
-            </div>
+            )}
 
             {/* Consent Dialog */}
             {patientData.cpf && (

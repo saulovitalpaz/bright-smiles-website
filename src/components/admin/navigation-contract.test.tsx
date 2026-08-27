@@ -70,7 +70,7 @@ describe("admin navigation source contract", () => {
     it("offers a standalone odontogram print action in the odontogram card", () => {
         expect(prescriptionSource).toContain("Imprimir odontograma");
         expect(prescriptionSource).toContain("handlePrintOdontogram");
-        expect(prescriptionSource).toContain("Object.keys(normalizeOdontogram");
+        expect(prescriptionSource).toContain("normalizeOdontogram(patientData.odontogram)");
     });
 
     it("preserves the page break only for a prescription that includes the odontogram", () => {
