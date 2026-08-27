@@ -17,6 +17,8 @@ model User {
   role      String   @default("admin")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  issuedPatientDocuments PatientDocument[] @relation("PatientDocumentIssuer")
+  uploadedDocumentAttachments PatientDocumentAttachment[] @relation("PatientDocumentAttachmentUploader")
 }
 
 model Post {
@@ -66,6 +68,7 @@ model Appointment {
   parentAppointment Appointment? @relation("AppointmentReturns", fields: [parentAppointmentId], references: [id], onDelete: SetNull)
   returnAppointment Appointment? @relation("AppointmentReturns")
   financeTransactions FinanceTransaction[]
+  prescriptions Prescription[] @relation("PrescriptionOdontogramSource")
 }
 
 model Treatment {
@@ -119,6 +122,7 @@ model Patient {
   phone         String?
   address       String?
   history       String?
+  birthDate     DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   consent       Boolean              @default(false)
@@ -138,6 +142,9 @@ model Prescription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   patient   Patient  @relation(fields: [patientId], references: [id])
+  odontogramSnapshot Json?
+  odontogramSourceAppointmentId Int?
+  odontogramSourceAppointment Appointment? @relation("PrescriptionOdontogramSource", fields: [odontogramSourceAppointmentId], references: [id], onDelete: SetNull)
 }
 
 model Lead {
@@ -195,6 +202,12 @@ model DocumentTemplate {
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  kind      String   @default("text")
+  storageKey String?
+  mimeType  String?
+  originalName String?
+  archivedAt DateTime?
+  documents PatientDocument[]
 }
 
 model PatientDocument {
@@ -208,6 +221,29 @@ model PatientDocument {
   pdfUrl    String?
   storageKey String?
   patient   Patient  @relation(fields: [patientId], references: [id])
+  templateId Int?
+  status String @default("issued")
+  issuedAt DateTime @default(now())
+  issuedById Int?
+  sourceKind String @default("text")
+  template DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  issuedBy User? @relation("PatientDocumentIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+  attachments PatientDocumentAttachment[]
+}
+
+model PatientDocumentAttachment {
+  id Int @id @default(autoincrement())
+  patientDocumentId Int
+  storageKey String
+  mimeType String
+  originalName String
+  size Int
+  createdAt DateTime @default(now())
+  uploadedById Int?
+  patientDocument PatientDocument @relation(fields: [patientDocumentId], references: [id], onDelete: Cascade)
+  uploadedBy User? @relation("PatientDocumentAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([patientDocumentId])
 }
 
 model AnalyticsEvent {
