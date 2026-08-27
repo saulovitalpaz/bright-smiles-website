@@ -1,9 +1,11 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   getFaceLabels,
+  getTeethForDentition,
   getClinicalStageLabel,
   getConditionTargetLabel,
   getToothFamily,
+  createEmptyOdontogram,
   createCondition,
   normalizeOdontogram,
   upsertCondition,
@@ -68,11 +70,38 @@ describe("odontogramModel", () => {
     expect(getToothFamily(13)).toBe("canine");
     expect(getToothFamily(15)).toBe("premolar");
     expect(getToothFamily(18)).toBe("molar");
+    expect(getToothFamily(51)).toBe("incisor");
+    expect(getToothFamily(53)).toBe("canine");
+    expect(getToothFamily(55)).toBe("molar");
   });
 
   it("maps positional faces to clinical labels", () => {
     expect(getFaceLabels(11).right).toBe("Mesial");
     expect(getFaceLabels(31).bottom).toBe("Vestibular");
+    expect(getFaceLabels(51).right).toBe("Mesial");
+    expect(getFaceLabels(71).right).toBe("Distal");
+  });
+
+  it("exposes valid primary, permanent, and union tooth catalogs", () => {
+    expect(getTeethForDentition("deciduous")).toContain(55);
+    expect(getTeethForDentition("deciduous")).not.toContain(16);
+    expect(getTeethForDentition("permanent")).toContain(16);
+    expect(getTeethForDentition("mixed")).toEqual(expect.arrayContaining([55, 16]));
+    expect(createEmptyOdontogram("deciduous")).toEqual({ version: 3, dentition: "deciduous", teeth: {} });
+  });
+
+  it("preserves a V3 mixed snapshot while normalizing legacy data as before", () => {
+    const mixed = {
+      version: 3 as const,
+      dentition: "mixed" as const,
+      teeth: {
+        "55": { notes: "decíduo", conditions: [] },
+        "16": { notes: "permanente", conditions: [] },
+      },
+    };
+
+    expect(normalizeOdontogram(mixed)).toEqual(mixed);
+    expect(normalizeOdontogram({})).toMatchObject({ version: 2, dentition: "permanent" });
   });
 
   it("formats a stage and exact target for a tooth", () => {

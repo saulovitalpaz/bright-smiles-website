@@ -14,6 +14,7 @@ import { AnatomicalTooth } from "./odontogram/AnatomicalTooth";
 import {
   getFaceLabels,
   getTooth,
+  getTeethForDentition,
   normalizeOdontogram,
   removeCondition,
   upsertCondition,
@@ -23,7 +24,7 @@ import {
   type FaceStatus,
   type ClinicalCondition,
   type OdontogramData,
-  type OdontogramV2,
+  type Dentition,
   type ToothData,
   type ToothStatus,
   type WholeToothStatus,
@@ -32,6 +33,7 @@ import { ToothSurfaceSelector } from "./odontogram/ToothSurfaceSelector";
 import { ClinicalConditionEditor } from "./odontogram/ClinicalConditionEditor";
 import { ClinicalConditionList } from "./odontogram/ClinicalConditionList";
 import { OcclusalTooth } from "./odontogram/OcclusalTooth";
+import { derivePatientAge } from "@/lib/patient-age";
 
 export type { ToothData, ToothFaceData } from "./odontogram/odontogramModel";
 
@@ -40,10 +42,9 @@ interface OdontogramProps {
   onChange: (data: OdontogramData) => void;
   readOnly?: boolean;
   printable?: boolean;
+  birthDate?: string | Date | null;
+  dentition?: Dentition;
 }
-
-const TEETH_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const TEETH_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
 const FACE_CONDITIONS: ReadonlyArray<{ label: string; value: FaceStatus }> = [
   { label: "Saudável", value: "Saudável" },
@@ -141,15 +142,34 @@ const Odontogram = ({
   onChange,
   readOnly = false,
   printable = false,
+  birthDate = null,
+  dentition,
 }: OdontogramProps): JSX.Element => {
-  const isLayeredData = "version" in data;
+  const derivedDentition = derivePatientAge(birthDate).dentition;
+  const requestedDentition = dentition ?? (derivedDentition === "legacy" ? "permanent" : derivedDentition);
+  const sourceData = "version" in data
+    ? data
+    : birthDate && derivedDentition !== "legacy"
+      ? {
+        version: 3 as const,
+        dentition: requestedDentition,
+        teeth: normalizeOdontogram(data).teeth,
+      }
+      : data;
+  const isLayeredData = "version" in sourceData;
   const legacyData: Record<string, ToothData> = isLayeredData
-    ? Object.fromEntries(Object.entries(data.teeth).map(([toothNumber, record]) => [toothNumber, {
+    ? Object.fromEntries(Object.entries(sourceData.teeth).map(([toothNumber, record]) => [toothNumber, {
       status: "Saudável",
       notes: record.notes,
     }]))
-    : data;
-  const layeredData = normalizeOdontogram(data);
+    : sourceData;
+  const layeredData = normalizeOdontogram(sourceData);
+  const activeDentition: Dentition = "version" in layeredData && layeredData.version === 3
+    ? layeredData.dentition
+    : requestedDentition;
+  const teeth = getTeethForDentition(activeDentition);
+  const teethUpper = teeth.filter((toothNumber) => (toothNumber >= 11 && toothNumber <= 28) || (toothNumber >= 51 && toothNumber <= 65));
+  const teethLower = teeth.filter((toothNumber) => (toothNumber >= 31 && toothNumber <= 48) || (toothNumber >= 71 && toothNumber <= 85));
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [selectedFace, setSelectedFace] = useState<FaceKey | null>(null);
   const [wholeToothOpen, setWholeToothOpen] = useState(false);
@@ -270,7 +290,7 @@ const Odontogram = ({
           <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
             Arcada Superior
           </p>
-          <TeethRow teeth={TEETH_UPPER} />
+          <TeethRow teeth={teethUpper} />
 
           <div className="my-1 flex items-center gap-3">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
@@ -278,7 +298,7 @@ const Odontogram = ({
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
           </div>
 
-          <TeethRow teeth={TEETH_LOWER} />
+          <TeethRow teeth={teethLower} />
           <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
             Arcada Inferior
           </p>

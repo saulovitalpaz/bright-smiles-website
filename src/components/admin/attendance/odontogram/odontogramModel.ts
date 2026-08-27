@@ -4,6 +4,7 @@ export type ToothFamily = "incisor" | "canine" | "premolar" | "molar";
 export type FaceStatus = "Saudável" | "Tratar" | "Tratado";
 export type WholeToothStatus = "Saudável" | "Ausente" | "Implante" | "Ponte";
 export type ToothStatus = FaceStatus | WholeToothStatus;
+export type Dentition = "deciduous" | "mixed" | "permanent";
 
 export interface ToothFaceData {
   status: FaceStatus;
@@ -19,6 +20,11 @@ export const EMPTY_TOOTH: ToothData = { status: "Saudável", notes: "" };
 
 export function getToothFamily(toothNumber: number): ToothFamily {
   const position = toothNumber % 10;
+  if (toothNumber >= 51 && toothNumber <= 85) {
+    if (position === 3) return "canine";
+    if (position >= 4) return "molar";
+    return "incisor";
+  }
   if (position >= 6) return "molar";
   if (position >= 4) return "premolar";
   if (position === 3) return "canine";
@@ -26,10 +32,12 @@ export function getToothFamily(toothNumber: number): ToothFamily {
 }
 
 export function getFaceLabels(toothNumber: number): Record<FaceKey, string> {
-  const upper = toothNumber >= 11 && toothNumber <= 28;
+  const upper = (toothNumber >= 11 && toothNumber <= 28) || (toothNumber >= 51 && toothNumber <= 65);
   const rightQuadrant =
     (toothNumber >= 11 && toothNumber <= 18) ||
-    (toothNumber >= 41 && toothNumber <= 48);
+    (toothNumber >= 41 && toothNumber <= 48) ||
+    (toothNumber >= 51 && toothNumber <= 55) ||
+    (toothNumber >= 81 && toothNumber <= 85);
   return {
     top: upper ? "Vestibular" : "Lingual",
     bottom: upper ? "Palatina" : "Vestibular",
@@ -87,7 +95,22 @@ export const MAX_CONDITION_TARGETS = 5;
 export interface ClinicalCondition { id: string; category: ClinicalCategory; type: ClinicalConditionType; targets: ConditionTarget[]; stage: ClinicalStage; notes?: string; }
 export interface ToothRecord { notes: string; conditions: ClinicalCondition[]; }
 export interface OdontogramV2 { version: 2; dentition: "permanent"; teeth: Record<string, ToothRecord>; }
-export type OdontogramData = Record<string, ToothData> | OdontogramV2;
+export interface OdontogramV3 { version: 3; dentition: Dentition; teeth: Record<string, ToothRecord>; }
+export type LayeredOdontogram = OdontogramV2 | OdontogramV3;
+export type OdontogramData = Record<string, ToothData> | OdontogramV2 | OdontogramV3;
+
+export const PERMANENT_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28, 48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38] as const;
+export const DECIDUOUS_TEETH = [55, 54, 53, 52, 51, 65, 64, 63, 62, 61, 85, 84, 83, 82, 81, 75, 74, 73, 72, 71] as const;
+
+export function getTeethForDentition(dentition: Dentition): readonly number[] {
+  if (dentition === "deciduous") return DECIDUOUS_TEETH;
+  if (dentition === "mixed") return [...DECIDUOUS_TEETH, ...PERMANENT_TEETH];
+  return PERMANENT_TEETH;
+}
+
+export function createEmptyOdontogram(dentition: Dentition = "permanent"): OdontogramV3 {
+  return { version: 3, dentition, teeth: {} };
+}
 
 export type ConditionVisual = {
   label: string;
@@ -136,11 +159,16 @@ function isV2(value: OdontogramData): value is OdontogramV2 {
   return "version" in value && value.version === 2 && "teeth" in value;
 }
 
+function isV3(value: OdontogramData): value is OdontogramV3 {
+  return "version" in value && value.version === 3 && "teeth" in value;
+}
+
 function legacyCondition(type: ClinicalConditionType, target: ConditionTarget): ClinicalCondition {
   return createCondition({ category: "legado", type, targets: [target], stage: "concluido" });
 }
 
-export function normalizeOdontogram(data: OdontogramData | null | undefined): OdontogramV2 {
+export function normalizeOdontogram(data: OdontogramData | null | undefined): OdontogramV2 | OdontogramV3 {
+  if (data && isV3(data)) return data;
   if (data && isV2(data)) return data;
   const teeth: Record<string, ToothRecord> = {};
   for (const [toothNumber, tooth] of Object.entries(data ?? {})) {
@@ -158,7 +186,7 @@ export function normalizeOdontogram(data: OdontogramData | null | undefined): Od
   return { version: 2, dentition: "permanent", teeth };
 }
 
-export function upsertCondition(data: OdontogramV2, toothNumber: number, condition: ClinicalCondition): OdontogramV2 {
+export function upsertCondition(data: LayeredOdontogram, toothNumber: number, condition: ClinicalCondition): LayeredOdontogram {
   const current = data.teeth[String(toothNumber)] ?? { notes: "", conditions: [] };
   const conditions = current.conditions.some((item) => item.id === condition.id)
     ? current.conditions.map((item) => item.id === condition.id ? condition : item)
@@ -166,7 +194,7 @@ export function upsertCondition(data: OdontogramV2, toothNumber: number, conditi
   return { ...data, teeth: { ...data.teeth, [toothNumber]: { ...current, conditions } } };
 }
 
-export function removeCondition(data: OdontogramV2, toothNumber: number, conditionId: string): OdontogramV2 {
+export function removeCondition(data: LayeredOdontogram, toothNumber: number, conditionId: string): LayeredOdontogram {
   const current = data.teeth[String(toothNumber)];
   if (!current) return data;
   return { ...data, teeth: { ...data.teeth, [toothNumber]: { ...current, conditions: current.conditions.filter((item) => item.id !== conditionId) } } };

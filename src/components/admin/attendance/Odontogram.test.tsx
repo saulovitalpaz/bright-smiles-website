@@ -66,6 +66,57 @@ describe("Odontogram face-first workflow", () => {
     expect(container.querySelectorAll(".occlusal-tooth--arch")).toHaveLength(32);
   });
 
+  it("renders only primary teeth for a deciduous V3 odontogram", () => {
+    render(
+      <Odontogram
+        data={{
+          version: 3,
+          dentition: "deciduous",
+          teeth: { "55": { notes: "", conditions: [] }, "16": { notes: "", conditions: [] } },
+        }}
+        onChange={() => undefined}
+        readOnly
+      />,
+    );
+
+    expect(screen.getAllByText("55").length).toBeGreaterThan(0);
+    expect(screen.queryByText("16")).not.toBeInTheDocument();
+  });
+
+  it("renders the union of primary and permanent teeth for mixed dentition", () => {
+    render(
+      <Odontogram
+        data={{
+          version: 3,
+          dentition: "mixed",
+          teeth: {
+            "55": { notes: "decíduo", conditions: [] },
+            "16": { notes: "permanente", conditions: [] },
+          },
+        }}
+        onChange={() => undefined}
+        readOnly
+      />,
+    );
+
+    expect(screen.getAllByText("55").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("16").length).toBeGreaterThan(0);
+  });
+
+  it("derives the initial dentition from birthDate without persisting an age tag", () => {
+    render(
+      <Odontogram
+        birthDate="2021-08-27"
+        data={{}}
+        onChange={() => undefined}
+        readOnly
+      />,
+    );
+
+    expect(screen.getByText("55")).toBeInTheDocument();
+    expect(screen.queryByText("16")).not.toBeInTheDocument();
+  });
+
   it("does not show legacy face-first controls for V2 data", async () => {
     const user = userEvent.setup();
 
