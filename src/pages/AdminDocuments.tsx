@@ -81,6 +81,20 @@ const AdminDocuments = () => {
     const [includeProfessionalSignature, setIncludeProfessionalSignature] = useState(
         () => canInsertSignature,
     );
+    const [isPrintReady, setIsPrintReady] = useState(false);
+
+    React.useEffect(() => {
+        if (!isPrintReady) return;
+
+        const clearPrintReady = () => setIsPrintReady(false);
+        window.addEventListener("afterprint", clearPrintReady);
+        const frame = window.requestAnimationFrame(() => window.print());
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.removeEventListener("afterprint", clearPrintReady);
+        };
+    }, [isPrintReady]);
 
     // Load Templates
     const loadTemplates = () => {
@@ -253,14 +267,14 @@ const AdminDocuments = () => {
         if (!canIssueDocument) {
             return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
         }
-        window.print();
+        setIsPrintReady(true);
     };
 
     return (
         <AdminLayout title="Termos & Documentos">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-20">
                 {/* Left Sidebar */}
-                <div className="lg:col-span-1 space-y-6 no-print">
+                <div className="min-w-0 lg:col-span-1 space-y-6 no-print">
 
                     {/* Patient Selector */}
                     <Card className="border-slate-200 shadow-sm">
@@ -406,7 +420,7 @@ const AdminDocuments = () => {
                 </div>
 
                 {/* Main Editor */}
-                <div className="lg:col-span-3">
+                <div className="min-w-0 lg:col-span-3">
                     <Card className="min-w-0 border-slate-200 shadow-sm h-full min-h-[420px] sm:min-h-[600px] lg:min-h-[800px] flex flex-col no-print">
                         <div className="p-3 md:p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-2">
@@ -458,33 +472,35 @@ const AdminDocuments = () => {
             </div >
 
             {/* Keep the printable document outside the editing grid so print pagination is independent of screen layout. */}
-            <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`}>
-                <div className="print-section flex flex-col items-center mb-6 text-center border-b border-slate-100 pb-4">
-                    <img src="/images/logo-oficial.png" alt="Logo" className="w-20 h-20 object-contain mb-2" />
-                    <h1 className="text-xl font-serif font-black text-slate-900 tracking-widest uppercase">Núcleo Odontológico</h1>
-                    <p className="text-slate-500 font-medium text-[9px] uppercase tracking-[0.2em] mt-1">Especializado & Harmonização</p>
-                </div>
-
-                <div className="print-flow-content whitespace-pre-wrap font-serif text-base leading-[1.6] text-justify text-slate-800 px-4">
-                    <div dangerouslySetInnerHTML={{ __html: documentContent }} />
-                </div>
-
-                <div className="print-signature break-inside-avoid mt-20 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 text-center">
-                    <div>
-                        <div className="mx-auto w-64 border-b border-slate-900 mb-2"></div>
-                        <p className="font-bold uppercase text-[10px]">Assinatura do Paciente</p>
-                        <p className="text-[9px] text-slate-500 mt-1">{patientData.name} - {patientData.cpf}</p>
+            {isPrintReady && (
+                <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} data-print-target="document">
+                    <div className="print-section mb-6 flex flex-col items-center border-b border-slate-100 pb-4 text-center">
+                        <img src="/images/logo-oficial.png" alt="Logo" className="mb-2 h-20 w-20 object-contain" />
+                        <h1 className="text-xl font-serif font-black uppercase tracking-widest text-slate-900">Núcleo Odontológico</h1>
+                        <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500">Especializado & Harmonização</p>
                     </div>
-                    <ProfessionalSignature
-                        professional={currentUser}
-                        includeElectronic={includeProfessionalSignature}
-                    />
-                </div>
 
-                <p className="mt-12 text-[10px] text-slate-400 uppercase tracking-widest text-center">
-                    Governador Valadares, {patientData.date}
-                </p>
-            </div>
+                    <div className="print-flow-content whitespace-pre-wrap px-4 text-justify font-serif text-base leading-[1.6] text-slate-800">
+                        <div dangerouslySetInnerHTML={{ __html: documentContent }} />
+                    </div>
+
+                    <div className="print-signature mt-20 grid grid-cols-2 gap-12 border-t border-slate-200 pt-8 text-center">
+                        <div>
+                            <div className="mx-auto mb-2 w-64 border-b border-slate-900"></div>
+                            <p className="text-[10px] font-bold uppercase">Assinatura do Paciente</p>
+                            <p className="mt-1 text-[9px] text-slate-500">{patientData.name} - {patientData.cpf}</p>
+                        </div>
+                        <ProfessionalSignature
+                            professional={currentUser}
+                            includeElectronic={includeProfessionalSignature}
+                        />
+                    </div>
+
+                    <p className="mt-12 text-center text-[10px] uppercase tracking-widest text-slate-400">
+                        Governador Valadares, {patientData.date}
+                    </p>
+                </div>
+            )}
 
         </AdminLayout >
     );
