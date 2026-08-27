@@ -272,12 +272,12 @@ const AdminDocuments = () => {
 
     return (
         <AdminLayout title="Termos & Documentos">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-20">
+            <div className="min-w-0 grid grid-cols-1 gap-6 md:gap-8 mb-20 lg:grid-cols-4">
                 {/* Left Sidebar */}
                 <div className="min-w-0 lg:col-span-1 space-y-6 no-print">
 
                     {/* Patient Selector */}
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="admin-card">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg font-serif">Dados do Paciente</CardTitle>
                         </CardHeader>
@@ -296,13 +296,13 @@ const AdminDocuments = () => {
                     </Card>
 
                     {/* Template List */}
-                    <Card className="border-slate-200 shadow-sm overflow-hidden">
+                    <Card className="admin-card overflow-hidden">
                         <CardHeader className="bg-slate-50/50 py-4 flex flex-col gap-2">
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-sm font-black uppercase text-slate-600">Modelos</CardTitle>
                                 <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
                                     <DialogTrigger asChild>
-                                        <Button size="sm" variant="outline" className="h-6 w-6 p-0"><Plus size={14} /></Button>
+                                         <Button size="sm" variant="outline" className="min-h-11 min-w-11 shrink-0 p-0" aria-label="Criar novo modelo"><Plus size={14} /></Button>
                                     </DialogTrigger>
                                     <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
                                         <DialogHeader>
@@ -351,7 +351,7 @@ const AdminDocuments = () => {
                                             <FileText size={14} className="text-slate-400" />
                                             <span className="text-xs font-bold text-slate-700 truncate w-32">{t.title}</span>
                                         </button>
-                                        <button onClick={() => handleDeleteTemplate(t.id)} className="text-slate-300 hover:text-red-500">
+                                         <button onClick={() => handleDeleteTemplate(t.id)} className="min-h-11 min-w-11 shrink-0 p-2 text-slate-300 hover:text-red-500" aria-label={`Excluir modelo ${t.title}`}>
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
@@ -363,7 +363,7 @@ const AdminDocuments = () => {
 
                     {/* Patient History */}
                     {patientData.id && (
-                        <Card className="border-slate-200 shadow-sm">
+                        <Card className="admin-card">
                             <CardHeader className="py-4">
                                 <CardTitle className="text-sm font-black uppercase text-slate-600 flex items-center gap-2">
                                     <History size={14} /> Histórico do Paciente
@@ -407,7 +407,8 @@ const AdminDocuments = () => {
                                             </span>
                                             <button
                                                 onClick={() => handleDeleteHistory(doc.id)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 transition-all"
+                                             className="min-h-11 min-w-11 p-2 text-slate-300 opacity-100 sm:opacity-0 transition-all hover:text-red-500 sm:group-hover:opacity-100"
+                                             aria-label={`Excluir documento ${doc.title}`}
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -421,7 +422,7 @@ const AdminDocuments = () => {
 
                 {/* Main Editor */}
                 <div className="min-w-0 lg:col-span-3">
-                    <Card className="min-w-0 border-slate-200 shadow-sm h-full min-h-[420px] sm:min-h-[600px] lg:min-h-[800px] flex flex-col no-print">
+                    <Card className="admin-card flex min-h-[420px] min-w-0 flex-col no-print sm:min-h-[600px] lg:min-h-[800px]">
                         <div className="p-3 md:p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">

@@ -272,10 +272,10 @@ const AdminPrescription = () => {
 
     return (
         <AdminLayout title="Prescrição Clínica">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-20 no-print">
+            <div className="min-w-0 grid grid-cols-1 gap-6 md:gap-8 mb-20 no-print lg:grid-cols-3">
                 {/* Patient Info Form */}
                 <div className="min-w-0 lg:col-span-1 space-y-6">
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="admin-card">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Dados do Paciente</CardTitle>
                             <CardDescription>Busque pelo nome ou CPF para preencher.</CardDescription>
@@ -354,7 +354,7 @@ const AdminPrescription = () => {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-slate-200 shadow-sm overflow-hidden">
+                    <Card className="admin-card overflow-hidden">
                         <CardHeader className="bg-slate-50/50 py-4">
                             <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-600">Histórico Recente</CardTitle>
                         </CardHeader>
@@ -375,7 +375,8 @@ const AdminPrescription = () => {
                                             </div>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-red-500 transition-all"
+                                                className="min-h-11 min-w-11 p-2 text-slate-300 opacity-100 sm:opacity-0 transition-all hover:text-red-500 sm:group-hover:opacity-100"
+                                                aria-label={`Excluir receita de ${item.patient}`}
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -407,7 +408,7 @@ const AdminPrescription = () => {
 
                 {/* Editor Area */}
                 <div className="min-w-0 lg:col-span-2 space-y-4">
-                    <Card className="min-w-0 border-slate-200 shadow-sm flex flex-col min-h-[420px] sm:min-h-[500px] md:min-h-[600px]">
+                    <Card className="admin-card flex min-h-[420px] min-w-0 flex-col sm:min-h-[500px] md:min-h-[600px]">
                         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Prescrição Clínica</p>
                             <div className="flex flex-wrap items-center justify-end gap-2">

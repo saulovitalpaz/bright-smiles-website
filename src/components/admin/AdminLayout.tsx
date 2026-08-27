@@ -136,7 +136,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     const isItemActive = (item: (typeof menuItems)[number]) =>
         location.pathname === item.href || item.subItems?.some((sub) => location.pathname.startsWith(sub.href));
 
-    const getSubmenuId = (label: string) => `admin-submenu-${label.toLowerCase().replaceAll(/\s+/g, "-")}`;
+    const getSubmenuId = (label: string) => `admin-submenu-${label.toLowerCase().replace(/\s+/g, "-")}`;
 
     const renderNestedItems = (item: (typeof menuItems)[number], isGroupOpen: boolean, submenuId: string) => item.subItems && isGroupOpen && (
         <div id={submenuId} className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-1">

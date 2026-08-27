@@ -235,6 +235,11 @@
     padding-inline: var(--admin-gutter);
   }
 
+  .admin-content > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .admin-scroll-region {
     max-width: 100%;
     overflow-x: auto;
