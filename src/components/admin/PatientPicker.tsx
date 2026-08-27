@@ -23,6 +23,7 @@ interface Patient {
     cpf: string;
     phone?: string;
     address?: string;
+    birthDate?: string | null;
 }
 
 interface PatientPickerProps {

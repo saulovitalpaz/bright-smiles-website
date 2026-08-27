@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Trash2, RotateCcw, Save, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+import { derivePatientAge } from "@/lib/patient-age";
 
 interface Patient {
     id: number;
@@ -19,6 +19,7 @@ interface Patient {
     phone?: string | null;
     address?: string | null;
     history?: string | null;
+    birthDate?: string | null;
     consent?: boolean;
     consentDate?: string | null;
     odontogram?: unknown;
@@ -32,7 +33,7 @@ interface Appointment {
     procedure?: string;
 }
 
-type PatientForm = Omit<Patient, "id">;
+type PatientForm = Omit<Patient, "id" | "consent" | "consentDate">;
 
 const emptyForm: PatientForm = {
     name: "",
@@ -40,12 +41,16 @@ const emptyForm: PatientForm = {
     phone: "",
     address: "",
     history: "",
-    consent: false,
-    consentDate: null,
+    birthDate: "",
     odontogram: "",
 };
 
 const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString("pt-BR") : "—";
+const ageGroupLabels = { child: "criança", adolescent: "adolescente", adult: "adulto" } as const;
+const formatAgeSummary = (birthDate?: string | null) => {
+    const derived = derivePatientAge(birthDate);
+    return derived.ageGroup ? `${derived.age} anos · ${ageGroupLabels[derived.ageGroup]}` : "Não informada";
+};
 
 const AdminPatients = () => {
     const [patients, setPatients] = useState<Patient[]>([]);
@@ -103,8 +108,7 @@ const AdminPatients = () => {
             phone: patient.phone || "",
             address: patient.address || "",
             history: patient.history || "",
-            consent: Boolean(patient.consent),
-            consentDate: patient.consentDate || null,
+            birthDate: patient.birthDate ? patient.birthDate.slice(0, 10) : "",
             odontogram: typeof patient.odontogram === "string" ? patient.odontogram : patient.odontogram ? JSON.stringify(patient.odontogram, null, 2) : "",
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -128,7 +132,15 @@ const AdminPatients = () => {
             if (typeof odontogram === "string" && odontogram.trim()) {
                 try { odontogram = JSON.parse(odontogram); } catch { /* keep plain text for backwards compatibility */ }
             }
-            const payload = { ...form, name: form.name.trim(), cpf: form.cpf.trim(), odontogram };
+            const payload = {
+                name: form.name.trim(),
+                cpf: form.cpf.trim(),
+                phone: form.phone || undefined,
+                address: form.address || undefined,
+                history: form.history || undefined,
+                birthDate: form.birthDate || null,
+                odontogram,
+            };
             const response = await fetchClient(editingId ? `/patients/${editingId}` : "/patients", {
                 method: editingId ? "PUT" : "POST",
                 body: JSON.stringify(payload),
@@ -190,7 +202,7 @@ const AdminPatients = () => {
                                                 <div className="min-w-0"><h3 className="truncate font-semibold text-slate-900">{patient.name}</h3><p className="text-xs text-slate-500">CPF: {patient.cpf || "—"}</p></div>
                                                 {patient.consent && <Badge variant="secondary">Consentimento</Badge>}
                                             </div>
-                                            <div className="mt-3 space-y-1 text-sm text-slate-600"><p>Telefone: {patient.phone || "—"}</p><p>Último atendimento: {appointment ? `${formatDate(appointment.date)}${appointment.procedure ? ` · ${appointment.procedure}` : ""}` : "—"}</p></div>
+                                            <div className="mt-3 space-y-1 text-sm text-slate-600"><p>Telefone: {patient.phone || "—"}</p><p>Faixa etária: {formatAgeSummary(patient.birthDate)}</p><p>Último atendimento: {appointment ? `${formatDate(appointment.date)}${appointment.procedure ? ` · ${appointment.procedure}` : ""}` : "—"}</p></div>
                                             <div className="mt-4 flex flex-col gap-2 sm:flex-row"><Button variant="outline" className="w-full sm:flex-1" onClick={() => beginEdit(patient)}><Pencil size={14} className="mr-2" /> Editar</Button><Button variant="outline" className="w-full text-red-600 hover:text-red-700 sm:w-auto" onClick={() => deletePatient(patient)} aria-label={`Excluir ${patient.name}`}><Trash2 size={14} /></Button></div>
                                         </article>;
                                     })}
@@ -202,10 +214,9 @@ const AdminPatients = () => {
                     <Card className="min-w-0">
                         <CardHeader><CardTitle>{editingId ? "Editar paciente" : "Novo paciente"}</CardTitle></CardHeader>
                         <CardContent><form onSubmit={savePatient} className="space-y-4">
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><div className="space-y-2"><Label htmlFor="patient-name">Nome *</Label><Input id="patient-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-cpf">CPF *</Label><Input id="patient-cpf" value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-phone">Telefone</Label><Input id="patient-phone" value={form.phone || ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div><div className="space-y-2"><Label htmlFor="patient-address">Endereço</Label><Input id="patient-address" value={form.address || ""} onChange={(event) => setForm({ ...form, address: event.target.value })} /></div></div>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><div className="space-y-2"><Label htmlFor="patient-name">Nome *</Label><Input id="patient-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-cpf">CPF *</Label><Input id="patient-cpf" value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-birth-date">Data de nascimento</Label><Input id="patient-birth-date" type="date" value={form.birthDate || ""} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} max={new Date().toISOString().slice(0, 10)} /><p className="text-xs text-slate-500">{form.birthDate ? formatAgeSummary(form.birthDate) : "A idade será calculada pela data informada."}</p></div><div className="space-y-2"><Label htmlFor="patient-phone">Telefone</Label><Input id="patient-phone" value={form.phone || ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div><div className="space-y-2"><Label htmlFor="patient-address">Endereço</Label><Input id="patient-address" value={form.address || ""} onChange={(event) => setForm({ ...form, address: event.target.value })} /></div></div>
                             <div className="space-y-2"><Label htmlFor="patient-history">Histórico</Label><Textarea id="patient-history" rows={3} value={form.history || ""} onChange={(event) => setForm({ ...form, history: event.target.value })} /></div>
                             <div className="space-y-2"><Label htmlFor="patient-odontogram">Odontograma (JSON opcional)</Label><Textarea id="patient-odontogram" rows={3} value={String(form.odontogram || "")} onChange={(event) => setForm({ ...form, odontogram: event.target.value })} /></div>
-                            <label className="flex items-center gap-2 text-sm text-slate-700"><Checkbox checked={Boolean(form.consent)} onCheckedChange={(checked) => setForm({ ...form, consent: checked === true, consentDate: checked === true ? new Date().toISOString() : null })} /> Consentimento registrado</label>
                             <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" disabled={saving} className="w-full sm:flex-1">{saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Save className="mr-2" size={16} />}{editingId ? "Salvar alterações" : "Cadastrar paciente"}</Button><Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto"><RotateCcw size={16} className="mr-2" /> Limpar</Button></div>
                         </form></CardContent>
                     </Card>

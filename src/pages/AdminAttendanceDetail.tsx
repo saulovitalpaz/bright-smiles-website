@@ -25,6 +25,7 @@ interface AppointmentData {
     patientName: string;
     cpf: string;
     phone: string;
+    birthDate: string | null;
     patientId: number | null;
     date: string;
     scheduledAt: string | null;
@@ -79,6 +80,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     patientName: "",
     cpf: "",
     phone: "",
+    birthDate: null,
     patientId: null,
     date: new Date().toISOString(),
     scheduledAt: null,
@@ -105,7 +107,7 @@ interface AppointmentResponse {
     patientName?: string | null;
     cpf?: string | null;
     phone?: string | null;
-    patient?: { id?: number; name?: string; cpf?: string; phone?: string } | null;
+    patient?: { id?: number; name?: string; cpf?: string; phone?: string; birthDate?: string | null } | null;
     date?: string | null;
     scheduledAt?: string | null;
     createdAt?: string | null;
@@ -148,6 +150,7 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
         patientName: fetched.patientName || patient.name || "",
         cpf: fetched.cpf || patient.cpf || "",
         phone: fetched.phone || patient.phone || "",
+        birthDate: fetched.birthDate || patient.birthDate || null,
         scheduledAt: fetched.scheduledAt || null,
         createdAt: fetched.createdAt || undefined,
         returnDate: fetched.returnDate || "",
@@ -468,11 +471,13 @@ const AdminAttendanceDetail = () => {
                                                         name: data.patientName,
                                                         cpf: data.cpf,
                                                         phone: data.phone,
+                                                        birthDate: data.birthDate,
                                                     } : null}
                                                     onSelect={(p) => {
                                                         updateField('patientName', p.name);
                                                         updateField('cpf', p.cpf);
                                                         updateField('phone', p.phone || '');
+                                                        updateField('birthDate', p.birthDate || null);
                                                         updateField('patientId', p.id);
                                                     }}
                                                 />
@@ -712,6 +717,7 @@ const AdminAttendanceDetail = () => {
                                 data={data.dentalNotes}
                                 onChange={(notes) => updateField('dentalNotes', notes)}
                                 readOnly={readOnly}
+                                birthDate={data.birthDate}
                             />
                         )}
 

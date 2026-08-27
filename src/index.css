@@ -645,6 +645,29 @@
     background: white !important;
   }
 
+  /* Printing is scoped to an explicit root so hidden application chrome
+     cannot reserve a blank first page. */
+  body:has(.print-root) .admin-content > :not(.print-root) {
+    display: none !important;
+  }
+
+  body:has(.print-root) .admin-shell,
+  body:has(.print-root) .admin-main,
+  body:has(.print-root) .admin-content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body:has(.print-root) .print-root {
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+  }
+
   .print-document {
     display: block !important;
     height: auto !important;
@@ -731,6 +754,11 @@
     overflow: visible !important;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .print-page-odontogram {
+    break-after: page;
+    page-break-after: always;
   }
 
   .print-odontogram .odontogram-card {

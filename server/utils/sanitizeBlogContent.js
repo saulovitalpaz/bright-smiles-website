@@ -16,7 +16,7 @@ const sanitizeBlogContent = (content) => {
             div: ['style'],
             p: ['style'],
             span: ['style'],
-            font: ['size', 'face']
+            font: ['size', 'face', 'color']
         },
         allowedStyles: {
             '*': {
@@ -33,6 +33,16 @@ const sanitizeBlogContent = (content) => {
         allowProtocolRelative: false,
         allowComments: false,
         transformTags: {
+            font: (tagName, attribs) => {
+                const { color, ...safeAttributes } = attribs;
+                return {
+                    tagName,
+                    attribs: {
+                        ...safeAttributes,
+                        ...(color && safeColor.test(color) ? { color } : {}),
+                    }
+                };
+            },
             a: (tagName, attribs) => ({
                 tagName,
                 attribs: {

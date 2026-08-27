@@ -30,20 +30,42 @@ function requireStorage() {
     return client;
 }
 
-function createDocumentKey(patientId) {
-    return `patient-documents/${patientId}/${crypto.randomUUID()}.pdf`;
+const MIME_EXTENSIONS = {
+    'application/pdf': 'pdf',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp'
+};
+
+function createScopedDocumentKey(scope, resourceId, mimeType, childScope = '') {
+    const extension = MIME_EXTENSIONS[mimeType];
+    if (!extension) throw new Error('Unsupported private document type.');
+    const prefix = childScope ? `${scope}/${resourceId}/${childScope}` : `${scope}/${resourceId}`;
+    return `${prefix}/${crypto.randomUUID()}.${extension}`;
 }
 
-async function uploadPatientDocument({ patientId, body }) {
-    const key = createDocumentKey(patientId);
+async function uploadPrivateDocument({ scope, resourceId, body, mimeType, childScope }) {
+    const key = createScopedDocumentKey(scope, resourceId, mimeType, childScope);
     await requireStorage().send(new PutObjectCommand({
         Bucket: config.bucket,
         Key: key,
         Body: body,
-        ContentType: 'application/pdf',
+        ContentType: mimeType,
         ContentDisposition: 'inline'
     }));
     return key;
+}
+
+async function uploadPatientDocument({ patientId, body }) {
+    return uploadPrivateDocument({ scope: 'patient-documents', resourceId: patientId, body, mimeType: 'application/pdf' });
+}
+
+async function uploadDocumentTemplate({ body }) {
+    return uploadPrivateDocument({ scope: 'document-templates', resourceId: 'source', body, mimeType: 'application/pdf' });
+}
+
+async function uploadPatientDocumentAttachment({ documentId, body, mimeType }) {
+    return uploadPrivateDocument({ scope: 'patient-documents', resourceId: documentId, childScope: 'attachments', body, mimeType });
 }
 
 async function deletePatientDocument(key) {
@@ -51,13 +73,24 @@ async function deletePatientDocument(key) {
     await client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
 }
 
-async function createPatientDocumentUrl(key) {
+async function createPrivateDocumentUrl(key, mimeType = 'application/pdf') {
     return getSignedUrl(requireStorage(), new GetObjectCommand({
         Bucket: config.bucket,
         Key: key,
-        ResponseContentType: 'application/pdf',
+        ResponseContentType: mimeType,
         ResponseContentDisposition: 'inline'
     }), { expiresIn: 300 });
 }
 
-module.exports = { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl };
+async function createPatientDocumentUrl(key) {
+    return createPrivateDocumentUrl(key, 'application/pdf');
+}
+
+module.exports = {
+    uploadPatientDocument,
+    uploadDocumentTemplate,
+    uploadPatientDocumentAttachment,
+    deletePatientDocument,
+    createPrivateDocumentUrl,
+    createPatientDocumentUrl
+};

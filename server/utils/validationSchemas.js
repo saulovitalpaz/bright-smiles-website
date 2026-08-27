@@ -111,6 +111,7 @@ const documentSourceKindSchema = z.enum(['text', 'pdf']);
 const prescriptionSchema = z.object({
     patientId: positiveIdSchema,
     content: requiredRichContentSchema,
+    includeOdontogram: z.boolean().optional().default(false),
     odontogramSnapshot: odontogramSchema.optional().nullable(),
     odontogramSourceAppointmentId: positiveIdSchema.optional().nullable(),
 }).strict();

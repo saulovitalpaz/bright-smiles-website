@@ -12,8 +12,10 @@ import {
 } from "@react-pdf/renderer";
 import { ANATOMICAL_GEOMETRY } from "@/components/admin/attendance/odontogram/odontogramGeometry";
 import {
-  getTooth,
   getToothFamily,
+  getTeethForDentition,
+  normalizeOdontogram,
+  type OdontogramData,
   type ToothData,
 } from "@/components/admin/attendance/odontogram/odontogramModel";
 import {
@@ -27,9 +29,6 @@ import {
 } from "@/lib/prescription-document";
 import { mediaUrl } from "@/lib/media";
 import type { PrintMode } from "@/lib/print-layout";
-
-const TEETH_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const TEETH_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
 const pdfTokens = {
   clinic: { pagePadding: 40, sectionGap: 16, tableCellPadding: 6, bodySize: 10 },
@@ -198,7 +197,7 @@ function PrescriptionPdfTooth({
   const anatomy = ANATOMICAL_GEOMETRY[getToothFamily(toothNumber)].frontal;
   const viewBoxParts = anatomy.viewBox.split(/\s+/).map(Number);
   const viewBoxHeight = viewBoxParts[3];
-  const lower = toothNumber >= 31 && toothNumber <= 48;
+  const lower = (toothNumber >= 31 && toothNumber <= 48) || (toothNumber >= 71 && toothNumber <= 85);
   const transform = lower ? `translate(0 ${viewBoxHeight}) scale(1 -1)` : undefined;
   const overlay = STATUS_OVERLAY[data.status];
 
@@ -235,8 +234,19 @@ function PrescriptionPdfTooth({
 export function PrescriptionOdontogramPdf({
   data,
 }: {
-  data: Record<string, ToothData>;
+  data: OdontogramData;
 }) {
+  const normalized = normalizeOdontogram(data);
+  const dentition = normalized.version === 3 ? normalized.dentition : "permanent";
+  const teeth = getTeethForDentition(dentition);
+  const upperTeeth = teeth.filter((toothNumber) => (toothNumber >= 11 && toothNumber <= 28) || (toothNumber >= 51 && toothNumber <= 65));
+  const lowerTeeth = teeth.filter((toothNumber) => (toothNumber >= 31 && toothNumber <= 48) || (toothNumber >= 71 && toothNumber <= 85));
+  const toothRows = [...upperTeeth, ...lowerTeeth].reduce<number[][]>((rows, toothNumber) => {
+    const current = rows.at(-1);
+    if (!current || current.length === 16) rows.push([toothNumber]);
+    else current.push(toothNumber);
+    return rows;
+  }, []);
   const summary = getPdfOdontogramSummary(data);
   const summaryLead = summary.slice(0, 4);
   const summaryContinuation = summary.slice(4);
@@ -244,25 +254,20 @@ export function PrescriptionOdontogramPdf({
   return (
     <View style={styles.odontogram}>
       <View wrap={false}>
-        <Text style={styles.odontogramTitle}>Mapeamento dentário</Text>
-        <View style={styles.toothRow}>
-          {TEETH_UPPER.map((toothNumber) => (
-            <PrescriptionPdfTooth
-              key={toothNumber}
-              toothNumber={toothNumber}
-              data={getTooth(data, toothNumber)}
-            />
-          ))}
-        </View>
-        <View style={styles.toothRow}>
-          {TEETH_LOWER.map((toothNumber) => (
-            <PrescriptionPdfTooth
-              key={toothNumber}
-              toothNumber={toothNumber}
-              data={getTooth(data, toothNumber)}
-            />
-          ))}
-        </View>
+        <Text style={styles.odontogramTitle}>Mapeamento dentário — {dentition}</Text>
+        {toothRows.map((row, rowIndex) => (
+          <View style={styles.toothRow} key={`row-${rowIndex}`}>
+            {row.map((toothNumber) => {
+              const record = normalized.teeth[String(toothNumber)];
+              const types = record?.conditions.map((condition) => condition.type) || [];
+              const status: ToothData["status"] = types.includes("implante") ? "Implante"
+                : types.includes("ponte_fixa") || types.includes("legado_ponte") ? "Ponte"
+                  : types.includes("legado_ausente") || types.includes("exodontia_executada") ? "Ausente"
+                    : "Saudável";
+              return <PrescriptionPdfTooth key={toothNumber} toothNumber={toothNumber} data={{ status, notes: record?.notes || "" }} />;
+            })}
+          </View>
+        ))}
         {summaryLead.length ? (
           <View style={styles.odontogramSummary}>
             {summaryLead.map((item) => (
@@ -295,7 +300,7 @@ export interface PrescriptionDocumentProps {
   mode?: PrintMode;
   includeElectronicSignature?: boolean;
   includeOdontogram?: boolean;
-  odontogram?: Record<string, ToothData>;
+  odontogram?: OdontogramData;
 }
 
 export function PrescriptionDocument({
@@ -318,9 +323,16 @@ export function PrescriptionDocument({
   const hasElectronicSignature = includeElectronicSignature
     && hasUsableProfessionalSignature(professional);
   const signatureImage = hasElectronicSignature ? mediaUrl(data.signatureUrl) : null;
+  const normalizedOdontogram = normalizeOdontogram(odontogram);
+  const hasOdontogram = includeOdontogram && Object.keys(normalizedOdontogram.teeth).length > 0;
 
   return (
     <Document>
+      {hasOdontogram ? (
+        <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
+          <PrescriptionOdontogramPdf data={odontogram} />
+        </Page>
+      ) : null}
       <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
         <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: tokens.sectionGap }}>
           <Image src={window.location.origin + '/images/logo-oficial.png'} style={{ height: 60, objectFit: 'contain', marginBottom: 12 }} />
@@ -342,10 +354,6 @@ export function PrescriptionDocument({
             </View>
           </View>
         </View>
-
-        {includeOdontogram && Object.keys(odontogram).length ? (
-          <PrescriptionOdontogramPdf data={odontogram} />
-        ) : null}
 
         <View style={{ ...styles.content, fontSize: tokens.bodySize }}>
           <Text style={{ fontSize: tokens.bodySize }}>{htmlToPlainText(content)}</Text>

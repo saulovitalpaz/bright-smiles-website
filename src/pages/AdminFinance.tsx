@@ -217,7 +217,7 @@ const AdminFinance = () => {
 
     return (
         <AdminLayout title="Gestão Financeira">
-            <div className={`${printDocumentClass(printMode)} flex flex-col`}>
+            <div className={`print-root ${printDocumentClass(printMode)} flex flex-col`}>
             <div className="no-print order-3 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 mb-8 lg:order-1">
                 <Card
                     role="button"

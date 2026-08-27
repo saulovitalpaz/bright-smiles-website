@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { API_URL, fetchClient } from "@/lib/api";
 import Odontogram from "@/components/admin/attendance/Odontogram";
-import type { ToothData } from "@/components/admin/attendance/Odontogram";
+import type { OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
 import { DownloadPrescriptionButton } from "@/components/PrescriptionGenerator";
 import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature";
 import { ConsentDialog } from "@/components/ConsentDialog";
@@ -58,7 +58,9 @@ const AdminPrescription = () => {
         cpf: "",
         address: "",
         phone: "",
-        odontogram: {} as Record<string, ToothData>
+        birthDate: null as string | null,
+        odontogram: {} as OdontogramData,
+        odontogramSourceAppointmentId: null as number | null,
     });
 
     const [prescriptionHistory, setPrescriptionHistory] = useState<PrescriptionHistoryItem[]>([]);
@@ -93,8 +95,23 @@ const AdminPrescription = () => {
                     cpf: data.cpf,
                     address: data.address || "",
                     phone: data.phone || "",
-                    odontogram: data.odontogram || {}
+                    birthDate: data.birthDate || null,
+                    odontogram: data.odontogram || {},
+                    odontogramSourceAppointmentId: null,
                 });
+
+                const latestOdontogramAppointment = Array.isArray(data.appointments)
+                    ? [...data.appointments]
+                        .filter((appointment) => appointment?.dentalNotes && typeof appointment.dentalNotes === "object")
+                        .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())[0]
+                    : null;
+                if (latestOdontogramAppointment?.dentalNotes) {
+                    setPatientData((previous) => ({
+                        ...previous,
+                        odontogram: latestOdontogramAppointment.dentalNotes,
+                        odontogramSourceAppointmentId: latestOdontogramAppointment.id || null,
+                    }));
+                }
 
                 setPatientConsent(!!data.consent);
                 if (!data.consent) {
@@ -166,7 +183,8 @@ const AdminPrescription = () => {
                     cpf: patientData.cpf,
                     address: patientData.address,
                     phone: patientData.phone,
-                    odontogram: patientData.odontogram
+                    ...(patientData.birthDate ? { birthDate: patientData.birthDate } : {}),
+                    odontogram: patientData.odontogram,
                 })
             });
 
@@ -175,36 +193,41 @@ const AdminPrescription = () => {
             setPatientData(prev => ({ ...prev, id: savedPatient.id }));
 
             // 2. Save Prescription (only if content exists)
-            if (prescriptionContent) {
+            if (prescriptionContent.trim()) {
                 const presRes = await fetchClient(`/prescriptions`, {
                     method: "POST",
                     body: JSON.stringify({
                         content: prescriptionContent,
-                        patientId: savedPatient.id
+                        patientId: savedPatient.id,
+                        includeOdontogram,
+                        odontogramSnapshot: includeOdontogram ? patientData.odontogram : null,
+                        odontogramSourceAppointmentId: includeOdontogram ? patientData.odontogramSourceAppointmentId : null,
                     })
                 });
 
-                if (presRes.ok) {
-                    const savedPres = await presRes.json();
-                    setPrescriptionHistory([
-                        {
-                            id: savedPres.id,
-                            patient: savedPatient.name,
-                            date: new Date().toLocaleDateString(),
-                            preview: "Nova receita salva",
-                            content: prescriptionContent
-                        },
-                        ...prescriptionHistory
-                    ]);
-                    toast.success("Receita salva!");
+                if (!presRes.ok) {
+                    const errorBody = await presRes.json().catch(() => null);
+                    throw new Error(errorBody?.error || "Falha ao salvar prescrição");
                 }
+                const savedPres = await presRes.json();
+                setPrescriptionHistory((previous) => [
+                    {
+                        id: savedPres.id,
+                        patient: savedPatient.name,
+                        date: new Date().toLocaleDateString(),
+                        preview: "Nova receita salva",
+                        content: prescriptionContent
+                    },
+                    ...previous
+                ]);
+                toast.success("Receita salva!");
             } else {
                 toast.success("Dados do paciente atualizados!");
             }
 
         } catch (error) {
             console.error(error);
-            toast.error("Erro de conexão");
+            toast.error(error instanceof Error ? error.message : "Erro ao salvar prescrição");
         }
     };
 
@@ -241,7 +264,9 @@ const AdminPrescription = () => {
                                             cpf: p.cpf,
                                             address: p.address || "",
                                             phone: p.phone || "",
-                                            odontogram: {}
+                                            birthDate: p.birthDate || null,
+                                            odontogram: {},
+                                            odontogramSourceAppointmentId: null,
                                         });
                                         fetchPatient(p.cpf); // Load history
                                     }}
@@ -439,6 +464,7 @@ const AdminPrescription = () => {
                                 <Odontogram
                                     data={patientData.odontogram || {}}
                                     onChange={(newData) => setPatientData(prev => ({ ...prev, odontogram: newData }))}
+                                    birthDate={patientData.birthDate}
                                 />
                             </CardContent>
                         )}
@@ -447,7 +473,23 @@ const AdminPrescription = () => {
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
-            <div className={`hidden print-only ${printDocumentClass("clinic")} text-slate-900`} id="printable-recipe">
+            <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} id="printable-recipe">
+                {/* The odontogram is an independent print page; patient and prescription content start on the next page. */}
+                {includeOdontogram && Object.keys(patientData.odontogram || {}).length > 0 && (
+                    <div className="print-section print-page-odontogram print-odontogram">
+                        <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest mb-2">Mapeamento Dentário</p>
+                        <div className="min-w-0 max-w-full">
+                            <Odontogram
+                                data={patientData.odontogram || {}}
+                                onChange={() => {}}
+                                readOnly
+                                printable
+                                birthDate={patientData.birthDate}
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {/* Header: compact, single row */}
                 <div className="print-section flex items-center gap-4 border-b border-slate-200 pb-4 mb-5">
                     <img src="/images/logo-oficial.png" alt="Logo" className="w-14 h-14 object-contain" />
@@ -484,21 +526,6 @@ const AdminPrescription = () => {
                         )}
                     </div>
                 </div>
-
-                {/* Optional Odontogram in print */}
-                {includeOdontogram && Object.keys(patientData.odontogram || {}).length > 0 && (
-                    <div className="print-section mb-5 print-odontogram">
-                        <p className="text-[8px] uppercase font-black text-slate-400 tracking-widest mb-2">Mapeamento Dentário</p>
-                        <div className="min-w-0 max-w-full">
-                            <Odontogram
-                                data={patientData.odontogram || {}}
-                                onChange={() => {}}
-                                readOnly
-                                printable
-                            />
-                        </div>
-                    </div>
-                )}
 
                 {/* Prescription Body */}
                 <div className="print-flow-content py-3 px-5 rounded-xl border border-dotted border-slate-200 mb-6 font-serif text-base leading-relaxed text-slate-800">

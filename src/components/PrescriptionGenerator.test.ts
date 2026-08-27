@@ -62,4 +62,25 @@ describe("PrescriptionGenerator document helpers", () => {
     expect(output.size).toBeGreaterThan(1_000);
     expect(pageCount).toBeGreaterThan(1);
   }, 20_000);
+
+  it("keeps the odontogram on its own first page before a short prescription", async () => {
+    const output = await pdf(createElement(PrescriptionDocument, {
+      data: {
+        name: "Paciente Teste",
+        cpf: "000.000.000-00",
+        professionalName: "Ana Karolina",
+        professionalCro: "CRO/MG 60.514",
+      },
+      content: "Uso conforme orientação.",
+      includeOdontogram: true,
+      odontogram: { "16": { status: "Implante", notes: "", faces: {} } },
+    })).toBlob();
+    const rawPdf = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsBinaryString(output);
+    });
+    expect(rawPdf.match(/\/Type \/Page\b/g)?.length ?? 0).toBe(2);
+  }, 20_000);
 });

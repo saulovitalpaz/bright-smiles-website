@@ -30,11 +30,9 @@ const migrationSource = fs.existsSync(migrationPath)
   ? fs.readFileSync(migrationPath, 'utf8')
   : '';
 const migrationRoot = path.join(__dirname, '..', 'prisma', 'migrations');
-const repairMigrationName = '20260110042557_repair_missing_base_tables';
-const repairMigrationPath = path.join(migrationRoot, repairMigrationName, 'migration.sql');
-const repairMigrationSource = fs.existsSync(repairMigrationPath)
-  ? fs.readFileSync(repairMigrationPath, 'utf8')
-  : '';
+const bootstrapMigrationName = '20260730040000_add_patient_cpf_index';
+const bootstrapMigrationPath = path.join(migrationRoot, bootstrapMigrationName, 'migration.sql');
+const bootstrapMigrationSource = fs.readFileSync(bootstrapMigrationPath, 'utf8');
 
 const toothRecord = { notes: '', conditions: [] };
 
@@ -171,7 +169,7 @@ test('limits signed attachments to private supported file metadata', () => {
 
 test('rich sanitizer keeps approved formatting and removes active content', () => {
   const html = sanitizeBlogContent(
-    '<p style="font-family: Georgia; font-size: 14px; color: #123456; background-color: rgb(250, 250, 250); line-height: 1.5; text-align: center" onclick="unsafe()">safe <u>text</u> <a href="https://example.test">link</a> <a href="javascript:alert(1)">bad</a><script>alert(1)</script></p>',
+    '<p style="font-family: Georgia; font-size: 14px; color: #123456; background-color: rgb(250, 250, 250); line-height: 1.5; text-align: center" onclick="unsafe()">safe <u>text</u> <font color="#123456">colored</font> <font color="javascript:alert(1)">bad color</font> <a href="https://example.test">link</a> <a href="javascript:alert(1)">bad</a><script>alert(1)</script></p>',
   );
 
   assert.match(html, /font-family/);
@@ -181,6 +179,7 @@ test('rich sanitizer keeps approved formatting and removes active content', () =
   assert.match(html, /line-height/);
   assert.match(html, /text-align/);
   assert.match(html, /href="https:\/\/example\.test"/);
+  assert.match(html, /font color="#123456"/);
   assert.doesNotMatch(html, /script|alert|onclick|javascript:/i);
 });
 
@@ -213,22 +212,21 @@ test('Prisma schema and migration expose additive document workflow fields with 
   ]) assert.match(schemaSource, new RegExp(`@@index\\(\\[${index}\\]\\)`));
 });
 
-test('repair migration is ordered before historical ALTER TABLE statements and bootstraps missing base tables', () => {
+test('the historical schema extension bootstraps missing base tables without adding an out-of-order migration', () => {
   const migrationNames = fs.readdirSync(migrationRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
   const initialIndex = migrationNames.indexOf('20260110042556_init');
-  const repairIndex = migrationNames.indexOf(repairMigrationName);
-  const patientAlterIndex = migrationNames.indexOf('20260730040000_add_patient_cpf_index');
+  const bootstrapIndex = migrationNames.indexOf(bootstrapMigrationName);
 
   assert.ok(initialIndex >= 0);
-  assert.ok(repairIndex > initialIndex);
-  assert.ok(repairIndex < patientAlterIndex);
-  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "Patient"/i);
-  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "FinanceTransaction"/i);
-  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "Prescription"/i);
-  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "DocumentTemplate"/i);
-  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "PatientDocument"/i);
-  assert.match(repairMigrationSource, /ADD COLUMN IF NOT EXISTS "patientId"/i);
+  assert.ok(bootstrapIndex > initialIndex);
+  assert.doesNotMatch(migrationNames.join('\n'), /repair_missing_base_tables/);
+  assert.match(bootstrapMigrationSource, /CREATE TABLE IF NOT EXISTS "Patient"/i);
+  assert.match(bootstrapMigrationSource, /CREATE TABLE IF NOT EXISTS "FinanceTransaction"/i);
+  assert.match(bootstrapMigrationSource, /CREATE TABLE IF NOT EXISTS "Prescription"/i);
+  assert.match(bootstrapMigrationSource, /CREATE TABLE IF NOT EXISTS "DocumentTemplate"/i);
+  assert.match(bootstrapMigrationSource, /CREATE TABLE IF NOT EXISTS "PatientDocument"/i);
+  assert.match(bootstrapMigrationSource, /ADD COLUMN IF NOT EXISTS "patientId"/i);
 });

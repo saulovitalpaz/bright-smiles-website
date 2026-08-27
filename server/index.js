@@ -12,7 +12,14 @@ const {
     createFinancialAssetUrl,
     validateAssetDeliveryRequest
 } = require('./utils/assetStorage');
-const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl } = require('./utils/patientDocumentStorage');
+const {
+    uploadPatientDocument,
+    uploadDocumentTemplate,
+    uploadPatientDocumentAttachment,
+    deletePatientDocument,
+    createPrivateDocumentUrl,
+    createPatientDocumentUrl
+} = require('./utils/patientDocumentStorage');
 const { isSupportedUpload, isSupportedUploadForScope } = require('./utils/uploadValidation');
 
 const cookieParser = require('cookie-parser');
@@ -48,7 +55,12 @@ const {
     returnDateSchema,
     loginSchema,
     createUserSchema,
-    updateCurrentUserSchema
+    updateCurrentUserSchema,
+    prescriptionSchema,
+    normalizeOdontogram,
+    documentTemplateSchema,
+    patientDocumentSchema,
+    attachmentUploadSchema
 } = require('./utils/validationSchemas');
 
 const app = express();
@@ -110,6 +122,12 @@ const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (req, file, callback) => callback(null, file.mimetype === 'application/pdf')
+});
+const templateUpload = documentUpload;
+const attachmentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024, files: 5 },
+    fileFilter: (req, file, callback) => callback(null, new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']).has(file.mimetype))
 });
 const financialUpload = multer({
     storage: multer.memoryStorage(),
@@ -368,11 +386,14 @@ app.post('/patient-documents/:id/file', authenticateToken, authorizeRole(['admin
 app.get('/patient-documents/:id/file', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const documentId = Number.parseInt(req.params.id, 10);
-        const document = await prisma.patientDocument.findUnique({ where: { id: documentId } });
+        const document = await prisma.patientDocument.findUnique({ where: { id: documentId }, include: { template: true } });
         if (!document) return res.status(404).json({ error: 'Document not found.' });
 
         if (document.storageKey) {
             return res.redirect(302, await createPatientDocumentUrl(document.storageKey));
+        }
+        if (document.template?.storageKey) {
+            return res.redirect(302, await createPrivateDocumentUrl(document.template.storageKey, document.template.mimeType || 'application/pdf'));
         }
         if (document.pdfUrl) return res.redirect(302, document.pdfUrl);
         return res.status(404).json({ error: 'No file attached to this document.' });
@@ -1080,7 +1101,7 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
     try {
-        const { cpf, history, consentDate, ...rest } = result.data;
+        const { cpf, history, consentDate, birthDate, ...rest } = result.data;
 
         const encryptedCpf = encrypt(cpf);
         const encryptedHistory = encrypt(history);
@@ -1091,7 +1112,8 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
                 : new Date(consentDate);
         const data = {
             ...rest,
-            history: encryptedHistory
+            history: encryptedHistory,
+            ...(birthDate !== undefined ? { birthDate: birthDate === null ? null : new Date(birthDate) } : {})
         };
 
         if (normalizedConsentDate !== undefined) {
@@ -1126,12 +1148,13 @@ app.put('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist']),
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid patient id.' });
 
     try {
-        const { cpf, history, consentDate, ...rest } = result.data;
+        const { cpf, history, consentDate, birthDate, ...rest } = result.data;
         const data = {
             ...rest,
             cpf: encrypt(cpf),
             cpfIndex: blindIndex(cpf),
-            history: encrypt(history)
+            history: encrypt(history),
+            ...(birthDate !== undefined ? { birthDate: birthDate === null ? null : new Date(birthDate) } : {})
         };
 
         if (consentDate !== undefined) {
@@ -1228,13 +1251,53 @@ app.post('/patients/:cpf/consent', authenticateToken, authorizeRole(['admin', 'd
 
 // Prescriptions API
 app.post('/prescriptions', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    const result = prescriptionSchema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+
     try {
+        const {
+            patientId,
+            content,
+            includeOdontogram,
+            odontogramSnapshot: submittedSnapshot,
+            odontogramSourceAppointmentId: submittedSourceAppointmentId
+        } = result.data;
+        let odontogramSnapshot = includeOdontogram && submittedSnapshot ? normalizeOdontogram(submittedSnapshot) : null;
+        let odontogramSourceAppointmentId = includeOdontogram ? submittedSourceAppointmentId || null : null;
+
+        if (odontogramSourceAppointmentId) {
+            const sourceAppointment = await prisma.appointment.findUnique({
+                where: { id: odontogramSourceAppointmentId },
+                select: { patientId: true, dentalNotes: true }
+            });
+            if (!sourceAppointment || sourceAppointment.patientId !== patientId) {
+                return res.status(400).json({ error: 'Invalid odontogram source appointment.' });
+            }
+            if (!odontogramSnapshot) odontogramSnapshot = normalizeOdontogram(sourceAppointment.dentalNotes);
+        }
+
+        if (includeOdontogram && !odontogramSnapshot) {
+            const latestAppointment = await prisma.appointment.findFirst({
+                where: { patientId, dentalNotes: { not: null } },
+                orderBy: [{ date: 'desc' }, { id: 'desc' }],
+                select: { id: true, dentalNotes: true }
+            });
+            odontogramSnapshot = normalizeOdontogram(latestAppointment?.dentalNotes);
+            odontogramSourceAppointmentId = odontogramSnapshot ? latestAppointment?.id || null : null;
+        }
+
+        const data = {
+            patientId,
+            content,
+            ...(odontogramSnapshot ? { odontogramSnapshot } : {}),
+            ...(odontogramSourceAppointmentId ? { odontogramSourceAppointmentId } : {})
+        };
         const item = await prisma.prescription.create({
-            data: req.body
+            data
         });
         res.json(item);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: 'Unable to save prescription.' });
     }
 });
 
@@ -1594,34 +1657,108 @@ app.get('/finance/export-pdf', authenticateToken, authorizeRole(['admin', 'manag
 });
 
 // Document Templates API
+const toSafeDocumentTemplate = (template) => ({
+    id: template.id,
+    title: template.title,
+    content: template.content,
+    createdAt: template.createdAt,
+    updatedAt: template.updatedAt,
+    kind: template.kind,
+    mimeType: template.mimeType,
+    originalName: template.originalName
+});
+
+const toSafePatientDocument = (document) => ({
+    id: document.id,
+    title: document.title,
+    content: document.content,
+    date: document.date,
+    patientId: document.patientId,
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
+    pdfUrl: document.pdfUrl || null,
+    templateId: document.templateId,
+    status: document.status,
+    issuedAt: document.issuedAt,
+    sourceKind: document.sourceKind,
+    fileUrl: document.storageKey ? `/patient-documents/${document.id}/file` : document.template?.storageKey ? `/document-templates/${document.template.id}/file` : document.pdfUrl || null,
+    attachments: (document.attachments || []).map((attachment) => ({
+        id: attachment.id,
+        mimeType: attachment.mimeType,
+        originalName: attachment.originalName,
+        size: attachment.size,
+        createdAt: attachment.createdAt,
+        fileUrl: `/patient-documents/${document.id}/attachments/${attachment.id}/file`
+    }))
+});
+
 app.get('/document-templates', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
-        const templates = await prisma.documentTemplate.findMany();
-        res.json(templates);
+        const templates = await prisma.documentTemplate.findMany({
+            where: { archivedAt: null },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(templates.map(toSafeDocumentTemplate));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.post('/document-templates', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+app.post('/document-templates', authenticateToken, authorizeRole(['admin', 'dentist']), templateUpload.single('file'), async (req, res) => {
+    let storageKey;
     try {
-        const template = await prisma.documentTemplate.create({
-            data: req.body
+        const result = documentTemplateSchema.safeParse({
+            title: req.body.title,
+            content: req.body.content || '',
+            kind: req.file ? 'pdf' : req.body.kind || 'text'
         });
-        res.json(template);
+        if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+        if (result.data.kind === 'pdf' && !req.file) {
+            return res.status(400).json({ error: 'A PDF file is required for PDF templates.' });
+        }
+        if (req.file && !isSupportedUpload(req.file.buffer, req.file.mimetype)) {
+            return res.status(400).json({ error: 'Only valid PDF files are accepted.' });
+        }
+        storageKey = req.file ? await uploadDocumentTemplate({ body: req.file.buffer }) : null;
+        const template = await prisma.documentTemplate.create({
+            data: {
+                title: result.data.title,
+                content: result.data.content,
+                kind: result.data.kind,
+                storageKey,
+                mimeType: req.file?.mimetype || null,
+                originalName: req.file?.originalname || null
+            }
+        });
+        res.json(toSafeDocumentTemplate(template));
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (storageKey) await deletePatientDocument(storageKey).catch(() => {});
+        res.status(400).json({ error: 'Unable to save document template.' });
+    }
+});
+
+app.get('/document-templates/:id/file', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    try {
+        const id = Number.parseInt(req.params.id, 10);
+        if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid template id.' });
+        const template = await prisma.documentTemplate.findUnique({ where: { id } });
+        if (!template?.storageKey) return res.status(404).json({ error: 'Template file not found.' });
+        return res.redirect(302, await createPrivateDocumentUrl(template.storageKey, template.mimeType || 'application/pdf'));
+    } catch (error) {
+        console.error('Document template access failed.');
+        res.status(500).json({ error: 'Unable to access template file.' });
     }
 });
 
 app.delete('/document-templates/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
-        await prisma.documentTemplate.delete({
-            where: { id: parseInt(req.params.id) }
+        await prisma.documentTemplate.update({
+            where: { id: parseInt(req.params.id) },
+            data: { archivedAt: new Date() }
         });
-        res.json({ message: 'Template deleted' });
+        res.json({ message: 'Template archived' });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: 'Unable to archive template.' });
     }
 });
 
@@ -1630,12 +1767,10 @@ app.get('/patient-documents/:patientId', authenticateToken, authorizeRole(['admi
     try {
         const docs = await prisma.patientDocument.findMany({
             where: { patientId: parseInt(req.params.patientId) },
-            orderBy: { date: 'desc' }
+            orderBy: { date: 'desc' },
+            include: { template: true, attachments: true }
         });
-        res.json(docs.map(doc => ({
-            ...doc,
-            fileUrl: doc.storageKey ? `/patient-documents/${doc.id}/file` : doc.pdfUrl || null
-        })));
+        res.json(docs.map(toSafePatientDocument));
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1643,37 +1778,159 @@ app.get('/patient-documents/:patientId', authenticateToken, authorizeRole(['admi
 
 app.post('/patient-documents', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
-        const doc = await prisma.patientDocument.create({
-            data: req.body
+        const result = patientDocumentSchema.safeParse({
+            ...req.body,
+            patientId: Number.parseInt(req.body.patientId, 10)
         });
-        res.json(doc);
+        if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+        const template = result.data.templateId
+            ? await prisma.documentTemplate.findUnique({ where: { id: result.data.templateId } })
+            : null;
+        if (result.data.templateId && !template) return res.status(404).json({ error: 'Template not found.' });
+        if (result.data.sourceKind === 'pdf' && !template?.storageKey) {
+            return res.status(400).json({ error: 'A PDF template is required for this document.' });
+        }
+        const doc = await prisma.patientDocument.create({
+            data: {
+                title: result.data.title,
+                content: result.data.content,
+                date: result.data.date ? new Date(result.data.date) : undefined,
+                patientId: result.data.patientId,
+                templateId: result.data.templateId || null,
+                sourceKind: result.data.sourceKind,
+                status: 'issued',
+                issuedAt: new Date(),
+                issuedById: req.user.id
+            },
+            include: { template: true, attachments: true }
+        });
+        res.json(toSafePatientDocument(doc));
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: 'Unable to issue document.' });
     }
 });
 
 app.put('/patient-documents/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
+        const existing = await prisma.patientDocument.findUnique({ where: { id: parseInt(req.params.id, 10) } });
+        if (!existing) return res.status(404).json({ error: 'Document not found.' });
+        const result = patientDocumentSchema.safeParse({
+            title: req.body.title ?? existing.title,
+            content: req.body.content ?? existing.content,
+            templateId: req.body.templateId !== undefined ? req.body.templateId : existing.templateId,
+            sourceKind: req.body.sourceKind ?? existing.sourceKind,
+            patientId: existing.patientId,
+            date: req.body.date ?? existing.date.toISOString()
+        });
+        if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
+        const template = result.data.templateId
+            ? await prisma.documentTemplate.findUnique({ where: { id: result.data.templateId } })
+            : null;
+        if (result.data.templateId && !template) return res.status(404).json({ error: 'Template not found.' });
+        if (result.data.sourceKind === 'pdf' && !template?.storageKey) {
+            return res.status(400).json({ error: 'A PDF template is required for this document.' });
+        }
         const doc = await prisma.patientDocument.update({
             where: { id: parseInt(req.params.id) },
-            data: req.body
+            data: {
+                title: result.data.title,
+                content: result.data.content,
+                date: result.data.date ? new Date(result.data.date) : undefined,
+                templateId: result.data.templateId || null,
+                sourceKind: result.data.sourceKind
+            },
+            include: { template: true, attachments: true }
         });
-        res.json(doc);
+        res.json(toSafePatientDocument(doc));
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: 'Unable to update document.' });
+    }
+});
+
+app.post('/patient-documents/:id/attachments', authenticateToken, authorizeRole(['admin', 'dentist']), attachmentUpload.array('files', 5), async (req, res) => {
+    const storageKeys = [];
+    try {
+        const documentId = Number.parseInt(req.params.id, 10);
+        if (!Number.isInteger(documentId)) return res.status(400).json({ error: 'Invalid document id.' });
+        const document = await prisma.patientDocument.findUnique({ where: { id: documentId } });
+        if (!document) return res.status(404).json({ error: 'Document not found.' });
+        if (!req.files?.length) return res.status(400).json({ error: 'At least one attachment is required.' });
+
+        for (const file of req.files) {
+            if (!isSupportedUpload(file.buffer, file.mimetype)) {
+                return res.status(400).json({ error: 'Only valid PDF or image attachments are accepted.' });
+            }
+            const validation = attachmentUploadSchema.safeParse({
+                documentId,
+                mimeType: file.mimetype,
+                originalName: file.originalname,
+                size: file.size
+            });
+            if (!validation.success) return res.status(400).json({ error: validation.error.issues[0].message });
+        }
+        for (const file of req.files) {
+            storageKeys.push(await uploadPatientDocumentAttachment({ documentId, body: file.buffer, mimeType: file.mimetype }));
+        }
+
+        const attachments = await prisma.$transaction(async (tx) => {
+            const rows = [];
+            for (let index = 0; index < req.files.length; index += 1) {
+                const file = req.files[index];
+                rows.push(await tx.patientDocumentAttachment.create({
+                    data: {
+                        patientDocumentId: documentId,
+                        storageKey: storageKeys[index],
+                        mimeType: file.mimetype,
+                        originalName: file.originalname,
+                        size: file.size,
+                        uploadedById: req.user.id
+                    }
+                }));
+            }
+            await tx.patientDocument.update({ where: { id: documentId }, data: { status: 'signed' } });
+            return rows;
+        });
+        res.json(attachments.map(attachment => ({
+            id: attachment.id,
+            mimeType: attachment.mimeType,
+            originalName: attachment.originalName,
+            size: attachment.size,
+            createdAt: attachment.createdAt,
+            fileUrl: `/patient-documents/${documentId}/attachments/${attachment.id}/file`
+        })));
+    } catch (error) {
+        await Promise.all(storageKeys.map(key => deletePatientDocument(key).catch(() => {})));
+        console.error('Patient document attachment upload failed.');
+        res.status(500).json({ error: 'Unable to upload document attachments.' });
+    }
+});
+
+app.get('/patient-documents/:id/attachments/:attachmentId/file', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
+    try {
+        const documentId = Number.parseInt(req.params.id, 10);
+        const attachmentId = Number.parseInt(req.params.attachmentId, 10);
+        const attachment = await prisma.patientDocumentAttachment.findFirst({
+            where: { id: attachmentId, patientDocumentId: documentId }
+        });
+        if (!attachment) return res.status(404).json({ error: 'Attachment not found.' });
+        return res.redirect(302, await createPrivateDocumentUrl(attachment.storageKey, attachment.mimeType));
+    } catch (error) {
+        console.error('Patient document attachment access failed.');
+        res.status(500).json({ error: 'Unable to access attachment.' });
     }
 });
 
 app.delete('/patient-documents/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const document = await prisma.patientDocument.findUnique({ where: { id } });
+        const document = await prisma.patientDocument.findUnique({ where: { id }, include: { attachments: true } });
         if (!document) return res.status(404).json({ error: 'Document not found.' });
         await deletePatientDocument(document.storageKey);
+        await Promise.all(document.attachments.map(attachment => deletePatientDocument(attachment.storageKey)));
         await prisma.patientDocument.delete({ where: { id } });
         res.json({ message: 'Document deleted' });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: 'Unable to delete patient document.' });
     }
 });
 
