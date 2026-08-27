@@ -66,67 +66,80 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
 
     const isManager = currentUser.role === 'manager';
 
-    const contentSubItems = isManager
-        ? [
-            { label: "Comentários", href: "/admin/comentarios" },
-            { label: "Stories", href: "/admin/stories" }
-        ]
-        : [
-            { label: "Comentários", href: "/admin/comentarios" },
-            { label: "Tratamentos", href: "/admin/tratamentos" },
-            { label: "Blog", href: "/admin/blog" },
-            { label: "Stories", href: "/admin/stories" }
+    const menuItems = React.useMemo(() => {
+        const contentSubItems = isManager
+            ? [
+                { label: "Comentários", href: "/admin/comentarios" },
+                { label: "Stories", href: "/admin/stories" }
+            ]
+            : [
+                { label: "Comentários", href: "/admin/comentarios" },
+                { label: "Tratamentos", href: "/admin/tratamentos" },
+                { label: "Blog", href: "/admin/blog" },
+                { label: "Stories", href: "/admin/stories" }
+            ];
+
+        const allMenuItems = [
+            { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+            { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
+            {
+                label: "Conteúdo",
+                href: isManager ? "/admin/comentarios" : "/admin/blog",
+                icon: FileText,
+                subItems: contentSubItems
+            },
+            {
+                label: "Atendimentos",
+                href: "/admin/consultas",
+                icon: Stethoscope,
+                adminOnly: true,
+                subItems: [
+                    { label: "Consultas", href: "/admin/consultas" },
+                    { label: "Pacientes", href: "/admin/pacientes" },
+                    { label: "Prescrição", href: "/admin/prescricao" },
+                    { label: "Termos e Documentos", href: "/admin/documentos" },
+                ]
+            },
+            { label: "Agenda", href: "/admin/calendario", icon: Calendar, adminOnly: true },
+            { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
+            ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
+            { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+            {
+                label: "Configurações",
+                href: "/admin/settings",
+                icon: Settings,
+                adminOnly: true,
+                subItems: [
+                    { label: "Geral", href: "/admin/settings" },
+                    { label: "Equipe", href: "/admin/users" },
+                ]
+            },
         ];
 
-    const allMenuItems = [
-        { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-        { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
-        {
-            label: "Conteúdo",
-            href: isManager ? "/admin/comentarios" : "/admin/blog",
-            icon: FileText,
-            subItems: contentSubItems
-        },
-        {
-            label: "Atendimentos",
-            href: "/admin/consultas",
-            icon: Stethoscope,
-            adminOnly: true,
-            subItems: [
-                { label: "Consultas", href: "/admin/consultas" },
-                { label: "Pacientes", href: "/admin/pacientes" },
-                { label: "Prescrição", href: "/admin/prescricao" },
-                { label: "Termos e Documentos", href: "/admin/documentos" },
-            ]
-        },
-        { label: "Agenda", href: "/admin/calendario", icon: Calendar, adminOnly: true },
-        { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
-        ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
-        { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-        {
-            label: "Configurações",
-            href: "/admin/settings",
-            icon: Settings,
-            adminOnly: true,
-            subItems: [
-                { label: "Geral", href: "/admin/settings" },
-                { label: "Equipe", href: "/admin/users" },
-            ]
-        },
-    ];
+        return isManager
+            ? allMenuItems.filter(item => !item.adminOnly)
+            : allMenuItems;
+    }, [currentUser.username, isManager]);
 
-    // Filter: manager only sees items without adminOnly flag
-    const menuItems = isManager
-        ? allMenuItems.filter(item => !item.adminOnly)
-        : allMenuItems;
+    const [openGroup, setOpenGroup] = React.useState<string | null>(null);
+
+    const activeGroupLabel = React.useMemo(() => menuItems.find((item) =>
+        item.subItems?.some((sub) => location.pathname.startsWith(sub.href)),
+    )?.label ?? null, [location.pathname, menuItems]);
+
+    React.useEffect(() => {
+        if (activeGroupLabel) setOpenGroup(activeGroupLabel);
+    }, [activeGroupLabel]);
 
     const activeNavClass = "bg-primary text-primary-foreground shadow-lg shadow-primary/20";
     const inactiveNavClass = "text-slate-500 hover:bg-slate-800/50 hover:text-white";
     const isItemActive = (item: (typeof menuItems)[number]) =>
         location.pathname === item.href || item.subItems?.some((sub) => location.pathname.startsWith(sub.href));
 
-    const renderNestedItems = (item: (typeof menuItems)[number], isActive: boolean) => item.subItems && isActive && (
-        <div className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-1">
+    const getSubmenuId = (label: string) => `admin-submenu-${label.toLowerCase().replace(/\s+/g, "-")}`;
+
+    const renderNestedItems = (item: (typeof menuItems)[number], isGroupOpen: boolean, submenuId: string) => item.subItems && isGroupOpen && (
+        <div id={submenuId} className="ml-11 mt-1 space-y-1 border-l border-slate-800 pl-1">
             {item.subItems.map(sub => (
                 <Link
                     key={sub.label}
@@ -141,10 +154,64 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
         </div>
     );
 
+    const toggleGroup = (label: string) => {
+        setOpenGroup((current) => current === label ? null : label);
+    };
+
+    const renderMenuItem = (item: (typeof menuItems)[number], compact = false) => {
+        const Icon = item.icon;
+        const isActive = isItemActive(item);
+        const isGroup = Boolean(item.subItems?.length);
+        const isGroupOpen = openGroup === item.label;
+        const submenuId = getSubmenuId(item.label);
+        const isHighlighted = isActive || isGroupOpen;
+        const itemClass = compact
+            ? `hidden lg:flex min-h-11 items-center justify-center rounded-xl px-3.5 transition-all ${isActive ? activeNavClass : "text-slate-400 hover:bg-slate-800 hover:text-white"}`
+            : `flex min-h-11 items-center gap-3 rounded-xl px-3.5 transition-all ${isHighlighted ? activeNavClass : inactiveNavClass}`;
+        const iconClass = isHighlighted
+            ? "text-primary-foreground"
+            : "text-slate-400 group-hover:text-primary transition-colors";
+
+        if (isGroup) {
+            return (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (compact) setIsCollapsed(false);
+                            toggleGroup(item.label);
+                        }}
+                        className={`${itemClass} w-full text-left`}
+                        aria-expanded={isGroupOpen}
+                        aria-controls={submenuId}
+                        aria-label={compact ? item.label : undefined}
+                        title={compact ? item.label : undefined}
+                    >
+                        <Icon size={compact ? 22 : 20} className={iconClass} />
+                        {!compact && <span className="font-bold text-sm tracking-tight">{item.label}</span>}
+                        <ChevronRight size={14} className={`${compact ? "hidden" : "ml-auto"} opacity-50 transition-transform ${isGroupOpen ? "rotate-90" : ""}`} />
+                    </button>
+                    {!compact && renderNestedItems(item, isGroupOpen, submenuId)}
+                </>
+            );
+        }
+
+        return (
+            <Link
+                to={item.href}
+                className={itemClass}
+                title={compact ? item.label : undefined}
+            >
+                <Icon size={compact ? 22 : 20} className={iconClass} />
+                {!compact && <span className="font-bold text-sm tracking-tight">{item.label}</span>}
+            </Link>
+        );
+    };
+
     return (
         <div className="admin-shell min-h-screen bg-background">
             {/* Mobile Header Toggle (Visible only on mobile) */}
-            <div className="admin-mobile-bar no-print lg:hidden relative z-20 flex h-[var(--admin-topbar-mobile)] items-center px-4">
+            <div className="admin-mobile-bar no-print sticky top-0 z-20 flex h-[var(--admin-topbar-mobile)] items-center border-b border-slate-200 bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden">
                 <Button
                     size="icon"
                     variant="outline"
@@ -175,7 +242,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 className={`admin-sidebar
                 fixed inset-y-0 left-0 z-40 bg-[hsl(30,15%,10%)] text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-[hsl(30,10%,15%)] no-print
                 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-                lg:translate-x-0 h-screen flex flex-col
+                lg:translate-x-0 h-dvh max-h-dvh min-h-0 flex flex-col
                 ${isCollapsed ? "lg:w-[var(--admin-sidebar-collapsed)]" : "lg:w-[var(--admin-sidebar-expanded)]"}
                 w-[min(86vw,320px)]
             `}>
@@ -215,49 +282,23 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     </button>
                 </div>
 
-                <nav className="flex-1 p-3 space-y-1 mt-6 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 min-h-0 p-3 space-y-1 mt-6 overflow-y-auto overscroll-contain custom-scrollbar">
                     {menuItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = isItemActive(item);
                         return (
                             <div key={item.label} className="group">
                                 {isCollapsed ? (
                                     <>
                                         {/* Collapsed Icon Mode (Desktop) */}
                                         <div className="hidden lg:block">
-                                            <Link
-                                                to={item.href}
-                                                className={`flex min-h-11 items-center justify-center px-3.5 rounded-xl transition-all ${isActive ? activeNavClass : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-                                                title={item.label}
-                                            >
-                                                <Icon size={22} />
-                                            </Link>
+                                            {renderMenuItem(item, true)}
                                         </div>
                                         {/* Full Menu Mode (Mobile) */}
                                         <div className="lg:hidden">
-                                            <Link
-                                                to={item.href}
-                                                className={`flex min-h-11 items-center gap-3 px-3.5 rounded-xl transition-all ${isActive ? activeNavClass : inactiveNavClass}`}
-                                            >
-                                                <Icon size={20} className={isActive ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary transition-colors"} />
-                                                <span className="font-bold text-sm tracking-tight">{item.label}</span>
-                                                {item.subItems && <ChevronRight size={14} className={`ml-auto opacity-50 ${isActive ? "rotate-90" : ""}`} />}
-                                            </Link>
-                                            {renderNestedItems(item, isActive)}
+                                            {renderMenuItem(item)}
                                         </div>
                                     </>
                                 ) : (
-                                    <>
-                                        <Link
-                                            to={item.href}
-                                            className={`flex min-h-11 items-center gap-3 px-3.5 rounded-xl transition-all ${isActive ? activeNavClass : inactiveNavClass}`}
-                                        >
-                                            <Icon size={20} className={isActive ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary transition-colors"} />
-                                            <span className="font-bold text-sm tracking-tight">{item.label}</span>
-                                            {item.subItems && <ChevronRight size={14} className={`ml-auto opacity-50 ${isActive ? "rotate-90" : ""}`} />}
-                                        </Link>
-                                        {renderNestedItems(item, isActive)}
-                                    </>
+                                    renderMenuItem(item)
                                 )}
                             </div>
                         );
