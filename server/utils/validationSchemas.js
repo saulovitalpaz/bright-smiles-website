@@ -97,6 +97,10 @@ const dateValueSchema = z.union([
     z.string().date(),
     z.string().datetime({ offset: true }),
 ]);
+const birthDateSchema = dateValueSchema.refine((value) => {
+    const timestamp = value instanceof Date ? value.getTime() : Date.parse(value);
+    return Number.isFinite(timestamp) && timestamp <= Date.now();
+}, 'Birth date cannot be in the future');
 const richContentSchema = z.string().trim().max(100000).transform(sanitizeBlogContent);
 const hasVisibleContent = (value) => /[^\s]/.test(value.replace(/<[^>]*>/g, ''));
 const requiredRichContentSchema = richContentSchema.refine(hasVisibleContent, 'Content is required');
@@ -145,7 +149,7 @@ const attachmentUploadSchema = z.object({
 const patientSchema = z.object({
     name: z.string().min(1, "Name is required"),
     cpf: z.string().min(11, "CPF must be at least 11 characters"),
-    birthDate: dateValueSchema.optional().nullable(),
+    birthDate: birthDateSchema.optional().nullable(),
     phone: z.string().optional(),
     address: z.string().optional(),
     history: z.string().optional(),

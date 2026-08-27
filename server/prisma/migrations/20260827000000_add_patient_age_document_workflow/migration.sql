@@ -35,6 +35,18 @@ CREATE TABLE IF NOT EXISTS "PatientDocumentAttachment" (
 CREATE INDEX IF NOT EXISTS "PatientDocumentAttachment_patientDocumentId_idx"
 ON "PatientDocumentAttachment"("patientDocumentId");
 
+CREATE INDEX IF NOT EXISTS "Prescription_odontogramSourceAppointmentId_idx"
+ON "Prescription"("odontogramSourceAppointmentId");
+
+CREATE INDEX IF NOT EXISTS "PatientDocument_templateId_idx"
+ON "PatientDocument"("templateId");
+
+CREATE INDEX IF NOT EXISTS "PatientDocument_issuedById_idx"
+ON "PatientDocument"("issuedById");
+
+CREATE INDEX IF NOT EXISTS "PatientDocumentAttachment_uploadedById_idx"
+ON "PatientDocumentAttachment"("uploadedById");
+
 DO $$
 BEGIN
     IF NOT EXISTS (

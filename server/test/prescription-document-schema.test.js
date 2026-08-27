@@ -29,6 +29,12 @@ const migrationPath = path.join(
 const migrationSource = fs.existsSync(migrationPath)
   ? fs.readFileSync(migrationPath, 'utf8')
   : '';
+const migrationRoot = path.join(__dirname, '..', 'prisma', 'migrations');
+const repairMigrationName = '20260110042557_repair_missing_base_tables';
+const repairMigrationPath = path.join(migrationRoot, repairMigrationName, 'migration.sql');
+const repairMigrationSource = fs.existsSync(repairMigrationPath)
+  ? fs.readFileSync(repairMigrationPath, 'utf8')
+  : '';
 
 const toothRecord = { notes: '', conditions: [] };
 
@@ -48,6 +54,11 @@ test('accepts optional nullable birthDate without persisting a derived age tag',
     cpf: 'fixture-cpf-001',
     birthDate: null,
   }).success, true);
+  assert.equal(patientSchema.safeParse({
+    name: 'Synthetic Fixture',
+    cpf: 'fixture-cpf-002',
+    birthDate: '2999-01-01',
+  }).success, false);
 });
 
 test('accepts V2 and V3 odontograms while enforcing primary FDI keys by dentition', () => {
@@ -194,4 +205,30 @@ test('Prisma schema and migration expose additive document workflow fields with 
   assert.match(migrationSource, /ON DELETE SET NULL/i);
   assert.match(migrationSource, /ON DELETE CASCADE/i);
   assert.match(migrationSource, /CREATE TABLE IF NOT EXISTS "PatientDocumentAttachment"/i);
+  for (const index of [
+    'odontogramSourceAppointmentId',
+    'templateId',
+    'issuedById',
+    'uploadedById',
+  ]) assert.match(schemaSource, new RegExp(`@@index\\(\\[${index}\\]\\)`));
+});
+
+test('repair migration is ordered before historical ALTER TABLE statements and bootstraps missing base tables', () => {
+  const migrationNames = fs.readdirSync(migrationRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  const initialIndex = migrationNames.indexOf('20260110042556_init');
+  const repairIndex = migrationNames.indexOf(repairMigrationName);
+  const patientAlterIndex = migrationNames.indexOf('20260730040000_add_patient_cpf_index');
+
+  assert.ok(initialIndex >= 0);
+  assert.ok(repairIndex > initialIndex);
+  assert.ok(repairIndex < patientAlterIndex);
+  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "Patient"/i);
+  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "FinanceTransaction"/i);
+  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "Prescription"/i);
+  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "DocumentTemplate"/i);
+  assert.match(repairMigrationSource, /CREATE TABLE IF NOT EXISTS "PatientDocument"/i);
+  assert.match(repairMigrationSource, /ADD COLUMN IF NOT EXISTS "patientId"/i);
 });

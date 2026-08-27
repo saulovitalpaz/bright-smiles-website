@@ -69,6 +69,8 @@ model Appointment {
   returnAppointment Appointment? @relation("AppointmentReturns")
   financeTransactions FinanceTransaction[]
   prescriptions Prescription[] @relation("PrescriptionOdontogramSource")
+
+  @@index([patientId])
 }
 
 model Treatment {
@@ -145,6 +147,9 @@ model Prescription {
   odontogramSnapshot Json?
   odontogramSourceAppointmentId Int?
   odontogramSourceAppointment Appointment? @relation("PrescriptionOdontogramSource", fields: [odontogramSourceAppointmentId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([odontogramSourceAppointmentId])
 }
 
 model Lead {
@@ -194,6 +199,8 @@ model FinanceTransaction {
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   receiptUrl  String?
   nfeUrl      String?
+
+  @@index([patientId])
 }
 
 model DocumentTemplate {
@@ -229,6 +236,10 @@ model PatientDocument {
   template DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   issuedBy User? @relation("PatientDocumentIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
   attachments PatientDocumentAttachment[]
+
+  @@index([patientId])
+  @@index([templateId])
+  @@index([issuedById])
 }
 
 model PatientDocumentAttachment {
@@ -244,6 +255,7 @@ model PatientDocumentAttachment {
   uploadedBy User? @relation("PatientDocumentAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([patientDocumentId])
+  @@index([uploadedById])
 }
 
 model AnalyticsEvent {
