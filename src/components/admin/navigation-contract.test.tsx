@@ -44,7 +44,7 @@ describe("admin navigation source contract", () => {
         expect(layoutSource).toContain('type="button"');
         expect(layoutSource).toContain("aria-expanded={isGroupOpen}");
         expect(layoutSource).toContain("aria-controls={submenuId}");
-        expect(layoutSource).toContain("renderNestedItems(item, isGroupOpen)");
+        expect(layoutSource).toContain("renderNestedItems(item, isGroupOpen, submenuId)");
     });
 
     it("exposes separate prescription and odontogram print targets", () => {
