@@ -16,7 +16,7 @@ describe("finance page layout contracts", () => {
   });
 
   it("keeps narrow clinic finance content inside flexible containers", () => {
-    expect(clinicFinance).toContain('className="space-y-3 lg:hidden"');
+    expect(clinicFinance).toContain('className="min-w-0 space-y-3 lg:hidden"');
     expect(clinicFinance).toContain("min-w-0 flex-col");
   });
 
