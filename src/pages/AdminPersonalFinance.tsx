@@ -145,46 +145,46 @@ const AdminPersonalFinance = () => {
 
     return (
         <AdminLayout title="Caixa Pessoal - Neli Vital">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid min-w-0 grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="bg-white border-slate-100 shadow-sm">
-                    <CardContent className="p-5 flex items-center gap-4">
+                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
                         <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                             <ArrowUpCircle size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Entradas</p>
                             <p className="text-xl font-bold text-slate-900">R$ {income.toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-white border-slate-100 shadow-sm">
-                    <CardContent className="p-5 flex items-center gap-4">
+                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
                         <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
                             <ArrowDownCircle size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saídas</p>
                             <p className="text-xl font-bold text-slate-900">R$ {expense.toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className={`bg-white border-2 shadow-md ${balance >= 0 ? "border-emerald-100" : "border-rose-100"}`}>
-                    <CardContent className="p-5 flex items-center gap-4">
+                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${balance >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
                             <DollarSign size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saldo</p>
                             <p className={`text-xl font-black ${balance >= 0 ? "text-emerald-700" : "text-rose-700"}`}>R$ {balance.toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-slate-900 text-white border-none shadow-xl">
-                    <CardContent className="p-5 flex items-center gap-4">
+                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
                         <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
                             <Clock size={24} className="text-amber-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Pendentes</p>
                             <p className="text-xl font-bold">R$ {transactions.filter(t => t.status === 'pending').reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</p>
                         </div>
@@ -192,9 +192,9 @@ const AdminPersonalFinance = () => {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
                 <div className="lg:col-span-1">
-                    <Card className="border-slate-200 shadow-lg lg:sticky lg:top-24">
+                    <Card className="min-w-0 border-slate-200 shadow-lg lg:sticky lg:top-24">
                         <CardHeader className="bg-slate-50/50 border-b border-slate-100">
                             <CardTitle className="text-lg font-serif">Lançamento de Caixa</CardTitle>
                             <CardDescription className="text-xs">Gestão de gastos e recebimentos pessoais.</CardDescription>
@@ -229,7 +229,7 @@ const AdminPersonalFinance = () => {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase text-slate-400">Valor (R$)</Label>
                                         <Input 
@@ -304,8 +304,8 @@ const AdminPersonalFinance = () => {
                     </Card>
                 </div>
 
-                <div className="lg:col-span-2">
-                    <Card className="border-slate-200 shadow-sm min-h-[600px]">
+                <div className="min-w-0 lg:col-span-2">
+                    <Card className="min-w-0 border-slate-200 shadow-sm min-h-0 sm:min-h-[600px]">
                         <CardHeader className="flex flex-col gap-3 bg-white border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <CardTitle className="text-xl font-serif">Fluxo de Caixa Histórico</CardTitle>
@@ -329,43 +329,45 @@ const AdminPersonalFinance = () => {
                                     </div>
                                 ) : (
                                     transactions.map(t => (
-                                        <div key={t.id} className="flex items-center justify-between p-5 hover:bg-slate-50/50 transition-all group border-l-4 border-transparent hover:border-primary">
-                                            <div className="flex items-center gap-5">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                    {t.type === 'income' ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-bold text-slate-900">{t.description}</p>
-                                                        <Badge variant={t.status === 'paid' ? "outline" : "secondary"} className={`text-[9px] h-4 uppercase ${t.status === 'paid' ? "text-emerald-600 bg-emerald-50" : "text-amber-600 bg-amber-50"}`}>
-                                                            {t.status === 'paid' ? 'Pago' : 'Pendente'}
-                                                        </Badge>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                        <span className="flex items-center gap-1"><CalendarIcon size={12} /> {new Date(t.date).toLocaleDateString()}</span>
-                                                        <span>•</span>
-                                                        <span className="text-primary/70">{t.category}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-6">
-                                                <div className="text-right">
-                                                    <p className={`text-lg font-black ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                        {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
-                                                    </p>
-                                                    {t.receiptUrl && (
-                                                        <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-black text-primary uppercase hover:underline">
-                                                            <Receipt size={10} /> Ver Recibo
-                                                        </a>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        onClick={() => handleDelete(t.id)}
-                                                        className="h-9 w-9 text-slate-300 hover:text-red-500 hover:bg-red-50"
-                                                    >
+                                         <div key={t.id} className="group flex min-w-0 flex-col gap-4 border-l-4 border-transparent p-4 transition-all hover:border-primary hover:bg-slate-50/50 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                             <div className="flex min-w-0 items-start gap-3 sm:gap-5">
+                                                 <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-inner ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                     {t.type === 'income' ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
+                                                 </div>
+                                                 <div className="min-w-0 flex-1 space-y-1">
+                                                     <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                         <p className="min-w-0 break-words font-bold text-slate-900">{t.description}</p>
+                                                         <Badge variant={t.status === 'paid' ? "outline" : "secondary"} className={`shrink-0 text-[9px] h-4 uppercase ${t.status === 'paid' ? "text-emerald-600 bg-emerald-50" : "text-amber-600 bg-amber-50"}`}>
+                                                             {t.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                         </Badge>
+                                                     </div>
+                                                     <div className="flex flex-wrap items-center gap-2 break-words text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                         <span className="flex items-center gap-1"><CalendarIcon size={12} /> {new Date(t.date).toLocaleDateString()}</span>
+                                                         <span>•</span>
+                                                         <span className="break-words text-primary/70">{t.category}</span>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                             <div className="flex w-full min-w-0 items-center justify-between gap-3 sm:w-auto sm:gap-6">
+                                                 <div className="min-w-0 text-right">
+                                                     <p className={`break-words text-lg font-black ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                         {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
+                                                     </p>
+                                                     {t.receiptUrl && (
+                                                         <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 break-words text-[10px] font-black text-primary uppercase hover:underline">
+                                                             <Receipt size={10} /> Ver Recibo
+                                                         </a>
+                                                     )}
+                                                 </div>
+                                                 <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                                                     <Button 
+                                                         variant="ghost" 
+                                                         size="icon" 
+                                                         type="button"
+                                                         aria-label={`Excluir ${t.description}`}
+                                                         onClick={() => handleDelete(t.id)}
+                                                         className="h-10 w-10 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                                                     >
                                                         <Trash2 size={16} />
                                                     </Button>
                                                 </div>
