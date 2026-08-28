@@ -360,9 +360,9 @@ const AdminPersonalFinance = () => {
                                                      )}
                                                  </div>
                                                  <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                                                     <Button 
-                                                         variant="ghost" 
-                                                         size="icon" 
+                                                     <Button
+                                                         variant="ghost"
+                                                         size="icon"
                                                          type="button"
                                                          aria-label={`Excluir ${t.description}`}
                                                          onClick={() => handleDelete(t.id)}
