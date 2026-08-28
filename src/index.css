@@ -164,7 +164,7 @@
 }
 
 .print-root {
-  display: none;
+  display: block;
 }
 
 @media print {
