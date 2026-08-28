@@ -217,8 +217,8 @@ const AdminFinance = () => {
 
     return (
         <AdminLayout title="Gestão Financeira">
-            <div className={`print-root ${printDocumentClass(printMode)} flex flex-col`}>
-            <div className="no-print order-3 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 mb-8 lg:order-1">
+            <div className={`print-root ${printDocumentClass(printMode)} flex min-w-0 flex-col`}>
+            <div className="no-print order-3 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 mb-8 lg:order-1">
                 <Card
                     role="button"
                     tabIndex={0}
@@ -288,8 +288,8 @@ const AdminFinance = () => {
                 </Card>
             </div>
 
-            <div className="order-2 grid grid-cols-1 gap-6 lg:order-2 lg:grid-cols-3 lg:gap-8">
-                <div className="no-print order-2 space-y-6 lg:order-1 lg:col-span-1">
+            <div className="order-2 grid min-w-0 grid-cols-1 gap-6 lg:order-2 lg:grid-cols-3 lg:gap-8">
+                <div className="no-print order-2 min-w-0 space-y-6 lg:order-1 lg:col-span-1">
                     <Card className="border-slate-200 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Nova Transação</CardTitle>
@@ -436,9 +436,9 @@ const AdminFinance = () => {
                     </Card>
                 </div>
 
-                <div className="print-report order-1 lg:order-2 lg:col-span-2">
-                    <Card className="border-slate-200 shadow-sm">
-                        <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="print-report order-1 min-w-0 lg:order-2 lg:col-span-2">
+                    <Card className="min-w-0 border-slate-200 shadow-sm">
+                        <CardHeader className="min-w-0 gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div className="min-w-0">
                                 <CardTitle className="text-xl font-serif break-words">Fluxo de Caixa - {new Date(filterByYear, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</CardTitle>
                                 <CardDescription>Histórico de movimentações financeiras{activeFilterLabel ? ` · ${activeFilterLabel}` : ""}.</CardDescription>
@@ -478,10 +478,10 @@ const AdminFinance = () => {
                                     </Button>
                                 )}
                             </div>
-                            <div className="no-print flex flex-wrap items-center gap-2 lg:justify-end">
-                                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="no-print flex w-full flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
+                                <label className="inline-flex w-full items-center justify-between gap-2 text-sm text-muted-foreground sm:w-auto sm:justify-start">
                                     <span>Formato</span>
-                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 rounded-lg border bg-background px-3">
+                                    <select value={printMode} onChange={(e) => setPrintMode(e.target.value as PrintMode)} className="h-10 min-w-0 max-w-full rounded-lg border bg-background px-3">
                                         <option value="clinic">A4 clínico</option>
                                         <option value="compact">A4 compacto</option>
                                     </select>
@@ -499,7 +499,7 @@ const AdminFinance = () => {
                                     reportTitle={`Relatório - ${new Date(0, filterByMonth - 1).toLocaleString('pt-BR', { month: 'long' })} / ${filterByYear}`}
                                     mode={printMode}
                                     label={
-                                        <Button variant="ghost" size="sm" className="text-primary font-bold">
+                                        <Button variant="ghost" size="sm" className="w-full text-primary font-bold sm:w-auto">
                                             <FileText size={16} className="mr-2" /> Exportar PDF (Histórico)
                                         </Button>
                                     }
@@ -578,9 +578,9 @@ const AdminFinance = () => {
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="space-y-3 lg:hidden">
+                            <div className="min-w-0 space-y-3 lg:hidden">
                                 {displayedTransactions.map((t) => (
-                                    <article key={`mobile-${t.id}`} className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                                    <article key={`mobile-${t.id}`} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex min-w-0 items-start gap-3">
                                                 <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
@@ -596,7 +596,7 @@ const AdminFinance = () => {
                                             </p>
                                         </div>
                                         <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
-                                            {t.patient ? <span className="max-w-full truncate rounded bg-blue-50 px-2 py-1 text-blue-600">{t.patient.name}</span> : <span className="text-slate-400">Sem paciente</span>}
+                                            {t.patient ? <span className="max-w-full break-words rounded bg-blue-50 px-2 py-1 text-blue-600">{t.patient.name}</span> : <span className="text-slate-400">Sem paciente</span>}
                                             {t.receiptUrl && <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="min-h-8 inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"><Receipt size={11} /> Recibo</a>}
                                             {t.nfeUrl ? <span className="inline-flex min-h-8 items-center gap-1 text-emerald-600"><CheckCircle2 size={11} /> NF-e emitida</span> : t.type === 'income' ? <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px] font-bold text-rose-500" onClick={() => handleConfirmNfe(t.id)}><Plus size={11} className="mr-1" /> Confirmar NF-e</Button> : null}
                                             <Button variant="ghost" size="icon" className="ml-auto h-9 w-9 text-slate-400 hover:text-red-500" aria-label={`Excluir ${t.description}`} onClick={() => handleDelete(t.id)}><Trash2 size={15} /></Button>
