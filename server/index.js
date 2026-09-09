@@ -1608,10 +1608,16 @@ app.delete('/finance/categories/:id', authenticateToken, authorizeRole(['admin']
         const category = await prisma.financeCategory.findUnique({ where: { id } });
         if (!category) return res.status(404).json({ error: 'Finance category not found.' });
 
-        const transactionCount = await prisma.financeTransaction.count({
-            where: { OR: [{ categoryId: id }, { category: category.name }] }
-        });
-        if (transactionCount > 0) {
+        const [transactionCount, legacyReferences] = await Promise.all([
+            prisma.financeTransaction.count({ where: { categoryId: id } }),
+            prisma.$queryRaw`
+                SELECT 1
+                FROM "FinanceTransaction"
+                WHERE "categoryId" IS NULL AND TRIM("category") = ${category.name}
+                LIMIT 1
+            `
+        ]);
+        if (transactionCount > 0 || legacyReferences.length > 0) {
             return res.status(409).json({ error: 'Categories referenced by transactions cannot be deleted.' });
         }
         await prisma.financeCategory.delete({ where: { id } });

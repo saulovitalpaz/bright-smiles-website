@@ -148,7 +148,10 @@ test('legacy finance categories are inserted without rewriting transactions and 
     assert.doesNotMatch(migration, /UPDATE\s+"FinanceTransaction"/i);
     assert.doesNotMatch(migration, /DELETE\s+FROM\s+"FinanceTransaction"/i);
     assert.match(deleteRoute, /financeCategory\.findUnique/);
-    assert.match(deleteRoute, /OR:\s*\[\s*\{ categoryId: id \},\s*\{ category: category\.name \}\s*\]/);
+    assert.match(deleteRoute, /financeTransaction\.count\(\{\s*where: \{ categoryId: id \}/);
+    assert.match(deleteRoute, /prisma\.\$queryRaw`/);
+    assert.match(deleteRoute, /"categoryId" IS NULL/);
+    assert.match(deleteRoute, /TRIM\("category"\) = \$\{category\.name\}/);
     assert.match(deleteRoute, /const id = Number\(req\.params\.id\)/);
     assert.doesNotMatch(deleteRoute, /Number\.parseInt/);
 });
