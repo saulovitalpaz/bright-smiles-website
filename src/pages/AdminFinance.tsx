@@ -154,6 +154,9 @@ const AdminFinance = () => {
             toast.error("Selecione uma categoria para a despesa.");
             return;
         }
+        const selectedCategory = newType === "expense"
+            ? financeCategories.find((category) => category.id === Number(newCategoryId))
+            : undefined;
         try {
             const response = await fetchClient("/finance", {
                 method: "POST",
@@ -163,6 +166,7 @@ const AdminFinance = () => {
                     amount: parseFloat(newAmount),
                     date: newDate,
                     categoryId: newType === 'expense' ? Number(newCategoryId) : undefined,
+                    category: newType === "expense" ? selectedCategory?.name : undefined,
                     patientId: newType === "income" ? selectedPatientId : undefined,
                     receiptUrl: receiptUrl || undefined,
                 }),

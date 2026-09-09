@@ -34,6 +34,7 @@ describe("finance navigation and accounting contracts", () => {
         expect(financePage).toContain("newCategoryId");
         expect(financePage).toContain("newType === 'expense'");
         expect(financePage).toContain("category.name");
+        expect(financePage).toContain("category: newType === \"expense\" ? selectedCategory?.name : undefined");
     });
 
     it("keeps finance records independent from appointment identifiers", () => {
