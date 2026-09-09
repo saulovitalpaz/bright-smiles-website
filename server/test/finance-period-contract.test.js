@@ -104,7 +104,8 @@ test('finance creation validates dated cash-flow input without raw database erro
     assert.match(source, /Number\.isFinite/);
     assert.match(source, /\['income', 'expense'\]/);
     assert.match(source, /financeCategory\.findUnique/);
-    assert.match(source, /categoryId/);
+    assert.match(createRoute, /categoryId/);
+    assert.match(source, /requestedCategoryId/);
     assert.doesNotMatch(createRoute, /error\.message/);
 });
 

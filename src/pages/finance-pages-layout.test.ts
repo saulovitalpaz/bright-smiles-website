@@ -30,5 +30,8 @@ describe("finance page layout contracts", () => {
   it("keeps the clinic finance report inside the print layout root", () => {
     expect(clinicFinance).toContain("print-report");
     expect(clinicFinance).toContain("DownloadFinanceReportButton");
+    expect(clinicFinance).toContain("PDF do período selecionado");
+    expect(clinicFinance).not.toContain("printDocumentClass");
+    expect(clinicFinance).not.toContain("printMode");
   });
 });

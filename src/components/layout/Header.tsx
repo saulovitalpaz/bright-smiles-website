@@ -26,11 +26,9 @@ const Header = () => {
 
   const navItems = [
     { label: "Início", href: "/" },
-    { label: "Stories", href: isHome ? "#stories" : "/#stories" },
     { label: "Tratamentos", href: "/tratamentos" },
     { label: "Equipe", href: isHome ? "#equipe" : "/#equipe" },
     { label: "Blog", href: "/blog" },
-    { label: "Contato", href: isHome ? "#contato" : "/#contato" },
   ];
 
   return (

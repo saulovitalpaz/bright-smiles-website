@@ -1556,13 +1556,31 @@ const validateFinanceTransactionInput = async (input, existingTransaction) => {
         }
     }
 
-    const categoryName = normalizeFinanceCategoryName(
-        isCreate || hasFinanceField(input, 'category') ? input.category : existingTransaction.category
-    ) || 'Geral';
-    if (categoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) throw invalidFinanceTransaction();
-
     const type = isCreate || hasFinanceField(input, 'type') ? input.type : existingTransaction.type;
-    const financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
+    const hasCategoryId = input.categoryId !== undefined;
+    const requestedCategoryId = hasCategoryId ? input.categoryId : existingTransaction?.categoryId;
+    let financeCategory = null;
+
+    if (requestedCategoryId !== undefined && requestedCategoryId !== null && requestedCategoryId !== '') {
+        const categoryId = Number(requestedCategoryId);
+        if (!Number.isInteger(categoryId) || categoryId < 1) throw invalidFinanceTransaction();
+        financeCategory = await prisma.financeCategory.findUnique({ where: { id: categoryId } });
+        if (!financeCategory) throw invalidFinanceTransaction();
+    }
+
+    const requestedCategoryName = input.category !== undefined
+        ? normalizeFinanceCategoryName(input.category)
+        : normalizeFinanceCategoryName(existingTransaction?.category);
+    if (requestedCategoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) throw invalidFinanceTransaction();
+
+    if (financeCategory && requestedCategoryName && requestedCategoryName !== financeCategory.name) {
+        throw invalidFinanceTransaction();
+    }
+
+    const categoryName = financeCategory?.name || requestedCategoryName || 'Geral';
+    if (!financeCategory) {
+        financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
+    }
     if (type === 'expense' && !financeCategory) throw invalidFinanceTransaction();
 
     return {
@@ -1651,8 +1669,8 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
 
 app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const { date, type, description, amount, category, patientId, receiptUrl } = req.body;
-        const data = await validateFinanceTransactionInput({ date, type, description, amount, category });
+        const { date, type, description, amount, category, categoryId, patientId, receiptUrl } = req.body;
+        const data = await validateFinanceTransactionInput({ date, type, description, amount, category, categoryId });
         data.paymentStatus = 'received';
         if (patientId !== undefined && patientId !== null && patientId !== '') {
             const parsedPatientId = Number(patientId);
@@ -1728,7 +1746,6 @@ app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']
 app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const period = parseFinancePeriod(req.query);
-        const endExclusive = period.endExclusive;
         const filters = financeStatsWhere(period);
         const cumulativeWhere = financeCumulativeWhere(period);
         const cumulativeFilters = {
