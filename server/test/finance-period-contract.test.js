@@ -136,7 +136,7 @@ test('finance category deletion remains restrictive after the original migration
     assert.match(migration, /ON DELETE RESTRICT ON UPDATE CASCADE/);
 });
 
-test('legacy finance categories are backfilled and protected from deletion', () => {
+test('legacy finance categories are inserted without rewriting transactions and protected from deletion', () => {
     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
     const deleteRoute = source.slice(source.indexOf("app.delete('/finance/categories/:id'"), source.indexOf("app.get('/finance'", source.indexOf("app.delete('/finance/categories/:id'")));
     const migration = fs.readFileSync(
@@ -145,11 +145,12 @@ test('legacy finance categories are backfilled and protected from deletion', () 
     );
 
     assert.match(migration, /INSERT INTO "FinanceCategory" \("name", "updatedAt"\)\s+SELECT DISTINCT TRIM\("category"\), CURRENT_TIMESTAMP/);
-    assert.match(migration, /UPDATE "FinanceTransaction"/);
-    assert.match(migration, /"categoryId" IS NULL/);
-    assert.match(migration, /"FinanceCategory"\."name" = TRIM\("FinanceTransaction"\."category"\)/);
+    assert.doesNotMatch(migration, /UPDATE\s+"FinanceTransaction"/i);
+    assert.doesNotMatch(migration, /DELETE\s+FROM\s+"FinanceTransaction"/i);
     assert.match(deleteRoute, /financeCategory\.findUnique/);
     assert.match(deleteRoute, /OR:\s*\[\s*\{ categoryId: id \},\s*\{ category: category\.name \}\s*\]/);
+    assert.match(deleteRoute, /const id = Number\(req\.params\.id\)/);
+    assert.doesNotMatch(deleteRoute, /Number\.parseInt/);
 });
 
 test('finance migration preserves existing transactions and seeds Geral', () => {

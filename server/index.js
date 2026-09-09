@@ -1599,7 +1599,7 @@ app.post('/finance/categories', authenticateToken, authorizeRole(['admin']), asy
 });
 
 app.delete('/finance/categories/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
-    const id = Number.parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).json({ error: 'Invalid finance category id.' });
     }
