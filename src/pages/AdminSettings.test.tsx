@@ -73,7 +73,11 @@ describe("AdminSettings professional settings", () => {
     beforeEach(() => {
         localStorage.clear();
         vi.clearAllMocks();
-        axiosGetMock.mockResolvedValue(response(globalSettings));
+        axiosGetMock.mockImplementation((url) => Promise.resolve(
+            response(url === `${API_URL}/finance/categories`
+                ? [{ id: 1, name: "Materiais" }]
+                : globalSettings),
+        ));
         axiosPostMock.mockResolvedValue(response({}));
     });
 
@@ -256,6 +260,22 @@ describe("AdminSettings professional settings", () => {
         expect(screen.getByRole("button", { name: "Salvar Todas as Configurações" })).toHaveClass(
             "w-full",
             "sm:w-auto",
+        );
+    });
+
+    it("lista e cadastra categorias financeiras globalmente", async () => {
+        const user = userEvent.setup();
+
+        await renderLoadedSettings();
+
+        expect(await screen.findByText("Materiais")).toBeInTheDocument();
+        await user.type(screen.getByLabelText("Nova categoria financeira"), "Laboratório");
+        await user.click(screen.getByRole("button", { name: "Adicionar categoria" }));
+
+        expect(axiosPostMock).toHaveBeenCalledWith(
+            `${API_URL}/finance/categories`,
+            { name: "Laboratório" },
+            { withCredentials: true },
         );
     });
 });

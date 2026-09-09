@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { parseFinancePeriod, financeStatsWhere } = require('../utils/financePeriod');
+const {
+    financeCumulativeWhere,
+    financeStatsWhere,
+    parseFinancePeriod,
+    parseFinanceTransactionDate
+} = require('../utils/financePeriod');
 
 test('parseFinancePeriod uses São Paulo month boundaries with an exclusive end', () => {
     const period = parseFinancePeriod({ month: '3', year: '2026' });
@@ -41,4 +46,30 @@ test('finance list and stats use the shared parser and remain private', () => {
     assert.match(statsRoute, /pendingIncome/);
     assert.match(statsRoute, /endExclusive/);
     assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus:\s*'received'/);
+});
+
+test('parseFinanceTransactionDate keeps YYYY-MM-DD at São Paulo midnight', () => {
+    assert.equal(parseFinanceTransactionDate('2026-08-15').toISOString(), '2026-08-15T03:00:00.000Z');
+});
+
+test('parseFinanceTransactionDate rejects missing and malformed dates', () => {
+    assert.throws(() => parseFinanceTransactionDate(), /date/i);
+    assert.throws(() => parseFinanceTransactionDate('2026-02-31'), /date/i);
+});
+
+test('financeCumulativeWhere stops before the selected period', () => {
+    const period = parseFinancePeriod({ month: '3', year: '2026' });
+
+    assert.deepEqual(financeCumulativeWhere(period), { date: { lt: period.start } });
+});
+
+test('finance routes expose dated input and accounting totals', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
+    const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf('// NEW: NF-e'));
+
+    assert.match(createRoute, /parseFinanceTransactionDate/);
+    assert.match(createRoute, /description:.*null/);
+    assert.match(statsRoute, /openingBalance/);
+    assert.match(statsRoute, /closingBalance/);
 });

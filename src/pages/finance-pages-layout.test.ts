@@ -26,4 +26,9 @@ describe("finance page layout contracts", () => {
     expect(personalFinance).toContain("sm:opacity-0 sm:group-hover:opacity-100");
     expect(personalFinance).toContain("aria-label={`Excluir ${t.description}`}");
   });
+
+  it("keeps the clinic finance report inside the print layout root", () => {
+    expect(clinicFinance).toContain("print-report");
+    expect(clinicFinance).toContain("DownloadFinanceReportButton");
+  });
 });
