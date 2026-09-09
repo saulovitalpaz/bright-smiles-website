@@ -1513,6 +1513,64 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
 const MAX_FINANCE_CATEGORY_NAME_LENGTH = 80;
 const normalizeFinanceCategoryName = (value) => typeof value === 'string' ? value.trim() : '';
 const isKnownPrismaError = (error, code) => error?.code === code;
+const hasFinanceField = (value, field) => Object.prototype.hasOwnProperty.call(value, field);
+const invalidFinanceTransaction = () => {
+    const error = new Error('Invalid finance transaction.');
+    error.statusCode = 400;
+    return error;
+};
+const parseFinanceTransactionId = (value) => {
+    const id = Number(value);
+    if (!Number.isInteger(id) || id < 1) throw invalidFinanceTransaction();
+    return id;
+};
+const validateFinanceTransactionInput = async (input, existingTransaction) => {
+    const isCreate = !existingTransaction;
+    const data = {};
+
+    if (isCreate || hasFinanceField(input, 'date')) {
+        data.date = parseFinanceTransactionDate(input.date);
+    }
+
+    if (isCreate || hasFinanceField(input, 'type')) {
+        if (!['income', 'expense'].includes(input.type)) throw invalidFinanceTransaction();
+        data.type = input.type;
+    }
+
+    if (isCreate || hasFinanceField(input, 'amount')) {
+        const numericAmount = Number(input.amount);
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) throw invalidFinanceTransaction();
+        data.amount = numericAmount;
+    }
+
+    if (isCreate || hasFinanceField(input, 'description')) {
+        if (input.description !== undefined && typeof input.description !== 'string') {
+            throw invalidFinanceTransaction();
+        }
+        data.description = input.description?.trim() || null;
+    }
+
+    if (isCreate || hasFinanceField(input, 'category')) {
+        if (input.category !== undefined && typeof input.category !== 'string') {
+            throw invalidFinanceTransaction();
+        }
+    }
+
+    const categoryName = normalizeFinanceCategoryName(
+        isCreate || hasFinanceField(input, 'category') ? input.category : existingTransaction.category
+    ) || 'Geral';
+    if (categoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) throw invalidFinanceTransaction();
+
+    const type = isCreate || hasFinanceField(input, 'type') ? input.type : existingTransaction.type;
+    const financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
+    if (type === 'expense' && !financeCategory) throw invalidFinanceTransaction();
+
+    return {
+        ...data,
+        category: categoryName,
+        categoryId: financeCategory?.id || null
+    };
+};
 
 app.get('/finance/categories', authenticateToken, authorizeRole(['admin', 'manager']), async (_req, res) => {
     try {
@@ -1583,38 +1641,8 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
 app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const { date, type, description, amount, category, patientId, receiptUrl } = req.body;
-        const numericAmount = Number(amount);
-        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-            return res.status(400).json({ error: 'Amount must be a finite positive number.' });
-        }
-        if (!['income', 'expense'].includes(type)) {
-            return res.status(400).json({ error: 'Type must be income or expense.' });
-        }
-        if (description !== undefined && typeof description !== 'string') {
-            return res.status(400).json({ error: 'Description must be a string.' });
-        }
-        if (category !== undefined && typeof category !== 'string') {
-            return res.status(400).json({ error: 'Category must be a string.' });
-        }
-
-        const categoryName = normalizeFinanceCategoryName(category) || 'Geral';
-        if (categoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) {
-            return res.status(400).json({ error: 'Category must be at most 80 characters.' });
-        }
-        const financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
-        if (type === 'expense' && !financeCategory) {
-            return res.status(400).json({ error: 'Expense category must exist.' });
-        }
-
-        const data = {
-            type,
-            amount: numericAmount,
-            category: categoryName,
-            categoryId: financeCategory?.id || null,
-            date: parseFinanceTransactionDate(date),
-            description: description?.trim() || null,
-            paymentStatus: 'received'
-        };
+        const data = await validateFinanceTransactionInput({ date, type, description, amount, category });
+        data.paymentStatus = 'received';
         if (patientId !== undefined && patientId !== null && patientId !== '') {
             const parsedPatientId = Number(patientId);
             if (!Number.isInteger(parsedPatientId) || parsedPatientId < 1) {
@@ -1635,35 +1663,54 @@ app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asy
 
 app.put('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const { date, type, amount, category, description, patientId, receiptUrl, nfeUrl } = req.body;
-        const data = {};
-        if (date) data.date = new Date(date);
-        if (type) data.type = type;
-        if (amount) data.amount = parseFloat(amount);
-        if (category) data.category = category;
-        if (description) data.description = description;
-        if (patientId !== undefined) data.patientId = patientId ? parseInt(patientId) : null;
-        if (receiptUrl !== undefined) data.receiptUrl = receiptUrl;
-        if (nfeUrl !== undefined) data.nfeUrl = nfeUrl;
+        const id = parseFinanceTransactionId(req.params.id);
+        const existingTransaction = await prisma.financeTransaction.findUnique({ where: { id } });
+        if (!existingTransaction) return res.status(404).json({ error: 'Finance transaction not found.' });
+
+        const data = await validateFinanceTransactionInput(req.body, existingTransaction);
+        if (hasFinanceField(req.body, 'patientId')) {
+            if (req.body.patientId === null || req.body.patientId === '') {
+                data.patientId = null;
+            } else {
+                const patientId = Number(req.body.patientId);
+                if (!Number.isInteger(patientId) || patientId < 1) throw invalidFinanceTransaction();
+                data.patientId = patientId;
+            }
+        }
+        for (const field of ['receiptUrl', 'nfeUrl']) {
+            if (!hasFinanceField(req.body, field)) continue;
+            if (req.body[field] !== null && typeof req.body[field] !== 'string') {
+                throw invalidFinanceTransaction();
+            }
+            data[field] = req.body[field];
+        }
 
         const transaction = await prisma.financeTransaction.update({
-            where: { id: parseInt(req.params.id) },
+            where: { id },
             data
         });
         res.json(transaction);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid finance transaction.' });
+        if (isKnownPrismaError(error, 'P2025')) return res.status(404).json({ error: 'Finance transaction not found.' });
+        if (isKnownPrismaError(error, 'P2002') || isKnownPrismaError(error, 'P2003')) {
+            return res.status(409).json({ error: 'Finance transaction update conflicts with existing records.' });
+        }
+        res.status(500).json({ error: 'Unable to update finance transaction.' });
     }
 });
 
 app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
+        const id = parseFinanceTransactionId(req.params.id);
         await prisma.financeTransaction.delete({
-            where: { id: parseInt(req.params.id) }
+            where: { id }
         });
         res.json({ message: 'Transaction deleted' });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid finance transaction.' });
+        if (isKnownPrismaError(error, 'P2025')) return res.status(404).json({ error: 'Finance transaction not found.' });
+        res.status(500).json({ error: 'Unable to delete finance transaction.' });
     }
 });
 

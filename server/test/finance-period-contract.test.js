@@ -45,7 +45,7 @@ test('finance list and stats use the shared parser and remain private', () => {
     }
     assert.match(statsRoute, /pendingIncome/);
     assert.match(statsRoute, /endExclusive/);
-    assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus:\s*'received'/);
+    assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus\s*=\s*'received'/);
 });
 
 test('parseFinanceTransactionDate keeps YYYY-MM-DD at São Paulo midnight', () => {
@@ -68,8 +68,8 @@ test('finance routes expose dated input and accounting totals', () => {
     const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
     const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf('// NEW: NF-e'));
 
-    assert.match(createRoute, /parseFinanceTransactionDate/);
-    assert.match(createRoute, /description:.*null/);
+    assert.match(source, /parseFinanceTransactionDate/);
+    assert.match(source, /data\.description\s*=.*null/);
     assert.match(statsRoute, /openingBalance/);
     assert.match(statsRoute, /closingBalance/);
 });
@@ -80,7 +80,7 @@ test('finance schema keeps the legacy category while linking global categories',
     assert.match(schema, /model FinanceCategory/);
     assert.match(schema, /name\s+String\s+@unique/);
     assert.match(schema, /categoryId\s+Int\?/);
-    assert.match(schema, /categoryRef\s+FinanceCategory\?\s+@relation\(fields: \[categoryId\], references: \[id\], onDelete: SetNull\)/);
+    assert.match(schema, /categoryRef\s+FinanceCategory\?\s+@relation\(fields: \[categoryId\], references: \[id\], onDelete: Restrict\)/);
     assert.match(schema, /description\s+String\?/);
     assert.match(schema, /@@index\(\[categoryId\]\)/);
 });
@@ -100,12 +100,40 @@ test('finance creation validates dated cash-flow input without raw database erro
     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
     const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
 
-    assert.match(createRoute, /Number\.isFinite/);
-    assert.match(createRoute, /amount.*positive/i);
-    assert.match(createRoute, /\['income', 'expense'\]/);
-    assert.match(createRoute, /financeCategory\.findUnique/);
-    assert.match(createRoute, /categoryId/);
+    assert.match(createRoute, /validateFinanceTransactionInput/);
+    assert.match(source, /Number\.isFinite/);
+    assert.match(source, /\['income', 'expense'\]/);
+    assert.match(source, /financeCategory\.findUnique/);
+    assert.match(source, /categoryId/);
     assert.doesNotMatch(createRoute, /error\.message/);
+});
+
+test('finance updates use the creation contract and safe fixed errors', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const updateRoute = source.slice(source.indexOf("app.put('/finance/:id'"), source.indexOf("app.delete('/finance/:id'"));
+    const deleteRoute = source.slice(source.indexOf("app.delete('/finance/:id'"), source.indexOf("app.get('/finance/stats'"));
+
+    assert.match(source, /const validateFinanceTransactionInput = async/);
+    assert.match(updateRoute, /validateFinanceTransactionInput/);
+    assert.match(updateRoute, /financeTransaction\.findUnique/);
+    assert.match(source, /categoryId/);
+    assert.match(updateRoute, /P2025/);
+    assert.match(updateRoute, /P2002/);
+    assert.doesNotMatch(updateRoute, /error\.message/);
+    assert.match(deleteRoute, /P2025/);
+    assert.doesNotMatch(deleteRoute, /error\.message/);
+});
+
+test('finance category deletion remains restrictive after the original migration', () => {
+    const schema = fs.readFileSync(path.resolve(__dirname, '../prisma/schema.prisma'), 'utf8');
+    const migration = fs.readFileSync(
+        path.resolve(__dirname, '../prisma/migrations/20260909010000_restrict_finance_category_deletion/migration.sql'),
+        'utf8'
+    );
+
+    assert.match(schema, /onDelete: Restrict/);
+    assert.match(migration, /DROP CONSTRAINT "FinanceTransaction_categoryId_fkey"/);
+    assert.match(migration, /ON DELETE RESTRICT ON UPDATE CASCADE/);
 });
 
 test('finance migration preserves existing transactions and seeds Geral', () => {
