@@ -108,6 +108,15 @@ test('finance creation validates dated cash-flow input without raw database erro
     assert.doesNotMatch(createRoute, /error\.message/);
 });
 
+test('finance creation lets a validated category id be authoritative for legacy clients', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const validator = source.slice(source.indexOf('const validateFinanceTransactionInput'), source.indexOf("app.get('/finance/categories'"));
+
+    assert.match(validator, /financeCategory = await prisma\.financeCategory\.findUnique\(\{ where: \{ id: categoryId \} \}\)/);
+    assert.match(validator, /const categoryName = financeCategory\?\.name \|\| requestedCategoryName \|\| 'Geral'/);
+    assert.doesNotMatch(validator, /requestedCategoryName !== financeCategory\.name/);
+});
+
 test('finance updates use the creation contract and safe fixed errors', () => {
     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
     const updateRoute = source.slice(source.indexOf("app.put('/finance/:id'"), source.indexOf("app.delete('/finance/:id'"));

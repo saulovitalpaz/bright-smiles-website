@@ -23,7 +23,7 @@ describe("finance navigation and accounting contracts", () => {
         expect(financePage).toContain("newDate");
         expect(financePage).toContain("description: newDesc.trim() || null");
         expect(financePage).toContain("date: newDate");
-        expect(financePage).toContain("categoryId: newType === 'expense' ? Number(newCategoryId) : undefined");
+        expect(financePage).toContain("category: newType === \"expense\" ? selectedCategory?.name : undefined");
         expect(financePage).toContain("setNewDate(todayInput)");
         expect(financePage).toContain('to="/admin/settings"');
     });
@@ -32,9 +32,11 @@ describe("finance navigation and accounting contracts", () => {
         expect(financePage).toContain('fetchClient("/finance/categories")');
         expect(financePage).toContain("financeCategories");
         expect(financePage).toContain("newCategoryId");
-        expect(financePage).toContain("newType === 'expense'");
+        expect(financePage).toContain("!selectedCategory");
+        expect(financePage).toContain('newType === "expense"');
         expect(financePage).toContain("category.name");
         expect(financePage).toContain("category: newType === \"expense\" ? selectedCategory?.name : undefined");
+        expect(financePage).not.toContain("categoryId: newType === 'expense'");
     });
 
     it("keeps finance records independent from appointment identifiers", () => {

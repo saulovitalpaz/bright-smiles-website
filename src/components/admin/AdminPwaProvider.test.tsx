@@ -170,6 +170,7 @@ describe("admin PWA static contract", () => {
             const png = fs.readFileSync(path.join(repoRoot, "public/admin/icons", file));
             expect(png.readUInt32BE(16)).toBe(size);
             expect(png.readUInt32BE(20)).toBe(size);
+            expect(png[25]).toBe(6);
         }
     });
 });

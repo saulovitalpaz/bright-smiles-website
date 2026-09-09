@@ -1573,10 +1573,6 @@ const validateFinanceTransactionInput = async (input, existingTransaction) => {
         : normalizeFinanceCategoryName(existingTransaction?.category);
     if (requestedCategoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) throw invalidFinanceTransaction();
 
-    if (financeCategory && requestedCategoryName && requestedCategoryName !== financeCategory.name) {
-        throw invalidFinanceTransaction();
-    }
-
     const categoryName = financeCategory?.name || requestedCategoryName || 'Geral';
     if (!financeCategory) {
         financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
