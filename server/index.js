@@ -37,7 +37,13 @@ const {
     buildUpcomingSchedule
 } = require('./utils/schedule');
 const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
-const { parseFinancePeriod, financePeriodWhere, financeStatsWhere } = require('./utils/financePeriod');
+const {
+    parseFinancePeriod,
+    parseFinanceTransactionDate,
+    financePeriodWhere,
+    financeCumulativeWhere,
+    financeStatsWhere
+} = require('./utils/financePeriod');
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
@@ -1504,6 +1510,60 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
 });
 
 // Finance API
+const MAX_FINANCE_CATEGORY_NAME_LENGTH = 80;
+const normalizeFinanceCategoryName = (value) => typeof value === 'string' ? value.trim() : '';
+const isKnownPrismaError = (error, code) => error?.code === code;
+
+app.get('/finance/categories', authenticateToken, authorizeRole(['admin', 'manager']), async (_req, res) => {
+    try {
+        const categories = await prisma.financeCategory.findMany({ orderBy: { name: 'asc' } });
+        res.json(categories);
+    } catch (_error) {
+        res.status(500).json({ error: 'Unable to load finance categories.' });
+    }
+});
+
+app.post('/finance/categories', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+    const name = normalizeFinanceCategoryName(req.body?.name);
+    if (!name || name.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) {
+        return res.status(400).json({ error: 'A category name of up to 80 characters is required.' });
+    }
+
+    try {
+        const category = await prisma.financeCategory.create({ data: { name } });
+        res.status(201).json(category);
+    } catch (error) {
+        if (isKnownPrismaError(error, 'P2002')) {
+            return res.status(409).json({ error: 'A finance category with this name already exists.' });
+        }
+        res.status(500).json({ error: 'Unable to create finance category.' });
+    }
+});
+
+app.delete('/finance/categories/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id < 1) {
+        return res.status(400).json({ error: 'Invalid finance category id.' });
+    }
+
+    try {
+        const transactionCount = await prisma.financeTransaction.count({ where: { categoryId: id } });
+        if (transactionCount > 0) {
+            return res.status(409).json({ error: 'Categories referenced by transactions cannot be deleted.' });
+        }
+        await prisma.financeCategory.delete({ where: { id } });
+        res.json({ message: 'Finance category deleted.' });
+    } catch (error) {
+        if (isKnownPrismaError(error, 'P2025')) {
+            return res.status(404).json({ error: 'Finance category not found.' });
+        }
+        if (isKnownPrismaError(error, 'P2003')) {
+            return res.status(409).json({ error: 'Categories referenced by transactions cannot be deleted.' });
+        }
+        res.status(500).json({ error: 'Unable to delete finance category.' });
+    }
+});
+
 app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const period = parseFinancePeriod(req.query);
@@ -1522,20 +1582,54 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
 
 app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
-        const { type, description, amount, category, patientId, receiptUrl } = req.body;
+        const { date, type, description, amount, category, patientId, receiptUrl } = req.body;
+        const numericAmount = Number(amount);
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a finite positive number.' });
+        }
+        if (!['income', 'expense'].includes(type)) {
+            return res.status(400).json({ error: 'Type must be income or expense.' });
+        }
+        if (description !== undefined && typeof description !== 'string') {
+            return res.status(400).json({ error: 'Description must be a string.' });
+        }
+        if (category !== undefined && typeof category !== 'string') {
+            return res.status(400).json({ error: 'Category must be a string.' });
+        }
+
+        const categoryName = normalizeFinanceCategoryName(category) || 'Geral';
+        if (categoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) {
+            return res.status(400).json({ error: 'Category must be at most 80 characters.' });
+        }
+        const financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
+        if (type === 'expense' && !financeCategory) {
+            return res.status(400).json({ error: 'Expense category must exist.' });
+        }
+
         const data = {
             type,
-            description,
-            amount: parseFloat(amount),
-            category: category || 'Geral',
+            amount: numericAmount,
+            category: categoryName,
+            categoryId: financeCategory?.id || null,
+            date: parseFinanceTransactionDate(date),
+            description: description?.trim() || null,
             paymentStatus: 'received'
         };
-        if (patientId) data.patientId = parseInt(patientId);
-        if (receiptUrl) data.receiptUrl = receiptUrl;
+        if (patientId !== undefined && patientId !== null && patientId !== '') {
+            const parsedPatientId = Number(patientId);
+            if (!Number.isInteger(parsedPatientId) || parsedPatientId < 1) {
+                return res.status(400).json({ error: 'Invalid patient id.' });
+            }
+            data.patientId = parsedPatientId;
+        }
+        if (receiptUrl !== undefined) {
+            if (typeof receiptUrl !== 'string') return res.status(400).json({ error: 'Receipt URL must be a string.' });
+            data.receiptUrl = receiptUrl;
+        }
         const transaction = await prisma.financeTransaction.create({ data });
         res.json(transaction);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ error: error.statusCode ? 'Invalid finance transaction.' : 'Unable to create finance transaction.' });
     }
 });
 
@@ -1578,20 +1672,37 @@ app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager'])
         const period = parseFinancePeriod(req.query);
         const endExclusive = period.endExclusive;
         const filters = financeStatsWhere(period);
-        const income = await prisma.financeTransaction.aggregate({
-            where: filters.realizedIncome,
-            _sum: { amount: true }
-        });
-        const pendingIncome = await prisma.financeTransaction.aggregate({ where: filters.pendingIncome, _sum: { amount: true } });
-        const expense = await prisma.financeTransaction.aggregate({
-            where: filters.expense,
-            _sum: { amount: true }
-        });
+        const cumulativeWhere = financeCumulativeWhere(period);
+        const cumulativeFilters = {
+            realizedIncome: { ...cumulativeWhere, type: 'income', paymentStatus: { notIn: ['pending', 'voided'] } },
+            expense: { ...cumulativeWhere, type: 'expense', paymentStatus: { not: 'voided' } }
+        };
+        const [income, pendingIncome, expense, openingIncome, openingExpense] = await Promise.all([
+            prisma.financeTransaction.aggregate({ where: filters.realizedIncome, _sum: { amount: true } }),
+            prisma.financeTransaction.aggregate({ where: filters.pendingIncome, _sum: { amount: true } }),
+            prisma.financeTransaction.aggregate({ where: filters.expense, _sum: { amount: true } }),
+            period.overview
+                ? Promise.resolve({ _sum: { amount: 0 } })
+                : prisma.financeTransaction.aggregate({ where: cumulativeFilters.realizedIncome, _sum: { amount: true } }),
+            period.overview
+                ? Promise.resolve({ _sum: { amount: 0 } })
+                : prisma.financeTransaction.aggregate({ where: cumulativeFilters.expense, _sum: { amount: true } })
+        ]);
+        const incomeTotal = income._sum.amount || 0;
+        const pendingIncomeTotal = pendingIncome._sum.amount || 0;
+        const expenseTotal = expense._sum.amount || 0;
+        const monthlyBalance = incomeTotal - expenseTotal;
+        const openingBalance = period.overview
+            ? 0
+            : (openingIncome._sum.amount || 0) - (openingExpense._sum.amount || 0);
         res.json({
-            income: income._sum.amount || 0,
-            pendingIncome: pendingIncome._sum.amount || 0,
-            expense: expense._sum.amount || 0,
-            balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
+            income: incomeTotal,
+            pendingIncome: pendingIncomeTotal,
+            expense: expenseTotal,
+            balance: monthlyBalance,
+            monthlyBalance,
+            openingBalance,
+            closingBalance: openingBalance + monthlyBalance
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance statistics.' });

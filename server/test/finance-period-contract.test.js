@@ -73,3 +73,51 @@ test('finance routes expose dated input and accounting totals', () => {
     assert.match(statsRoute, /openingBalance/);
     assert.match(statsRoute, /closingBalance/);
 });
+
+test('finance schema keeps the legacy category while linking global categories', () => {
+    const schema = fs.readFileSync(path.resolve(__dirname, '../prisma/schema.prisma'), 'utf8');
+
+    assert.match(schema, /model FinanceCategory/);
+    assert.match(schema, /name\s+String\s+@unique/);
+    assert.match(schema, /categoryId\s+Int\?/);
+    assert.match(schema, /categoryRef\s+FinanceCategory\?\s+@relation\(fields: \[categoryId\], references: \[id\], onDelete: SetNull\)/);
+    assert.match(schema, /description\s+String\?/);
+    assert.match(schema, /@@index\(\[categoryId\]\)/);
+});
+
+test('finance category routes are private with least-privilege roles', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const categoryRoutes = source.slice(source.indexOf("app.get('/finance/categories'"), source.indexOf("app.get('/finance'"));
+
+    assert.match(categoryRoutes, /app\.get\('\/finance\/categories', authenticateToken, authorizeRole\(\['admin', 'manager'\]\)/);
+    assert.match(categoryRoutes, /app\.post\('\/finance\/categories', authenticateToken, authorizeRole\(\['admin'\]\)/);
+    assert.match(categoryRoutes, /app\.delete\('\/finance\/categories\/:id', authenticateToken, authorizeRole\(\['admin'\]\)/);
+    assert.match(categoryRoutes, /category name/i);
+    assert.match(categoryRoutes, /409/);
+});
+
+test('finance creation validates dated cash-flow input without raw database errors', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
+
+    assert.match(createRoute, /Number\.isFinite/);
+    assert.match(createRoute, /amount.*positive/i);
+    assert.match(createRoute, /\['income', 'expense'\]/);
+    assert.match(createRoute, /financeCategory\.findUnique/);
+    assert.match(createRoute, /categoryId/);
+    assert.doesNotMatch(createRoute, /error\.message/);
+});
+
+test('finance migration preserves existing transactions and seeds Geral', () => {
+    const migration = fs.readFileSync(
+        path.resolve(__dirname, '../prisma/migrations/20260909000000_add_finance_categories_and_optional_description/migration.sql'),
+        'utf8'
+    );
+
+    assert.match(migration, /CREATE TABLE "FinanceCategory"/);
+    assert.match(migration, /ADD COLUMN "categoryId" INTEGER/);
+    assert.match(migration, /DROP NOT NULL/);
+    assert.match(migration, /ON DELETE SET NULL/);
+    assert.match(migration, /INSERT INTO "FinanceCategory" \("name", "updatedAt"\) VALUES \('Geral', CURRENT_TIMESTAMP\) ON CONFLICT \("name"\) DO NOTHING/);
+    assert.doesNotMatch(migration, /DELETE FROM "FinanceTransaction"/);
+});

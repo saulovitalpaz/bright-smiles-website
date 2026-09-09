@@ -40,6 +40,22 @@ const financePeriodWhere = (period = {}) => period.overview !== false ? {} : {
     date: { gte: period.start, lt: period.endExclusive }
 };
 
+const parseFinanceTransactionDate = (value) => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw invalidPeriod('date must use YYYY-MM-DD');
+    }
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(`${value}T00:00:00-03:00`);
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+        throw invalidPeriod('date is invalid');
+    }
+    return date;
+};
+
+const financeCumulativeWhere = (period = {}) => period.overview !== false
+    ? {}
+    : { date: { lt: period.start } };
+
 const financeStatsWhere = (period) => {
     const periodWhere = financePeriodWhere(period);
     return {
@@ -49,4 +65,11 @@ const financeStatsWhere = (period) => {
     };
 };
 
-module.exports = { parseFinancePeriod, financePeriodWhere, financeStatsWhere, SAO_PAULO_TIME_ZONE };
+module.exports = {
+    parseFinancePeriod,
+    parseFinanceTransactionDate,
+    financePeriodWhere,
+    financeCumulativeWhere,
+    financeStatsWhere,
+    SAO_PAULO_TIME_ZONE
+};

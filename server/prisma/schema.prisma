@@ -183,12 +183,21 @@ model Testimonial {
   feeling   String?
 }
 
+model FinanceCategory {
+  id           Int                  @id @default(autoincrement())
+  name         String               @unique
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  transactions FinanceTransaction[]
+}
+
 model FinanceTransaction {
   id          Int      @id @default(autoincrement())
   type        String
   amount      Float
   category    String
-  description String
+  categoryId  Int?
+  description String?
   date        DateTime @default(now())
   patientId   Int?
   appointmentId Int? @unique
@@ -197,10 +206,12 @@ model FinanceTransaction {
   updatedAt   DateTime @updatedAt
   patient     Patient? @relation(fields: [patientId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  categoryRef FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   receiptUrl  String?
   nfeUrl      String?
 
   @@index([patientId])
+  @@index([categoryId])
 }
 
 model DocumentTemplate {
