@@ -1,8 +1,9 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as ToasterSonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TreatmentList from "./pages/TreatmentList";
@@ -28,10 +29,18 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminPatients from "./pages/AdminPatients";
 import AdminCalendar from "./pages/AdminCalendar";
 import PageTracker from "./components/PageTracker";
+import AdminPwaProvider from "./components/admin/AdminPwaProvider";
 
 import { AuthProvider, ProtectedRoute, RoleProtectedRoute } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
+
+const AdminPwaRouteBoundary = ({ children }: { children: ReactNode }) => {
+  const { pathname } = useLocation();
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+
+  return isAdminRoute ? <AdminPwaProvider>{children}</AdminPwaProvider> : <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -40,8 +49,9 @@ const App = () => (
       <ToasterSonner />
       <BrowserRouter>
         <PageTracker />
-        <AuthProvider>
-          <Routes>
+        <AdminPwaRouteBoundary>
+          <AuthProvider>
+            <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/tratamentos" element={<TreatmentList />} />
             <Route path="/tratamentos/:slug" element={<TreatmentDetail />} />
@@ -72,8 +82,9 @@ const App = () => (
             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
+            </Routes>
+          </AuthProvider>
+        </AdminPwaRouteBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

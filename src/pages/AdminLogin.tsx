@@ -8,6 +8,7 @@ import { Lock, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetchClient } from "@/lib/api";
+import { AdminPwaInstallAction } from "@/components/admin/AdminPwaProvider";
 
 export const AdminLogin = () => {
     const [username, setUsername] = useState("");
@@ -103,6 +104,7 @@ export const AdminLogin = () => {
                 </div>
 
                 <div className="mt-8 text-center">
+                    <AdminPwaInstallAction className="mb-4 justify-center" />
                     <button
                         onClick={() => navigate("/")}
                         className="text-slate-400 hover:text-primary transition-colors text-sm font-medium"

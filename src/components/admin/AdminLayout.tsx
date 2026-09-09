@@ -20,6 +20,7 @@ import axios from "axios";
 
 import { API_URL } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
+import { AdminPwaInstallAction } from "@/components/admin/AdminPwaProvider";
 
 interface AdminLayoutProps {
     children: React.ReactNode;
@@ -333,13 +334,16 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                             </p>
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100">
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                        <AdminPwaInstallAction className="max-sm:w-full max-sm:justify-end" />
+                        <div className="flex items-center gap-4 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100">
                         <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs ring-2 ring-primary/20">
                             {getInitials(currentUser.name)}
                         </div>
                         <div className="text-left hidden md:block">
                             <p className="text-xs font-black text-slate-900 leading-none">{currentUser.name}</p>
                             <p className="text-[8px] text-primary font-bold uppercase tracking-widest mt-0.5">{currentUser.cro}</p>
+                        </div>
                         </div>
                     </div>
                     </div>
