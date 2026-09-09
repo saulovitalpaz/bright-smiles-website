@@ -86,6 +86,16 @@ describe("finance navigation and accounting contracts", () => {
         expect(financePdf).not.toContain("PrintMode");
     });
 
+    it("initializes the browser Buffer polyfill before loading the PDF renderer", () => {
+        const main = read("src/main.tsx");
+        const polyfill = read("src/browser-polyfills.ts");
+
+        expect(main.indexOf('import "./browser-polyfills";')).toBeGreaterThanOrEqual(0);
+        expect(main.indexOf('import "./browser-polyfills";')).toBeLessThan(main.indexOf('import App from "./App.tsx";'));
+        expect(polyfill).toContain('import { Buffer as BrowserBuffer } from "buffer";');
+        expect(polyfill).toContain("globalThis.Buffer = BrowserBuffer");
+    });
+
     it("excludes voided expenses from the category summary", () => {
         expect(createExpenseCategorySummary([
             { type: "expense", category: "Materiais", amount: 100, paymentStatus: "voided" },

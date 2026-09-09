@@ -108,6 +108,14 @@ test('finance creation validates dated cash-flow input without raw database erro
     assert.doesNotMatch(createRoute, /error\.message/);
 });
 
+test('finance creation accepts null for the optional description', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const validator = source.slice(source.indexOf('const validateFinanceTransactionInput'), source.indexOf("app.get('/finance/categories'"));
+
+    assert.match(validator, /input\.description !== undefined && input\.description !== null && typeof input\.description !== 'string'/);
+    assert.match(validator, /data\.description = input\.description\?\.trim\(\) \|\| null/);
+});
+
 test('finance creation lets a validated category id be authoritative for legacy clients', () => {
     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
     const validator = source.slice(source.indexOf('const validateFinanceTransactionInput'), source.indexOf("app.get('/finance/categories'"));

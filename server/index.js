@@ -1544,7 +1544,7 @@ const validateFinanceTransactionInput = async (input, existingTransaction) => {
     }
 
     if (isCreate || hasFinanceField(input, 'description')) {
-        if (input.description !== undefined && typeof input.description !== 'string') {
+        if (input.description !== undefined && input.description !== null && typeof input.description !== 'string') {
             throw invalidFinanceTransaction();
         }
         data.description = input.description?.trim() || null;
