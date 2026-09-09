@@ -136,6 +136,22 @@ test('finance category deletion remains restrictive after the original migration
     assert.match(migration, /ON DELETE RESTRICT ON UPDATE CASCADE/);
 });
 
+test('legacy finance categories are backfilled and protected from deletion', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+    const deleteRoute = source.slice(source.indexOf("app.delete('/finance/categories/:id'"), source.indexOf("app.get('/finance'", source.indexOf("app.delete('/finance/categories/:id'")));
+    const migration = fs.readFileSync(
+        path.resolve(__dirname, '../prisma/migrations/20260909020000_backfill_legacy_finance_categories/migration.sql'),
+        'utf8'
+    );
+
+    assert.match(migration, /INSERT INTO "FinanceCategory" \("name", "updatedAt"\)\s+SELECT DISTINCT TRIM\("category"\), CURRENT_TIMESTAMP/);
+    assert.match(migration, /UPDATE "FinanceTransaction"/);
+    assert.match(migration, /"categoryId" IS NULL/);
+    assert.match(migration, /"FinanceCategory"\."name" = TRIM\("FinanceTransaction"\."category"\)/);
+    assert.match(deleteRoute, /financeCategory\.findUnique/);
+    assert.match(deleteRoute, /OR:\s*\[\s*\{ categoryId: id \},\s*\{ category: category\.name \}\s*\]/);
+});
+
 test('finance migration preserves existing transactions and seeds Geral', () => {
     const migration = fs.readFileSync(
         path.resolve(__dirname, '../prisma/migrations/20260909000000_add_finance_categories_and_optional_description/migration.sql'),
