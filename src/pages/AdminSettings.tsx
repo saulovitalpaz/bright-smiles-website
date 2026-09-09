@@ -25,6 +25,11 @@ type ProfessionalProfile = {
     signatureUrl: string;
 };
 
+type FinanceCategory = {
+    id: number;
+    name: string;
+};
+
 const readProfessionalProfile = (): ProfessionalProfile => {
     try {
         const value = localStorage.getItem("admin_user");
@@ -48,11 +53,14 @@ const readProfessionalProfile = (): ProfessionalProfile => {
 
 const AdminSettings = () => {
     const [settings, setSettings] = useState<Record<string, string>>({});
+    const [financeCategories, setFinanceCategories] = useState<FinanceCategory[]>([]);
+    const [newFinanceCategory, setNewFinanceCategory] = useState("");
     const [professionalProfile, setProfessionalProfile] = useState(readProfessionalProfile);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isLogoUploading, setIsLogoUploading] = useState(false);
     const [isSignatureUploading, setIsSignatureUploading] = useState(false);
+    const [isCategorySaving, setIsCategorySaving] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const logoFileInputRef = useRef<HTMLInputElement>(null);
     const signatureFileInputRef = useRef<HTMLInputElement>(null);
@@ -63,8 +71,12 @@ const AdminSettings = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await axios.get(`${API_URL}/settings`, { withCredentials: true });
-            setSettings(res.data);
+            const [settingsResponse, categoriesResponse] = await Promise.all([
+                axios.get(`${API_URL}/settings`, { withCredentials: true }),
+                axios.get(`${API_URL}/finance/categories`, { withCredentials: true }),
+            ]);
+            setSettings(settingsResponse.data);
+            setFinanceCategories(categoriesResponse.data);
         } catch (error) {
             console.error("Error fetching settings:", error);
             setErrorMessage("Não foi possível carregar as configurações. Tente novamente.");
@@ -76,6 +88,45 @@ const AdminSettings = () => {
 
     const handleUpdate = async (key: string, value: string) => {
         setSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleCreateFinanceCategory = async () => {
+        const name = newFinanceCategory.trim();
+        if (!name) {
+            toast.error("Informe o nome da categoria");
+            return;
+        }
+
+        setIsCategorySaving(true);
+        try {
+            const response = await axios.post(
+                `${API_URL}/finance/categories`,
+                { name },
+                { withCredentials: true },
+            );
+            setFinanceCategories((current) => [...current, response.data]
+                .sort((first, second) => first.name.localeCompare(second.name)));
+            setNewFinanceCategory("");
+            toast.success("Categoria adicionada!");
+        } catch {
+            toast.error("Não foi possível adicionar a categoria.");
+        } finally {
+            setIsCategorySaving(false);
+        }
+    };
+
+    const handleDeleteFinanceCategory = async (id: number) => {
+        try {
+            await axios.delete(`${API_URL}/finance/categories/${id}`, { withCredentials: true });
+            setFinanceCategories((current) => current.filter((category) => category.id !== id));
+            toast.success("Categoria removida!");
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 409) {
+                toast.error("Não é possível remover uma categoria usada em transações.");
+                return;
+            }
+            toast.error("Não foi possível remover a categoria.");
+        }
     };
 
     const saveSettings = async () => {
@@ -288,6 +339,53 @@ const AdminSettings = () => {
                                 </div>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Categorias financeiras</CardTitle>
+                        <CardDescription>
+                            Organize as categorias disponíveis para os lançamentos financeiros.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="new-finance-category">Nova categoria financeira</Label>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <Input
+                                    id="new-finance-category"
+                                    value={newFinanceCategory}
+                                    onChange={(event) => setNewFinanceCategory(event.target.value)}
+                                    placeholder="Ex: Materiais"
+                                    disabled={isCategorySaving}
+                                />
+                                <Button
+                                    type="button"
+                                    className="min-h-11 shrink-0"
+                                    onClick={handleCreateFinanceCategory}
+                                    disabled={isCategorySaving}
+                                >
+                                    {isCategorySaving ? "Adicionando..." : "Adicionar categoria"}
+                                </Button>
+                            </div>
+                        </div>
+                        <ul className="divide-y rounded-md border" aria-label="Categorias financeiras cadastradas">
+                            {financeCategories.map((category) => (
+                                <li key={category.id} className="flex items-center justify-between gap-4 p-3">
+                                    <span>{category.name}</span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="min-h-11 min-w-11"
+                                        aria-label={`Remover categoria ${category.name}`}
+                                        onClick={() => handleDeleteFinanceCategory(category.id)}
+                                    >
+                                        Remover
+                                    </Button>
+                                </li>
+                            ))}
+                        </ul>
                     </CardContent>
                 </Card>
 

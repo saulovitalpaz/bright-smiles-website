@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axios, { AxiosHeaders, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 
 import { API_URL } from "@/lib/api";
 import AdminSettings from "./AdminSettings";
@@ -29,6 +30,7 @@ vi.mock("axios", async (importOriginal) => {
             ...actual.default,
             get: vi.fn(),
             isAxiosError: vi.fn(() => false),
+            delete: vi.fn(),
             patch: vi.fn(),
             post: vi.fn(),
         },
@@ -36,6 +38,7 @@ vi.mock("axios", async (importOriginal) => {
 });
 
 const axiosGetMock = vi.mocked(axios.get);
+const axiosDeleteMock = vi.mocked(axios.delete);
 const axiosPatchMock = vi.mocked(axios.patch);
 const axiosPostMock = vi.mocked(axios.post);
 
@@ -79,6 +82,7 @@ describe("AdminSettings professional settings", () => {
                 : globalSettings),
         ));
         axiosPostMock.mockResolvedValue(response({}));
+        axiosDeleteMock.mockResolvedValue(response({}));
     });
 
     it("anuncia o carregamento inicial das configurações", () => {
@@ -265,6 +269,7 @@ describe("AdminSettings professional settings", () => {
 
     it("lista e cadastra categorias financeiras globalmente", async () => {
         const user = userEvent.setup();
+        axiosPostMock.mockResolvedValueOnce(response({ id: 2, name: "Laboratório" }));
 
         await renderLoadedSettings();
 
@@ -277,5 +282,43 @@ describe("AdminSettings professional settings", () => {
             { name: "Laboratório" },
             { withCredentials: true },
         );
+        expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+            "LaboratórioRemover",
+            "MateriaisRemover",
+        ]);
+        expect(screen.getByLabelText("Nova categoria financeira")).toHaveValue("");
+    });
+
+    it("mantém a categoria visível e explica o conflito ao removê-la", async () => {
+        const user = userEvent.setup();
+        axiosDeleteMock.mockRejectedValueOnce({ response: { status: 409 } });
+        vi.mocked(axios.isAxiosError).mockReturnValueOnce(true);
+
+        await renderLoadedSettings();
+        await user.click(screen.getByRole("button", { name: "Remover categoria Materiais" }));
+
+        expect(axiosDeleteMock).toHaveBeenCalledWith(
+            `${API_URL}/finance/categories/1`,
+            { withCredentials: true },
+        );
+        expect(await screen.findByText("Materiais")).toBeInTheDocument();
+        expect(toast.error).toHaveBeenCalledWith(
+            "Não é possível remover uma categoria usada em transações.",
+        );
+    });
+
+    it("remove a categoria após a confirmação do servidor", async () => {
+        const user = userEvent.setup();
+
+        await renderLoadedSettings();
+        await user.click(screen.getByRole("button", { name: "Remover categoria Materiais" }));
+
+        expect(axiosDeleteMock).toHaveBeenCalledWith(
+            `${API_URL}/finance/categories/1`,
+            { withCredentials: true },
+        );
+        await waitFor(() => {
+            expect(screen.queryByText("Materiais")).not.toBeInTheDocument();
+        });
     });
 });
