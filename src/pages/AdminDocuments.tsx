@@ -473,6 +473,7 @@ const AdminDocuments = () => {
 
                 </div>
             </div >
+            </AttendanceWorkspace>
 
             {/* Keep the printable document outside the editing grid so print pagination is independent of screen layout. */}
             {isPrintReady && (
@@ -505,7 +506,6 @@ const AdminDocuments = () => {
                 </div>
             )}
 
-            </AttendanceWorkspace>
         </AdminLayout >
     );
 };

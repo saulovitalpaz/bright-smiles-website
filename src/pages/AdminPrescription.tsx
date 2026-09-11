@@ -480,10 +480,12 @@ const AdminPrescription = () => {
                                 )}
                             </div>
                         </CardContent>
-                    </AttendanceSection>
-            </div>
+             </AttendanceSection>
+             </div>
 
-            {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
+             </AttendanceWorkspace>
+
+             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
             {printTarget && (
                 <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} data-print-target={printTarget} id="printable-recipe">
                     {printTarget === "odontogram" ? (
@@ -616,8 +618,7 @@ const AdminPrescription = () => {
                     color: #94a3b8;
                 }
             `}</style>
-            </AttendanceWorkspace>
-        </AdminLayout>
+         </AdminLayout>
     );
 };
 

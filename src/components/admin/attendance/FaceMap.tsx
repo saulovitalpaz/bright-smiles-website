@@ -1,5 +1,5 @@
 import React from "react";
-import { User } from "lucide-react";
+import { CheckCircle2, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -8,13 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -162,7 +155,7 @@ function hasRegionData(region: FaceRegionData | undefined): boolean {
 
 function getRegionPathClass(isFilled: boolean, isActive: boolean): string {
   if (isActive) {
-    return "fill-primary/35 stroke-primary stroke-[2]";
+    return "fill-amber-300/65 stroke-amber-700 stroke-[3]";
   }
   if (isFilled) {
     return "fill-teal-300/40 stroke-teal-700 stroke-[1.5]";
@@ -451,7 +444,7 @@ const FaceMap: React.FC<FaceMapProps> = ({
       <CardContent className={`min-w-0 max-w-full ${compact ? "p-3" : "p-4 sm:p-6"}`}>
         <div
           className={`grid min-w-0 max-w-full items-start ${
-            compact ? "gap-4" : "gap-6 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-8"
+            compact ? "gap-4" : "gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] lg:gap-8"
           }`}
         >
           <div
@@ -471,108 +464,101 @@ const FaceMap: React.FC<FaceMapProps> = ({
           {readOnly ? (
             <RegionSummary data={data} compact={compact} />
           ) : (
-            <div
-              data-face-region-controls
-              className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1"
-            >
-              {REGIONS.map((region) => {
-                const isActive = selectedRegionId === region.id;
-                const isFilled = hasRegionData(data[region.id]);
-                return (
-                  <button
-                    key={region.id}
-                    type="button"
-                    data-face-region-control={region.id}
-                    data-filled={isFilled}
-                    aria-pressed={isActive}
-                    onClick={() => selectRegion(region.id)}
-                    className={`flex min-h-11 min-w-0 touch-manipulation items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : isFilled
-                          ? "border-teal-600/35 bg-teal-50 text-teal-900 hover:bg-teal-100"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-primary/40 hover:bg-primary/5"
-                    }`}
-                  >
-                    <span className="min-w-0 leading-snug">{region.name}</span>
-                    {isFilled ? (
-                      <Badge
-                        variant="secondary"
-                        className="h-auto shrink-0 bg-white/75 px-1.5 py-0.5 text-[10px] text-current"
-                      >
-                        Preenchido
-                      </Badge>
-                    ) : null}
-                  </button>
-                );
-              })}
+            <div className="min-w-0 space-y-3">
+              <div
+                data-face-region-controls
+                className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1"
+                aria-label="Regiões faciais"
+              >
+                {REGIONS.map((region) => {
+                  const isActive = selectedRegionId === region.id;
+                  const isFilled = hasRegionData(data[region.id]);
+                  return (
+                    <button
+                      key={region.id}
+                      type="button"
+                      data-face-region-control={region.id}
+                      data-filled={isFilled}
+                      aria-pressed={isActive}
+                      onClick={() => selectRegion(region.id)}
+                      className={`flex min-h-11 min-w-0 touch-manipulation items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                        isActive
+                          ? "border-amber-700 bg-amber-100 text-amber-950 shadow-sm ring-2 ring-amber-300/70"
+                          : isFilled
+                            ? "border-teal-600/35 bg-teal-50 text-teal-900 hover:bg-teal-100"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-primary/40 hover:bg-primary/5"
+                      }`}
+                    >
+                      <span className="min-w-0 leading-snug">{region.name}</span>
+                      {isFilled ? (
+                        <Badge
+                          variant="secondary"
+                          className="h-auto shrink-0 gap-1 bg-white/75 px-1.5 py-0.5 text-[10px] text-current"
+                        >
+                          <CheckCircle2 size={11} aria-hidden="true" /> Preenchido
+                        </Badge>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedRegion && selectedData ? (
+                <section
+                  data-face-region-editor
+                  role="region"
+                  aria-labelledby={`${formId}-region-title`}
+                  className="attendance-reveal rounded-xl border border-amber-200 bg-amber-50/70 p-3 shadow-sm"
+                >
+                  <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Região selecionada</p>
+                      <h3 id={`${formId}-region-title`} className="mt-0.5 break-words text-sm font-bold text-amber-950">
+                        {selectedRegion.name}
+                      </h3>
+                    </div>
+                    {hasRegionData(selectedData) ? <Badge className="shrink-0 bg-teal-700 text-white">Preenchida</Badge> : null}
+                  </div>
+                  <div data-testid="face-map-fields" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${formId}-product`}>Produto</Label>
+                      <Input
+                        id={`${formId}-product`}
+                        placeholder="Ex.: toxina botulínica"
+                        value={selectedData.product}
+                        onChange={(event) => updateRegion(selectedRegionId, "product", event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${formId}-dose`}>Dose / Volume</Label>
+                      <Input
+                        id={`${formId}-dose`}
+                        placeholder="Ex.: 8U ou 1 ml"
+                        value={selectedData.dose}
+                        onChange={(event) => updateRegion(selectedRegionId, "dose", event.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1.5">
+                    <Label htmlFor={`${formId}-notes`}>Resumo Clínico da Aplicação</Label>
+                    <Textarea
+                      id={`${formId}-notes`}
+                      placeholder="Técnica, profundidade e observações clínicas"
+                      className="min-h-[112px] bg-white"
+                      value={selectedData.notes}
+                      onChange={(event) => updateRegion(selectedRegionId, "notes", event.target.value)}
+                    />
+                  </div>
+                </section>
+              ) : (
+                <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+                  Selecione uma região no mapa ou na lista para registrar produto, dose e observações.
+                </p>
+              )}
             </div>
           )}
         </div>
       </CardContent>
-
-      {!readOnly ? (
-        <Dialog
-          open={selectedRegionId !== null}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setSelectedRegionId(null);
-          }}
-        >
-          <DialogContent
-            className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] overflow-y-auto overscroll-y-contain"
-          >
-            <DialogHeader>
-              <DialogTitle>{selectedRegion?.name}</DialogTitle>
-              <DialogDescription>
-                Registre o produto, a dose e as observações clínicas da região.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedRegionId && selectedData ? (
-              <div className="space-y-4 py-2">
-                <div
-                  data-testid="face-map-fields"
-                  className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-                >
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${formId}-product`}>Produto</Label>
-                    <Input
-                      id={`${formId}-product`}
-                      placeholder="Ex.: toxina botulínica"
-                      value={selectedData.product}
-                      onChange={(event) =>
-                        updateRegion(selectedRegionId, "product", event.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${formId}-dose`}>Dose / Volume</Label>
-                    <Input
-                      id={`${formId}-dose`}
-                      placeholder="Ex.: 8U ou 1 ml"
-                      value={selectedData.dose}
-                      onChange={(event) =>
-                        updateRegion(selectedRegionId, "dose", event.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor={`${formId}-notes`}>Resumo Clínico da Aplicação</Label>
-                  <Textarea
-                    id={`${formId}-notes`}
-                    placeholder="Técnica, profundidade e observações clínicas"
-                    className="min-h-[112px]"
-                    value={selectedData.notes}
-                    onChange={(event) =>
-                      updateRegion(selectedRegionId, "notes", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-            ) : null}
-          </DialogContent>
-        </Dialog>
-      ) : null}
     </Card>
   );
 };

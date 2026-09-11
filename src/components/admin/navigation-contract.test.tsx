@@ -85,6 +85,13 @@ describe("admin navigation source contract", () => {
         expect(documentsSource).toContain("hidden print-only print-root");
     });
 
+    it("keeps printable roots outside the interactive attendance workspace", () => {
+        expect(documentsSource.indexOf("</AttendanceWorkspace>"))
+            .toBeLessThan(documentsSource.indexOf("Keep the printable document outside"));
+        expect(prescriptionSource.indexOf("</AttendanceWorkspace>"))
+            .toBeLessThan(prescriptionSource.indexOf("PRINTABLE PREVIEW"));
+    });
+
     it("keeps key admin card actions reachable without hover", () => {
         expect(prescriptionSource).toContain("opacity-100 sm:opacity-0");
         expect(documentsSource).toContain("min-h-11");

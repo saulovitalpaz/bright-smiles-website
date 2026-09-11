@@ -68,7 +68,7 @@ describe("FaceMap anatomical interaction", () => {
     expect(malarRegion.querySelectorAll("[data-side]")).toHaveLength(2);
     await user.click(malarRegion);
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /malar \/ zigomático/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /malar \/ zigomático/i })).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe("FaceMap anatomical interaction", () => {
     expect(frontalRegion).toHaveAttribute("tabindex", "0");
     fireEvent.keyDown(frontalRegion, { key });
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /frontal \(testa\)/i })).toBeInTheDocument();
   });
 
   it("immutably merges edits while preserving historical keys", () => {
@@ -147,7 +147,7 @@ describe("FaceMap anatomical interaction", () => {
     const legacyControl = screen.queryByRole("button", { name: /lábios/i });
     if (legacyControl) await user.click(legacyControl);
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("face-map-fields")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /lábios/i })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Resumo Clínico" })).toBeInTheDocument();
     expect(screen.getByText("Assimetria discreta")).toBeInTheDocument();
@@ -162,13 +162,13 @@ describe("FaceMap anatomical interaction", () => {
     );
 
     await user.click(getTextControl(container, "labios"));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("face-map-fields")).toBeInTheDocument();
 
     rerender(<FaceMap data={{}} onChange={onChange} readOnly />);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("face-map-fields")).not.toBeInTheDocument();
 
     rerender(<FaceMap data={{}} onChange={onChange} />);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("face-map-fields")).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -192,7 +192,7 @@ describe("FaceMap anatomical interaction", () => {
     expect(sections[1]).toHaveAttribute("aria-labelledby", ids[1]);
   });
 
-  it("keeps the card, SVG, controls and dialog structurally mobile-safe", () => {
+  it("keeps the card, SVG, controls and inline editor structurally mobile-safe", () => {
     const { container } = renderFaceMap();
 
     expect(container.querySelector("[data-face-map]")).toHaveClass("min-w-0", "max-w-full");
@@ -204,13 +204,19 @@ describe("FaceMap anatomical interaction", () => {
     expect(container.querySelector("[data-face-region-controls]")).toHaveClass(
       "grid-cols-1",
       "sm:grid-cols-2",
-      "xl:grid-cols-1",
+      "lg:grid-cols-1",
     );
 
     fireEvent.click(getTextControl(container, "frontal"));
     expect(screen.getByTestId("face-map-fields")).toHaveClass(
       "grid-cols-1",
       "sm:grid-cols-2",
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(getTextControl(container, "frontal")).toHaveAttribute("aria-pressed", "true");
+    expect(getSvgRegion(container, "frontal").querySelector("path:not([fill=transparent])")).toHaveClass(
+      "fill-amber-300/65",
+      "stroke-amber-700",
     );
   });
 

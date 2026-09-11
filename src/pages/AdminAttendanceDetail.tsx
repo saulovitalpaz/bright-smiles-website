@@ -141,6 +141,15 @@ interface LeadResponse {
     message?: string;
 }
 
+type AttendanceFlowStep = "summary" | "regions" | "records" | "evolution";
+
+const ATTENDANCE_FLOW_STEPS: Array<{ id: AttendanceFlowStep; label: string }> = [
+    { id: "summary", label: "Resumo" },
+    { id: "regions", label: "Regiões clínicas" },
+    { id: "records", label: "Registros" },
+    { id: "evolution", label: "Evolução" },
+];
+
 export const normalizeAppointmentResponse = (fetched: AppointmentResponse): AppointmentData => {
     const patient = fetched.patient || {};
 
@@ -190,6 +199,8 @@ const AdminAttendanceDetail = () => {
     const [data, setData] = useState<AppointmentData>({ ...DEFAULT_APPOINTMENT });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<"current" | "evolution">("current");
+    const [flowStep, setFlowStep] = useState<AttendanceFlowStep>("summary");
 
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional", role: 'admin' };
@@ -404,6 +415,19 @@ const AdminAttendanceDetail = () => {
         setData(prev => ({ ...prev, [field]: value }));
     };
 
+    const navigateFlow = (step: AttendanceFlowStep) => {
+        setFlowStep(step);
+        if (step === "evolution") {
+            setActiveTab("evolution");
+            return;
+        }
+
+        setActiveTab("current");
+        window.requestAnimationFrame(() => {
+            document.getElementById(`attendance-step-${step}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+    };
+
     if (isLoading) {
         return (
             <AdminLayout title="Carregando Detalhes...">
@@ -443,8 +467,32 @@ const AdminAttendanceDetail = () => {
                 </div>
             </div>
 
+            <nav aria-label="Etapas do atendimento" className="attendance-flow-nav no-print">
+                <span className="attendance-flow-label">Fluxo do atendimento</span>
+                <div className="attendance-flow-steps">
+                    {ATTENDANCE_FLOW_STEPS.map((step, index) => (
+                        <React.Fragment key={step.id}>
+                            {index > 0 && <span className="attendance-flow-divider" aria-hidden="true">›</span>}
+                            <button
+                                type="button"
+                                aria-current={flowStep === step.id ? "step" : undefined}
+                                className="attendance-flow-step"
+                                onClick={() => navigateFlow(step.id)}
+                            >
+                                <span className="attendance-flow-index" aria-hidden="true">{index + 1}</span>
+                                <span>{step.label}</span>
+                            </button>
+                        </React.Fragment>
+                    ))}
+                </div>
+            </nav>
+
             <div className="attendance-detail-page space-y-3 pb-12">
-                <Tabs defaultValue="current" className="w-full">
+                <Tabs value={activeTab} onValueChange={(value) => {
+                    const nextTab = value as "current" | "evolution";
+                    setActiveTab(nextTab);
+                    if (nextTab === "evolution") setFlowStep("evolution");
+                }} className="w-full">
                     <div className="flex justify-center mb-3">
                         <TabsList className="grid min-h-12 w-full max-w-md grid-cols-2 bg-slate-100 p-1">
                             <TabsTrigger value="current" className="font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm">
@@ -458,7 +506,7 @@ const AdminAttendanceDetail = () => {
 
                     <TabsContent value="current" className="space-y-6 md:space-y-8 outline-none">
                         {/* Basic Info Section */}
-                        <Card className="attendance-editor-card border-slate-200 shadow-sm overflow-visible">
+                        <Card id="attendance-step-summary" className="attendance-editor-card scroll-mt-24 border-slate-200 shadow-sm overflow-visible">
                             <CardContent className="p-3 sm:p-4">
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
                                     <div className="space-y-1.5 lg:col-span-2">
@@ -612,6 +660,12 @@ const AdminAttendanceDetail = () => {
                         </Card>
 
                         {/* Secondary Clinical Indicators */}
+                        <div id="attendance-step-regions" className="scroll-mt-24 space-y-3">
+                            <div className="attendance-step-heading">
+                                <p className="attendance-step-kicker">Etapa 2</p>
+                                <h2>Regiões clínicas</h2>
+                                <p>Registre anotações por região sem perder o contexto do atendimento.</p>
+                            </div>
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                             <AttendanceSection title="Diário clínico geral" summary={data.notes || data.complications ? "Informações preenchidas" : "Anamnese e intercorrências"} defaultOpen>
                                 <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
@@ -731,15 +785,23 @@ const AdminAttendanceDetail = () => {
                                 readOnly={readOnly}
                             />
                         )}
+                        </div>
 
                         {/* Evolution Gallery & Links */}
-                        <PhotoGallery
-                            photos={data.photos}
-                            externalLinks={data.externalLinks}
-                            onChange={(photos) => updateField('photos', photos)}
-                            onLinksChange={(links) => updateField('externalLinks', links)}
-                            readOnly={readOnly}
-                        />
+                        <div id="attendance-step-records" className="scroll-mt-24 space-y-3">
+                            <div className="attendance-step-heading">
+                                <p className="attendance-step-kicker">Etapa 3</p>
+                                <h2>Registros do atendimento</h2>
+                                <p>Adicione fotos e links para acompanhar o resultado.</p>
+                            </div>
+                            <PhotoGallery
+                                photos={data.photos}
+                                externalLinks={data.externalLinks}
+                                onChange={(photos) => updateField('photos', photos)}
+                                onLinksChange={(links) => updateField('externalLinks', links)}
+                                readOnly={readOnly}
+                            />
+                        </div>
 
                         {/* Bottom Save Reminder */}
                         {!readOnly && (
