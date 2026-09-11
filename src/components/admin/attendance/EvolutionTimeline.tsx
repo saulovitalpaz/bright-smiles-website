@@ -154,7 +154,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
     );
 
     return (
-        <div className="space-y-6">
+        <div className="attendance-timeline-wrap space-y-3">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-serif font-bold text-slate-800">Linha do Tempo de Evolução</h3>
                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
@@ -162,24 +162,24 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                 </Badge>
             </div>
 
-            <div className="relative border-l-2 border-slate-100 ml-4 pl-8 space-y-8">
+            <div className="attendance-timeline relative space-y-4">
                 {history.map((app) => (
                     <div key={app.id} className="relative">
                         {/* Dot */}
-                        <div className="absolute -left-[41px] top-1 w-6 h-6 rounded-full bg-white border-4 border-primary flex items-center justify-center shadow-sm z-10" />
+                        <div className="attendance-timeline-dot" aria-hidden="true" />
                         
                         <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-3">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
                                     {format(new Date(app.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
                                 </span>
                                 <Badge variant="secondary">{categoryLabel[app.appointmentType]}</Badge>
-                                {app.procedure && <span className="text-sm text-slate-500">{app.procedure}</span>}
+                                {app.procedure && <span className="min-w-0 break-words text-sm text-slate-500">{app.procedure}</span>}
                             </div>
 
-                            <Card className={`border-slate-200 shadow-sm transition-all hover:border-primary/20 ${expandedId === app.id ? 'ring-1 ring-primary/10' : ''}`}>
-                                <CardContent className="p-4">
-                                    <div className="flex justify-between items-start gap-4">
+                            <Card className={`border-slate-200 shadow-sm transition-colors hover:border-primary/20 ${expandedId === app.id ? 'ring-1 ring-primary/10' : ''}`}>
+                                <CardContent className="p-3">
+                                    <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                                         <div className="space-y-2 flex-1">
                                             {app.notes && (
                                                 <p className="text-sm text-slate-600 line-clamp-2 italic">"{app.notes}"</p>
@@ -204,10 +204,10 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                                             </div>
                                         </div>
                                         
-                                        <Button 
+                                        <Button aria-expanded={expandedId === app.id} aria-controls={`evolution-details-${app.id}`}
                                             variant="ghost" 
                                             size="sm" 
-                                            className="text-primary font-bold gap-1"
+                                            className="shrink-0 text-primary font-bold gap-1"
                                             onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
                                         >
                                             {expandedId === app.id ? (
@@ -220,7 +220,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
 
                                     {/* Expanded Content for Comparison */}
                                     {expandedId === app.id && (
-                                        <div className="mt-6 pt-6 border-t border-slate-100 space-y-8 animate-in slide-in-from-top-4 duration-300">
+                                        <div id={`evolution-details-${app.id}`} className="attendance-reveal mt-4 border-t border-slate-100 pt-4 space-y-5">
                                             
                                             {/* Photos Comparison mini row */}
                                             {app.photos.length > 0 && (

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { AttendanceSection, AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import { API_URL, fetchClient } from "@/lib/api";
 import Odontogram from "@/components/admin/attendance/Odontogram";
 import { normalizeOdontogram, type OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
@@ -19,7 +20,6 @@ import {
     Type,
     Save,
     QrCode,
-    ExternalLink,
     Search,
     Trash2
 } from "lucide-react";
@@ -272,10 +272,9 @@ const AdminPrescription = () => {
 
     return (
         <AdminLayout title="Prescrição Clínica">
-            <div className="min-w-0 grid grid-cols-1 gap-6 md:gap-8 mb-20 no-print lg:grid-cols-3">
-                {/* Patient Info Form */}
-                <div className="min-w-0 lg:col-span-1 space-y-6">
-                    <Card className="admin-card">
+            <AttendanceWorkspace active="prescricao">
+            <div className="attendance-editor-layout no-print">
+<Card className="admin-card attendance-patient">
                         <CardHeader>
                             <CardTitle className="text-xl font-serif">Dados do Paciente</CardTitle>
                             <CardDescription>Busque pelo nome ou CPF para preencher.</CardDescription>
@@ -302,121 +301,60 @@ const AdminPrescription = () => {
                                 />
                             </div>
 
-                            <div className="relative py-2">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white px-2 text-muted-foreground">Ou edite manualmente</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                            <AttendanceSection title="Dados cadastrais" summary={patientData.name || "Preencher ou editar nome e contato"}>
+<div className="space-y-1.5">
+                                <Label htmlFor="prescription-patient-name" className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
                                     <User size={14} /> Nome Completo
                                 </Label>
                                 <Input
-                                    placeholder="Ex: João da Silva"
+                                    id="prescription-patient-name" placeholder="Ex: João da Silva"
                                     value={patientData.name}
                                     onChange={(e) => setPatientData({ ...patientData, name: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                                <Label htmlFor="prescription-patient-cpf" className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
                                     <CreditCard size={14} /> CPF
                                 </Label>
                                 <Input
-                                    placeholder="000.000.000-00"
+                                    id="prescription-patient-cpf" placeholder="000.000.000-00"
                                     value={patientData.cpf}
                                     onChange={(e) => handleCpfChange(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                                <Label htmlFor="prescription-patient-address" className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
                                     <MapPin size={14} /> Endereço
                                 </Label>
                                 <Input
-                                    placeholder="Rua, Número, Bairro, Cidade"
+                                    id="prescription-patient-address" placeholder="Rua, Número, Bairro, Cidade"
                                     value={patientData.address}
                                     onChange={(e) => setPatientData({ ...patientData, address: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                                <Label htmlFor="prescription-patient-phone" className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
                                     <Type size={14} /> Telefone
                                 </Label>
                                 <Input
-                                    placeholder="(00) 00000-0000"
+                                    id="prescription-patient-phone" placeholder="(00) 00000-0000"
                                     value={patientData.phone}
                                     onChange={(e) => setPatientData({ ...patientData, phone: e.target.value })}
                                 />
                             </div>
-                        </CardContent>
+                        </AttendanceSection>
+</CardContent>
                     </Card>
-
-                    <Card className="admin-card overflow-hidden">
-                        <CardHeader className="bg-slate-50/50 py-4">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-600">Histórico Recente</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
-                                {prescriptionHistory.length > 0 ? (
-                                    prescriptionHistory.map(item => (
-                                        <div
-                                            key={item.id}
-                                            className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group flex justify-between items-center"
-                                        >
-                                            <div className="flex-1" onClick={() => loadPrescription(item.content)}>
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
-                                                    <span className="text-[10px] text-slate-400">{item.date}</span>
-                                                </div>
-                                                <p className="text-[10px] text-slate-500 line-clamp-1">Clique para carregar</p>
-                                            </div>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                                className="min-h-11 min-w-11 p-2 text-slate-300 opacity-100 sm:opacity-0 transition-all hover:text-red-500 sm:group-hover:opacity-100"
-                                                aria-label={`Excluir receita de ${item.patient}`}
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="p-4 text-center text-xs text-slate-400 italic">Nenhum histórico encontrado</div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-primary/5 border-primary/20 border-dashed shadow-none">
-                        <CardContent className="p-6">
-                            <h4 className="font-bold text-primary flex items-center gap-2 mb-2">
-                                <QrCode size={18} /> Receita Digital (CRO)
-                            </h4>
-                            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-                                Para emitir receitas com validade para farmácias via assinatura digital (ICP-Brasil), utilize o guia oficial.
-                            </p>
-                            <Link to="/admin/consultas">
-                                <Button variant="outline" size="sm" className="w-full border-primary/30 text-primary hover:bg-primary/10 gap-2">
-                                    <ExternalLink size={14} /> Ver Passo-a-Passo
-                                </Button>
-                            </Link>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Editor Area */}
-                <div className="min-w-0 lg:col-span-2 space-y-4">
-                    <Card className="admin-card flex min-h-[420px] min-w-0 flex-col sm:min-h-[500px] md:min-h-[600px]">
-                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between no-print">
+<div className="attendance-primary space-y-3">
+                    <Card className="admin-card attendance-editor-card">
+                        <div className="attendance-editor-toolbar no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Prescrição Clínica</p>
-                            <div className="flex flex-wrap items-center justify-end gap-2">
+                            <div className="attendance-editor-actions">
                                 <Button onClick={handleSave} variant="outline" size="sm" className="gap-2 border-slate-200 text-slate-600">
-                                    <Save size={16} /> Salvar Tudo
+                                    <Save size={16} /> Salvar receita
                                 </Button>
                                 <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
-                                    <Printer size={16} /> Print Rápido
+                                    <Printer size={16} /> Imprimir
                                 </Button>
                                 <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
                                     <Switch
@@ -462,12 +400,12 @@ const AdminPrescription = () => {
                             </div>
                         </div>
 
-                        <div className="flex-1 relative">
+                        <div className="min-w-0 flex-1">
                             <RichTextEditor
                                 content={prescriptionContent}
                                 onChange={(content) => setPrescriptionContent(content)}
                                 placeholder="Escreva a prescrição aqui..."
-                                className="border-none shadow-none rounded-none w-full h-full absolute inset-0"
+                                className="min-w-0 w-full rounded-none border-none shadow-none"
                             />
                         </div>
                     </Card>
@@ -511,6 +449,38 @@ const AdminPrescription = () => {
                         )}
                     </Card>
                 </div>
+<AttendanceSection className="attendance-secondary" title="Histórico de prescrições" summary={prescriptionHistory.length + " receitas disponíveis"}>
+
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
+                                {prescriptionHistory.length > 0 ? (
+                                    prescriptionHistory.map(item => (
+                                        <div
+                                            key={item.id}
+                                            className="p-3 hover:bg-slate-50 transition-colors cursor-pointer group flex justify-between items-center"
+                                        >
+                                            <button type="button" className="min-h-11 min-w-0 flex-1 text-left" onClick={() => loadPrescription(item.content)}>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <p className="font-bold text-xs text-slate-900 group-hover:text-primary transition-colors">{item.patient}</p>
+                                                    <span className="text-xs text-slate-400">{item.date}</span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 line-clamp-1">Clique para carregar</p>
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                                className="min-h-11 min-w-11 p-2 text-slate-500 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100 hover:text-red-700"
+                                                aria-label={`Excluir receita de ${item.patient}`}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-4 text-center text-xs text-slate-400 italic">Nenhum histórico encontrado</div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </AttendanceSection>
             </div>
 
             {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
@@ -646,6 +616,7 @@ const AdminPrescription = () => {
                     color: #94a3b8;
                 }
             `}</style>
+            </AttendanceWorkspace>
         </AdminLayout>
     );
 };

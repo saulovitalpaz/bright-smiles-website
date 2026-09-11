@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { AttendanceSection, AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import { fetchClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,30 +61,44 @@ const AdminPatients = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [formOpen, setFormOpen] = useState(false);
     const formRef = useRef<HTMLDivElement>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
     const focusPatientForm = useCallback(() => {
+        setFormOpen(true);
         formRef.current?.scrollIntoView({ block: "start" });
         nameInputRef.current?.focus({ preventScroll: true });
     }, []);
+    useEffect(() => {
+        if (!formOpen) return;
+        formRef.current?.scrollIntoView({ block: "start" });
+        nameInputRef.current?.focus({ preventScroll: true });
+    }, [formOpen]);
     const [searchParams] = useSearchParams();
     const requestedEditId = Number.parseInt(searchParams.get("edit") || "", 10);
 
     const loadPatients = useCallback(async (term: string) => {
         setLoading(true);
         try {
-            const [patientsResponse, appointmentsResponse] = await Promise.all([
-                fetchClient(`/patients?search=${encodeURIComponent(term)}`),
-                fetchClient("/appointments"),
-            ]);
+            const patientsResponse = await fetchClient(`/patients?search=${encodeURIComponent(term)}`);
             if (!patientsResponse.ok) throw new Error("Não foi possível carregar os pacientes.");
             setPatients(await patientsResponse.json());
-            if (appointmentsResponse.ok) setAppointments(await appointmentsResponse.json());
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Erro ao carregar pacientes.");
         } finally {
             setLoading(false);
         }
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        void fetchClient("/appointments").then(async response => {
+            if (response.ok) {
+                const records = await response.json();
+                if (active) setAppointments(Array.isArray(records) ? records : []);
+            }
+        }).catch(() => {});
+        return () => { active = false; };
     }, []);
 
     useEffect(() => {
@@ -179,6 +194,7 @@ const AdminPatients = () => {
 
     return (
         <AdminLayout title="Pacientes">
+            <AttendanceWorkspace active="pacientes">
             <div className="mx-auto w-full max-w-7xl space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -187,7 +203,7 @@ const AdminPatients = () => {
                     <Button onClick={() => { resetForm(); focusPatientForm(); }} className="min-h-11 w-full sm:w-auto"><Plus size={16} className="mr-2" /> Novo paciente</Button>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+                <div className={"grid gap-3 lg:items-start " + (formOpen ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]" : "")}>
                     <Card className="min-w-0">
                         <CardHeader className="space-y-4">
                             <CardTitle className="flex items-center gap-2"><Users size={20} /> Pacientes cadastrados</CardTitle>
@@ -217,17 +233,18 @@ const AdminPatients = () => {
                         </CardContent>
                     </Card>
 
-                    <Card ref={formRef} className="min-w-0 scroll-mt-24">
-                        <CardHeader><CardTitle>{editingId ? "Editar paciente" : "Novo paciente"}</CardTitle></CardHeader>
+                    <Card ref={formRef} hidden={!formOpen} className="attendance-reveal min-w-0 scroll-mt-24">
+                        <CardHeader className="flex flex-row items-center justify-between gap-2"><CardTitle>{editingId ? "Editar paciente" : "Novo paciente"}</CardTitle><Button type="button" variant="ghost" className="min-h-11" onClick={() => setFormOpen(false)}>Recolher</Button></CardHeader>
                         <CardContent><form onSubmit={savePatient} className="space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><div className="space-y-2"><Label htmlFor="patient-name">Nome *</Label><Input ref={nameInputRef} autoComplete="name" id="patient-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-cpf">CPF *</Label><Input id="patient-cpf" value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-birth-date">Data de nascimento</Label><Input id="patient-birth-date" type="date" value={form.birthDate || ""} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} max={new Date().toISOString().slice(0, 10)} /><p className="text-xs text-slate-500">{form.birthDate ? formatAgeSummary(form.birthDate) : "A idade será calculada pela data informada."}</p></div><div className="space-y-2"><Label htmlFor="patient-phone">Telefone</Label><Input type="tel" autoComplete="tel" id="patient-phone" value={form.phone || ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div><div className="space-y-2"><Label htmlFor="patient-address">Endereço</Label><Input id="patient-address" value={form.address || ""} onChange={(event) => setForm({ ...form, address: event.target.value })} /></div></div>
                             <div className="space-y-2"><Label htmlFor="patient-history">Histórico</Label><Textarea id="patient-history" rows={3} value={form.history || ""} onChange={(event) => setForm({ ...form, history: event.target.value })} /></div>
-                            <div className="space-y-2"><Label htmlFor="patient-odontogram">Odontograma (JSON opcional)</Label><Textarea id="patient-odontogram" rows={3} value={String(form.odontogram || "")} onChange={(event) => setForm({ ...form, odontogram: event.target.value })} /></div>
+                            <AttendanceSection title="Dados complementares do odontograma" summary="Editar registro existente"><div className="space-y-2"><Label htmlFor="patient-odontogram">Registro do odontograma</Label><Textarea id="patient-odontogram" rows={3} value={String(form.odontogram || "")} onChange={(event) => setForm({ ...form, odontogram: event.target.value })} /></div></AttendanceSection>
                             <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" disabled={saving} className="w-full sm:flex-1">{saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Save className="mr-2" size={16} />}{editingId ? "Salvar alterações" : "Cadastrar paciente"}</Button><Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto"><RotateCcw size={16} className="mr-2" /> Limpar</Button></div>
                         </form></CardContent>
                     </Card>
                 </div>
             </div>
+            </AttendanceWorkspace>
         </AdminLayout>
     );
 };

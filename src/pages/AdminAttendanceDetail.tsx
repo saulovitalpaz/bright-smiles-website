@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { AttendanceSection, AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import { API_URL, fetchClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -406,14 +407,15 @@ const AdminAttendanceDetail = () => {
     if (isLoading) {
         return (
             <AdminLayout title="Carregando Detalhes...">
-                <div className="flex h-[50vh] items-center justify-center">Carregando...</div>
+                <AttendanceWorkspace active="consultas"><div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-600">Carregando detalhes…</div></AttendanceWorkspace>
             </AdminLayout>
         );
     }
 
     return (
         <AdminLayout title={id === 'new' ? "Registrar Novo Atendimento" : `Evolução Clínica #${id}`}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <AttendanceWorkspace active="consultas">
+            <div className="attendance-actionbar justify-between">
                 <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 shrink-0 border-slate-200">
                     <ChevronLeft size={16} /> Voltar à Lista
                 </Button>
@@ -441,10 +443,10 @@ const AdminAttendanceDetail = () => {
                 </div>
             </div>
 
-            <div className="space-y-6 md:space-y-8 pb-12">
+            <div className="attendance-detail-page space-y-3 pb-12">
                 <Tabs defaultValue="current" className="w-full">
-                    <div className="flex justify-center mb-6">
-                        <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-100 p-1">
+                    <div className="flex justify-center mb-3">
+                        <TabsList className="grid min-h-12 w-full max-w-md grid-cols-2 bg-slate-100 p-1">
                             <TabsTrigger value="current" className="font-bold data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm">
                                 Sessão Atual
                             </TabsTrigger>
@@ -456,9 +458,9 @@ const AdminAttendanceDetail = () => {
 
                     <TabsContent value="current" className="space-y-6 md:space-y-8 outline-none">
                         {/* Basic Info Section */}
-                        <Card className="border-slate-200 shadow-sm overflow-visible">
-                            <CardContent className="p-6 md:p-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                        <Card className="attendance-editor-card border-slate-200 shadow-sm overflow-visible">
+                            <CardContent className="p-3 sm:p-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
                                     <div className="space-y-1.5 lg:col-span-2">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                                             <User size={12} /> Paciente e CPF
@@ -610,9 +612,9 @@ const AdminAttendanceDetail = () => {
                         </Card>
 
                         {/* Secondary Clinical Indicators */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <Card className="border-slate-200 shadow-sm">
-                                <CardContent className="p-6 space-y-4">
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                            <AttendanceSection title="Diário clínico geral" summary={data.notes || data.complications ? "Informações preenchidas" : "Anamnese e intercorrências"} defaultOpen>
+                                <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
                                     <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
                                         <Stethoscope size={16} /> Diário Clínico Geral
                                     </h4>
@@ -636,11 +638,11 @@ const AdminAttendanceDetail = () => {
                                             disabled={readOnly}
                                         />
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </CardContent></Card>
+                            </AttendanceSection>
 
-                            <Card className="border-slate-200 shadow-sm">
-                                <CardContent className="p-6 space-y-4">
+                            <AttendanceSection title="Protocolo geral" summary={data.weight || data.materials ? "Informações preenchidas" : "Peso e materiais"}>
+                                <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
                                     <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
                                         <CreditCard size={16} /> Resumo de Protocolo Geral
                                     </h4>
@@ -664,11 +666,11 @@ const AdminAttendanceDetail = () => {
                                             disabled={readOnly}
                                         />
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </CardContent></Card>
+                            </AttendanceSection>
                             
-                            <Card className="border-slate-200 shadow-sm lg:col-span-2">
-                                <CardContent className="p-6 space-y-4">
+                            <AttendanceSection className="lg:col-span-2" title="Faturamento automático" summary={data.price ? `R$ ${data.price}` : "Valor e status no caixa"}>
+                                <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
                                     <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-4">
                                         <CreditCard size={16} /> Faturamento Automático
                                     </h4>
@@ -707,8 +709,8 @@ const AdminAttendanceDetail = () => {
                                     <p className="text-[10px] text-slate-500 italic mt-2">
                                         * Se preenchido acima de R$ 0,00, finalizar este atendimento gerará automaticamente uma transação no seu módulo Financeiro com os dados deste paciente.
                                     </p>
-                                </CardContent>
-                            </Card>
+                                </CardContent></Card>
+                            </AttendanceSection>
                         </div>
 
                         {/* Specific Regions - Odontogram */}
@@ -762,6 +764,7 @@ const AdminAttendanceDetail = () => {
                     </TabsContent>
                 </Tabs>
             </div>
+            </AttendanceWorkspace>
         </AdminLayout>
     );
 };

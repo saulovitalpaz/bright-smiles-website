@@ -28,6 +28,7 @@ import { printDocumentClass } from "@/lib/print-layout";
 import { mediaUrl } from "@/lib/media";
 import { replaceDocumentTokens } from "@/lib/document-template";
 import { derivePatientAge } from "@/lib/patient-age";
+import { AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import {
     hasCompleteProfessionalIdentity,
     hasUsableProfessionalSignature,
@@ -272,12 +273,13 @@ const AdminDocuments = () => {
 
     return (
         <AdminLayout title="Termos & Documentos">
-            <div className="min-w-0 grid grid-cols-1 gap-6 md:gap-8 mb-20 lg:grid-cols-4">
+            <AttendanceWorkspace active="documentos">
+            <div className="attendance-documents-layout min-w-0 grid grid-cols-1 gap-3 md:gap-4 mb-20">
                 {/* Left Sidebar */}
-                <div className="min-w-0 lg:col-span-1 space-y-6 no-print">
+                <div className="attendance-context min-w-0 no-print">
 
                     {/* Patient Selector */}
-                    <Card className="admin-card">
+                    <Card className="admin-card attendance-editor-card">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg font-serif">Dados do Paciente</CardTitle>
                         </CardHeader>
@@ -296,7 +298,7 @@ const AdminDocuments = () => {
                     </Card>
 
                     {/* Template List */}
-                    <Card className="admin-card overflow-hidden">
+                    <Card className="admin-card attendance-editor-card overflow-hidden">
                         <CardHeader className="bg-slate-50/50 py-4 flex flex-col gap-2">
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-sm font-black uppercase text-slate-600">Modelos</CardTitle>
@@ -363,7 +365,7 @@ const AdminDocuments = () => {
 
                     {/* Patient History */}
                     {patientData.id && (
-                        <Card className="admin-card">
+                        <Card className="admin-card attendance-editor-card">
                             <CardHeader className="py-4">
                                 <CardTitle className="text-sm font-black uppercase text-slate-600 flex items-center gap-2">
                                     <History size={14} /> Histórico do Paciente
@@ -421,7 +423,7 @@ const AdminDocuments = () => {
                 </div>
 
                 {/* Main Editor */}
-                <div className="min-w-0 lg:col-span-3">
+                <div className="attendance-primary min-w-0">
                     <Card className="admin-card flex min-h-[420px] min-w-0 flex-col no-print sm:min-h-[600px] lg:min-h-[800px]">
                         <div className="p-3 md:p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-2">
@@ -503,6 +505,7 @@ const AdminDocuments = () => {
                 </div>
             )}
 
+            </AttendanceWorkspace>
         </AdminLayout >
     );
 };

@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, User, History, Plus, Trash2, Stethoscope } from "lucide-react";
+import { Search, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import AdminLayout from "@/components/admin/AdminLayout";
 import { fetchClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { AttendanceSection, AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -55,6 +54,7 @@ const AdminAppointments = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFilter, setDateFilter] = useState("");
     const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
+    const [visibleCount, setVisibleCount] = useState(25);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const leadId = searchParams.get("leadId");
@@ -138,23 +138,10 @@ const AdminAppointments = () => {
     const formatCreatedAt = (record: AppointmentRecord) => (record.createdAt ? formatDate(record.createdAt) : null);
 
     return (
-        <AdminLayout title="Atendimentos & Consultas">
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-                <div className="min-w-0 flex-1">
-                    <Card className="border-slate-100 shadow-sm min-w-0">
-                        <CardContent className="p-3 sm:p-4">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                                    <Stethoscope size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-slate-600 font-medium">Atendimentos</p>
-                                    <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+        <AdminLayout title="Consultas">
+            <AttendanceWorkspace active="consultas">
+            <div className="attendance-actionbar justify-between">
+                <p className="text-sm text-slate-600"><strong className="text-slate-900">{appointments.length}</strong> atendimentos registrados</p>
                 {currentUser.role !== "manager" && (
                     <Button
                         onClick={() => navigate("/admin/consultas/new")}
@@ -168,8 +155,8 @@ const AdminAppointments = () => {
             <div className="admin-card p-3 sm:p-5 w-full">
                 <div className="flex flex-col gap-3 mb-4">
                     <div>
-                        <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900">Histórico de Pacientes</h2>
-                        <p className="text-sm text-slate-500">Consulte ou acompanhe registros evolutivos.</p>
+                        <h2 className="text-base font-semibold text-slate-900">Histórico de consultas</h2>
+                        <p role="status" className="text-xs text-slate-600">{filteredAppointments.length} resultados</p>
                     </div>
                     <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
                         <div className="relative min-w-0">
@@ -181,10 +168,10 @@ const AdminAppointments = () => {
                                 placeholder="Pesquisar paciente ou CPF…"
                                 className="pl-10 h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
                                 value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
+                                onChange={(event) => { setSearchTerm(event.target.value); setVisibleCount(25); }}
                             />
                         </div>
-                        <div className="min-w-0">
+                        <AttendanceSection title="Filtrar por data" summary={dateFilter ? dateFilter.split("-").reverse().join("/") : "Todas as datas"} defaultOpen>
                             <label htmlFor="appointments-date-filter" className="sr-only">Filtrar por data</label>
                             <Input
                                 id="appointments-date-filter"
@@ -192,15 +179,15 @@ const AdminAppointments = () => {
                                 type="date"
                                 className="h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
                                 value={dateFilter}
-                                onChange={(event) => setDateFilter(event.target.value)}
+                                onChange={(event) => { setDateFilter(event.target.value); setVisibleCount(25); }}
                             />
-                        </div>
+                        </AttendanceSection>
                     </div>
                 </div>
 
                 <div className="divide-y divide-slate-100">
                     {filteredAppointments.length > 0 ? (
-                        filteredAppointments.map((record) => (
+                        filteredAppointments.slice(0, visibleCount).map((record) => (
                             <div
                                 key={record.id}
                                 className="py-3 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl group"
@@ -210,48 +197,28 @@ const AdminAppointments = () => {
                                         className="flex min-w-0 items-start gap-3 w-full flex-1"
                                         to={`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`}
                                     >
-                                        <div className="w-8 h-8 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                            <User size={16} aria-hidden="true" />
-                                        </div>
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <h3 className="font-semibold text-slate-900 text-sm leading-tight break-words">
                                                     {record.patientName || record.patient?.name}
                                                 </h3>
-                                                {currentUser.role === "manager" && (
-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-100">
-                                                        Controle
-                                                    </Badge>
-                                                )}
                                             </div>
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                                                 <span className="text-xs font-semibold text-slate-700 break-words">{record.procedure}</span>
-                                                <span className="text-xs text-slate-300">|</span>
-                                                <span className="text-xs text-slate-500 font-mono hidden sm:inline">
-                                                    {record.cpf || record.patient?.cpf}
-                                                </span>
-                                                <span className="text-xs text-slate-300 hidden sm:inline">|</span>
-                                                <span className="text-xs text-slate-500 flex items-center gap-1 font-medium whitespace-nowrap">
-                                                    <History size={12} />
+                                                <span className="text-xs text-slate-600 flex flex-wrap items-center gap-1 font-medium">
+                                                    <History size={12} aria-hidden="true" />
                                                     Agendado para {formatScheduledAt(record)}
                                                 </span>
-                                                <span className="text-xs text-slate-300 hidden sm:inline">|</span>
-                                                <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                                                    Data clínica {formatClinicalDate(record)}
-                                                </span>
-                                                {record.createdAt && (
-                                                    <>
-                                                        <span className="text-xs text-slate-300 hidden sm:inline">|</span>
-                                                        <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                                                            Criado em {formatCreatedAt(record)}
-                                                        </span>
-                                                    </>
-                                                )}
+                                                <span className="text-xs text-slate-600">{record.professional || "Sem profissional"}</span>
                                             </div>
                                         </div>
                                     </Link>
 
-                                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                                        <details className="mr-auto min-w-0 text-xs text-slate-600">
+                                            <summary className="flex min-h-11 cursor-pointer items-center rounded px-1 font-medium">Mais informações</summary>
+                                            <div className="attendance-reveal space-y-1 pb-2"><p>CPF: {record.cpf || record.patient?.cpf || "Não informado"}</p><p>Data clínica {formatClinicalDate(record)}</p>{record.createdAt && <p>Criado em {formatCreatedAt(record)}</p>}</div>
+                                        </details>
                                         {currentUser.role !== "manager" && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
@@ -291,16 +258,16 @@ const AdminAppointments = () => {
                             </div>
                         ))
                     ) : (
-                        <div className="text-center py-16">
-                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                                <Search size={40} />
-                            </div>
+                        <div className="text-center py-6">
                             <h3 className="text-lg font-bold text-slate-900 mb-2">Nenhum atendimento encontrado</h3>
                             <p className="text-slate-500 font-medium">Não há registros com os filtros atuais ou o sistema está vazio.</p>
                         </div>
                     )}
                 </div>
+                {filteredAppointments.length > visibleCount && <Button variant="outline" className="mt-3 min-h-11 w-full" onClick={() => setVisibleCount(count => count + 25)}>Mostrar mais consultas ({filteredAppointments.length - visibleCount})</Button>}
+                {(searchTerm || dateFilter) && <Button variant="ghost" className="mt-2 min-h-11" onClick={() => { setSearchTerm(""); setDateFilter(""); setVisibleCount(25); }}>Limpar filtros</Button>}
             </div>
+            </AttendanceWorkspace>
         </AdminLayout>
     );
 };
