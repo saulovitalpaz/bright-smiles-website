@@ -19,7 +19,7 @@ describe("admin navigation source contract", () => {
     });
 
     it("points the dashboard shortcut to the standalone calendar page", () => {
-        expect(dashboardSource).toContain("navigate('/admin/calendario')");
+        expect(dashboardSource).toContain('to="/admin/calendario"');
         expect(dashboardSource).not.toContain("navigate('/admin/consultas?view=calendar')");
     });
 

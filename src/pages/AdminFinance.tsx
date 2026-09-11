@@ -227,28 +227,35 @@ const AdminFinance = () => {
     };
 
     const toggleTransactionTypeFilter = (type: "income" | "expense") => setTransactionTypeFilter((current) => current === type ? null : type);
-    const handleFilterCardKeyDown = (event: React.KeyboardEvent, action: () => void) => {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            action();
-        }
-    };
 
     return (
         <AdminLayout title="Gestão Financeira">
             <div className="print-root flex min-w-0 flex-col">
                 {loadError && <div role="alert" className="no-print order-0 mb-4 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loadError}</div>}
-                <div className="no-print order-3 mb-8 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 lg:order-1">
-                    <Card role="button" tabIndex={0} aria-label="Filtrar fluxo de caixa por receitas" aria-pressed={transactionTypeFilter === "income"} onClick={() => toggleTransactionTypeFilter("income")} onKeyDown={(event) => handleFilterCardKeyDown(event, () => toggleTransactionTypeFilter("income"))} className={`cursor-pointer overflow-hidden border-slate-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${transactionTypeFilter === "income" ? "border-emerald-400 ring-2 ring-emerald-100" : ""}`}>
-                        <CardContent className="p-6"><div className="flex items-start justify-between"><div className="rounded-xl bg-emerald-50 p-3 text-emerald-600"><TrendingUp size={24} /></div><span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600"><ArrowUpRight size={14} /> Receitas</span></div><p className="mt-4 text-sm font-medium text-slate-500">Receita recebida</p><p className="mt-1 text-2xl font-bold text-slate-900">R$ {stats.income.toLocaleString("pt-BR")}</p><p className="mt-1 text-xs text-amber-700">A receber: R$ {stats.pendingIncome.toLocaleString("pt-BR")}</p></CardContent>
-                    </Card>
-                    <Card role="button" tabIndex={0} aria-label="Filtrar fluxo de caixa por despesas" aria-pressed={transactionTypeFilter === "expense"} onClick={() => toggleTransactionTypeFilter("expense")} onKeyDown={(event) => handleFilterCardKeyDown(event, () => toggleTransactionTypeFilter("expense"))} className={`cursor-pointer overflow-hidden border-slate-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${transactionTypeFilter === "expense" ? "border-rose-400 ring-2 ring-rose-100" : ""}`}>
-                        <CardContent className="p-6"><div className="flex items-start justify-between"><div className="rounded-xl bg-rose-50 p-3 text-rose-600"><ArrowDownRight size={24} /></div><span className="rounded-full bg-rose-50 px-2 py-1 text-xs font-bold text-rose-600">Despesas</span></div><p className="mt-4 text-sm font-medium text-slate-500">Despesas totais</p><p className="mt-1 text-2xl font-bold text-slate-900">R$ {stats.expense.toLocaleString("pt-BR")}</p>{categorySummary.length > 0 && <div className="mt-4 space-y-2">{categorySummary.map((category) => <div key={category.name} className="space-y-1"><div className="flex justify-between gap-3 text-[10px] font-medium text-slate-500"><span className="truncate uppercase">{category.name}</span><span>R$ {category.amount.toLocaleString("pt-BR")}</span></div><div className="h-1 overflow-hidden rounded-full bg-rose-100"><div className="h-full rounded-full bg-rose-400" style={{ width: `${category.percentage}%` }} /></div></div>)}</div>}</CardContent>
-                    </Card>
-                    <Card role="button" tabIndex={0} aria-label="Mostrar todas as movimentações do período" aria-pressed={transactionTypeFilter === null} onClick={() => setTransactionTypeFilter(null)} onKeyDown={(event) => handleFilterCardKeyDown(event, () => setTransactionTypeFilter(null))} className={`cursor-pointer border-2 border-primary/10 bg-white shadow-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${transactionTypeFilter === null ? "ring-2 ring-primary/20" : ""}`}>
-                        <CardContent className="p-6"><div className="w-fit rounded-xl bg-primary/10 p-3 text-primary"><Wallet size={24} /></div><p className="mt-4 text-sm font-medium text-slate-500">Líquido do mês</p><p className={`mt-1 text-2xl font-bold ${stats.monthlyBalance >= 0 ? "text-primary" : "text-rose-600"}`}>R$ {stats.monthlyBalance.toLocaleString("pt-BR")}</p><p className="mt-2 text-xs text-slate-500">Saldo inicial: R$ {stats.openingBalance.toLocaleString("pt-BR")}</p><p className="mt-1 text-xs text-slate-500">Total em conta: R$ {stats.closingBalance.toLocaleString("pt-BR")}</p><p className="mt-1 text-xs text-slate-400">Inclui o fechamento anterior</p></CardContent>
-                    </Card>
-                </div>
+                <section aria-label="Resumo financeiro e filtros" className="no-print order-1 mb-4 grid min-w-0 grid-cols-2 gap-3 md:mb-6 md:grid-cols-3">
+                    <button type="button" aria-label="Filtrar fluxo de caixa por receitas" aria-pressed={transactionTypeFilter === "income"} onClick={() => toggleTransactionTypeFilter("income")} className={"admin-card min-w-0 p-3 text-left transition-colors sm:p-4 " + (transactionTypeFilter === "income" ? "ring-2 ring-emerald-500" : "")}>
+                        <span className="flex items-center gap-2 text-xs font-semibold text-emerald-700"><TrendingUp size={16} aria-hidden="true" /> Receitas</span>
+                        <span className="mt-2 block text-xs text-slate-600">Receita recebida</span>
+                        <span className="admin-metric-value mt-1 block text-slate-900">R$ {stats.income.toLocaleString("pt-BR")}</span>
+                        <span className="mt-2 block text-xs text-amber-800">A receber: R$ {stats.pendingIncome.toLocaleString("pt-BR")}</span>
+                    </button>
+                    <button type="button" aria-label="Filtrar fluxo de caixa por despesas" aria-pressed={transactionTypeFilter === "expense"} onClick={() => toggleTransactionTypeFilter("expense")} className={"admin-card min-w-0 p-3 text-left transition-colors sm:p-4 " + (transactionTypeFilter === "expense" ? "ring-2 ring-rose-500" : "")}>
+                        <span className="flex items-center gap-2 text-xs font-semibold text-rose-700"><ArrowDownRight size={16} aria-hidden="true" /> Despesas</span>
+                        <span className="mt-2 block text-xs text-slate-600">Despesas totais</span>
+                        <span className="admin-metric-value mt-1 block text-slate-900">R$ {stats.expense.toLocaleString("pt-BR")}</span>
+                        <span className="mt-2 block text-xs text-slate-600">Toque para filtrar o fluxo</span>
+                    </button>
+                    <button type="button" aria-label="Mostrar todas as movimentações do período" aria-pressed={transactionTypeFilter === null} onClick={() => setTransactionTypeFilter(null)} className={"admin-card col-span-2 min-w-0 p-3 text-left transition-colors sm:p-4 md:col-span-1 " + (transactionTypeFilter === null ? "ring-2 ring-primary/30" : "")}>
+                        <span className="flex items-center gap-2 text-xs font-semibold text-slate-700"><Wallet size={16} aria-hidden="true" /> Líquido do mês</span>
+                        <span className={"admin-metric-value mt-2 block " + (stats.monthlyBalance >= 0 ? "text-primary" : "text-rose-700")}>R$ {stats.monthlyBalance.toLocaleString("pt-BR")}</span>
+                        <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"><span>Saldo inicial: R$ {stats.openingBalance.toLocaleString("pt-BR")}</span><span>Total em conta: R$ {stats.closingBalance.toLocaleString("pt-BR")}</span></span>
+                        <span className="mt-1 block text-xs text-slate-500">Inclui o fechamento anterior</span>
+                    </button>
+                    {categorySummary.length > 0 && <details className="col-span-2 rounded-xl border border-slate-200 bg-white px-3 md:col-span-3">
+                        <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-slate-700">Despesas por categoria · {categorySummary.length}</summary>
+                        <div className="grid gap-3 pb-3 sm:grid-cols-2">{categorySummary.map(category => <div key={category.name}><div className="mb-1 flex justify-between gap-3 text-xs text-slate-600"><span className="min-w-0 break-words">{category.name}</span><span className="shrink-0 tabular-nums">R$ {category.amount.toLocaleString("pt-BR")}</span></div><div className="h-1 rounded-full bg-rose-100"><div className="h-full rounded-full bg-rose-400" style={{ width: category.percentage + "%" }} /></div></div>)}</div>
+                    </details>}
+                </section>
 
                 <div className="order-2 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
                     <div className="no-print order-2 min-w-0 space-y-6 lg:order-1">

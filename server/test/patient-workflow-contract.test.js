@@ -140,8 +140,8 @@ test('admin patients page is registered and exposed in the admin navigation', ()
         'utf8'
     );
 
-    assert.match(appSource, /import AdminPatients from ["']\.\/pages\/AdminPatients["']/);
-    assert.match(appSource, /path=["']\/admin\/pacientes["'][\s\S]*AdminPatients/);
+    assert.match(appSource, /const AdminPatients = lazy\(\(\) => import\(["']\.\/pages\/AdminPatients["']\)\)/);
+    assert.match(appSource, /path=["']\/admin\/pacientes["']\s+element=\{<RoleProtectedRoute><AdminPatients\s*\/><\/RoleProtectedRoute>\}/);
     assert.match(layoutSource, /label:\s*["']Pacientes["']/);
     assert.match(layoutSource, /href:\s*["']\/admin\/pacientes["']/);
     assert.match(layoutSource, /label:\s*["']Atendimentos["'][\s\S]*label:\s*["']Pacientes["'][\s\S]*href:\s*["']\/admin\/pacientes["']/);

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    ArrowUpRight,
     Calendar,
     Eye,
     Globe,
@@ -185,27 +184,23 @@ const AdminAnalytics = () => {
 
     return (
         <AdminLayout title="Análise de Dados">
-            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4 md:mb-6">
                 {cards.map((stat) => (
                     <Card key={stat.label} className="border-slate-100 shadow-sm transition-shadow hover:shadow-md">
-                        <CardContent className="p-6">
-                            <div className="mb-4 flex items-start justify-between">
-                                <div className={`${stat.bg} p-3 rounded-xl ${stat.color}`}>
-                                    <stat.icon size={24} />
+                        <CardContent className="p-3 sm:p-4">
+                            <div className="mb-2 flex items-start justify-between">
+                                <div className={`${stat.bg} p-1.5 rounded-lg ${stat.color}`}>
+                                    <stat.icon size={16} aria-hidden="true" />
                                 </div>
-                                <span className="flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
-                                    <ArrowUpRight size={14} className="mr-1" />
-                                    Real
-                                </span>
                             </div>
-                            <h3 className="text-sm font-medium text-slate-500">{stat.label}</h3>
-                            <p className="mt-1 text-2xl font-bold text-slate-900">{stat.value}</p>
+                            <h3 className="text-xs font-medium text-slate-600">{stat.label}</h3>
+                            <p className="admin-metric-value mt-1 text-slate-900">{stat.value}</p>
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            <div className="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
                 <Card className="border-slate-200 shadow-sm">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">

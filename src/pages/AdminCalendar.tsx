@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -80,7 +80,12 @@ const AdminCalendar = () => {
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [pendingDrop, setPendingDrop] = useState<{ entry: CalendarEntry; scheduledAt: string } | null>(null);
     const [pendingDetails, setPendingDetails] = useState<CalendarEntry | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
     const [professionalDraft, setProfessionalDraft] = useState("");
+    const [scheduleDraft, setScheduleDraft] = useState("");
+    const [scheduleError, setScheduleError] = useState("");
+    const detailsTitleRef = useRef<HTMLHeadingElement>(null);
+    const calendarTriggerRef = useRef<HTMLElement | null>(null);
     const [isSavingCalendarChange, setIsSavingCalendarChange] = useState(false);
     const [manualAppointmentDate, setManualAppointmentDate] = useState<Date | null>(null);
     const [manualAppointment, setManualAppointment] = useState<ManualAppointmentForm>({
@@ -97,6 +102,7 @@ const AdminCalendar = () => {
 
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional" };
+    const calendarEntries = useMemo(() => buildCalendarEntries(appointments, leads), [appointments, leads]);
 
     useEffect(() => {
         void fetchAppointments();
@@ -255,7 +261,7 @@ const AdminCalendar = () => {
     };
 
     const confirmDrop = async () => {
-        if (!pendingDrop) return;
+        if (!pendingDrop || isSavingCalendarChange) return;
 
         setIsSavingCalendarChange(true);
         try {
@@ -270,8 +276,19 @@ const AdminCalendar = () => {
         }
     };
 
+    const reviewSchedule = () => {
+        if (!pendingDetails || isSavingCalendarChange) return;
+        const scheduledDate = new Date(scheduleDraft);
+        if (Number.isNaN(scheduledDate.getTime())) {
+            setScheduleError("Informe uma data e um horário válidos.");
+            return;
+        }
+        setPendingDrop({ entry: pendingDetails, scheduledAt: scheduledDate.toISOString() });
+        setDetailsOpen(false);
+    };
+
     const saveProfessional = async () => {
-        if (!pendingDetails) return;
+        if (!pendingDetails || isSavingCalendarChange) return;
 
         const professional = professionalDraft.trim();
         if (pendingDetails.kind === "appointment" && !professional) {
@@ -283,7 +300,7 @@ const AdminCalendar = () => {
         try {
             await updateCalendarEntry(pendingDetails, { professional: professional || null });
             await refreshCalendarRecords();
-            setPendingDetails(null);
+            setDetailsOpen(false);
             toast.success("Profissional atualizado com sucesso.");
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
@@ -308,16 +325,23 @@ const AdminCalendar = () => {
 
     return (
         <AdminLayout title="Calendário">
-            <div className="admin-card p-6 w-full">
+            <div className="admin-card min-w-0 w-full p-3 sm:p-4">
                 <CalendarView
-                    entries={buildCalendarEntries(appointments, leads)}
+                    entries={calendarEntries}
                     anchorDate={calendarDate}
                     onAnchorDateChange={setCalendarDate}
                     onEventOpen={(entry) => {
+                        calendarTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
                         setPendingDetails(entry);
+                        setDetailsOpen(true);
                         setProfessionalDraft(entry.professional || "");
+                        setScheduleDraft(toDateTimeLocalValue(new Date(entry.scheduledAt)));
+                        setScheduleError("");
                     }}
-                    onEventDrop={(entry, scheduledAt) => setPendingDrop({ entry, scheduledAt })}
+                    onEventDrop={(entry, scheduledAt) => {
+                        calendarTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                        setPendingDrop({ entry, scheduledAt });
+                    }}
                     onEventCreate={openManualAppointment}
                 />
             </div>
@@ -464,7 +488,7 @@ const AdminCalendar = () => {
                     if (!open && !isSavingCalendarChange) setPendingDrop(null);
                 }}
             >
-                <AlertDialogContent>
+                <AlertDialogContent onCloseAutoFocus={event => { event.preventDefault(); calendarTriggerRef.current?.focus(); }}>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar novo horário</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -491,20 +515,25 @@ const AdminCalendar = () => {
             </AlertDialog>
 
             <Dialog
-                open={Boolean(pendingDetails)}
+                open={detailsOpen}
                 onOpenChange={(open) => {
-                    if (!open && !isSavingCalendarChange) setPendingDetails(null);
+                    if (!open && !isSavingCalendarChange) setDetailsOpen(false);
                 }}
             >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Detalhes do agendamento</DialogTitle>
+                <DialogContent className="calendar-detail-dialog max-h-[90dvh] w-[calc(100%-1.5rem)] overflow-y-auto overscroll-contain rounded-xl" overlayClassName="calendar-detail-overlay"
+                    onOpenAutoFocus={event => { event.preventDefault(); detailsTitleRef.current?.focus(); }}
+                    onCloseAutoFocus={event => {
+                        event.preventDefault();
+                        if (!pendingDrop) calendarTriggerRef.current?.focus();
+                    }}>
+                    <DialogHeader className="pr-8 text-left">
+                        <DialogTitle ref={detailsTitleRef} tabIndex={-1}>Detalhes do agendamento</DialogTitle>
                         <DialogDescription>
-                            {pendingDetails && "Altere somente o profissional responsável por este agendamento."}
+                            Consulte os detalhes, reagende ou altere o profissional responsável.
                         </DialogDescription>
                     </DialogHeader>
                     {pendingDetails && (
-                        <div className="space-y-4 text-sm text-slate-700">
+                        <div className="min-w-0 space-y-4 break-words text-sm text-slate-700">
                             <div>
                                 <p className="text-xs font-medium uppercase text-slate-500">Paciente</p>
                                 <p className="font-semibold text-slate-900">{pendingDetails.patientName}</p>
@@ -523,13 +552,27 @@ const AdminCalendar = () => {
                                 <p className="text-xs font-medium uppercase text-slate-500">Data e horário</p>
                                 <p>{formatDate(pendingDetails.scheduledAt)}</p>
                             </div>
+                            <div className="min-w-0 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                <Label htmlFor="calendar-new-schedule">Novo horário</Label>
+                                <Input id="calendar-new-schedule" name="scheduledAt" type="datetime-local" autoComplete="off" className="min-h-11 min-w-0 max-w-full"
+                                    value={scheduleDraft} disabled={isSavingCalendarChange}
+                                    aria-invalid={Boolean(scheduleError)} aria-describedby={scheduleError ? "calendar-schedule-error" : "calendar-schedule-help"}
+                                    onChange={event => { setScheduleDraft(event.target.value); setScheduleError(""); }} />
+                                <p id="calendar-schedule-help" className="text-xs text-slate-600">Você revisará a mudança antes de confirmar. O profissional será mantido.</p>
+                                {scheduleError && <p id="calendar-schedule-error" role="alert" className="text-xs text-red-700">{scheduleError}</p>}
+                                <Button type="button" variant="outline" className="min-h-11 w-full" onClick={reviewSchedule}
+                                    disabled={isSavingCalendarChange || scheduleDraft === toDateTimeLocalValue(new Date(pendingDetails.scheduledAt))}>
+                                    Revisar novo horário
+                                </Button>
+                            </div>
                             <div className="space-y-2">
-                                <p className="text-xs font-medium uppercase text-slate-500">Profissional</p>
+                                <Label htmlFor="calendar-professional">Profissional</Label>
                                 <Select
                                     value={professionalDraft || (pendingDetails.kind === "lead" ? "unassigned" : "")}
                                     onValueChange={(value) => setProfessionalDraft(value === "unassigned" ? "" : value)}
+                                    disabled={isSavingCalendarChange}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger id="calendar-professional" className="min-h-11">
                                         <SelectValue placeholder="Selecione o profissional" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -542,14 +585,14 @@ const AdminCalendar = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <p className="text-xs text-slate-500">Altere data e horário arrastando o cartão na agenda ou no formulário de consulta existente.</p>
+                            <p className="text-xs text-slate-500">A alteração do profissional é salva separadamente do horário.</p>
                         </div>
                     )}
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setPendingDetails(null)} disabled={isSavingCalendarChange}>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button type="button" variant="outline" className="min-h-11" onClick={() => setDetailsOpen(false)} disabled={isSavingCalendarChange}>
                             Cancelar
                         </Button>
-                        <Button type="button" onClick={() => void saveProfessional()} disabled={isSavingCalendarChange}>
+                        <Button type="button" className="min-h-11" onClick={() => void saveProfessional()} disabled={isSavingCalendarChange}>
                             Salvar profissional
                         </Button>
                     </DialogFooter>

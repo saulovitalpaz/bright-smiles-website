@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchClient } from "@/lib/api";
-import { buildCalendarEntries } from "@/lib/calendar";
+import { buildCalendarEntries, type CalendarEntry } from "@/lib/calendar";
 import AdminCalendar from "./AdminCalendar";
 
 const { invalidateQueriesMock } = vi.hoisted(() => ({
@@ -18,10 +18,18 @@ vi.mock("@/components/admin/AdminLayout", () => ({
 }));
 
 vi.mock("@/components/admin/appointments/CalendarView", () => ({
-    CalendarView: ({ onEventCreate }: { onEventCreate?: (date: Date) => void }) => (
+    CalendarView: ({ onEventCreate, onEventOpen }: { onEventCreate?: (date: Date) => void; onEventOpen: (entry: CalendarEntry) => void }) => (
+        <>
         <button type="button" onClick={() => onEventCreate?.(new Date(2026, 7, 14, 9, 0))}>
             Criar horário de teste
         </button>
+        <button type="button" onClick={() => onEventOpen({
+            kind: "appointment", id: 42, patientName: "Paciente fictício",
+            procedure: "Avaliação", treatment: null, appointmentType: "odontologia",
+            professional: "Dra. Sofia", scheduledAt: new Date(2026, 8, 10, 14, 15).toISOString(),
+            patientId: null, leadId: null, isReturn: false,
+        })}>Abrir agendamento de teste</button>
+        </>
     ),
 }));
 
@@ -97,6 +105,47 @@ describe("AdminCalendar manual calendar creation", () => {
         expect(fetchClientMock.mock.calls.filter(([path]) => path === "/leads")).toHaveLength(2);
         expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["dashboard-stats"] });
         expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["leads"] });
+    });
+
+    it("reschedules without dragging only after explicit confirmation", async () => {
+        render(<AdminCalendar />);
+        const user = userEvent.setup();
+        await waitFor(() => expect(fetchClientMock).toHaveBeenCalledWith("/staff"));
+        await user.click(screen.getByRole("button", { name: "Abrir agendamento de teste" }));
+        expect(screen.getByLabelText("Novo horário")).toHaveValue("2026-09-10T14:15");
+        fireEvent.change(screen.getByLabelText("Novo horário"), { target: { value: "2026-09-11T15:45" } });
+        await user.click(screen.getByRole("button", { name: "Revisar novo horário" }));
+        expect(screen.getByRole("alertdialog")).toHaveTextContent("Confirmar novo horário");
+        expect(fetchClientMock.mock.calls.some(([, options]) => options?.method === "PUT")).toBe(false);
+        await user.click(screen.getByRole("button", { name: "Confirmar novo horário" }));
+        await waitFor(() => expect(fetchClientMock).toHaveBeenCalledWith("/appointments/42", {
+            method: "PUT", body: JSON.stringify({ scheduledAt: new Date(2026, 8, 11, 15, 45).toISOString() }),
+        }));
+        await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    });
+
+    it("does not send a schedule update when confirmation is cancelled", async () => {
+        render(<AdminCalendar />);
+        const user = userEvent.setup();
+        await waitFor(() => expect(fetchClientMock).toHaveBeenCalledWith("/staff"));
+        await user.click(screen.getByRole("button", { name: "Abrir agendamento de teste" }));
+        fireEvent.change(screen.getByLabelText("Novo horário"), { target: { value: "2026-09-11T15:45" } });
+        await user.click(screen.getByRole("button", { name: "Revisar novo horário" }));
+        await user.click(screen.getByRole("button", { name: "Cancelar" }));
+        expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole("button", { name: "Abrir agendamento de teste" })).toHaveFocus());
+        expect(fetchClientMock.mock.calls.some(([, options]) => options?.method === "PUT")).toBe(false);
+    });
+
+    it("focuses the details heading instead of opening the mobile keyboard and restores the card on close", async () => {
+        render(<AdminCalendar />);
+        const user = userEvent.setup();
+        await waitFor(() => expect(fetchClientMock).toHaveBeenCalledWith("/staff"));
+        const card = screen.getByRole("button", { name: "Abrir agendamento de teste" });
+        await user.click(card);
+        expect(screen.getByRole("heading", { name: "Detalhes do agendamento" })).toHaveFocus();
+        await user.click(screen.getByRole("button", { name: "Cancelar" }));
+        await waitFor(() => expect(card).toHaveFocus());
     });
 });
 

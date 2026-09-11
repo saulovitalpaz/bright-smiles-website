@@ -23,7 +23,7 @@ describe("finance page layout contracts", () => {
   it("stacks personal finance fields and exposes row actions on touch", () => {
     expect(personalFinance).toContain('className="grid grid-cols-1 gap-4 sm:grid-cols-2"');
     expect(personalFinance).toContain("flex min-w-0 flex-col gap-4");
-    expect(personalFinance).toContain("sm:opacity-0 sm:group-hover:opacity-100");
+    expect(personalFinance).not.toContain("sm:opacity-0 sm:group-hover:opacity-100");
     expect(personalFinance).toContain("aria-label={`Excluir ${t.description}`}");
   });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, User, History, Plus, Trash2, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 
@@ -139,16 +139,16 @@ const AdminAppointments = () => {
 
     return (
         <AdminLayout title="Atendimentos & Consultas">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full md:w-auto">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+                <div className="min-w-0 flex-1">
                     <Card className="border-slate-100 shadow-sm min-w-0">
-                        <CardContent className="p-6">
+                        <CardContent className="p-3 sm:p-4">
                             <div className="flex items-center gap-4">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                     <Stethoscope size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Atendimentos</p>
+                                    <p className="text-xs text-slate-600 font-medium">Atendimentos</p>
                                     <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
                                 </div>
                             </div>
@@ -158,33 +158,33 @@ const AdminAppointments = () => {
                 {currentUser.role !== "manager" && (
                     <Button
                         onClick={() => navigate("/admin/consultas/new")}
-                        className="bg-primary hover:bg-primary/90 h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 w-full md:w-auto"
+                        className="bg-primary hover:bg-primary/90 min-h-11 px-4 rounded-xl font-semibold gap-2 w-auto"
                     >
                         <Plus size={20} /> Novo Atendimento
                     </Button>
                 )}
             </div>
 
-            <div className="admin-card p-6 w-full">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div className="admin-card p-3 sm:p-5 w-full">
+                <div className="flex flex-col gap-3 mb-4">
                     <div>
                         <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900">Histórico de Pacientes</h2>
                         <p className="text-sm text-slate-500">Consulte ou acompanhe registros evolutivos.</p>
                     </div>
-                    <div className="grid w-full lg:w-auto gap-3 md:grid-cols-2">
-                        <div className="relative w-full lg:w-96">
+                    <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                        <div className="relative min-w-0">
                             <label htmlFor="appointments-search" className="sr-only">Pesquisar paciente ou CPF</label>
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <Input
                                 id="appointments-search"
                                 aria-label="Pesquisar paciente ou CPF"
-                                placeholder="Pesquisar paciente ou CPF..."
+                                placeholder="Pesquisar paciente ou CPF…"
                                 className="pl-10 h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                             />
                         </div>
-                        <div className="w-full lg:w-52">
+                        <div className="min-w-0">
                             <label htmlFor="appointments-date-filter" className="sr-only">Filtrar por data</label>
                             <Input
                                 id="appointments-date-filter"
@@ -203,19 +203,19 @@ const AdminAppointments = () => {
                         filteredAppointments.map((record) => (
                             <div
                                 key={record.id}
-                                className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4 group"
+                                className="py-3 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl group"
                             >
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div
-                                        className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer"
-                                        onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}
+                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2">
+                                    <Link
+                                        className="flex min-w-0 items-start gap-3 w-full flex-1"
+                                        to={`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`}
                                     >
-                                        <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
-                                            <User size={24} />
+                                        <div className="w-8 h-8 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                            <User size={16} aria-hidden="true" />
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-bold text-slate-900 text-lg leading-tight truncate">
+                                                <h3 className="font-semibold text-slate-900 text-sm leading-tight break-words">
                                                     {record.patientName || record.patient?.name}
                                                 </h3>
                                                 {currentUser.role === "manager" && (
@@ -224,8 +224,8 @@ const AdminAppointments = () => {
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-3 mt-1">
-                                                <span className="text-xs font-bold text-primary uppercase tracking-widest">{record.procedure}</span>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                                                <span className="text-xs font-semibold text-slate-700 break-words">{record.procedure}</span>
                                                 <span className="text-xs text-slate-300">|</span>
                                                 <span className="text-xs text-slate-500 font-mono hidden sm:inline">
                                                     {record.cpf || record.patient?.cpf}
@@ -249,7 +249,7 @@ const AdminAppointments = () => {
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
 
                                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                                         {currentUser.role !== "manager" && (
@@ -258,7 +258,8 @@ const AdminAppointments = () => {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                                        aria-label={`Excluir atendimento de ${record.patientName || record.patient?.name}`}
+                                                        className="text-slate-500 hover:text-red-600 hover:bg-red-50 h-11 w-11"
                                                     >
                                                         <Trash2 size={18} />
                                                     </Button>
@@ -281,7 +282,7 @@ const AdminAppointments = () => {
                                         )}
                                         <Button
                                             onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}
-                                            className="h-10 px-4 text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            className="h-11 px-4 text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
                                         >
                                             Ver Evolução
                                         </Button>

@@ -1,16 +1,10 @@
-import React from "react";
-import AdminLayout from "@/components/admin/AdminLayout";
-import {
-    Users,
-    MessageSquare,
-    Calendar,
-    TrendingUp,
-    ArrowUpRight
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchClient } from "@/lib/api";
+import { Link } from "react-router-dom";
+import { Calendar, Check, ChevronRight, MessageSquare, Users } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { Button } from "@/components/ui/button";
+import { fetchClient } from "@/lib/api";
 
 interface RecentLead { id: number; status: string; }
 interface RecentTestimonial { name: string; comment?: string; content?: string; }
@@ -40,267 +34,127 @@ interface DashboardStats {
     }>;
 }
 
-const emptyStats: DashboardStats = {
-    users: 0,
-    posts: 0,
-    appointments: 0,
-    leads: 0,
-    testimonials: 0,
-    upcomingSchedule: [],
-    recentLeads: [],
-    recentAppointments: [],
-    recentTestimonials: []
-};
 
-const formatDateTime = (value?: string | null) => {
-    if (!value) return "Não informado";
 
-    return new Date(value).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+const dayFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+const timeFormatter = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const formatDate = (value: string, formatter = dayFormatter) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "—" : formatter.format(date);
 };
 
 const AdminDashboard = () => {
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const userStr = localStorage.getItem('admin_user');
-    const currentUser = userStr ? JSON.parse(userStr) : { role: 'admin' };
-    const isManager = currentUser.role === 'manager';
-    const { data: stats = emptyStats, isLoading: loading, refetch: refetchStats } = useQuery({
-        queryKey: ['dashboard-stats'],
+    const userStr = localStorage.getItem("admin_user");
+    const currentUser = userStr ? JSON.parse(userStr) : {};
+    const isManager = currentUser.role === "manager";
+    const { data: stats, isPending, isError, isFetching, refetch } = useQuery({
+        queryKey: ["dashboard-stats"],
         queryFn: async () => {
-            const res = await fetchClient('/dashboard/stats');
-            if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+            const res = await fetchClient("/dashboard/stats");
+            if (!res.ok) throw new Error("Não foi possível carregar o painel.");
             return await res.json() as DashboardStats;
-        }
+        },
     });
-
-    const pendingCount = stats.pendingLeadCount ?? 0;
-
-    if (loading) {
-        return (
-            <AdminLayout title="Dashboard">
-                <div className="flex items-center justify-center h-64">
-                    <p className="p-4 text-slate-500 animate-pulse font-medium">Carregando painel...</p>
-                </div>
-            </AdminLayout>
-        );
-    }
+    const attendance = useMutation({
+        mutationFn: async (item: DashboardStats["upcomingSchedule"][number]) => {
+            const endpoint = item.kind === "lead" ? "/leads/" + item.leadId : "/appointments/" + item.id;
+            const payload = item.kind === "lead" ? { status: "completed" } : { status: "attended" };
+            const res = await fetchClient(endpoint, { method: "PUT", body: JSON.stringify(payload) });
+            if (!res.ok) throw new Error("Falha ao atualizar atendimento.");
+        },
+        onSuccess: async (_, item) => {
+            toast.success("Paciente marcado como atendido.");
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+                item.kind === "lead"
+                    ? queryClient.invalidateQueries({ queryKey: ['leads'] })
+                    : queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+            ]);
+        },
+        onError: () => toast.error("Não foi possível atualizar. Tente novamente."),
+    });
+    const schedule = stats?.upcomingSchedule ?? [];
+    const recent = stats?.recentAppointments ?? [];
+    const feedback = stats?.recentTestimonials?.[0];
 
     return (
         <AdminLayout title="Dashboard">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-                {/* SMALL PENDING LEADS CARD - hidden for managers */}
-                {!isManager ? (
-                    <div
-                        onClick={() => navigate('/admin/solicitacoes')}
-                        className="admin-card p-5 md:p-6 flex items-center justify-between cursor-pointer group overflow-hidden relative"
-                    >
-                        <div className="relative z-10 flex items-center gap-4">
-                            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                                <Calendar size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Solicitações</h3>
-                                <p className="text-2xl font-black text-slate-900 mt-0.5">{pendingCount}</p>
-                            </div>
-                        </div>
-                        <ArrowUpRight size={18} className="text-slate-200 group-hover:text-blue-500 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all z-10" />
-                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-50/30 rounded-full blur-2xl group-hover:bg-blue-100/50 transition-colors" />
-                    </div>
-                ) : (
-                    <div className="admin-card p-5 md:p-6 flex items-center gap-4 overflow-hidden relative">
-                        <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                            <Calendar size={24} />
-                        </div>
-                        <div>
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Painel Gerencial</h3>
-                            <p className="text-sm font-bold text-slate-900 mt-0.5">Olá, {currentUser.name?.split(' ')[0]}!</p>
-                        </div>
+            <div className="space-y-4 md:space-y-6">
+                {isPending && <p role="status" className="py-4 text-sm text-slate-600">Carregando painel…</p>}
+                {isError && (
+                    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                        <p>Não foi possível atualizar o painel.</p>
+                        <Button variant="outline" disabled={isFetching} onClick={() => void refetch()}>Tentar novamente</Button>
                     </div>
                 )}
-
-                {/* LATEST TESTIMONIAL PREVIEW */}
-                <div className="admin-card p-5 md:p-6 flex flex-col justify-center md:col-span-2 relative overflow-hidden group">
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between relative z-10 w-full gap-4 sm:gap-0">
-                        <div className="flex-1 min-w-0">
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <MessageSquare size={14} className="text-emerald-500" /> Último Comentário
-                            </h3>
-                            {stats.recentTestimonials?.length > 0 ? (
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center font-bold shadow-lg shadow-emerald-100">
-                                        {stats.recentTestimonials[0].name.charAt(0)}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="min-w-0 break-words text-slate-900 font-bold text-sm leading-tight" title={stats.recentTestimonials[0].name}>{stats.recentTestimonials[0].name}</p>
-                                        <p className="text-slate-500 text-xs italic mt-1 line-clamp-2 md:line-clamp-1">"{stats.recentTestimonials[0].comment || stats.recentTestimonials[0].content}"</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-slate-400 text-xs italic">Nenhum feedback recente.</p>
-                            )}
-                        </div>
-                        <div className="self-start sm:self-auto">
-                            <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap">Feedback Ativo</span>
-                        </div>
-                    </div>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-                {/* PRÓXIMA AGENDA */}
-                <div className="admin-card p-5 md:p-8">
-                    <div className="flex items-center justify-between mb-6 md:mb-8">
-                        <div>
-                            <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Próxima Agenda</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Horários confirmados</p>
-                        </div>
-                        <button 
-                            onClick={() => navigate('/admin/calendario')}
-                            title="Ver Calendário"
-                            className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner hover:bg-blue-100 transition-colors cursor-pointer"
-                        >
-                            <Calendar size={20} className="md:w-6 md:h-6" />
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {stats.upcomingSchedule.length > 0 ? (
-                            stats.upcomingSchedule.map((item) => {
-                                const destination = item.kind === 'lead'
-                                    ? `/admin/consultas/new?leadId=${item.leadId}`
-                                    : `/admin/consultas/${item.id}?patientId=${item.patientId ?? ""}`;
-
-                                return (
-                                <div key={`${item.kind}-${item.id}`} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 md:p-5 rounded-3xl border border-slate-50 hover:bg-slate-50 transition-all group hover:border-blue-100/50">
-                                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                                        <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
-                                            {item.patientName.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1 min-w-0 sm:hidden">
-                                            <p className="min-w-0 break-words font-bold text-slate-900" title={item.patientName}>{item.patientName}</p>
-                                            <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={item.treatment || item.procedure || "Procedimento Geral"}>{item.treatment || item.procedure || "Procedimento Geral"}</p>
-                                            <p className="text-sm font-bold text-blue-700 mt-2">
-                                                {formatDateTime(item.scheduledAt)}
-                                            </p>
-                                            <p className="text-[11px] text-slate-400 mt-1">
-                                                Criado em {formatDateTime(item.createdAt)}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="hidden sm:block flex-1 min-w-0">
-                                        <p className="min-w-0 break-words font-bold text-slate-900 group-hover:text-blue-700 transition-colors" title={item.patientName}>{item.patientName}</p>
-                                        <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={item.treatment || item.procedure || "Procedimento Geral"}>{item.treatment || item.procedure || "Procedimento Geral"}</p>
-                                        <p className="text-sm font-bold text-blue-700 mt-2">
-                                            {formatDateTime(item.scheduledAt)}
-                                        </p>
-                                        <p className="text-[11px] text-slate-400 mt-1">
-                                            Criado em {formatDateTime(item.createdAt)}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end mt-2 sm:mt-0">
-                                        {!isManager && (
-                                            <div className="flex gap-2 w-full sm:w-auto opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all sm:translate-x-4 group-hover:translate-x-0">
-                                                <button
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        try {
-                                                            const endpoint = item.kind === 'lead' ? `/leads/${item.leadId}` : `/appointments/${item.id}`;
-                                                            const payload = item.kind === 'lead' ? { status: 'completed' } : { status: 'attended' };
-                                                            const res = await fetchClient(endpoint, {
-                                                                method: 'PUT',
-                                                                body: JSON.stringify(payload)
-                                                            });
-                                                            if (res.ok) {
-                                                                toast.success("Paciente marcado como atendido.");
-                                                                if (item.kind === 'lead') {
-                                                                    await queryClient.invalidateQueries({ queryKey: ['leads'] });
-                                                                }
-                                                                await refetchStats();
-                                                            } else {
-                                                                toast.error("Erro ao atualizar status.");
-                                                            }
-                                                        } catch (err) {
-                                                            toast.error("Erro de conexão.");
-                                                        }
-                                                    }}
-                                                    className="w-full sm:w-auto bg-slate-200 text-slate-700 text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-slate-300 shadow-sm"
-                                                >
-                                                    ✔ Atendido
-                                                </button>
-                                                <button
-                                                    onClick={() => navigate(destination)}
-                                                    className="w-full sm:w-auto bg-primary text-white text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 shadow-xl shadow-primary/20"
-                                                >
-                                                    {item.kind === 'lead' ? 'Iniciar consulta' : 'Abrir consulta'}
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div className="hidden sm:flex flex-col items-end whitespace-nowrap">
-                                            <span className="text-[9px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold uppercase">
-                                                {item.kind === 'lead' ? 'Solicitação' : (item.appointmentType || 'Consulta')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )})
+                {stats && <>
+                    <section aria-label="Resumo do painel" className="admin-card grid grid-cols-2 divide-x divide-slate-200">
+                        {!isManager ? (
+                            <Link to="/admin/solicitacoes" className="flex min-h-20 min-w-0 items-center justify-between gap-2 rounded-l-xl p-3 transition-colors hover:bg-slate-50 sm:p-4">
+                                <div><p className="text-xs font-medium text-slate-600">Solicitações pendentes</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{stats.pendingLeadCount ?? 0}</p></div>
+                                <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-slate-500" />
+                            </Link>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/30 rounded-[2rem] border-2 border-dashed border-slate-100">
-                                <Calendar size={32} className="text-slate-200 mb-3" />
-                                <p className="text-slate-400 text-sm font-semibold">Nenhum horário agendado.</p>
+                            <div className="min-w-0 p-3 sm:p-4"><p className="text-xs text-slate-600">Painel gerencial</p><p className="mt-1 break-words font-semibold text-slate-900">Olá, {currentUser.name?.split(" ")[0] || "profissional"}</p></div>
+                        )}
+                        <div className="min-w-0 p-3 sm:p-4"><p className="text-xs font-medium text-slate-600">Consultas registradas</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{stats.appointments}</p></div>
+                    </section>
+                    <div className="grid items-start gap-4 md:gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                        <section aria-labelledby="upcoming-heading" className="admin-card overflow-hidden">
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-3 py-3 sm:px-5">
+                                <div><h2 id="upcoming-heading" className="font-serif text-xl font-bold text-slate-900">Próxima agenda</h2><p className="mt-0.5 text-xs text-slate-600">Horários confirmados</p></div>
+                                {!isManager && <Link to="/admin/calendario" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"><Calendar size={17} aria-hidden="true" /> Agenda</Link>}
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* ÚLTIMOS ATENDIMENTOS */}
-                <div className="admin-card p-5 md:p-8">
-                    <div className="flex items-center justify-between mb-6 md:mb-8">
-                        <div>
-                            <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Histórico</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Registros recentes</p>
+                            {schedule.length ? (
+                                <ul className="divide-y divide-slate-200">
+                                    {schedule.map(item => {
+                                        const destination = item.kind === "lead"
+                                            ? "/admin/consultas/new?leadId=" + item.leadId
+                                            : "/admin/consultas/" + item.id + "?patientId=" + (item.patientId ?? "");
+                                        const updating = attendance.isPending && attendance.variables === item;
+                                        return (
+                                            <li key={item.kind + "-" + item.id} className="px-3 py-3 sm:px-5">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-14 shrink-0 border-r border-slate-200 pr-2 text-center">
+                                                        <time dateTime={item.scheduledAt} className="text-base font-bold tabular-nums text-slate-900">{formatDate(item.scheduledAt, timeFormatter)}</time>
+                                                        <p className="mt-1 text-[11px] text-slate-600">{formatDate(item.scheduledAt)}</p>
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="break-words text-sm font-semibold text-slate-900">{item.patientName}</p>
+                                                        <p className="mt-0.5 break-words text-xs text-slate-600">{item.treatment || item.procedure || "Procedimento geral"}</p>
+                                                        <p className="mt-1 text-[11px] text-slate-500">{item.kind === "lead" ? "Solicitação confirmada" : item.appointmentType || "Consulta"}</p>
+                                                    </div>
+                                                </div>
+                                                {!isManager && (
+                                                    <div className="mt-2 flex flex-wrap justify-end gap-2">
+                                                        <Button variant="outline" className="min-h-11 gap-1.5 px-3 text-xs" disabled={attendance.isPending} onClick={() => attendance.mutate(item)} aria-label={"Marcar " + item.patientName + " como atendido"}><Check size={15} aria-hidden="true" />{updating ? "Salvando…" : "Atendido"}</Button>
+                                                        <Link to={destination} className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">{item.kind === "lead" ? "Iniciar consulta" : "Abrir consulta"}<ChevronRight size={15} aria-hidden="true" /></Link>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : <p className="px-4 py-8 text-center text-sm text-slate-600">Nenhum horário agendado.</p>}
+                        </section>
+                        <div className="min-w-0 space-y-4">
+                            <section aria-labelledby="recent-heading" className="admin-card overflow-hidden">
+                                <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-4 sm:px-5"><Users size={18} aria-hidden="true" className="text-primary" /><h2 id="recent-heading" className="font-serif text-xl font-bold text-slate-900">Histórico recente</h2></div>
+                                {recent.length ? <ul className="divide-y divide-slate-200">{recent.map(app => (
+                                    <li key={app.id} className="px-3 py-3 sm:px-5">
+                                        <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words text-sm font-semibold text-slate-900">{app.patientName}</p><time dateTime={app.date} className="shrink-0 text-xs tabular-nums text-slate-600">{formatDate(app.date)}</time></div>
+                                        <p className="mt-1 break-words text-xs text-slate-600">{app.procedure || "Consulta"}{app.professional ? " · " + app.professional : ""}</p>
+                                    </li>
+                                ))}</ul> : <p className="px-4 py-8 text-center text-sm text-slate-600">Nenhum registro recente.</p>}
+                            </section>
+                            <section aria-labelledby="feedback-heading" className="admin-card p-3 sm:p-5">
+                                <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="feedback-heading" className="flex items-center gap-2 text-sm font-semibold text-slate-700"><MessageSquare size={16} aria-hidden="true" /> Último comentário</h2><Link to="/admin/comentarios" className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10">Ver comentários</Link></div>
+                                {feedback ? <div className="mt-1"><p className="break-words text-sm font-semibold text-slate-900">{feedback.name}</p><p className="mt-1 line-clamp-3 break-words text-sm leading-relaxed text-slate-600">{feedback.comment || feedback.content}</p></div> : <p className="text-sm text-slate-600">Nenhum feedback recente.</p>}
+                            </section>
                         </div>
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner">
-                            <Users size={20} className="md:w-6 md:h-6" />
-                        </div>
                     </div>
-
-                    <div className="space-y-4">
-                        {(stats?.recentAppointments?.length || 0) > 0 ? (
-                            stats.recentAppointments.map((app) => (
-                                <div key={app.id} className="flex items-center gap-4 p-4 md:p-5 rounded-3xl border border-slate-50 hover:bg-emerald-50/30 transition-all hover:border-emerald-100/50">
-                                    <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-sm">
-                                        <Users size={20} className="md:w-6 md:h-6" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="min-w-0 break-words font-bold text-slate-900" title={app.patientName}>{app.patientName}</p>
-                                        <p className="min-w-0 break-words text-xs text-slate-500 font-medium mt-0.5" title={app.procedure}>{app.procedure}</p>
-                                    </div>
-                                    <div className="text-right whitespace-nowrap hidden sm:block">
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-black uppercase mb-1">
-                                                {app.professional?.split(' ')[0] || "Dra"}
-                                            </span>
-                                            <span className="text-[10px] text-slate-400 font-bold">
-                                                {new Date(app.date).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-slate-400 text-sm italic text-center py-12">Nenhum registro recente.</p>
-                        )}
-                    </div>
-                </div>
+                </>}
             </div>
         </AdminLayout>
     );

@@ -1,13 +1,8 @@
-import { useState } from "react";
-import { addDays, addMonths, subDays, subMonths, format, isSameDay, isSameMonth, isToday, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
+import { useMemo, useState, type DragEvent } from "react";
+import { addDays, addMonths, format, isSameMonth, isToday, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-    CalendarEntry,
-    getDropDateTime,
-    getWeekDays,
-    professionalColor
-} from "@/lib/calendar";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { type CalendarEntry, getDropDateTime, getWeekDays, professionalColor } from "@/lib/calendar";
 
 interface CalendarViewProps {
     entries: CalendarEntry[];
@@ -30,301 +25,178 @@ const professionalClasses = {
 
 type ViewMode = "day" | "week" | "month";
 
-const weekGridColumns = "grid-cols-[4.5rem_repeat(7,minmax(8.75rem,1fr))]";
-const dayGridColumns = "grid-cols-[4.5rem_minmax(18rem,1fr)]";
-
+const dayKey = (date: Date) => format(date, "yyyy-MM-dd");
+const dateLabel = (date: Date) => format(date, "dd/MM/yyyy");
+const atNine = (day: Date) => {
+    const date = new Date(day);
+    date.setHours(9, 0, 0, 0);
+    return date;
+};
 const eventSlotMinutes = (scheduledAt: string) => {
     const date = new Date(scheduledAt);
     return Math.floor((date.getHours() * 60 + date.getMinutes()) / 30) * 30;
 };
-
 const getVisibleSlotMinutes = (entries: CalendarEntry[], days: Date[]) => {
-    const weeklyEntryMinutes = entries
-        .filter((entry) => days.some((day) => isSameDay(new Date(entry.scheduledAt), day)))
-        .map((entry) => eventSlotMinutes(entry.scheduledAt));
-    const firstMinute = Math.max(0, Math.floor(Math.min(8 * 60, ...weeklyEntryMinutes) / 30) * 30);
-    const lastMinute = Math.min(23 * 60, Math.ceil(Math.max(20 * 60, ...weeklyEntryMinutes) / 30) * 30);
-
-    return Array.from({ length: (lastMinute - firstMinute) / 30 + 1 }, (_, index) => firstMinute + index * 30);
+    const keys = new Set(days.map(dayKey));
+    const range = entries.reduce((current, entry) => {
+        const date = new Date(entry.scheduledAt);
+        if (Number.isNaN(date.getTime()) || !keys.has(dayKey(date))) return current;
+        const minute = eventSlotMinutes(entry.scheduledAt);
+        return [Math.min(current[0], minute), Math.max(current[1], minute)];
+    }, [8 * 60, 20 * 60]);
+    return Array.from({ length: (range[1] - range[0]) / 30 + 1 }, (_, index) => range[0] + index * 30);
 };
 
 export const CalendarView = ({
-    entries,
-    anchorDate,
-    onAnchorDateChange,
-    onEventOpen,
-    onEventDrop,
-    onEventCreate
+    entries, anchorDate, onAnchorDateChange, onEventOpen, onEventDrop, onEventCreate,
 }: CalendarViewProps) => {
     const [viewMode, setViewMode] = useState<ViewMode>("week");
+    const days = viewMode === "week" ? getWeekDays(anchorDate) : [anchorDate];
+    const entriesByDay = useMemo(() => {
+        const grouped = new Map<string, CalendarEntry[]>();
+        for (const entry of entries) {
+            const date = new Date(entry.scheduledAt);
+            if (Number.isNaN(date.getTime())) continue;
+            const key = dayKey(date);
+            const group = grouped.get(key) ?? [];
+            group.push(entry);
+            grouped.set(key, group);
+        }
+        grouped.forEach(group => group.sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt)));
+        return grouped;
+    }, [entries]);
+    const dayEntries = (day: Date) => entriesByDay.get(dayKey(day)) ?? [];
+    const slotMinutes = viewMode === "day" ? getVisibleSlotMinutes(entries, days) : [];
+    const monthDays = viewMode === "month" ? eachDayOfInterval({
+        start: startOfWeek(startOfMonth(anchorDate), { weekStartsOn: 1 }),
+        end: endOfWeek(endOfMonth(anchorDate), { weekStartsOn: 1 }),
+    }) : [];
 
-    const handleCreateKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, date: Date) => {
-        if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+    const handleDrop = (event: DragEvent<HTMLElement>, day: Date, targetMinutes?: number) => {
         event.preventDefault();
-        onEventCreate?.(date);
-    };
-
-    const days = viewMode === "day" 
-        ? [anchorDate] 
-        : viewMode === "week"
-        ? getWeekDays(anchorDate)
-        : []; 
-
-    const slotMinutes = viewMode !== "month" ? getVisibleSlotMinutes(entries, days) : [];
-
-    const handleDrop = (event: React.DragEvent<HTMLDivElement>, day: Date, minutes: number) => {
-        event.preventDefault();
-        const id = Number(event.dataTransfer.getData("text/calendar-entry-id"));
+        const rawId = event.dataTransfer.getData("text/calendar-entry-id");
         const kind = event.dataTransfer.getData("text/calendar-entry-kind");
-        const entry = entries.find((candidate) => candidate.id === id && candidate.kind === kind);
-
-        if (entry) onEventDrop(entry, getDropDateTime(day, minutes));
+        if (!rawId || !kind) return;
+        const entry = entries.find(candidate => candidate.id === Number(rawId) && candidate.kind === kind);
+        if (!entry) return;
+        const originalDate = new Date(entry.scheduledAt);
+        const minutes = targetMinutes ?? originalDate.getHours() * 60 + originalDate.getMinutes();
+        onEventDrop(entry, getDropDateTime(day, minutes));
     };
-
+    const navigatePeriod = (direction: number) => {
+        onAnchorDateChange(viewMode === "month"
+            ? addMonths(anchorDate, direction)
+            : addDays(anchorDate, direction * (viewMode === "week" ? 7 : 1)));
+    };
     const renderEvent = (entry: CalendarEntry) => {
-        const color = professionalColor(entry.professional);
+        const time = format(new Date(entry.scheduledAt), "HH:mm");
         const procedure = entry.procedure || entry.treatment || entry.appointmentType || "Agendamento";
-        const eventLabel = `${entry.patientName}. ${procedure}. ${entry.professional || "Sem profissional"}.`;
+        const label = time + ". " + entry.patientName + ". " + procedure + ". " + (entry.professional || "Sem profissional") + ".";
         return (
-            <button
-                key={`${entry.kind}-${entry.id}`}
-                type="button"
-                draggable
-                title={eventLabel}
-                aria-label={`Abrir agendamento: ${eventLabel}`}
-                className={`calendar-event mb-1 w-full min-w-0 rounded-md border border-slate-200 bg-white p-2 text-left shadow-sm hover:border-slate-300 ${viewMode === "month" ? "p-1.5" : ""}`}
-                onClick={(e) => { e.stopPropagation(); onEventOpen(entry); }}
-                onDragStart={(event) => {
+            <button key={entry.kind + "-" + entry.id} type="button" draggable
+                aria-label={"Abrir agendamento: " + label}
+                className="calendar-event grid min-h-11 w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-amber-400 hover:bg-amber-50/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+                onClick={() => onEventOpen(entry)}
+                onDragStart={event => {
                     event.dataTransfer.setData("text/calendar-entry-id", String(entry.id));
                     event.dataTransfer.setData("text/calendar-entry-kind", entry.kind);
-                }}
-            >
-                <p className="calendar-event__title text-[11px] font-semibold text-slate-900">{entry.patientName}</p>
-                {viewMode !== 'month' && (
-                    <p className="calendar-event__detail mt-0.5 text-[10px] text-slate-600">{procedure}</p>
-                )}
-                {viewMode !== 'month' && (
-                    <span title={entry.professional || "Sem profissional"} className={`calendar-event__professional mt-1 inline-flex rounded px-1.5 py-0.5 text-[9px] font-medium ${professionalClasses[color]}`}>
-                        {entry.professional || "Sem prof."}
-                    </span>
-                )}
+                    event.dataTransfer.effectAllowed = "move";
+                }}>
+                <time dateTime={entry.scheduledAt} className="pt-0.5 text-xs font-bold tabular-nums text-slate-800">{time}</time>
+                <span className="min-w-0">
+                    <span className="calendar-event__title block text-sm font-semibold leading-snug text-slate-900">{entry.patientName}</span>
+                    <span className="calendar-event__detail mt-0.5 block text-xs leading-snug text-slate-600">{procedure}</span>
+                    <span className={"calendar-event__professional mt-1 inline-flex max-w-full rounded px-1.5 py-0.5 text-[11px] leading-snug " + professionalClasses[professionalColor(entry.professional)]}>{entry.professional || "Sem profissional"}</span>
+                    {entry.isReturn && <span className="ml-1 text-[11px] font-medium text-emerald-800">Retorno</span>}
+                </span>
             </button>
         );
     };
-
-    const handlePrevious = () => {
-        if (viewMode === "day") onAnchorDateChange(subDays(anchorDate, 1));
-        else if (viewMode === "week") onAnchorDateChange(subDays(anchorDate, 7));
-        else onAnchorDateChange(subMonths(anchorDate, 1));
-    };
-
-    const handleNext = () => {
-        if (viewMode === "day") onAnchorDateChange(addDays(anchorDate, 1));
-        else if (viewMode === "week") onAnchorDateChange(addDays(anchorDate, 7));
-        else onAnchorDateChange(addMonths(anchorDate, 1));
-    };
-
-    const getMonthDays = () => {
-        const start = startOfWeek(startOfMonth(anchorDate), { weekStartsOn: 0 }); // 0 is Sunday
-        const end = endOfWeek(endOfMonth(anchorDate), { weekStartsOn: 0 });
-        return eachDayOfInterval({ start, end });
+    const renderDayAgenda = (day: Date, reveal = false) => {
+        const appointments = dayEntries(day);
+        return (
+            <section key={dayKey(day)} aria-label={"Agendamentos de " + dateLabel(day)}
+                className={"min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60" + (reveal ? " calendar-day-reveal" : "")}
+                onDragOver={event => event.preventDefault()} onDrop={event => handleDrop(event, day)}>
+                <div className={"flex min-h-12 items-center justify-between gap-2 border-b border-slate-200 px-3 " + (isToday(day) ? "bg-amber-50" : "bg-slate-50")}>
+                    <h3 className="min-w-0 text-xs font-semibold text-slate-700">
+                        <span className="capitalize">{format(day, "EEE", { locale: ptBR })}</span>{" "}
+                        <span className="tabular-nums text-slate-900">{format(day, "dd/MM")}</span>
+                        {isToday(day) && <span className="ml-1 text-amber-900">Hoje</span>}
+                        <span className="ml-2 font-normal text-slate-500">({appointments.length})</span>
+                    </h3>
+                    {onEventCreate && <button type="button" aria-label={"Novo atendimento em " + dateLabel(day)} onClick={() => onEventCreate(atNine(day))} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-slate-700 hover:bg-amber-100"><Plus size={17} aria-hidden="true" /></button>}
+                </div>
+                {appointments.length ? <div className="space-y-2 p-2">{appointments.map(renderEvent)}</div> : <p className="px-3 py-3 text-xs text-slate-500">Sem agendamentos</p>}
+            </section>
+        );
     };
 
     return (
-        <section className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-4">
-                    <div>
-                        <h2 className="text-lg font-semibold text-slate-900 capitalize">
-                            {format(anchorDate, viewMode === "month" ? "MMMM yyyy" : viewMode === "day" ? "EEEE, dd 'de' MMMM" : "MMMM yyyy", { locale: ptBR })}
-                        </h2>
-                        {viewMode === "week" && (
-                            <p className="text-sm text-slate-500">
-                                {format(days[0], "dd 'de' MMM", { locale: ptBR })} – {format(days[6], "dd 'de' MMM", { locale: ptBR })}
-                            </p>
-                        )}
+        <section className="calendar-view min-w-0 space-y-3">
+            <div className="calendar-toolbar min-w-0 space-y-3">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                    <div className="min-w-0" aria-live="polite" aria-atomic="true">
+                        <h2 className="break-words text-base font-semibold capitalize leading-snug text-slate-900 sm:text-lg">{format(anchorDate, viewMode === "day" ? "EEEE, dd 'de' MMMM" : "MMMM yyyy", { locale: ptBR })}</h2>
+                        {viewMode === "week" && <p className="mt-0.5 text-xs text-slate-600">{format(days[0], "dd MMM", { locale: ptBR })} – {format(days[6], "dd MMM", { locale: ptBR })}</p>}
                     </div>
+                    <button type="button" onClick={() => onAnchorDateChange(new Date())} className="min-h-11 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">Hoje</button>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex rounded-md border border-slate-200 p-0.5 mr-2 bg-slate-50">
-                        <button
-                            type="button"
-                            onClick={() => setViewMode("day")}
-                            className={`px-3 py-1.5 text-xs font-medium rounded ${viewMode === "day" ? "bg-white shadow-sm text-primary" : "text-slate-600 hover:text-slate-900"}`}
-                        >
-                            Dia
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setViewMode("week")}
-                            className={`px-3 py-1.5 text-xs font-medium rounded ${viewMode === "week" ? "bg-white shadow-sm text-primary" : "text-slate-600 hover:text-slate-900"}`}
-                        >
-                            Semana
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setViewMode("month")}
-                            className={`px-3 py-1.5 text-xs font-medium rounded ${viewMode === "month" ? "bg-white shadow-sm text-primary" : "text-slate-600 hover:text-slate-900"}`}
-                        >
-                            Mês
-                        </button>
+                <div className="flex min-w-0 gap-2">
+                    <div role="group" aria-label="Visualização da agenda" className="grid min-w-0 flex-1 grid-cols-3 rounded-lg border border-slate-200 bg-slate-100 p-1">
+                        {([{ value: "day", label: "Dia" }, { value: "week", label: "Semana" }, { value: "month", label: "Mês" }] as const).map(mode => (
+                            <button key={mode.value} type="button" aria-pressed={viewMode === mode.value} onClick={() => setViewMode(mode.value)}
+                                className={"min-h-11 min-w-0 rounded-md px-1 text-xs font-semibold transition-colors " + (viewMode === mode.value ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:bg-white/70")}>{mode.label}</button>
+                        ))}
                     </div>
-
-                    <div className="flex items-center gap-1">
-                        <button type="button" onClick={handlePrevious} className="rounded-md border border-slate-200 p-2 text-slate-700 hover:bg-slate-50" aria-label="Anterior">
-                            <ChevronLeft className="h-4 w-4" />
-                        </button>
-                        <button type="button" onClick={() => onAnchorDateChange(new Date())} className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                            Hoje
-                        </button>
-                        <button type="button" onClick={handleNext} className="rounded-md border border-slate-200 p-2 text-slate-700 hover:bg-slate-50" aria-label="Próximo">
-                            <ChevronRight className="h-4 w-4" />
-                        </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                        <button type="button" onClick={() => navigatePeriod(-1)} aria-label="Anterior" className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><ChevronLeft size={18} aria-hidden="true" /></button>
+                        <button type="button" onClick={() => navigatePeriod(1)} aria-label="Próximo" className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"><ChevronRight size={18} aria-hidden="true" /></button>
                     </div>
                 </div>
             </div>
 
-            <div className="admin-scroll-region calendar-scroll-region rounded-lg border border-slate-200 bg-white" tabIndex={0} aria-label="Agenda. Deslize horizontalmente para ver todos os dias.">
-                {viewMode === "month" ? (
-                    <div className="calendar-month-surface min-w-[52rem]">
-                        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-                            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                                <div key={d} className="px-2 py-2 text-center text-xs font-medium uppercase text-slate-500">
-                                    {d}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-7 auto-rows-fr">
-                            {getMonthDays().map((day, idx) => {
-                                const dayEntries = entries.filter(e => isSameDay(new Date(e.scheduledAt), day));
-                                const isCurrentMonth = isSameMonth(day, anchorDate);
-                                return (
-                                    <div 
-                                        key={idx} 
-                                        className={`min-h-[100px] border-b border-r border-slate-200 p-1 cursor-pointer transition-colors hover:bg-slate-50 ${isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'}`}
-                                        role={onEventCreate ? "button" : undefined}
-                                        tabIndex={onEventCreate ? 0 : undefined}
-                                        aria-label={onEventCreate ? `Criar atendimento em ${format(day, "dd/MM/yyyy")} às 09:00` : undefined}
-                                        onClick={() => {
-                                            const createDate = new Date(day);
-                                            createDate.setHours(9, 0, 0, 0);
-                                            onEventCreate?.(createDate);
-                                        }}
-                                        onKeyDown={(event) => {
-                                            const createDate = new Date(day);
-                                            createDate.setHours(9, 0, 0, 0);
-                                            handleCreateKeyDown(event, createDate);
-                                        }}
-                                    >
-                                        <div className={`text-right text-xs p-1 mb-1 font-semibold ${isToday(day) ? 'text-primary bg-primary/10 rounded w-fit ml-auto px-2' : isCurrentMonth ? 'text-slate-700' : 'text-slate-400'}`}>
-                                            {format(day, 'd')}
-                                        </div>
-                                        <div className="flex max-h-[112px] flex-col gap-1 overflow-y-auto">
-                                            {dayEntries.slice(0, 4).map(renderEvent)}
-                                            {dayEntries.length > 4 && (
-                                                <div className="text-[10px] text-slate-500 text-center font-medium bg-slate-100 rounded py-0.5">
-                                                    + {dayEntries.length - 4} mais
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
+            {viewMode === "week" && <section aria-label="Agendamentos da semana" className="calendar-week-agenda">{days.map(day => renderDayAgenda(day))}</section>}
+
+            {viewMode === "month" && (
+                <div className="calendar-month-layout">
+                    <div className="min-w-0">
+                        <p className="mb-2 text-xs text-slate-600">Selecione uma data. O marcador indica a quantidade de agendamentos.</p>
+                        <div className="grid grid-cols-7 gap-1">
+                            {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map(day => <span key={day} className="py-2 text-center text-[11px] font-medium text-slate-600">{day}</span>)}
+                            {monthDays.map(day => {
+                                const count = dayEntries(day).length;
+                                const selected = dayKey(day) === dayKey(anchorDate);
+                                return <button key={dayKey(day)} type="button" aria-label={dateLabel(day) + ", " + count + (count === 1 ? " agendamento" : " agendamentos")}
+                                    aria-pressed={selected} aria-current={isToday(day) ? "date" : undefined}
+                                    className={"flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-lg border text-sm tabular-nums transition-colors " + (selected ? "border-amber-600 bg-amber-50 font-bold text-amber-950" : isSameMonth(day, anchorDate) ? "border-slate-200 bg-white text-slate-800 hover:bg-slate-50" : "border-transparent bg-slate-50 text-slate-500")}
+                                    onClick={() => onAnchorDateChange(day)}
+                                    onDragOver={event => event.preventDefault()} onDrop={event => handleDrop(event, day)}>
+                                    <span className={isToday(day) ? "underline decoration-amber-600 decoration-2 underline-offset-4" : ""}>{format(day, "d")}</span>
+                                    <span className={"flex h-4 min-w-4 items-center justify-center rounded px-1 text-[10px] font-semibold " + (count ? "bg-slate-800 text-white" : "text-transparent")} aria-hidden="true">{count || "·"}</span>
+                                </button>;
                             })}
                         </div>
                     </div>
-                ) : (
-                    <div className={viewMode === "day" ? "calendar-day-surface min-w-[22.5rem]" : "calendar-week-surface min-w-[65.75rem]"}>
-                        <div className={`grid border-b border-slate-200 bg-slate-50 ${viewMode === "day" ? dayGridColumns : weekGridColumns}`}>
-                            <div />
-                            {days.map((day) => (
-                                <div key={day.toISOString()} className="min-w-0 border-l border-slate-200 px-2 py-2 text-center">
-                                    <p className="text-xs font-medium uppercase text-slate-500" title={format(day, "EEEE", { locale: ptBR })}>{format(day, "EEE", { locale: ptBR })}</p>
-                                    <p className={`text-sm font-semibold ${isToday(day) ? "text-primary" : "text-slate-900"}`}>{format(day, "dd/MM")}</p>
-                                </div>
-                            ))}
-                        </div>
+                    {renderDayAgenda(anchorDate, true)}
+                </div>
+            )}
 
-                        {slotMinutes.map((minutes) => {
-                            const isFractional = minutes % 60 !== 0;
-                            const hasEntriesInRow = days.some((day) => 
-                                entries.some((entry) => isSameDay(new Date(entry.scheduledAt), day) && eventSlotMinutes(entry.scheduledAt) === minutes)
-                            );
-
-                            // On week view, hide fractional hours that have no appointments to save vertical space
-                            if (viewMode === 'week' && isFractional && !hasEntriesInRow) {
-                                return (
-                                    <div key={minutes} className={`hidden md:grid ${viewMode === "day" ? dayGridColumns : weekGridColumns}`}>
-                                        <div className="border-b border-slate-200 px-3 py-3 text-xs text-slate-500 text-left">
-                                            {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
-                                        </div>
-                                        {days.map((day) => (
-                                            <div
-                                                key={day.toISOString()}
-                                                data-drop-minutes={minutes}
-                                                className="min-h-14 border-b border-l border-slate-200 p-1 transition-colors hover:bg-slate-50 cursor-pointer"
-                                                role={onEventCreate ? "button" : undefined}
-                                                tabIndex={onEventCreate ? 0 : undefined}
-                                                aria-label={onEventCreate ? `Criar atendimento em ${format(day, "dd/MM/yyyy")} às ${format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}` : undefined}
-                                                onClick={() => {
-                                                    const newDate = new Date(day);
-                                                    newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-                                                    onEventCreate?.(newDate);
-                                                }}
-                                                onKeyDown={(event) => {
-                                                    const newDate = new Date(day);
-                                                    newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-                                                    handleCreateKeyDown(event, newDate);
-                                                }}
-                                                onDragOver={(event) => event.preventDefault()}
-                                                onDrop={(event) => handleDrop(event, day, minutes)}
-                                            />
-                                        ))}
-                                    </div>
-                                );
-                            }
-
-                            return (
-                                <div key={minutes} className={`grid ${viewMode === "day" ? dayGridColumns : weekGridColumns}`}>
-                                    <div className="border-b border-slate-200 px-3 py-3 text-xs text-slate-500 text-left">
-                                        {format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}
-                                    </div>
-                                    {days.map((day) => {
-                                        const slotEntries = entries.filter((entry) => isSameDay(new Date(entry.scheduledAt), day) && eventSlotMinutes(entry.scheduledAt) === minutes);
-
-                                    return (
-                                        <div
-                                            key={day.toISOString()}
-                                            data-drop-minutes={minutes}
-                                            className="min-h-14 border-b border-l border-slate-200 p-1 transition-colors hover:bg-slate-50 cursor-pointer"
-                                            role={onEventCreate ? "button" : undefined}
-                                            tabIndex={onEventCreate ? 0 : undefined}
-                                            aria-label={onEventCreate ? `Criar atendimento em ${format(day, "dd/MM/yyyy")} às ${format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm")}` : undefined}
-                                            onClick={() => {
-                                                if (onEventCreate) {
-                                                    const newDate = new Date(day);
-                                                    newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-                                                    onEventCreate(newDate);
-                                                }
-                                            }}
-                                            onKeyDown={(event) => {
-                                                const newDate = new Date(day);
-                                                newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-                                                handleCreateKeyDown(event, newDate);
-                                            }}
-                                            onDragOver={(event) => event.preventDefault()}
-                                            onDrop={(event) => handleDrop(event, day, minutes)}
-                                        >
-                                            {slotEntries.map(renderEvent)}
-                                        </div>
-                                    );
-                                })}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+            {viewMode === "day" && (
+                <section aria-label={"Horários de " + dateLabel(anchorDate)} className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    {slotMinutes.map(minutes => {
+                        const slotEntries = dayEntries(anchorDate).filter(entry => eventSlotMinutes(entry.scheduledAt) === minutes);
+                        const time = format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm");
+                        return <div key={minutes} data-drop-minutes={minutes} className="grid min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] border-b border-slate-100 last:border-0" onDragOver={event => event.preventDefault()} onDrop={event => handleDrop(event, anchorDate, minutes)}>
+                            <span className="p-2 pt-3 text-xs tabular-nums text-slate-500">{time}</span>
+                            <div className="min-w-0 border-l border-slate-100 p-1.5">
+                                {slotEntries.length > 0 && <div className="space-y-1">{slotEntries.map(renderEvent)}</div>}
+                                {onEventCreate && <button type="button" aria-label={"Criar atendimento em " + dateLabel(anchorDate) + " às " + time} onClick={() => onEventCreate(new Date(getDropDateTime(anchorDate, minutes)))} className="flex min-h-11 w-full items-center justify-center rounded-md text-slate-400 hover:bg-amber-50 hover:text-slate-700"><Plus size={15} aria-hidden="true" /></button>}
+                            </div>
+                        </div>;
+                    })}
+                </section>
+            )}
         </section>
     );
 };

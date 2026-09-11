@@ -206,7 +206,7 @@ export const useAdminPwa = () => {
     return context;
 };
 
-export const AdminPwaInstallAction = ({ className = "" }: { className?: string }) => {
+export const AdminPwaInstallAction = ({ className = "", compact = false }: { className?: string; compact?: boolean }) => {
     const { canInstall, install, showIosInstructions } = useAdminPwa();
     const [showInstructions, setShowInstructions] = useState(false);
 
@@ -218,12 +218,12 @@ export const AdminPwaInstallAction = ({ className = "" }: { className?: string }
                 <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size={compact ? "icon" : "sm"}
                     className="border-primary/40 bg-white text-slate-700 shadow-sm hover:bg-primary/10"
                     onClick={() => void install()}
                 >
                     <Download size={16} />
-                    Instalar aplicativo
+                    <span className={compact ? "sr-only" : undefined}>Instalar aplicativo</span>
                 </Button>
             )}
             {showIosInstructions && (
@@ -231,12 +231,12 @@ export const AdminPwaInstallAction = ({ className = "" }: { className?: string }
                     <Button
                         type="button"
                         variant="outline"
-                        size="sm"
+                        size={compact ? "icon" : "sm"}
                         className="border-primary/40 bg-white text-slate-700 shadow-sm hover:bg-primary/10"
                         onClick={() => setShowInstructions(true)}
                     >
                         <Smartphone size={16} />
-                        Instalar no iPhone/iPad
+                        <span className={compact ? "sr-only" : undefined}>Instalar no iPhone/iPad</span>
                     </Button>
                     {showInstructions && (
                         <div

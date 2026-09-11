@@ -145,48 +145,48 @@ const AdminPersonalFinance = () => {
 
     return (
         <AdminLayout title="Caixa Pessoal - Neli Vital">
-            <div className="grid min-w-0 grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-2 gap-3 mb-4 lg:grid-cols-4 md:mb-6">
                 <Card className="bg-white border-slate-100 shadow-sm">
-                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                            <ArrowUpCircle size={24} />
+                    <CardContent className="flex min-w-0 flex-col items-start gap-2 p-3 sm:p-4">
+                        <div className="h-7 w-7 shrink-0 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <ArrowUpCircle size={16} />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Entradas</p>
-                            <p className="text-xl font-bold text-slate-900">R$ {income.toFixed(2)}</p>
+                            <p className="text-xs text-slate-600 font-medium">Entradas</p>
+                            <p className="admin-metric-value text-slate-900">R$ {income.toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-white border-slate-100 shadow-sm">
-                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
-                        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                            <ArrowDownCircle size={24} />
+                    <CardContent className="flex min-w-0 flex-col items-start gap-2 p-3 sm:p-4">
+                        <div className="h-7 w-7 shrink-0 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <ArrowDownCircle size={16} />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saídas</p>
-                            <p className="text-xl font-bold text-slate-900">R$ {expense.toFixed(2)}</p>
+                            <p className="text-xs text-slate-600 font-medium">Saídas</p>
+                            <p className="admin-metric-value text-slate-900">R$ {expense.toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className={`bg-white border-2 shadow-md ${balance >= 0 ? "border-emerald-100" : "border-rose-100"}`}>
-                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${balance >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                            <DollarSign size={24} />
+                    <CardContent className="flex min-w-0 flex-col items-start gap-2 p-3 sm:p-4">
+                        <div className={`h-7 w-7 shrink-0 rounded-lg flex items-center justify-center ${balance >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                            <DollarSign size={16} />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Saldo</p>
-                            <p className={`text-xl font-black ${balance >= 0 ? "text-emerald-700" : "text-rose-700"}`}>R$ {balance.toFixed(2)}</p>
+                            <p className="text-xs text-slate-600 font-medium">Saldo</p>
+                            <p className={`admin-metric-value ${balance >= 0 ? "text-emerald-700" : "text-rose-700"}`}>R$ {balance.toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-900 text-white border-none shadow-xl">
-                    <CardContent className="flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
-                        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                            <Clock size={24} className="text-amber-400" />
+                <Card className="bg-white text-slate-900 border-amber-200 shadow-sm">
+                    <CardContent className="flex min-w-0 flex-col items-start gap-2 p-3 sm:p-4">
+                        <div className="h-7 w-7 shrink-0 rounded-lg bg-amber-50 flex items-center justify-center">
+                            <Clock size={16} className="text-amber-700" />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Pendentes</p>
-                            <p className="text-xl font-bold">R$ {transactions.filter(t => t.status === 'pending').reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</p>
+                            <p className="text-xs text-slate-600 font-medium">Pendentes</p>
+                            <p className="admin-metric-value">R$ {transactions.filter(t => t.status === 'pending').reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -329,7 +329,7 @@ const AdminPersonalFinance = () => {
                                     </div>
                                 ) : (
                                     transactions.map(t => (
-                                         <div key={t.id} className="group flex min-w-0 flex-col gap-4 border-l-4 border-transparent p-4 transition-all hover:border-primary hover:bg-slate-50/50 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                         <div key={t.id} className="group flex min-w-0 flex-col gap-4 border-l-4 border-transparent p-4 transition-colors hover:border-primary hover:bg-slate-50/50 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                                              <div className="flex min-w-0 items-start gap-3 sm:gap-5">
                                                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-inner ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                                                      {t.type === 'income' ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
@@ -359,7 +359,7 @@ const AdminPersonalFinance = () => {
                                                          </a>
                                                      )}
                                                  </div>
-                                                 <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                                                 <div className="flex shrink-0 opacity-100 transition-opacity sm:opacity-100">
                                                      <Button
                                                          variant="ghost"
                                                          size="icon"

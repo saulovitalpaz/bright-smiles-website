@@ -61,24 +61,21 @@ test('appointments require a professional while leads can clear one', () => {
     assert.match(source, /professional:\s*professional \|\| null/);
 });
 
-test('calendar expands its 30-minute slots for entries outside baseline hours', () => {
+test('detailed day view expands its 30-minute slots for entries outside baseline hours', () => {
     const source = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
 
     assert.match(source, /const getVisibleSlotMinutes/);
-    assert.match(source, /Math\.min\(8 \* 60/);
-    assert.match(source, /Math\.max\(20 \* 60/);
-    assert.match(source, /getVisibleSlotMinutes\(entries, days\)/);
+    assert.match(source, /\[8 \* 60, 20 \* 60\]/);
+    assert.match(source, /Math\.min\(current\[0\], minute\)/);
+    assert.match(source, /Math\.max\(current\[1\], minute\)/);
+    assert.match(source, /viewMode === "day" \? getVisibleSlotMinutes\(entries, days\)/);
     assert.match(source, /getDropDateTime\(day, minutes\)/);
 });
 
-test('visible fractional-hour slots remain keyboard and pointer interactive', () => {
+test('week groups days without forced desktop widths and day creation uses native buttons', () => {
     const source = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
-    const branchStart = source.indexOf("if (viewMode === 'week' && isFractional && !hasEntriesInRow)");
-    const branchEnd = source.indexOf('\n                            return (', branchStart);
-    const fractionalBranch = source.slice(branchStart, branchEnd);
-
-    assert.match(fractionalBranch, /role=\{onEventCreate \? "button" : undefined\}/);
-    assert.match(fractionalBranch, /tabIndex=\{onEventCreate \? 0 : undefined\}/);
-    assert.match(fractionalBranch, /onClick=/);
-    assert.match(fractionalBranch, /onKeyDown=/);
+    assert.match(source, /calendar-week-agenda">\{days\.map\(day => renderDayAgenda\(day\)\)\}/);
+    assert.doesNotMatch(source, /min-w-\[(65\.75|52)rem\]|isFractional/);
+    assert.match(source, /<button type="button" aria-label=\{"Criar atendimento em "/);
+    assert.match(source, /onEventCreate\(new Date\(getDropDateTime\(anchorDate, minutes\)\)\)/);
 });

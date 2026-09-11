@@ -24,6 +24,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("react-router-dom", () => ({
+    Link: ({ to, children, ...props }: { to: string; children: ReactNode }) => <a href={to} {...props}>{children}</a>,
     useNavigate: () => navigateMock,
     useSearchParams: () => [new URLSearchParams()],
 }));
