@@ -144,7 +144,7 @@ describe("Odontogram face-first workflow", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     rerender(<Odontogram data={{}} onChange={() => undefined} />);
     await user.click(getToothButton(16));
-    expect(screen.getByText("Selecione uma face para registrar sua condição clínica.")).toBeInTheDocument();
+    expect(screen.getByText("Selecione uma ou mais faces para registrar a condição clínica.")).toBeInTheDocument();
   });
 
   it("opens a tooth without writing clinical data", async () => {
@@ -166,10 +166,11 @@ describe("Odontogram face-first workflow", () => {
     await user.click(getToothButton(16));
 
     expect(screen.queryByRole("button", { name: "A tratar" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /oclusal.*saudável/i }));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Oclusal / Incisal" }));
 
     expect(screen.getByRole("button", { name: "A tratar" })).toBeInTheDocument();
-    expect(screen.getByText("Face selecionada: Oclusal / Incisal")).toBeInTheDocument();
+    expect(screen.getByText("FACES SELECIONADAS")).toBeInTheDocument();
+    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
   });
 
   it("applies a condition only after selecting a face", async () => {
@@ -178,10 +179,12 @@ describe("Odontogram face-first workflow", () => {
 
     render(<Odontogram data={{}} onChange={onChange} />);
     await user.click(getToothButton(16));
-    await user.click(screen.getByRole("button", { name: /oclusal.*saudável/i }));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Oclusal / Incisal" }));
 
     expect(onChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "A tratar" }));
+    expect(onChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Aplicar alterações" }));
 
     expect(onChange).toHaveBeenCalledWith({
       "16": {
@@ -202,10 +205,126 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.queryByRole("button", { name: "Implante" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /dente inteiro/i }));
     await user.click(screen.getByRole("button", { name: "Implante" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar alterações" }));
 
     expect(onChange).toHaveBeenLastCalledWith({
       "16": { status: "Implante", notes: "" },
     });
+  });
+
+  it("opens an existing V2 occurrence in the editor without losing its targets", async () => {
+    const user = userEvent.setup();
+    render(
+      <Odontogram
+        data={{
+          version: 2,
+          dentition: "permanent",
+          teeth: {
+            "16": {
+              notes: "",
+              conditions: [{
+                id: "editable",
+                category: "achado",
+                type: "carie",
+                stage: "planejado",
+                targets: [
+                  { kind: "surface", face: "center", region: "incisalOcclusal" },
+                  { kind: "surface", face: "top", region: "entire" },
+                ],
+              }],
+            },
+          },
+        }}
+        onChange={() => undefined}
+      />,
+    );
+
+    await user.click(getToothButton(16));
+    await user.click(screen.getByRole("button", { name: /editar carie/i }));
+
+    expect(screen.getByLabelText("Categoria")).toHaveValue("achado");
+    expect(screen.getByLabelText("Procedimento")).toHaveValue("carie");
+    expect(screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /vestibular.*face inteira/i })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("applies one face condition to multiple selected faces without mutating before apply", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<Odontogram data={{}} onChange={onChange} />);
+    await user.click(getToothButton(16));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Distal" }));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Vestibular" }));
+
+    expect(screen.getByText("FACES SELECIONADAS")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remover face distal/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remover face vestibular/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "A tratar" }));
+    expect(onChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Aplicar alterações" }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      "16": {
+        status: "Saudável",
+        notes: "",
+        faces: {
+          left: { status: "Tratar" },
+          top: { status: "Tratar" },
+        },
+      },
+    });
+  });
+
+  it("edits one face and clears it without changing other faces or notes", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Odontogram
+        data={{
+          "21": {
+            status: "Saudável",
+            notes: "preservar",
+            faces: { left: { status: "Tratado" }, right: { status: "Tratar" } },
+          },
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(getToothButton(21));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Distal" }));
+    await user.click(screen.getByRole("button", { name: "Tratada" }));
+    await user.click(screen.getByRole("button", { name: "Limpar condição das faces selecionadas" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar alterações" }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      "21": {
+        status: "Saudável",
+        notes: "preservar",
+        faces: { left: { status: "Tratado" } },
+      },
+    });
+  });
+
+  it("keeps multiple face conditions after save and reopening the tooth", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const { rerender } = render(<Odontogram data={{}} onChange={onChange} />);
+
+    await user.click(getToothButton(16));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Distal" }));
+    await user.click(screen.getByRole("button", { name: "Selecionar face Vestibular" }));
+    await user.click(screen.getByRole("button", { name: "A tratar" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar alterações" }));
+
+    const saved = onChange.mock.calls[0][0];
+    rerender(<Odontogram data={saved} onChange={onChange} />);
+    await user.click(getToothButton(16));
+
+    expect(screen.getByRole("button", { name: "Distal: Tratar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vestibular: Tratar" })).toBeInTheDocument();
   });
 
   it("does not expose editing controls in read-only mode", () => {
@@ -243,27 +362,32 @@ describe("Odontogram face-first workflow", () => {
     );
 
     expect(container.querySelector(".bg-blue-400")).not.toBeInTheDocument();
-    expect(screen.getByText("Tratar")).toBeInTheDocument();
-    expect(screen.getByText("Tratado")).toBeInTheDocument();
+    expect(screen.getByText("A tratar")).toBeInTheDocument();
+    expect(screen.getByText("Tratada")).toBeInTheDocument();
     expect(container.querySelector('[data-face-key="center"]')).toHaveAttribute(
       "data-face-status",
       "Tratar",
     );
   });
 
-  it("shows each legend status once and explains region selection without alternate target names", () => {
+  it("groups the legend from shared definitions and explains every renderable symbol", () => {
     const { container } = render(<Odontogram data={{}} onChange={() => undefined} />);
     const legend = container.querySelector(".odontogram-legend");
 
     expect(legend).not.toBeNull();
-    expect(within(legend as HTMLElement).getAllByText(/^Saudável$/)).toHaveLength(1);
-    expect(within(legend as HTMLElement).getAllByText(/^Tratar$/)).toHaveLength(1);
-    expect(within(legend as HTMLElement).getAllByText(/^Tratado$/)).toHaveLength(1);
-    expect(within(legend as HTMLElement).getAllByText(/^Ausente$/)).toHaveLength(1);
-    expect(within(legend as HTMLElement).getAllByText(/^Implante$/)).toHaveLength(1);
-    expect(within(legend as HTMLElement).getAllByText(/^Ponte$/)).toHaveLength(1);
-    expect(within(legend as HTMLElement).queryByText("Área a tratar")).not.toBeInTheDocument();
-    expect(within(legend as HTMLElement).queryByText("Área tratada")).not.toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByRole("heading", { name: "Faces" })).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByRole("heading", { name: "Dente inteiro" })).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Saudável$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^A tratar$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Tratada$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Ausente$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Implante$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Ponte$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Planejado \/ a tratar$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/^Em andamento$/)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByTestId("legend-swatch-tooth-missing")).toHaveAttribute("data-symbol", "cross");
+    expect(within(legend as HTMLElement).getByTestId("legend-swatch-tooth-implant")).toHaveAttribute("data-symbol", "implant");
+    expect(within(legend as HTMLElement).getByTestId("legend-swatch-tooth-bridge")).toHaveAttribute("data-symbol", "bridge");
     expect(within(legend as HTMLElement).getByText(/face inteira/i)).toBeInTheDocument();
     expect(within(legend as HTMLElement).getByText(/cervical/i)).toBeInTheDocument();
     expect(within(legend as HTMLElement).getByText(/média/i)).toBeInTheDocument();
@@ -343,8 +467,8 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
     expect(screen.getByText("avaliar profundidade")).toBeInTheDocument();
     expect(screen.getByText("implante")).toBeInTheDocument();
-    expect(screen.getByText("Concluído")).toBeInTheDocument();
-    expect(screen.getByText("Dente inteiro")).toBeInTheDocument();
+    expect(screen.getAllByText("Concluído").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Dente inteiro").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("coroa instalada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /remover/i })).not.toBeInTheDocument();
   });

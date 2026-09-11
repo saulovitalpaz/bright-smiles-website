@@ -4,7 +4,10 @@ import {
   FACE_KEYS,
   getClinicalStageLabel,
   getConditionDisplayName,
+  getConditionVisual,
   getFaceLabels,
+  getLatestWholeToothCondition,
+  getOdontogramStateDefinition,
   getToothFamily,
   type ToothRecord,
 } from "./odontogramModel";
@@ -25,10 +28,13 @@ export function OcclusalTooth({ toothNumber, record }: OcclusalToothProps): JSX.
   const affectedFaces = faceConditions
     .filter(({ last }) => last)
     .map(({ face, last }) => `${getFaceLabels(toothNumber)[face]}: ${getConditionDisplayName(last!.type)} (${getClinicalStageLabel(last!.stage)})`);
+  const wholeCondition = getLatestWholeToothCondition(record);
+  const wholeConditionVisual = wholeCondition ? getConditionVisual(wholeCondition) : null;
   const accessibleName = [
     `Vista oclusal do dente ${toothNumber}`,
     affectedFaces.length ? affectedFaces.join("; ") : "sem condições registradas",
-  ].join(". ");
+    wholeCondition ? `dente inteiro: ${getConditionDisplayName(wholeCondition.type)} (${getClinicalStageLabel(wholeCondition.stage)})` : null,
+  ].filter(Boolean).join(". ");
 
   return (
     <svg
@@ -37,14 +43,21 @@ export function OcclusalTooth({ toothNumber, record }: OcclusalToothProps): JSX.
       role="img"
       viewBox={anatomy.viewBox}
     >
-      <path className="occlusal-tooth__outline" d={anatomy.outline} />
+      <path
+        className="occlusal-tooth__outline"
+        d={anatomy.outline}
+        data-whole-condition-stage={wholeCondition?.stage}
+        fill={wholeConditionVisual?.fill}
+        opacity={wholeConditionVisual ? 0.34 : undefined}
+      />
       {faceConditions.map(({ face, matching, last }) => {
+        const visual = last ? getConditionVisual(last) : getOdontogramStateDefinition("Saudável", "surface").visual;
         return (
           <path
             data-condition-count={matching.length || undefined}
             data-occlusal-face={face}
             d={anatomy.faces[face]}
-            fill={last ? (last.type === "carie" ? "#fce8e6" : "#38bdf8") : "#f7f0dc"}
+            fill={visual.fill}
             key={face}
           />
         );

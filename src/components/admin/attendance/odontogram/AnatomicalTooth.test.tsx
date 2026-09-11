@@ -88,6 +88,28 @@ describe("AnatomicalTooth", () => {
       .toHaveAttribute("data-condition-type", "resina_composta");
   });
 
+  it("renders a layered whole-tooth condition without dropping the existing anatomy", () => {
+    render(
+      <AnatomicalTooth
+        toothNumber={16}
+        data={{ status: "Saudável", notes: "" }}
+        record={{
+          notes: "",
+          conditions: [{
+            id: "whole-1",
+            category: "protese",
+            type: "implante",
+            stage: "concluido",
+            targets: [{ kind: "tooth" }],
+          }],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("whole-tooth-overlay"))
+      .toHaveAttribute("data-layered-condition-stage", "concluido");
+  });
+
   it.each(["Implante", "Ponte", "Ausente"] as const)(
     "covers roots and crown for %s",
     (status) => {

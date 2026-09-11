@@ -3,7 +3,12 @@ import {
   getFaceLabels,
   getTeethForDentition,
   getClinicalStageLabel,
+  getClinicalStageOptions,
   getConditionTargetLabel,
+  getOdontogramLegendGroups,
+  getOdontogramStateDefinition,
+  getFaceStatusOptions,
+  getWholeToothStatusOptions,
   getToothFamily,
   createEmptyOdontogram,
   createCondition,
@@ -141,5 +146,57 @@ describe("odontogramModel", () => {
       notes: "controle",
       faces: { top: { status: "Tratar" } },
     });
+  });
+
+  it("exposes one compatible definition for every legacy status and renderable clinical stage", () => {
+    expect(getOdontogramStateDefinition("Saudável")).toMatchObject({ scope: "surface", label: "Saudável" });
+    expect(getOdontogramStateDefinition("Saudável", "tooth")).toMatchObject({ scope: "tooth", label: "Sem condição global" });
+    expect(getOdontogramStateDefinition("Tratar")).toMatchObject({ scope: "surface", label: "A tratar" });
+    expect(getOdontogramStateDefinition("Tratado")).toMatchObject({ scope: "surface", label: "Tratada" });
+    expect(getOdontogramStateDefinition("Ausente")).toMatchObject({ scope: "tooth", visual: { symbol: "cross" } });
+    expect(getOdontogramStateDefinition("Implante")).toMatchObject({ scope: "tooth", visual: { symbol: "implant" } });
+    expect(getOdontogramStateDefinition("Ponte")).toMatchObject({ scope: "tooth", visual: { symbol: "bridge" } });
+    expect(getOdontogramStateDefinition("planejado")).toMatchObject({ scope: "surface", label: "Planejado / a tratar" });
+    expect(getOdontogramStateDefinition("removido")).toMatchObject({ scope: "surface", label: "Removido" });
+  });
+
+  it("falls back safely for an unknown persisted visual state", () => {
+    expect(getOdontogramStateDefinition("estado_antigo" as never)).toMatchObject({
+      id: "unknown-state",
+      label: "Estado não informado",
+    });
+  });
+
+  it("derives legend groups from the same state definitions used by the renderer", () => {
+    const groups = getOdontogramLegendGroups();
+    expect(groups.faces.map((state) => state.id)).toEqual(expect.arrayContaining([
+      "face-healthy", "face-treatment-needed", "face-treated", "stage-planejado",
+    ]));
+    expect(groups.tooth.map((state) => state.id)).toEqual(expect.arrayContaining([
+      "tooth-missing", "tooth-implant", "tooth-bridge",
+    ]));
+    expect(groups.faces.every((state) => state.scope === "surface")).toBe(true);
+    expect(groups.tooth.every((state) => state.scope === "tooth")).toBe(true);
+    expect(groups.tooth.find((state) => state.id === "tooth-missing")?.visual.symbol).toBe("cross");
+  });
+
+  it("derives editor status options from the shared definitions", () => {
+    expect(getFaceStatusOptions()).toEqual([
+      { value: "Saudável", label: "Saudável" },
+      { value: "Tratar", label: "A tratar" },
+      { value: "Tratado", label: "Tratada" },
+    ]);
+    expect(getWholeToothStatusOptions()).toEqual([
+      { value: "Saudável", label: "Sem condição global" },
+      { value: "Ausente", label: "Ausente" },
+      { value: "Implante", label: "Implante" },
+      { value: "Ponte", label: "Ponte" },
+    ]);
+    expect(getWholeToothStatusOptions().map((item) => item.value)).toEqual([
+      "Saudável", "Ausente", "Implante", "Ponte",
+    ]);
+    expect(getClinicalStageOptions().map((item) => item.label)).toEqual([
+      "A avaliar", "Planejado / a tratar", "Em andamento", "Concluído", "Monitorado", "Suspenso", "Removido",
+    ]);
   });
 });

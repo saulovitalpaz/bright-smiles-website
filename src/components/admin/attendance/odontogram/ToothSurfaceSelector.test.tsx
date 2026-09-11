@@ -6,7 +6,7 @@ import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
   it("exposes an explicit incisal ou oclusal label for the center control in layered mode", () => {
-    render(
+    const { container } = render(
       <ToothSurfaceSelector
         toothNumber={16}
         data={{ status: "Saudável", notes: "" }}
@@ -100,7 +100,7 @@ describe("ToothSurfaceSelector", () => {
   });
 
   it("renders five semantic anatomical face controls", () => {
-    render(
+    const { container } = render(
       <ToothSurfaceSelector
         toothNumber={16}
         data={{ status: "Saudável", notes: "" }}
@@ -109,7 +109,7 @@ describe("ToothSurfaceSelector", () => {
       />,
     );
 
-    const controls = screen.getAllByRole("button");
+    const controls = container.querySelectorAll("button.surface-selector__control");
     expect(controls).toHaveLength(5);
     controls.forEach((control) => {
       expect(control.querySelector("path")).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe("ToothSurfaceSelector", () => {
     const user = userEvent.setup();
     const onSelectFace = vi.fn();
 
-    render(
+    const { container } = render(
       <ToothSurfaceSelector
         toothNumber={16}
         data={{ status: "Saudável", notes: "" }}
@@ -145,7 +145,7 @@ describe("ToothSurfaceSelector", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /oclusal/i }));
+    await user.click(container.querySelector("button.surface-selector__control--center") as Element);
 
     expect(onSelectFace).not.toHaveBeenCalled();
   });
@@ -285,10 +285,81 @@ describe("ToothSurfaceSelector", () => {
     const wrapper = screen.getByTestId("tooth-surface-selector-container");
     const selector = screen.getByTestId("tooth-surface-selector");
     const base = selector.querySelector(".surface-selector__base");
-    const firstControl = screen.getAllByRole("button")[0];
+    const firstControl = selector.querySelector("button.surface-selector__control");
 
     expect(wrapper).toHaveClass("tooth-surface-selector__container");
     expect(selector).toHaveClass("tooth-surface-selector");
     expect(base?.compareDocumentPosition(firstControl)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("supports controlled multi-face selection with clear anatomical labels", async () => {
+    const user = userEvent.setup();
+    const onSelectedSurfacesChange = vi.fn();
+    const { rerender } = render(
+      <ToothSurfaceSelector
+        data={{ status: "Saudável", notes: "" }}
+        onSelectFace={() => undefined}
+        onSelectedSurfacesChange={onSelectedSurfacesChange}
+        selectedFace={null}
+        selectedSurfaces={[]}
+        toothNumber={16}
+      />,
+    );
+
+    expect(screen.getByText("Distal")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /distal.*saudável/i }));
+    expect(onSelectedSurfacesChange).toHaveBeenLastCalledWith(["left"]);
+
+    rerender(
+      <ToothSurfaceSelector
+        data={{ status: "Saudável", notes: "" }}
+        onSelectFace={() => undefined}
+        onSelectedSurfacesChange={onSelectedSurfacesChange}
+        selectedFace={null}
+        selectedSurfaces={["left"]}
+        toothNumber={16}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /vestibular.*saudável/i }));
+    expect(onSelectedSurfacesChange).toHaveBeenLastCalledWith(["left", "top"]);
+  });
+
+  it("toggles a face when its existing SVG region is clicked", async () => {
+    const user = userEvent.setup();
+    const onSelectedSurfacesChange = vi.fn();
+    const { container } = render(
+      <ToothSurfaceSelector
+        data={{ status: "Saudável", notes: "" }}
+        onSelectFace={() => undefined}
+        onSelectedSurfacesChange={onSelectedSurfacesChange}
+        selectedFace={null}
+        selectedSurfaces={[]}
+        toothNumber={16}
+      />,
+    );
+
+    await user.click(container.querySelector('[data-surface-face="left"]') as Element);
+    expect(onSelectedSurfacesChange).toHaveBeenCalledWith(["left"]);
+  });
+
+  it("keeps the V2 SVG region and textual selector on the same target state", async () => {
+    const user = userEvent.setup();
+    const onTargetsChange = vi.fn();
+    const { container } = render(
+      <ToothSurfaceSelector
+        data={{ status: "Saudável", notes: "" }}
+        onSelectFace={() => undefined}
+        onTargetsChange={onTargetsChange}
+        selectedFace={null}
+        selectedTargets={[]}
+        toothNumber={16}
+      />,
+    );
+
+    await user.click(container.querySelector('[data-surface-face="top"]') as Element);
+
+    expect(onTargetsChange).toHaveBeenCalledWith([
+      { kind: "surface", face: "top", region: "entire" },
+    ]);
   });
 });

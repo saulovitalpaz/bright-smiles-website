@@ -46,4 +46,27 @@ describe("OcclusalTooth", () => {
       name: /vista oclusal do dente 16.*oclusal.*carie.*planejado/i,
     })).toBeInTheDocument();
   });
+
+  it("exposes whole-tooth conditions in the oclusal representation", () => {
+    render(
+      <OcclusalTooth
+        toothNumber={16}
+        record={{
+          notes: "",
+          conditions: [{
+            id: "whole-1",
+            category: "protese",
+            type: "implante",
+            stage: "concluido",
+            targets: [{ kind: "tooth" }],
+          }],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: /dente inteiro.*implante.*concluído/i }))
+      .toBeInTheDocument();
+    expect(document.querySelector("[data-whole-condition-stage='concluido']"))
+      .toBeInTheDocument();
+  });
 });

@@ -3,6 +3,7 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import {
   FACE_KEYS,
   getFaceLabels,
+  getOdontogramStateDefinition,
   getToothFamily,
   type FaceKey,
   type FaceStatus,
@@ -15,6 +16,8 @@ interface ToothSurfaceSelectorProps {
   data: ToothData;
   selectedFace: FaceKey | null;
   onSelectFace: (face: FaceKey) => void;
+  selectedSurfaces?: FaceKey[];
+  onSelectedSurfacesChange?: (faces: FaceKey[]) => void;
   readOnly?: boolean;
   selectedTargets?: ConditionTarget[];
   onTargetsChange?: (targets: ConditionTarget[]) => void;
@@ -95,7 +98,7 @@ interface FaceVisualProps {
   hatchId: string;
 }
 
-function HatchPattern({ id }: { id: string }): JSX.Element {
+function HatchPattern({ id, stroke, fill }: { id: string; stroke: string; fill: string }): JSX.Element {
   return (
     <pattern
       id={id}
@@ -104,24 +107,26 @@ function HatchPattern({ id }: { id: string }): JSX.Element {
       patternTransform="rotate(45)"
       patternUnits="userSpaceOnUse"
     >
-      <line stroke="#b42318" strokeWidth="1.2" x1="0" x2="0" y2="3" />
+      <rect fill={fill} height="3" width="3" />
+      <line stroke={stroke} strokeWidth="1.2" x1="0" x2="0" y2="3" />
     </pattern>
   );
 }
 
 function FaceVisual({ path, status, isSelected, hatchId }: FaceVisualProps): JSX.Element {
+  const definition = getOdontogramStateDefinition(status, "surface");
   const visualStyle =
     status === "Tratar"
       ? { fill: `url(#${hatchId})` }
       : status === "Tratado"
-        ? { fill: "#d9eff3", stroke: "#0e7490", strokeWidth: 2.4 }
+        ? { fill: definition.visual.fill, stroke: definition.visual.stroke, strokeWidth: 2.4 }
         : undefined;
 
   return (
     <>
       {status === "Tratar" ? (
         <defs>
-          <HatchPattern id={hatchId} />
+          <HatchPattern id={hatchId} fill={definition.visual.fill} stroke={definition.visual.stroke} />
         </defs>
       ) : null}
       <path
@@ -145,6 +150,8 @@ export function ToothSurfaceSelector({
   data,
   selectedFace,
   onSelectFace,
+  selectedSurfaces,
+  onSelectedSurfacesChange,
   readOnly = false,
   selectedTargets,
   onTargetsChange,
@@ -155,6 +162,20 @@ export function ToothSurfaceSelector({
   const labels = getFaceLabels(toothNumber);
   const hatchId = `surface-hatch-${toothNumber}-${instanceId}`;
   const layeredMode = Boolean(selectedTargets && onTargetsChange);
+  const multiSurfaceMode = Boolean(selectedSurfaces && onSelectedSurfacesChange);
+
+  const toggleSurface = (face: FaceKey): void => {
+    if (readOnly) return;
+    if (!multiSurfaceMode || !selectedSurfaces || !onSelectedSurfacesChange) {
+      onSelectFace(face);
+      return;
+    }
+    onSelectedSurfacesChange(
+      selectedSurfaces.includes(face)
+        ? selectedSurfaces.filter((item) => item !== face)
+        : [...selectedSurfaces, face],
+    );
+  };
 
   const toggleTarget = (target: ConditionTarget): void => {
     if (!selectedTargets || !onTargetsChange || readOnly) return;
@@ -172,9 +193,10 @@ export function ToothSurfaceSelector({
         data-testid="tooth-surface-selector"
       >
         <svg
-          aria-hidden="true"
+          aria-label={`Mapa anatômico do dente ${toothNumber}`}
           className="surface-selector__base"
           focusable="false"
+          role="img"
           viewBox={anatomy.viewBox}
         >
           <path className="surface-selector__outline" d={anatomy.outline} />
@@ -183,10 +205,37 @@ export function ToothSurfaceSelector({
             const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
             const isSelected = layeredMode
               ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
-              : selectedFace === face;
+              : multiSurfaceMode
+                ? Boolean(selectedSurfaces?.includes(face))
+                : selectedFace === face;
 
             return (
-              <g key={face} data-surface-face={face}>
+              <g
+                key={face}
+                aria-label={`Mapa: ${isSelected ? "desselecionar" : "selecionar"} face ${labels[face]}`}
+                aria-pressed={isSelected}
+                data-surface-face={face}
+                data-selected={isSelected || undefined}
+                onClick={() => {
+                  if (layeredMode) {
+                    toggleTarget(target);
+                  } else {
+                    toggleSurface(face);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    if (layeredMode) {
+                      toggleTarget(target);
+                    } else {
+                      toggleSurface(face);
+                    }
+                  }
+                }}
+                tabIndex={readOnly ? -1 : 0}
+                role="button"
+              >
                 <FaceVisual
                   hatchId={`${hatchId}-base-${face}`}
                   isSelected={isSelected}
@@ -208,7 +257,9 @@ export function ToothSurfaceSelector({
           const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
           const isSelected = layeredMode
             ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
-            : selectedFace === face;
+            : multiSurfaceMode
+              ? Boolean(selectedSurfaces?.includes(face))
+              : selectedFace === face;
           const ariaLabel = layeredMode
             ? `${labels[face]} - ${getRegionLabel(target.region)}`
             : `${labels[face]}: ${status}`;
@@ -228,7 +279,7 @@ export function ToothSurfaceSelector({
                   toggleTarget(target);
                   return;
                 }
-                onSelectFace(face);
+                toggleSurface(face);
               }}
               type="button"
             >
@@ -240,6 +291,36 @@ export function ToothSurfaceSelector({
                   status={status}
                 />
               </svg>
+            </button>
+          );
+        })}
+      </div>
+      <div aria-label="Selecione as faces" className="surface-selector__text-controls">
+        <span className="surface-selector__text-controls-title">Selecione as faces</span>
+        {FACE_KEYS.map((face) => {
+          const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
+          const isSelected = layeredMode
+            ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
+            : multiSurfaceMode
+              ? Boolean(selectedSurfaces?.includes(face))
+              : selectedFace === face;
+          return (
+            <button
+              aria-label={`${isSelected ? "Desselecionar" : "Selecionar"} face ${labels[face]}`}
+              aria-pressed={isSelected}
+              className={`surface-selector__text-control${isSelected ? " surface-selector__text-control--selected" : ""}`}
+              disabled={readOnly}
+              key={`text-${face}`}
+              onClick={() => {
+                if (layeredMode) {
+                  toggleTarget(target);
+                } else {
+                  toggleSurface(face);
+                }
+              }}
+              type="button"
+            >
+              {labels[face]}
             </button>
           );
         })}

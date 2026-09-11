@@ -90,4 +90,69 @@ describe("ClinicalConditionEditor", () => {
     expect(screen.getByRole("button", { name: "Salvar ocorrência" })).toBeDisabled();
     expect(onSave).not.toHaveBeenCalled();
   });
+
+  it("loads and updates an existing occurrence without changing its id", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <ClinicalConditionEditor
+        initialCondition={{
+          id: "existing-1",
+          category: "achado",
+          type: "carie",
+          stage: "planejado",
+          targets: [{ kind: "surface", face: "left", region: "entire" }],
+          notes: "manter acompanhamento",
+        }}
+        onCancel={() => undefined}
+        onSave={onSave}
+        toothNumber={21}
+      />,
+    );
+
+    expect(screen.getByLabelText("Categoria")).toHaveValue("achado");
+    expect(screen.getByLabelText("Procedimento")).toHaveValue("carie");
+    expect(screen.getByLabelText("Situação")).toHaveValue("planejado");
+    expect(screen.getByLabelText("Observação da ocorrência")).toHaveValue("manter acompanhamento");
+
+    await user.selectOptions(screen.getByLabelText("Situação"), "concluido");
+    await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ id: "existing-1", stage: "concluido" }));
+  });
+
+  it("allows editing a migrated legacy occurrence without losing its taxonomy or target", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <ClinicalConditionEditor
+        initialCondition={{
+          id: "legacy-1",
+          category: "legado",
+          type: "legado_tratar",
+          stage: "concluido",
+          targets: [{ kind: "surface", face: "top", region: "entire" }],
+          notes: "migrado do odontograma anterior",
+        }}
+        onCancel={() => undefined}
+        onSave={onSave}
+        toothNumber={21}
+      />,
+    );
+
+    expect(screen.getByLabelText("Categoria")).toHaveValue("legado");
+    expect(screen.getByLabelText("Procedimento")).toHaveValue("legado_tratar");
+    expect(screen.getByRole("button", { name: /vestibular.*face inteira/i })).toHaveAttribute("aria-pressed", "true");
+
+    await user.selectOptions(screen.getByLabelText("Situação"), "monitorado");
+    await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      id: "legacy-1",
+      category: "legado",
+      type: "legado_tratar",
+      stage: "monitorado",
+      targets: [{ kind: "surface", face: "top", region: "entire" }],
+    }));
+  });
 });

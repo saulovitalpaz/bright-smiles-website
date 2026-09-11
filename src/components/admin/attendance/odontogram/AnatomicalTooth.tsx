@@ -1,6 +1,6 @@
 import { useId, type JSX } from "react";
 import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
-import { FACE_KEYS, getConditionVisual, getToothFamily, type ToothData, type ToothRecord } from "./odontogramModel";
+import { FACE_KEYS, getClinicalStageLabel, getConditionDisplayName, getConditionVisual, getLatestWholeToothCondition, getOdontogramStateDefinition, getToothFamily, type ToothData, type ToothRecord } from "./odontogramModel";
 
 interface AnatomicalToothProps {
   toothNumber: number;
@@ -9,12 +9,6 @@ interface AnatomicalToothProps {
   selected?: boolean;
   record?: ToothRecord;
 }
-
-const STATUS_OVERLAYS = {
-  Saudável: "transparent",
-  Implante: "#8b5cf6",
-  Ponte: "#f59e0b",
-} as const;
 
 export function AnatomicalTooth({
   toothNumber,
@@ -35,8 +29,30 @@ export function AnatomicalTooth({
   const progressPatternId = `${idPrefix}-progress-pattern`;
   const mutedPatternId = `${idPrefix}-muted-pattern`;
   const crownClipId = `${idPrefix}-crown-clip`;
-  const overlay = STATUS_OVERLAYS[data.status as keyof typeof STATUS_OVERLAYS] ?? "#e05252";
-  const isMissing = data.status === "Ausente";
+  const treatVisual = getOdontogramStateDefinition("Tratar", "surface").visual;
+  const assessVisual = getOdontogramStateDefinition("aAvaliar", "surface").visual;
+  const progressVisual = getOdontogramStateDefinition("emAndamento", "surface").visual;
+  const mutedVisual = getOdontogramStateDefinition("suspenso", "surface").visual;
+  const wholeToothDefinition = getOdontogramStateDefinition(data.status, "tooth");
+  const wholeToothCondition = getLatestWholeToothCondition(record);
+  const layeredWholeToothVisual = wholeToothCondition ? getConditionVisual(wholeToothCondition) : null;
+  const layeredWholeToothFill = layeredWholeToothVisual
+    ? layeredWholeToothVisual.pattern === "dots"
+      ? `url(#${assessPatternId})`
+      : layeredWholeToothVisual.pattern === "diagonal"
+        ? `url(#${treatPatternId})`
+        : layeredWholeToothVisual.pattern === "crosshatch"
+          ? `url(#${progressPatternId})`
+          : layeredWholeToothVisual.pattern === "dashed"
+            ? `url(#${mutedPatternId})`
+            : layeredWholeToothVisual.fill
+    : null;
+  const overlay = wholeToothDefinition.visual.fill;
+  const isMissing = wholeToothDefinition.visual.symbol === "cross";
+  const accessibleName = [
+    `Dente ${toothNumber}, ${data.status}`,
+    wholeToothCondition ? `dente inteiro: ${getConditionDisplayName(wholeToothCondition.type)} (${getClinicalStageLabel(wholeToothCondition.stage)})` : null,
+  ].filter(Boolean).join(". ");
   const viewBoxHeight = anatomy.viewBox.split(/\s+/)[3];
   const orientationTransform =
     toothNumber >= 31 && toothNumber <= 48
@@ -47,7 +63,7 @@ export function AnatomicalTooth({
   return (
     <svg
       role="img"
-      aria-label={`Dente ${toothNumber}, ${data.status}`}
+      aria-label={accessibleName}
       viewBox={anatomy.viewBox}
       className={`anatomical-tooth anatomical-tooth--${size}`}
       data-tooth-family={family}
@@ -71,21 +87,21 @@ export function AnatomicalTooth({
           <path d={anatomy.crown} />
         </clipPath>
         <pattern id={treatPatternId} patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(35)">
-          <rect width="5" height="5" fill="#fce8e6" />
-          <path d="M0 0V5" stroke="#b42318" strokeWidth="2" />
+          <rect width="5" height="5" fill={treatVisual.fill} />
+          <path d="M0 0V5" stroke={treatVisual.stroke} strokeWidth="2" />
         </pattern>
         <pattern id={assessPatternId} patternUnits="userSpaceOnUse" width="5" height="5">
-          <rect width="5" height="5" fill="#fef3c7" />
-          <circle cx="1.25" cy="1.25" fill="#b45309" r="0.8" />
-          <circle cx="3.75" cy="3.75" fill="#b45309" r="0.8" />
+          <rect width="5" height="5" fill={assessVisual.fill} />
+          <circle cx="1.25" cy="1.25" fill={assessVisual.stroke} r="0.8" />
+          <circle cx="3.75" cy="3.75" fill={assessVisual.stroke} r="0.8" />
         </pattern>
         <pattern id={progressPatternId} patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
-          <rect width="5" height="5" fill="#ffedd5" />
-          <path d="M0 0V5M2.5 0V5" stroke="#c2410c" strokeWidth="1" />
+          <rect width="5" height="5" fill={progressVisual.fill} />
+          <path d="M0 0V5M2.5 0V5" stroke={progressVisual.stroke} strokeWidth="1" />
         </pattern>
         <pattern id={mutedPatternId} patternUnits="userSpaceOnUse" width="6" height="6">
-          <rect width="6" height="6" fill="#e2e8f0" />
-          <path d="M0 3H6" stroke="#475569" strokeDasharray="2 1" strokeWidth="1" />
+          <rect width="6" height="6" fill={mutedVisual.fill} />
+          <path d="M0 3H6" stroke={mutedVisual.stroke} strokeDasharray="2 1" strokeWidth="1" />
         </pattern>
       </defs>
 
@@ -141,10 +157,10 @@ export function AnatomicalTooth({
                 data-face-key={face}
                 data-face-status={status}
                 d={anatomy.surfaces[face]}
-                fill={isTreatment ? "#22d3ee" : `url(#${treatPatternId})`}
+                fill={isTreatment ? getOdontogramStateDefinition(status, "surface").visual.fill : `url(#${treatPatternId})`}
                 key={face}
                 opacity={isTreatment ? 0.58 : 0.86}
-                stroke={isTreatment ? "#0e7490" : "#b42318"}
+                stroke={getOdontogramStateDefinition(status, "surface").visual.stroke}
                 strokeWidth="0.7"
               />
             );
@@ -185,9 +201,13 @@ export function AnatomicalTooth({
         <g
           data-testid="whole-tooth-overlay"
           data-anatomy-layer="whole-tooth-overlay"
+          data-layered-condition-stage={wholeToothCondition?.stage}
           data-status={data.status}
-          fill={overlay}
-          opacity={data.status === "Saudável" ? 0 : 0.3}
+          data-symbol={wholeToothDefinition.visual.symbol}
+          fill={layeredWholeToothFill ?? overlay}
+          opacity={data.status === "Saudável" ? (wholeToothCondition ? 0.34 : 0) : 0.3}
+          stroke={layeredWholeToothVisual?.stroke}
+          strokeWidth={layeredWholeToothVisual ? 1 : undefined}
         >
           {anatomy.roots.map((root) => (
             <path key={root} d={root} />

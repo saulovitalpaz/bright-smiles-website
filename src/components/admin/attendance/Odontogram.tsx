@@ -13,26 +13,26 @@ import { Label } from "@/components/ui/label";
 import { AnatomicalTooth } from "./odontogram/AnatomicalTooth";
 import {
   getFaceLabels,
+  getFaceStatusOptions,
   getTooth,
   getTeethForDentition,
+  getWholeToothStatusOptions,
   normalizeOdontogram,
   removeCondition,
   upsertCondition,
-  updateToothFace,
-  updateWholeTooth,
   type FaceKey,
   type FaceStatus,
   type ClinicalCondition,
   type OdontogramData,
   type Dentition,
   type ToothData,
-  type ToothStatus,
   type WholeToothStatus,
 } from "./odontogram/odontogramModel";
 import { ToothSurfaceSelector } from "./odontogram/ToothSurfaceSelector";
 import { ClinicalConditionEditor } from "./odontogram/ClinicalConditionEditor";
 import { ClinicalConditionList } from "./odontogram/ClinicalConditionList";
 import { OcclusalTooth } from "./odontogram/OcclusalTooth";
+import { OdontogramLegend } from "./odontogram/OdontogramLegend";
 import { derivePatientAge } from "@/lib/patient-age";
 
 export type { ToothData, ToothFaceData } from "./odontogram/odontogramModel";
@@ -46,62 +46,28 @@ interface OdontogramProps {
   dentition?: Dentition;
 }
 
-const FACE_CONDITIONS: ReadonlyArray<{ label: string; value: FaceStatus }> = [
-  { label: "Saudável", value: "Saudável" },
-  { label: "A tratar", value: "Tratar" },
-  { label: "Tratada", value: "Tratado" },
-];
+const FACE_CONDITIONS = getFaceStatusOptions();
+const WHOLE_TOOTH_CONDITIONS = getWholeToothStatusOptions().map((item) => item.value);
 
-const WHOLE_TOOTH_CONDITIONS: readonly WholeToothStatus[] = [
-  "Saudável",
-  "Ausente",
-  "Implante",
-  "Ponte",
-];
-
-const LEGEND_STATUSES: readonly ToothStatus[] = [
-  "Saudável",
-  "Tratar",
-  "Tratado",
-  "Ausente",
-  "Implante",
-  "Ponte",
-];
-
-const STATUS_STYLES: Record<ToothStatus, { badge: string; dot: string }> = {
+const STATUS_STYLES: Record<WholeToothStatus, { badge: string }> = {
   Saudável: {
     badge: "border-slate-500/40 bg-white/10 text-slate-100",
-    dot: "linear-gradient(135deg,#fff 0%,#d7d0b8 100%)",
   },
   Tratar: {
     badge: "border-red-500/40 bg-red-500/15 text-red-200",
-    dot: "repeating-linear-gradient(45deg,#b42318 0 2px,#fce8e6 2px 4px)",
   },
   Tratado: {
     badge: "border-cyan-500/40 bg-cyan-500/15 text-cyan-100",
-    dot: "#22d3ee",
   },
   Ausente: {
     badge: "border-slate-600 bg-slate-800/60 text-slate-400",
-    dot: "transparent",
   },
   Implante: {
     badge: "border-violet-500/40 bg-violet-500/15 text-violet-200",
-    dot: "#8b5cf6",
   },
   Ponte: {
     badge: "border-amber-500/40 bg-amber-500/15 text-amber-200",
-    dot: "#f59e0b",
   },
-};
-
-const STATUS_EXPLANATIONS: Record<ToothStatus, string> = {
-  Saudável: "sem marcação clínica",
-  Tratar: "área listrada",
-  Tratado: "área azul",
-  Ausente: "dente ausente",
-  Implante: "reabilitação com implante",
-  Ponte: "elemento protético",
 };
 
 function isRecorded(tooth: ToothData): boolean {
@@ -171,37 +137,60 @@ const Odontogram = ({
   const teethUpper = teeth.filter((toothNumber) => (toothNumber >= 11 && toothNumber <= 28) || (toothNumber >= 51 && toothNumber <= 65));
   const teethLower = teeth.filter((toothNumber) => (toothNumber >= 31 && toothNumber <= 48) || (toothNumber >= 71 && toothNumber <= 85));
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  const [selectedFace, setSelectedFace] = useState<FaceKey | null>(null);
+  const [selectedSurfaces, setSelectedSurfaces] = useState<FaceKey[]>([]);
   const [wholeToothOpen, setWholeToothOpen] = useState(false);
+  const [draftTooth, setDraftTooth] = useState<ToothData | null>(null);
+  const [draftBaseline, setDraftBaseline] = useState<ToothData | null>(null);
+  const [editingCondition, setEditingCondition] = useState<ClinicalCondition | null>(null);
 
   useEffect(() => {
     if (!readOnly) return;
     setSelectedTooth(null);
-    setSelectedFace(null);
+    setSelectedSurfaces([]);
     setWholeToothOpen(false);
+    setDraftTooth(null);
+    setDraftBaseline(null);
+    setEditingCondition(null);
   }, [readOnly]);
 
   const openTooth = (toothNumber: number): void => {
     if (readOnly) return;
+    const tooth = getTooth(legacyData, toothNumber);
+    const draft = {
+      ...tooth,
+      faces: tooth.faces ? { ...tooth.faces } : undefined,
+    };
     setSelectedTooth(toothNumber);
-    setSelectedFace(null);
+    setSelectedSurfaces([]);
     setWholeToothOpen(false);
+    setDraftTooth(draft);
+    setDraftBaseline(draft);
   };
 
   const closeEditor = (): void => {
     setSelectedTooth(null);
-    setSelectedFace(null);
+    setSelectedSurfaces([]);
     setWholeToothOpen(false);
+    setDraftTooth(null);
+    setDraftBaseline(null);
+    setEditingCondition(null);
   };
 
   const setFaceCondition = (status: FaceStatus): void => {
-    if (readOnly || selectedTooth === null || selectedFace === null) return;
-    onChange(updateToothFace(legacyData, selectedTooth, selectedFace, status));
+    if (readOnly || selectedTooth === null || !selectedSurfaces.length) return;
+    setDraftTooth((current) => {
+      if (!current) return current;
+      const faces = { ...current.faces };
+      selectedSurfaces.forEach((face) => {
+        faces[face] = { status };
+      });
+      return { ...current, faces };
+    });
   };
 
   const setWholeToothCondition = (status: WholeToothStatus): void => {
     if (readOnly || selectedTooth === null) return;
-    onChange(updateWholeTooth(legacyData, selectedTooth, status));
+    setDraftTooth((current) => current ? { ...current, status } : current);
   };
 
   const setNotes = (notes: string): void => {
@@ -211,14 +200,34 @@ const Odontogram = ({
       onChange({ ...layeredData, teeth: { ...layeredData.teeth, [selectedTooth]: { ...current, notes } } });
       return;
     }
-    onChange({
-      ...legacyData,
-      [selectedTooth]: { ...getTooth(legacyData, selectedTooth), notes },
+    setDraftTooth((current) => current ? { ...current, notes } : current);
+  };
+
+  const clearSelectedFaceConditions = (): void => {
+    if (readOnly || selectedTooth === null || !selectedSurfaces.length) return;
+    setDraftTooth((current) => {
+      if (!current?.faces) return current;
+      const faces = { ...current.faces };
+      selectedSurfaces.forEach((face) => {
+        delete faces[face];
+      });
+      return { ...current, faces: Object.keys(faces).length ? faces : undefined };
     });
+  };
+
+  const legacyDraftChanged = Boolean(
+    !isLayeredData && draftTooth && draftBaseline && JSON.stringify(draftTooth) !== JSON.stringify(draftBaseline),
+  );
+
+  const applyLegacyChanges = (): void => {
+    if (readOnly || isLayeredData || selectedTooth === null || !draftTooth || !legacyDraftChanged) return;
+    onChange({ ...legacyData, [selectedTooth]: draftTooth });
+    closeEditor();
   };
 
   const removeLayeredCondition = (conditionId: string): void => {
     if (readOnly || selectedTooth === null) return;
+    if (editingCondition?.id === conditionId) setEditingCondition(null);
     onChange(removeCondition(layeredData, selectedTooth, conditionId));
   };
 
@@ -266,7 +275,11 @@ const Odontogram = ({
     </div>
   );
 
-  const selectedData = selectedTooth === null ? null : getTooth(legacyData, selectedTooth);
+  const selectedData = selectedTooth === null
+    ? null
+    : isLayeredData
+      ? getTooth(legacyData, selectedTooth)
+      : draftTooth ?? getTooth(legacyData, selectedTooth);
   const selectedLabels = selectedTooth === null ? null : getFaceLabels(selectedTooth);
 
   return (
@@ -281,7 +294,7 @@ const Odontogram = ({
         <CardDescription className="text-sm text-slate-400">
           {isLayeredData
             ? "Selecione o dente para registrar a condição e suas regiões diretamente no formulário clínico."
-            : "Selecione o dente e depois a face exata antes de registrar a condição."}
+            : "Selecione uma ou mais faces antes de registrar a condição clínica."}
         </CardDescription>
       </CardHeader>
 
@@ -304,28 +317,7 @@ const Odontogram = ({
           </p>
         </div>
 
-        <div className="odontogram-legend mt-7 min-w-0 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
-          <div className="flex min-w-0 flex-col gap-3">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
-              {LEGEND_STATUSES.map((status) => (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
-                  <span
-                    aria-hidden="true"
-                    className="h-3 w-3 rounded-full ring-1 ring-white/15"
-                    style={{ background: STATUS_STYLES[status].dot }}
-                  />
-                  <span>{status}</span>
-                  <span className="text-slate-500">— {STATUS_EXPLANATIONS[status]}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-center text-[11px] text-slate-400">
-              Regiões: face inteira, cervical, média e incisal/oclusal. Se necessário, selecione mais de
-              uma região para a mesma ocorrência.
-            </p>
-          </div>
-        </div>
+        <OdontogramLegend />
 
         {readOnly && recorded.length > 0 ? (
           <section aria-labelledby="odontogram-summary" className="mt-8 space-y-3">
@@ -407,7 +399,7 @@ const Odontogram = ({
             <DialogDescription className="text-slate-400">
               {isLayeredData
                 ? "Selecione as regiões precisas no formulário clínico para registrar a ocorrência."
-                : "Selecione uma face para registrar sua condição clínica."}
+                : "Selecione uma ou mais faces para registrar a condição clínica."}
             </DialogDescription>
           </DialogHeader>
 
@@ -431,11 +423,13 @@ const Odontogram = ({
                     </span>
                     <ToothSurfaceSelector
                       data={selectedData}
-                      onSelectFace={(face) => {
-                        setSelectedFace(face);
+                      onSelectFace={() => setWholeToothOpen(false)}
+                      onSelectedSurfacesChange={(faces) => {
+                        setSelectedSurfaces(faces);
                         setWholeToothOpen(false);
                       }}
-                      selectedFace={selectedFace}
+                      selectedFace={null}
+                      selectedSurfaces={selectedSurfaces}
                       toothNumber={selectedTooth}
                       readOnly={readOnly}
                     />
@@ -443,28 +437,53 @@ const Odontogram = ({
                 </div>
               ) : null}
 
-              {!isLayeredData && selectedFace && selectedLabels ? (
+              {!isLayeredData ? (
                 <section className="min-w-0 rounded-xl border border-blue-800/40 bg-blue-900/10 p-3 sm:p-4">
                   <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-blue-300">
-                    Face selecionada: {selectedLabels[selectedFace]}
+                    FACES SELECIONADAS
                   </p>
-                  <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-3">
-                    {FACE_CONDITIONS.map((condition) => (
-                      <ConditionButton
-                        active={
-                          (selectedData.faces?.[selectedFace]?.status ?? "Saudável") === condition.value
-                        }
-                        key={condition.value}
-                        label={condition.label}
-                        onClick={() => setFaceCondition(condition.value)}
-                      />
-                    ))}
-                  </div>
+                  {selectedSurfaces.length ? (
+                    <div className="mb-3 flex min-w-0 flex-wrap gap-2">
+                      {selectedSurfaces.map((face) => (
+                        <button
+                          aria-label={`Remover face ${selectedLabels?.[face]} da seleção`}
+                          className="min-h-9 rounded-full border border-blue-400/60 bg-blue-500/15 px-3 text-xs text-blue-100 hover:bg-blue-500/25"
+                          key={face}
+                          onClick={() => setSelectedSurfaces((current) => current.filter((item) => item !== face))}
+                          type="button"
+                        >
+                          {selectedLabels?.[face]} ×
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mb-3 text-sm text-slate-400">Nenhuma face selecionada</p>
+                  )}
+                  {selectedSurfaces.length ? (
+                    <>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">CONDIÇÃO DAS FACES</p>
+                      <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-3">
+                        {FACE_CONDITIONS.map((condition) => (
+                          <ConditionButton
+                            active={selectedSurfaces.every((face) => (selectedData.faces?.[face]?.status ?? "Saudável") === condition.value)}
+                            key={condition.value}
+                            label={condition.label}
+                            onClick={() => setFaceCondition(condition.value)}
+                          />
+                        ))}
+                      </div>
+                      {selectedSurfaces.some((face) => selectedData.faces?.[face]?.status && selectedData.faces[face]?.status !== "Saudável") ? (
+                        <button
+                          className="mt-3 min-h-10 rounded-lg border border-red-800/60 px-3 text-xs text-red-200 hover:bg-red-950/40"
+                          onClick={clearSelectedFaceConditions}
+                          type="button"
+                        >
+                          Limpar condição das faces selecionadas
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
                 </section>
-              ) : !isLayeredData ? (
-                <p className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 p-3 text-center text-sm text-slate-400">
-                  Toque primeiro na face exata que será avaliada.
-                </p>
               ) : null}
 
               {!isLayeredData ? <section className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/40">
@@ -474,7 +493,7 @@ const Odontogram = ({
                   onClick={() => setWholeToothOpen((open) => !open)}
                   type="button"
                 >
-                  <span>Dente inteiro</span>
+                  <span>CONDIÇÃO DO DENTE INTEIRO</span>
                   <span aria-hidden="true" className="text-slate-500">
                     {wholeToothOpen ? "−" : "+"}
                   </span>
@@ -489,6 +508,15 @@ const Odontogram = ({
                         onClick={() => setWholeToothCondition(status)}
                       />
                     ))}
+                    {selectedData.status !== "Saudável" ? (
+                      <button
+                        className="col-span-2 min-h-10 rounded-lg border border-red-800/60 px-3 text-xs text-red-200 hover:bg-red-950/40 sm:col-span-4"
+                        onClick={() => setWholeToothCondition("Saudável")}
+                        type="button"
+                      >
+                        Remover condição do dente inteiro
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </section> : null}
@@ -513,21 +541,41 @@ const Odontogram = ({
                   <h3 className="mb-3 text-sm font-semibold text-white">Ocorrências registradas</h3>
                   <ClinicalConditionList
                     conditions={layeredData.teeth[String(selectedTooth)]?.conditions ?? []}
+                    onEdit={setEditingCondition}
                     onRemove={removeLayeredCondition}
                     toothNumber={selectedTooth}
                   />
                   <div className="mt-5 border-t border-slate-700 pt-5">
                     <h3 className="mb-3 text-sm font-semibold text-white">Registro clínico em camadas</h3>
                     <ClinicalConditionEditor
-                      onCancel={() => undefined}
+                      initialCondition={editingCondition}
+                      onCancel={() => setEditingCondition(null)}
                       onSave={(condition: ClinicalCondition) => {
-                        if (selectedTooth !== null) onChange(upsertCondition(layeredData, selectedTooth, condition));
+                        if (selectedTooth !== null) {
+                          onChange(upsertCondition(layeredData, selectedTooth, condition));
+                          setEditingCondition(null);
+                        }
                       }}
                       toothNumber={selectedTooth}
                     />
                   </div>
                 </section>
               ) : null}
+            </div>
+          ) : null}
+          {!isLayeredData ? (
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-800 pt-4 sm:flex-row sm:justify-end">
+              <button className="min-h-11 rounded-lg border border-slate-700 px-4 text-sm text-slate-300 hover:bg-slate-800" onClick={closeEditor} type="button">
+                Cancelar
+              </button>
+              <button
+                className="min-h-11 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!legacyDraftChanged}
+                onClick={applyLegacyChanges}
+                type="button"
+              >
+                Aplicar alterações
+              </button>
             </div>
           ) : null}
         </DialogContent>

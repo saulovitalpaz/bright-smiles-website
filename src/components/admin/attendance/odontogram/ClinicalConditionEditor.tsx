@@ -1,8 +1,9 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 import {
   CLINICAL_CATALOG,
   createCondition,
   getAllowedTargets,
+  getClinicalStageOptions,
   MAX_CONDITION_TARGETS,
   type ClinicalCategory,
   type ClinicalCondition,
@@ -12,32 +13,43 @@ import {
 } from "./odontogramModel";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
-type EditableCategory = Exclude<ClinicalCategory, "legado">;
+type EditableCategory = ClinicalCategory;
+const CLINICAL_STAGE_OPTIONS = getClinicalStageOptions();
+const LEGACY_TYPES: ReadonlyArray<ClinicalConditionType> = [
+  "legado_tratar",
+  "legado_tratado",
+  "legado_ausente",
+  "legado_ponte",
+];
 
 interface ClinicalConditionEditorProps {
   toothNumber: number;
   onSave: (condition: ClinicalCondition) => void;
   onCancel: () => void;
+  initialCondition?: ClinicalCondition | null;
 }
 
-const STAGES: ReadonlyArray<{ value: ClinicalStage; label: string }> = [
-  { value: "aAvaliar", label: "A avaliar" },
-  { value: "planejado", label: "Planejado" },
-  { value: "emAndamento", label: "Em andamento" },
-  { value: "concluido", label: "Concluído" },
-  { value: "monitorado", label: "Monitorado" },
-  { value: "suspenso", label: "Suspenso" },
-  { value: "removido", label: "Removido" },
-];
-
-export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: ClinicalConditionEditorProps): JSX.Element {
-  const [category, setCategory] = useState<EditableCategory | "">("");
-  const [type, setType] = useState<ClinicalConditionType | "">("");
-  const [stage, setStage] = useState<ClinicalStage | "">("");
-  const [targets, setTargets] = useState<ConditionTarget[]>([]);
+export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initialCondition = null }: ClinicalConditionEditorProps): JSX.Element {
+  const [category, setCategory] = useState<EditableCategory | "">(initialCondition?.category ?? "");
+  const [type, setType] = useState<ClinicalConditionType | "">(initialCondition?.type ?? "");
+  const [stage, setStage] = useState<ClinicalStage | "">(initialCondition?.stage ?? "");
+  const [targets, setTargets] = useState<ConditionTarget[]>(initialCondition?.targets.map((target) => ({ ...target })) ?? []);
   const [targetError, setTargetError] = useState("");
-  const [notes, setNotes] = useState("");
-  const types = category ? CLINICAL_CATALOG[category] : [];
+  const [notes, setNotes] = useState(initialCondition?.notes ?? "");
+
+  useEffect(() => {
+    setCategory(initialCondition?.category ?? "");
+    setType(initialCondition?.type ?? "");
+    setStage(initialCondition?.stage ?? "");
+    setTargets(initialCondition?.targets.map((target) => ({ ...target })) ?? []);
+    setTargetError("");
+    setNotes(initialCondition?.notes ?? "");
+  }, [initialCondition]);
+  const types = category === "legado"
+    ? LEGACY_TYPES
+    : category
+      ? CLINICAL_CATALOG[category]
+      : [];
   const allowedTargets = type ? getAllowedTargets(type) : [];
   const allowsSurface = allowedTargets.includes("surface");
   const allowsWholeTooth = allowedTargets.includes("tooth");
@@ -71,7 +83,7 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
     <form className="space-y-3" onSubmit={(event) => {
       event.preventDefault();
       if (!canSave || !category || !type || !stage) return;
-      onSave(createCondition({ category, type, stage, targets, notes: notes.trim() || undefined }));
+      onSave(createCondition({ id: initialCondition?.id, category, type, stage, targets, notes: notes.trim() || undefined }));
       resetForm();
     }}>
       <label className="block text-sm">Categoria
@@ -79,6 +91,7 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
           setCategory(event.target.value as EditableCategory); setType(""); setTargets([]); setTargetError("");
         }}>
           <option value="">Selecione</option>
+          {initialCondition?.category === "legado" ? <option value="legado">Legado (migrado)</option> : null}
           {Object.keys(CLINICAL_CATALOG).map((value) => <option key={value} value={value}>{value}</option>)}
         </select>
       </label>
@@ -89,41 +102,47 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel }: Clini
         </select>
       </label>
       {type ? (
-        <fieldset className="space-y-3 rounded-lg border border-slate-700 p-3">
-          <legend className="px-1 text-sm font-medium text-slate-100">Região clínica</legend>
+        <div className="space-y-3">
           {allowsSurface ? (
-            <ToothSurfaceSelector
-              data={{ status: "Saudável", notes: "" }}
-              onSelectFace={() => undefined}
-              onTargetsChange={handleTargetsChange}
-              selectedFace={null}
-              selectedTargets={targets.filter((target) => target.kind === "surface")}
-              toothNumber={toothNumber}
-            />
+            <fieldset className="space-y-3 rounded-lg border border-slate-700 p-3">
+              <legend className="px-1 text-sm font-medium text-slate-100">Condições das faces</legend>
+              <ToothSurfaceSelector
+                data={{ status: "Saudável", notes: "" }}
+                onSelectFace={() => undefined}
+                onTargetsChange={handleTargetsChange}
+                selectedFace={null}
+                selectedTargets={targets.filter((target) => target.kind === "surface")}
+                toothNumber={toothNumber}
+              />
+            </fieldset>
+          ) : null}
+          {allowsWholeTooth ? (
+            <fieldset className="space-y-3 rounded-lg border border-slate-700 p-3">
+              <legend className="px-1 text-sm font-medium text-slate-100">Condição do dente inteiro</legend>
+              <button
+                aria-label="Definir condição do dente inteiro"
+                aria-pressed={targets.some((target) => target.kind === "tooth")}
+                className={`min-h-11 rounded-md border px-3 text-sm font-medium transition-colors ${targets.some((target) => target.kind === "tooth") ? "border-blue-400 bg-blue-500/20 text-white ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"}`}
+                onClick={selectWholeTooth}
+                type="button"
+              >
+                Dente inteiro
+              </button>
+            </fieldset>
           ) : null}
           {targetError ? <p className="text-sm text-amber-300" role="alert">{targetError}</p> : null}
-          {allowsWholeTooth ? (
-            <button
-              aria-pressed={targets.some((target) => target.kind === "tooth")}
-              className={`min-h-11 rounded-md border px-3 text-sm font-medium transition-colors ${targets.some((target) => target.kind === "tooth") ? "border-blue-400 bg-blue-500/20 text-white ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 text-slate-100 hover:border-slate-400"}`}
-              onClick={selectWholeTooth}
-              type="button"
-            >
-              Dente inteiro
-            </button>
-          ) : null}
-        </fieldset>
+        </div>
       ) : null}
       <label className="block text-sm">Situação
         <select aria-label="Situação" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={stage} onChange={(event) => setStage(event.target.value as ClinicalStage)}>
           <option value="">Selecione</option>
-          {STAGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          {CLINICAL_STAGE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
       </label>
       <label className="block text-sm">Observação da ocorrência
         <textarea aria-label="Observação da ocorrência" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
-      <div className="flex gap-2"><button className="rounded bg-blue-600 px-3 py-2 text-white disabled:opacity-50" disabled={!canSave} type="submit">Salvar ocorrência</button><button className="rounded border px-3 py-2" onClick={onCancel} type="button">Cancelar</button></div>
+      <div className="flex gap-2"><button className="min-h-11 rounded bg-blue-600 px-3 py-2 text-white disabled:opacity-50" disabled={!canSave} type="submit">{initialCondition ? "Atualizar ocorrência" : "Salvar ocorrência"}</button><button className="min-h-11 rounded border px-3 py-2" onClick={onCancel} type="button">Cancelar</button></div>
     </form>
   );
 }

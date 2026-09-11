@@ -119,6 +119,18 @@ export type ConditionVisual = {
   pattern?: "dots" | "diagonal" | "crosshatch" | "dashed";
 };
 
+export type OdontogramStateScope = "surface" | "tooth";
+export type OdontogramStateSymbol = "cross" | "implant" | "bridge" | "dot" | "none";
+
+export interface OdontogramStateDefinition {
+  id: string;
+  label: string;
+  description: string;
+  scope: OdontogramStateScope;
+  value?: FaceStatus | WholeToothStatus | ClinicalStage;
+  visual: ConditionVisual & { symbol: OdontogramStateSymbol };
+}
+
 const CLINICAL_STAGE_LABELS: Record<ClinicalStage, string> = {
   aAvaliar: "A avaliar",
   planejado: "Planejado",
@@ -138,6 +150,144 @@ const CLINICAL_STAGE_VISUALS: Record<ClinicalStage, ConditionVisual> = {
   suspenso: { label: "Suspenso", fill: "#e2e8f0", stroke: "#475569", pattern: "dashed" },
   removido: { label: "Removido", fill: "#cbd5e1", stroke: "#64748b", pattern: "dashed" },
 };
+
+const FACE_STATE_DEFINITIONS: ReadonlyArray<OdontogramStateDefinition> = [
+  {
+    id: "face-healthy",
+    label: "Saudável",
+    description: "sem marcação clínica",
+    scope: "surface",
+    value: "Saudável",
+    visual: { label: "Saudável", fill: "#f7f0dc", stroke: "#867c68", symbol: "none" },
+  },
+  {
+    id: "face-treatment-needed",
+    label: "A tratar",
+    description: "área listrada",
+    scope: "surface",
+    value: "Tratar",
+    visual: { label: "A tratar", fill: "#fce8e6", stroke: "#b42318", pattern: "diagonal", symbol: "dot" },
+  },
+  {
+    id: "face-treated",
+    label: "Tratada",
+    description: "área azul",
+    scope: "surface",
+    value: "Tratado",
+    visual: { label: "Tratada", fill: "#d9eff3", stroke: "#0e7490", symbol: "dot" },
+  },
+];
+
+const WHOLE_TOOTH_STATE_DEFINITIONS: ReadonlyArray<OdontogramStateDefinition> = [
+  {
+    id: "tooth-healthy",
+    label: "Sem condição global",
+    description: "sem condição no dente inteiro",
+    scope: "tooth",
+    value: "Saudável",
+    visual: { label: "Sem condição global", fill: "transparent", stroke: "#867c68", symbol: "none" },
+  },
+  {
+    id: "tooth-missing",
+    label: "Ausente",
+    description: "dente ausente",
+    scope: "tooth",
+    value: "Ausente",
+    visual: { label: "Ausente", fill: "transparent", stroke: "#b42318", symbol: "cross" },
+  },
+  {
+    id: "tooth-implant",
+    label: "Implante",
+    description: "reabilitação com implante",
+    scope: "tooth",
+    value: "Implante",
+    visual: { label: "Implante", fill: "#8b5cf6", stroke: "#6d28d9", symbol: "implant" },
+  },
+  {
+    id: "tooth-bridge",
+    label: "Ponte",
+    description: "elemento protético",
+    scope: "tooth",
+    value: "Ponte",
+    visual: { label: "Ponte", fill: "#f59e0b", stroke: "#b45309", symbol: "bridge" },
+  },
+];
+
+const CLINICAL_STAGE_STATE_DEFINITIONS: ReadonlyArray<OdontogramStateDefinition> =
+  (Object.entries(CLINICAL_STAGE_VISUALS) as Array<[ClinicalStage, ConditionVisual]>).map(([stage, visual]) => ({
+    id: `stage-${stage}`,
+    label: visual.label,
+    description: `condição clínica: ${visual.label.toLocaleLowerCase("pt-BR")}`,
+    scope: "surface",
+    value: stage,
+    visual: { ...visual, symbol: "dot" },
+  }));
+
+export const ODONTOGRAM_STATE_DEFINITIONS: ReadonlyArray<OdontogramStateDefinition> = [
+  ...FACE_STATE_DEFINITIONS,
+  ...CLINICAL_STAGE_STATE_DEFINITIONS,
+  ...WHOLE_TOOTH_STATE_DEFINITIONS,
+];
+
+const UNKNOWN_STATE_DEFINITION: OdontogramStateDefinition = {
+  id: "unknown-state",
+  label: "Estado não informado",
+  description: "estado clínico não reconhecido; revise o registro",
+  scope: "surface",
+  visual: { label: "Estado não informado", fill: "transparent", stroke: "#64748b", pattern: "dashed", symbol: "none" },
+};
+
+const STATE_LOOKUP = new Map<string, OdontogramStateDefinition>([
+  ["Saudável", FACE_STATE_DEFINITIONS[0]],
+  ["Tratar", FACE_STATE_DEFINITIONS[1]],
+  ["Tratado", FACE_STATE_DEFINITIONS[2]],
+  ["Ausente", WHOLE_TOOTH_STATE_DEFINITIONS[1]],
+  ["Implante", WHOLE_TOOTH_STATE_DEFINITIONS[2]],
+  ["Ponte", WHOLE_TOOTH_STATE_DEFINITIONS[3]],
+  ...CLINICAL_STAGE_STATE_DEFINITIONS.map((definition) => [definition.id.slice("stage-".length), definition] as const),
+]);
+
+export function getOdontogramStateDefinition(
+  state: FaceStatus | WholeToothStatus | ClinicalStage,
+  scope?: OdontogramStateScope,
+): OdontogramStateDefinition {
+  const definition = scope
+    ? ODONTOGRAM_STATE_DEFINITIONS.find((item) => item.scope === scope && item.value === state)
+    : STATE_LOOKUP.get(state);
+  if (definition) return definition;
+  return scope ? { ...UNKNOWN_STATE_DEFINITION, scope } : UNKNOWN_STATE_DEFINITION;
+}
+
+export function getOdontogramLegendGroups(): {
+  faces: ReadonlyArray<OdontogramStateDefinition>;
+  tooth: ReadonlyArray<OdontogramStateDefinition>;
+} {
+  return {
+    faces: ODONTOGRAM_STATE_DEFINITIONS.filter((definition) => definition.scope === "surface"),
+    tooth: ODONTOGRAM_STATE_DEFINITIONS.filter((definition) => definition.scope === "tooth"),
+  };
+}
+
+export function getFaceStatusOptions(): ReadonlyArray<{ value: FaceStatus; label: string }> {
+  return FACE_STATE_DEFINITIONS.map((definition) => ({
+    value: definition.value as FaceStatus,
+    label: definition.label,
+  }));
+}
+
+export function getWholeToothStatusOptions(): ReadonlyArray<{ value: WholeToothStatus; label: string }> {
+  return WHOLE_TOOTH_STATE_DEFINITIONS.map((definition) => ({
+    value: definition.value as WholeToothStatus,
+    label: definition.value === "Saudável" ? "Sem condição global" : definition.label,
+  }));
+}
+
+export function getClinicalStageOptions(): ReadonlyArray<{ value: ClinicalStage; label: string }> {
+  return CLINICAL_STAGE_STATE_DEFINITIONS.map((definition) => ({
+    value: definition.value as ClinicalStage,
+    label: definition.label,
+  }));
+}
 
 const WHOLE_TOOTH_TYPES = new Set<ClinicalConditionType>(["coroa_total", "implante", "ponte_fixa", "protese_removivel", "elemento_pontico", "exodontia_indicada", "exodontia_executada"]);
 let conditionSequence = 0;
@@ -205,19 +355,23 @@ export function getConditionDisplayName(type: ClinicalConditionType): string {
 }
 
 export function getClinicalStageLabel(stage: ClinicalStage): string {
-  return CLINICAL_STAGE_LABELS[stage];
+  return CLINICAL_STAGE_LABELS[stage] ?? "Estado não informado";
 }
 
 export function getConditionVisual(condition: Pick<ClinicalCondition, "stage">): ConditionVisual {
-  return CLINICAL_STAGE_VISUALS[condition.stage];
+  return getOdontogramStateDefinition(condition.stage, "surface").visual;
+}
+
+export function getLatestWholeToothCondition(record?: ToothRecord): ClinicalCondition | undefined {
+  return record?.conditions
+    .filter((condition) => condition.targets.some((target) => target.kind === "tooth"))
+    .at(-1);
 }
 
 export function getClinicalStageVisuals(): ReadonlyArray<ConditionVisual> {
-  return [
-    CLINICAL_STAGE_VISUALS.aAvaliar, CLINICAL_STAGE_VISUALS.planejado,
-    CLINICAL_STAGE_VISUALS.emAndamento, CLINICAL_STAGE_VISUALS.concluido,
-    CLINICAL_STAGE_VISUALS.monitorado, CLINICAL_STAGE_VISUALS.suspenso,
-  ];
+  return CLINICAL_STAGE_STATE_DEFINITIONS
+    .filter((definition) => definition.value !== "removido")
+    .map((definition) => definition.visual);
 }
 
 export function getConditionTargetLabel(toothNumber: number, target: ConditionTarget): string {

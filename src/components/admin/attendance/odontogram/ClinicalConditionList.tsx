@@ -10,6 +10,7 @@ interface ClinicalConditionListProps {
   toothNumber: number;
   conditions: ClinicalCondition[];
   onRemove?: (conditionId: string) => void;
+  onEdit?: (condition: ClinicalCondition) => void;
   readOnly?: boolean;
 }
 
@@ -67,6 +68,7 @@ export function ClinicalConditionList({
   toothNumber,
   conditions,
   onRemove,
+  onEdit,
   readOnly = false,
 }: ClinicalConditionListProps): JSX.Element {
   if (!conditions.length) {
@@ -87,8 +89,11 @@ export function ClinicalConditionList({
               {targets}
             </p>
             {condition.notes ? <p className="mt-2 text-xs text-slate-400">{condition.notes}</p> : null}
-            {!readOnly && onRemove ? (
-              <button aria-label={`Remover ${name}: ${stage}; ${targets} (ocorrência ${index + 1})`} onClick={() => onRemove(condition.id)} type="button">Remover</button>
+            {!readOnly ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {onEdit ? <button className="min-h-10 rounded border border-slate-600 px-3 text-xs text-slate-200 hover:bg-slate-800" aria-label={`Editar ${name}: ${stage}; ${targets} (ocorrência ${index + 1})`} onClick={() => onEdit(condition)} type="button">Editar</button> : null}
+                {onRemove ? <button className="min-h-10 rounded border border-red-900/60 px-3 text-xs text-red-200 hover:bg-red-950/40" aria-label={`Remover ${name}: ${stage}; ${targets} (ocorrência ${index + 1})`} onClick={() => onRemove(condition.id)} type="button">Remover</button> : null}
+              </div>
             ) : null}
           </li>
         );
