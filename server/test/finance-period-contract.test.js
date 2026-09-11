@@ -36,7 +36,7 @@ test('finance stats distinguish realized and pending cash without counting voide
 test('finance list and stats use the shared parser and remain private', () => {
     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
     const financeRoute = source.slice(source.indexOf("app.get('/finance'"), source.indexOf("app.post('/finance'"));
-    const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf("// NEW: NF-e"));
+    const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf("app.post('/finance/nfe'"));
 
     for (const route of [financeRoute, statsRoute]) {
         assert.match(route, /authenticateToken/);
@@ -65,7 +65,7 @@ test('financeCumulativeWhere stops before the selected period', () => {
 test('finance routes expose dated input and accounting totals', () => {
     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
     const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
-    const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf('// NEW: NF-e'));
+    const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf("app.post('/finance/nfe'"));
 
     assert.match(source, /parseFinanceTransactionDate/);
     assert.match(source, /data\.description\s*=.*null/);

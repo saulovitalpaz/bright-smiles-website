@@ -399,7 +399,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     </div>
                 </header>
 
-                <div className="admin-content flex-1 py-3 md:py-6">
+                <div className="admin-content flex-1 pt-3 md:pt-6">
                     {children}
                 </div>
             </main>

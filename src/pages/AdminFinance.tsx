@@ -11,6 +11,9 @@ import { DownloadFinanceReportButton } from "@/components/admin/FinanceReportPDF
 import { fetchClient, API_URL } from "@/lib/api";
 import { createExpenseCategorySummary, financePeriodQuery, financePeriodTitle, todayInput as createTodayInput } from "@/lib/finance";
 import { mediaUrl } from "@/lib/media";
+import { FinanceInvoiceAction } from "@/components/admin/FinanceInvoiceAction";
+import { hasInvoiceDocument, needsInvoiceDocument } from "@/lib/financeInvoices";
+import { createFinanceEntriesCsv } from "@/lib/financeExport";
 import axios from "axios";
 import { ArrowDownRight, ArrowUpRight, CheckCircle2, FileText, Loader2, Plus, Receipt, Trash2, TrendingUp, Upload, Wallet } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +26,7 @@ type Transaction = {
     date: string;
     category: string | null;
     paymentStatus?: string | null;
-    patient?: { name: string } | null;
+    patient?: { name: string; cpf?: string | null; phone?: string | null; address?: string | null } | null;
     receiptUrl?: string;
     nfeUrl?: string;
 };
@@ -48,6 +51,7 @@ const AdminFinance = () => {
     const [financeCategories, setFinanceCategories] = useState<FinanceCategory[]>([]);
     const [filterByMonth, setFilterByMonth] = useState(new Date().getMonth() + 1);
     const [filterByYear, setFilterByYear] = useState(new Date().getFullYear());
+    const [missingInvoicesOnly, setMissingInvoicesOnly] = useState(false);
     const [transactionTypeFilter, setTransactionTypeFilter] = useState<"income" | "expense" | null>(null);
     const [newDesc, setNewDesc] = useState("");
     const [newAmount, setNewAmount] = useState("");
@@ -102,12 +106,16 @@ const AdminFinance = () => {
 
     useEffect(() => {
         setTransactionTypeFilter(null);
+        setMissingInvoicesOnly(false);
         void loadFinanceData();
     }, [loadFinanceData]);
 
     const categorySummary = useMemo(() => createExpenseCategorySummary(transactions), [transactions]);
-    const displayedTransactions = transactionTypeFilter ? transactions.filter((transaction) => transaction.type === transactionTypeFilter) : transactions;
-    const activeFilterLabel = transactionTypeFilter === "income" ? "Receitas" : transactionTypeFilter === "expense" ? "Despesas" : null;
+    const missingInvoices = transactions.filter(needsInvoiceDocument);
+    const displayedTransactions = transactions.filter((transaction) =>
+        (!transactionTypeFilter || transaction.type === transactionTypeFilter) && (!missingInvoicesOnly || needsInvoiceDocument(transaction)),
+    );
+    const activeFilterLabel = missingInvoicesOnly ? "Receitas sem nota anexada" : transactionTypeFilter === "income" ? "Receitas" : transactionTypeFilter === "expense" ? "Despesas" : null;
     const selectedPeriodStats = {
         income: stats.income,
         expense: stats.expense,
@@ -117,17 +125,13 @@ const AdminFinance = () => {
         closingBalance: stats.closingBalance,
     };
 
-    const handleConfirmNfe = async (transactionId: number) => {
-        try {
-            const response = await fetchClient("/finance/nfe", { method: "POST", body: JSON.stringify({ transactionIds: [transactionId], nfeUrl: "" }) });
-            if (response.ok) {
-                toast.success("NF-e confirmada com sucesso!");
-                void loadFinanceData();
-            }
-        } catch (error) {
-            console.error(error);
-            toast.error("Erro ao confirmar NF-e");
-        }
+    const handleInvoiceSaved = (id: number, nfeUrl: string) => {
+        setTransactions((current) => current.map((transaction) => transaction.id === id ? { ...transaction, nfeUrl } : transaction));
+    };
+
+    const clearFilters = () => {
+        setTransactionTypeFilter(null);
+        setMissingInvoicesOnly(false);
     };
 
     const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,7 +212,7 @@ const AdminFinance = () => {
             toast.error("Nenhuma transação neste período para exportar.");
             return;
         }
-        const headers = ["Data", "Tipo", "Descrição", "Categoria", "Valor", "Paciente"];
+        const headers = ["Data", "Tipo", "Descrição", "Categoria", "Valor", "Paciente", "Nota fiscal"];
         const rows = transactions.map((transaction) => [
             new Date(transaction.date).toLocaleDateString("pt-BR"),
             transaction.type === "income" ? "Receita" : "Despesa",
@@ -216,6 +220,7 @@ const AdminFinance = () => {
             transaction.category || "-",
             transaction.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 }).replace(/\./g, "").replace(",", "."),
             transaction.patient?.name || "-",
+            transaction.type === "income" && transaction.paymentStatus !== "voided" ? (hasInvoiceDocument(transaction.nfeUrl) ? "Anexada" : "Sem anexo") : "Não se aplica",
         ]);
         const link = document.createElement("a");
         link.href = encodeURI(`data:text/csv;charset=utf-8,\uFEFF${headers.join(";")}\n${rows.map((row) => row.join(";")).join("\n")}`);
@@ -226,7 +231,25 @@ const AdminFinance = () => {
         toast.success("Relatório CSV gerado!");
     };
 
-    const toggleTransactionTypeFilter = (type: "income" | "expense") => setTransactionTypeFilter((current) => current === type ? null : type);
+    const downloadEntriesForInvoices = () => {
+        const entries = transactions.filter((transaction) => transaction.type === "income");
+        if (entries.length === 0) {
+            toast.error("Nenhuma entrada neste período para exportar.");
+            return;
+        }
+        const link = document.createElement("a");
+        link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(createFinanceEntriesCsv(entries))}`;
+        link.download = `entradas_nf-e_${filterByYear}_${String(filterByMonth).padStart(2, "0")}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Tabela de entradas para NF-e gerada!");
+    };
+
+    const toggleTransactionTypeFilter = (type: "income" | "expense") => {
+        setMissingInvoicesOnly(false);
+        setTransactionTypeFilter((current) => current === type ? null : type);
+    };
 
     return (
         <AdminLayout title="Gestão Financeira">
@@ -245,7 +268,7 @@ const AdminFinance = () => {
                         <span className="admin-metric-value mt-1 block text-slate-900">R$ {stats.expense.toLocaleString("pt-BR")}</span>
                         <span className="mt-2 block text-xs text-slate-600">Toque para filtrar o fluxo</span>
                     </button>
-                    <button type="button" aria-label="Mostrar todas as movimentações do período" aria-pressed={transactionTypeFilter === null} onClick={() => setTransactionTypeFilter(null)} className={"admin-card col-span-2 min-w-0 p-3 text-left transition-colors sm:p-4 md:col-span-1 " + (transactionTypeFilter === null ? "ring-2 ring-primary/30" : "")}>
+                    <button type="button" aria-label="Mostrar todas as movimentações do período" aria-pressed={transactionTypeFilter === null && !missingInvoicesOnly} onClick={clearFilters} className={"admin-card col-span-2 min-w-0 p-3 text-left transition-colors sm:p-4 md:col-span-1 " + (transactionTypeFilter === null && !missingInvoicesOnly ? "ring-2 ring-primary/30" : "")}>
                         <span className="flex items-center gap-2 text-xs font-semibold text-slate-700"><Wallet size={16} aria-hidden="true" /> Líquido do mês</span>
                         <span className={"admin-metric-value mt-2 block " + (stats.monthlyBalance >= 0 ? "text-primary" : "text-rose-700")}>R$ {stats.monthlyBalance.toLocaleString("pt-BR")}</span>
                         <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"><span>Saldo inicial: R$ {stats.openingBalance.toLocaleString("pt-BR")}</span><span>Total em conta: R$ {stats.closingBalance.toLocaleString("pt-BR")}</span></span>
@@ -269,13 +292,31 @@ const AdminFinance = () => {
                             <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Anexo de comprovante</Label><Button type="button" variant="outline" className="h-11 w-full gap-2 border-2 border-dashed hover:bg-slate-50" onClick={() => fileInputRef.current?.click()} disabled={uploading}>{uploading ? <Loader2 className="w-4 animate-spin" /> : <Upload className="w-4" />}{receiptUrl ? "Substituir comprovante" : "Anexar foto / PDF"}</Button><input ref={fileInputRef} type="file" className="hidden" accept="image/*,application/pdf" onChange={handleUpload} />{receiptUrl && <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2"><CheckCircle2 size={14} className="text-emerald-600" /><span className="text-[10px] font-bold uppercase text-emerald-700">Documento vinculado</span></div>}</div>
                             <Button type="submit" className="mt-2 w-full gap-2" disabled={uploading || (newType === "expense" && !newCategoryId)}><Plus size={18} /> Registrar</Button>
                         </form></CardContent></Card>
-                        <Card className="border-2 border-primary/10 bg-white shadow-sm"><CardContent className="flex flex-col items-center p-6 text-center"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary"><Receipt size={24} /></div><h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-900">Faturamento & NF-e</h4><div className="w-full space-y-4"><div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>NF-e pendentes</span><span className={transactions.filter((transaction) => transaction.type === "income" && !transaction.nfeUrl).length > 0 ? "text-rose-600" : "text-emerald-600"}>{transactions.filter((transaction) => transaction.type === "income" && !transaction.nfeUrl).length}</span></div></div><Button variant="outline" size="sm" className="h-10 w-full text-[10px] font-bold text-slate-700" onClick={downloadCSV}><FileText size={14} className="mr-2" /> Exportar relatório contábil (.csv)</Button></div></CardContent></Card>
+                        <Card className="admin-card"><CardHeader className="p-4 pb-3 sm:p-5 sm:pb-3"><CardTitle className="text-base font-semibold">Notas fiscais</CardTitle><CardDescription>Documentos vinculados às receitas de {financePeriodTitle(filterByMonth, filterByYear)}.</CardDescription></CardHeader><CardContent className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0">
+                            <Button type="button" variant="outline" aria-pressed={missingInvoicesOnly} className="h-auto min-h-11 w-full justify-between gap-3 whitespace-normal text-left" onClick={() => { setTransactionTypeFilter(null); setMissingInvoicesOnly((current) => !current); }}><span>Receitas sem nota anexada</span><span className="rounded-md bg-amber-50 px-2 py-1 text-amber-800">{missingInvoices.length}</span></Button>
+                            <p className="text-xs leading-relaxed text-slate-500">Anexe notas já emitidas pelo seu emissor fiscal. Abra cada documento pelo fluxo de caixa.</p>
+                            <Button variant="outline" size="sm" className="h-auto min-h-11 w-full whitespace-normal text-xs" onClick={downloadEntriesForInvoices}><FileText size={14} className="mr-2 shrink-0" /> Exportar entradas para NF-e (.csv)</Button>
+                            <Button variant="ghost" size="sm" className="h-auto min-h-11 w-full whitespace-normal text-xs" onClick={downloadCSV}><FileText size={14} className="mr-2 shrink-0" /> Exportar todas as movimentações (.csv)</Button>
+                        </CardContent></Card>
                     </div>
 
-                    <div className="print-report order-1 min-w-0 lg:order-2 lg:col-span-2"><Card className="min-w-0 border-slate-200 shadow-sm"><CardHeader className="min-w-0 gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0"><CardTitle className="break-words font-serif text-xl">Fluxo de Caixa - {financePeriodTitle(filterByMonth, filterByYear)}</CardTitle><CardDescription>Histórico de movimentações financeiras{activeFilterLabel ? ` · ${activeFilterLabel}` : ""}.</CardDescription><div className="grid grid-cols-2 gap-3 pt-4 sm:max-w-sm"><div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Mês</Label><Select value={String(filterByMonth)} onValueChange={(value) => setFilterByMonth(Number(value))}><SelectTrigger className="h-11 border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 12 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>{new Date(0, index).toLocaleString("pt-BR", { month: "long" })}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Ano</Label><Select value={String(filterByYear)} onValueChange={(value) => setFilterByYear(Number(value))}><SelectTrigger className="h-11 border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026].map((year) => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select></div></div>{activeFilterLabel && <Button type="button" variant="ghost" size="sm" className="mt-2 h-9 px-0 text-xs font-bold text-primary" onClick={() => setTransactionTypeFilter(null)}>Limpar filtro de {activeFilterLabel.toLowerCase()}</Button>}</div><div className="no-print flex w-full items-center lg:w-auto"><DownloadFinanceReportButton transactions={transactions} stats={selectedPeriodStats} reportTitle={financePeriodTitle(filterByMonth, filterByYear)} periodLabel={financePeriodTitle(filterByMonth, filterByYear)} periodKey={`${filterByYear}-${String(filterByMonth).padStart(2, "0")}`} label="PDF do período selecionado" /></div></CardHeader><CardContent>
+                    <div className="print-report order-1 min-w-0 lg:order-2 lg:col-span-2"><Card className="admin-card">
+                        <CardHeader className="gap-4 p-4 sm:p-5">
+                            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                                <div className="min-w-0"><CardTitle className="text-lg font-semibold tracking-tight text-slate-900">Fluxo de caixa</CardTitle><CardDescription className="mt-1 capitalize">{financePeriodTitle(filterByMonth, filterByYear)}</CardDescription></div>
+                                <div className="no-print w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-center text-xs font-semibold text-slate-700 sm:w-auto">
+                                    <DownloadFinanceReportButton transactions={transactions} stats={selectedPeriodStats} reportTitle={financePeriodTitle(filterByMonth, filterByYear)} periodLabel={financePeriodTitle(filterByMonth, filterByYear)} periodKey={`${filterByYear}-${String(filterByMonth).padStart(2, "0")}`} label="PDF do período selecionado" />
+                                </div>
+                            </div>
+                            <div className="no-print grid grid-cols-2 gap-3 rounded-xl border border-slate-200/70 bg-slate-50/60 p-3">
+                                <div className="min-w-0 space-y-1.5"><Label htmlFor="cash-flow-month" className="text-xs text-slate-600">Mês</Label><Select value={String(filterByMonth)} onValueChange={(value) => setFilterByMonth(Number(value))}><SelectTrigger id="cash-flow-month" className="h-11 bg-white"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 12 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>{new Date(0, index).toLocaleString("pt-BR", { month: "long" })}</SelectItem>)}</SelectContent></Select></div>
+                                <div className="min-w-0 space-y-1.5"><Label htmlFor="cash-flow-year" className="text-xs text-slate-600">Ano</Label><Select value={String(filterByYear)} onValueChange={(value) => setFilterByYear(Number(value))}><SelectTrigger id="cash-flow-year" className="h-11 bg-white"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: Math.max(new Date().getFullYear(), filterByYear) - 2024 + 2 }, (_, index) => 2024 + index).map((year) => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select></div>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500"><span>{displayedTransactions.length} movimentações{activeFilterLabel ? ` · ${activeFilterLabel}` : ""}</span>{activeFilterLabel && <Button type="button" variant="ghost" size="sm" className="no-print min-h-11 text-xs" onClick={clearFilters}>Limpar filtro</Button>}</div>
+                        </CardHeader><CardContent className="p-4 pt-0 sm:p-5 sm:pt-0">
                         {displayedTransactions.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-10 text-center text-sm text-slate-500">{activeFilterLabel ? `Nenhuma movimentação de ${activeFilterLabel.toLowerCase()} neste período.` : "Nenhuma movimentação neste período."}</div>}
-                        <div className="admin-scroll-region hidden lg:block"><table className="w-full text-sm"><thead><tr className="border-b border-slate-100 text-left text-slate-400"><th className="pb-4 font-medium">Data</th><th className="pb-4 font-medium">Movimentação</th><th className="pb-4 font-medium text-right">Valor</th><th className="no-print w-10 pb-4"></th></tr></thead><tbody className="divide-y divide-slate-50">{displayedTransactions.map((t) => <tr key={t.id} className="group transition-colors hover:bg-slate-50"><td className="py-4 font-mono text-xs text-slate-500">{new Date(t.date).toLocaleDateString("pt-BR")}</td><td className="py-4"><div className="flex items-start gap-3"><div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${t.type === "income" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>{t.type === "income" ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}</div><div className="min-w-0"><p className="font-medium text-slate-900">{t.patient?.name || (t.description || t.category)}</p>{t.patient && t.description && <p className="mt-0.5 text-xs text-slate-500">{t.description}</p>}{t.category && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">{t.category}</p>}<div className="mt-1 flex gap-2">{t.receiptUrl && <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="text-[9px] font-bold uppercase text-primary hover:underline"><Receipt size={10} className="mr-1 inline" /> Recibo</a>}{t.nfeUrl ? <span className="text-[9px] font-bold uppercase text-emerald-600"><CheckCircle2 size={10} className="mr-1 inline" /> NF-e emitida</span> : t.type === "income" ? <Button variant="ghost" size="sm" className="no-print h-5 px-1 text-[9px] font-bold text-rose-500" onClick={() => handleConfirmNfe(t.id)}><Plus size={10} className="mr-1" /> Confirmar NF-e</Button> : null}</div></div></div></td><td className={`py-4 text-right font-bold ${t.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>{t.type === "income" ? "+" : "-"} R$ {t.amount.toLocaleString("pt-BR")}</td><td className="no-print py-4 text-right"><Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100" aria-label={`Excluir ${t.patient?.name || (t.description || t.category)}`} onClick={() => handleDelete(t.id)}><Trash2 size={14} /></Button></td></tr>)}</tbody></table></div>
-                        <div className="min-w-0 space-y-3 lg:hidden">{displayedTransactions.map((t) => <article key={`mobile-${t.id}`} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/50 p-4"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${t.type === "income" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>{t.type === "income" ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}</div><div className="min-w-0"><p className="break-words font-semibold text-slate-900">{t.patient?.name || (t.description || t.category)}</p>{t.patient && t.description && <p className="mt-0.5 break-words text-xs text-slate-500">{t.description}</p>}{t.category && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">{t.category}</p>}<p className="mt-1 text-xs text-slate-500">{new Date(t.date).toLocaleDateString("pt-BR")}</p></div></div><p className={`shrink-0 text-right text-sm font-black ${t.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>{t.type === "income" ? "+" : "-"} R$ {t.amount.toLocaleString("pt-BR")}</p></div><div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wide">{t.receiptUrl && <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1 text-primary hover:underline"><Receipt size={11} /> Recibo</a>}{t.nfeUrl ? <span className="inline-flex min-h-8 items-center gap-1 text-emerald-600"><CheckCircle2 size={11} /> NF-e emitida</span> : t.type === "income" ? <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px] font-bold text-rose-500" onClick={() => handleConfirmNfe(t.id)}><Plus size={11} className="mr-1" /> Confirmar NF-e</Button> : null}<Button variant="ghost" size="icon" className="ml-auto h-9 w-9 text-slate-400 hover:text-red-500" aria-label={`Excluir ${t.patient?.name || (t.description || t.category)}`} onClick={() => handleDelete(t.id)}><Trash2 size={15} /></Button></div></article>)}</div>
+                        <div className="admin-scroll-region hidden lg:block"><table className="w-full text-sm"><thead><tr className="border-b border-slate-100 text-left text-slate-400"><th className="pb-4 font-medium">Data</th><th className="pb-4 font-medium">Movimentação</th><th className="pb-4 font-medium text-right">Valor</th><th className="no-print w-10 pb-4"></th></tr></thead><tbody className="divide-y divide-slate-50">{displayedTransactions.map((t) => <tr key={t.id} className="group transition-colors hover:bg-slate-50"><td className="py-4 font-mono text-xs text-slate-500">{new Date(t.date).toLocaleDateString("pt-BR")}</td><td className="py-4"><div className="flex items-start gap-3"><div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${t.type === "income" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>{t.type === "income" ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}</div><div className="min-w-0"><p className="font-medium text-slate-900">{t.patient?.name || (t.description || t.category)}</p>{t.patient && t.description && <p className="mt-0.5 text-xs text-slate-500">{t.description}</p>}{t.category && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">{t.category}</p>}<div className="mt-1 flex flex-wrap items-center gap-2">{t.receiptUrl && <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="text-[9px] font-bold uppercase text-primary hover:underline"><Receipt size={10} className="mr-1 inline" /> Recibo</a>}<FinanceInvoiceAction transaction={t} onSaved={handleInvoiceSaved} /></div></div></div></td><td className={`py-4 text-right font-bold ${t.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>{t.type === "income" ? "+" : "-"} R$ {t.amount.toLocaleString("pt-BR")}</td><td className="no-print py-4 text-right"><Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100" aria-label={`Excluir ${t.patient?.name || (t.description || t.category)}`} onClick={() => handleDelete(t.id)}><Trash2 size={14} /></Button></td></tr>)}</tbody></table></div>
+                        <div className="min-w-0 space-y-3 lg:hidden">{displayedTransactions.map((t) => <article key={`mobile-${t.id}`} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/50 p-4"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${t.type === "income" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>{t.type === "income" ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}</div><div className="min-w-0"><p className="break-words font-semibold text-slate-900">{t.patient?.name || (t.description || t.category)}</p>{t.patient && t.description && <p className="mt-0.5 break-words text-xs text-slate-500">{t.description}</p>}{t.category && <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">{t.category}</p>}<p className="mt-1 text-xs text-slate-500">{new Date(t.date).toLocaleDateString("pt-BR")}</p></div></div><p className={`shrink-0 text-right text-sm font-black ${t.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>{t.type === "income" ? "+" : "-"} R$ {t.amount.toLocaleString("pt-BR")}</p></div><div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wide">{t.receiptUrl && <a href={mediaUrl(t.receiptUrl) || undefined} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1 text-primary hover:underline"><Receipt size={11} /> Recibo</a>}<FinanceInvoiceAction transaction={t} onSaved={handleInvoiceSaved} /><Button variant="ghost" size="icon" className="ml-auto h-9 w-9 text-slate-400 hover:text-red-500" aria-label={`Excluir ${t.patient?.name || (t.description || t.category)}`} onClick={() => handleDelete(t.id)}><Trash2 size={15} /></Button></div></article>)}</div>
                     </CardContent></Card></div>
                 </div>
             </div>

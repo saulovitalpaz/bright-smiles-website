@@ -6,6 +6,7 @@ require('dotenv').config();
 const multer = require('multer');
 const {
     uploadAsset,
+    deleteAsset,
     withAssetUploadCleanup,
     createPublicAssetUrl,
     createPrivateAssetUrl,
@@ -26,6 +27,7 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { createEncryption } = require('./utils/encryption');
 const { createUpdateLeadHandler } = require('./routes/leads');
+const { createFinanceInvoiceHandler } = require('./routes/financeInvoice');
 const { createDashboardStatsHandler } = require('./routes/dashboard');
 const { createAnalyticsHandlers } = require('./routes/analytics');
 const {
@@ -1654,10 +1656,12 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
 
         const transactions = await prisma.financeTransaction.findMany({
             where,
-            include: { patient: { select: { name: true, cpf: true, address: true } } },
+            include: { patient: { select: { name: true, cpf: true, phone: true, address: true } } },
             orderBy: { date: 'desc' }
         });
-        res.json(transactions);
+        res.json(transactions.map((transaction) => transaction.patient
+            ? { ...transaction, patient: { ...transaction.patient, cpf: decrypt(transaction.patient.cpf) } }
+            : transaction));
     } catch (error) {
         res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance transactions.' });
     }
@@ -1702,7 +1706,11 @@ app.put('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), 
                 data.patientId = patientId;
             }
         }
-        for (const field of ['receiptUrl', 'nfeUrl']) {
+        // Invoice references are written only after a validated private upload.
+        if (hasFinanceField(req.body, 'nfeUrl') && req.body.nfeUrl !== existingTransaction.nfeUrl) {
+            return res.status(400).json({ error: 'Use o envio de nota fiscal para alterar o documento.' });
+        }
+        for (const field of ['receiptUrl']) {
             if (!hasFinanceField(req.body, field)) continue;
             if (req.body[field] !== null && typeof req.body[field] !== 'string') {
                 throw invalidFinanceTransaction();
@@ -1780,27 +1788,13 @@ app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager'])
     }
 });
 
-// NEW: NF-e Issuance Stub
-app.post('/finance/nfe', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
-    try {
-        // In a real scenario, this would call a provider like FocusNFe or eNotas
-        // For now, we simulate a successful issuance and update the transaction
-        const { transactionIds, nfeUrl } = req.body;
-
-        if (!transactionIds || !Array.isArray(transactionIds)) {
-            return res.status(400).json({ error: "Invalid transaction IDs" });
-        }
-
-        const updated = await prisma.financeTransaction.updateMany({
-            where: { id: { in: transactionIds } },
-            data: { nfeUrl: nfeUrl || "" } // If no URL provided, just mark as tracked (empty string)
-        });
-
-        res.json({ message: `${updated.count} NF-e(s) marcadas como processadas!`, status: "success" });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// NF-e: attach an already issued document to a financial transaction.
+app.post('/finance/nfe', authenticateToken, authorizeRole(['admin', 'manager']), (req, res, next) => {
+    financialUpload.single('file')(req, res, (error) => {
+        if (error) return res.status(400).json({ error: 'Envie um único arquivo de até 25 MB.' });
+        next();
+    });
+}, createFinanceInvoiceHandler({ prisma, uploadAsset, deleteAsset }));
 
 // NEW: Accounting Report
 app.get('/finance/report', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
