@@ -1,19 +1,19 @@
-import type { JSX } from "react";
+import { useId, useState, type JSX } from "react";
 import { getOdontogramLegendGroups, type OdontogramStateDefinition } from "./odontogramModel";
 import { OdontogramStateSwatch } from "./OdontogramStateSwatch";
 
-function LegendGroup({ title, definitions }: { title: string; definitions: ReadonlyArray<OdontogramStateDefinition> }): JSX.Element {
+function LegendGroup({ title, definitions, expanded }: { title: string; definitions: ReadonlyArray<OdontogramStateDefinition>; expanded: boolean }): JSX.Element {
+  const headingId = useId();
   return (
-    <section aria-labelledby={`odontogram-legend-${title}`} className="min-w-0 space-y-2">
-      <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400" id={`odontogram-legend-${title}`}>
+    <section aria-labelledby={headingId} className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+      <h4 className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-400" id={headingId}>
         {title}
       </h4>
-      <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-2">
         {definitions.map((definition) => (
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-800/70 bg-slate-950/30 px-2 py-1.5 text-[11px] text-slate-300" key={definition.id}>
+          <div className="flex max-w-full items-center gap-1.5 text-[11px] leading-5 text-slate-300" key={definition.id}>
             <OdontogramStateSwatch definition={definition} />
-            <span className="min-w-0 truncate">{definition.label}</span>
-            <span className="ml-auto min-w-0 truncate text-[10px] text-slate-500">— {definition.description}</span>
+            <span>{definition.label}<span className={expanded ? "ml-1 text-slate-400" : "hidden print:inline"}> — {definition.description}</span></span>
           </div>
         ))}
       </div>
@@ -23,18 +23,20 @@ function LegendGroup({ title, definitions }: { title: string; definitions: Reado
 
 export function OdontogramLegend(): JSX.Element {
   const groups = getOdontogramLegendGroups();
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
   return (
-    <div className="odontogram-legend mt-7 min-w-0 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
-      <div className="flex min-w-0 flex-col gap-4">
-        <div className="flex items-center gap-2">
+    <div className="odontogram-legend mt-4 min-w-0 rounded-xl border border-slate-800 bg-[#0f172a] px-3 pb-3">
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda</span>
-          <span className="text-[10px] text-slate-600">Padrões e símbolos clínicos</span>
+          <button type="button" aria-expanded={expanded} aria-controls={contentId} onClick={() => setExpanded((value) => !value)} className="no-print min-h-11 rounded-md px-2 text-xs text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">{expanded ? "Ocultar detalhes" : "Ver detalhes"}</button>
         </div>
-        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-          <LegendGroup definitions={groups.faces} title="Faces" />
-          <LegendGroup definitions={groups.tooth} title="Dente inteiro" />
+        <div id={contentId} className="min-w-0 space-y-2">
+          <LegendGroup definitions={groups.faces} title="Faces" expanded={expanded} />
+          <LegendGroup definitions={groups.tooth} title="Dente inteiro" expanded={expanded} />
         </div>
-        <p className="text-center text-[11px] text-slate-400">
+        <p className={`${expanded ? "block" : "hidden print:block"} text-[11px] text-slate-400`}>
           Regiões: face inteira, cervical, média e incisal/oclusal. Se necessário, selecione mais de uma região para a mesma ocorrência.
         </p>
       </div>
