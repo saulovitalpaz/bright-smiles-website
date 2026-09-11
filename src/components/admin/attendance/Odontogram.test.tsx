@@ -212,6 +212,46 @@ describe("Odontogram face-first workflow", () => {
     });
   });
 
+  it("migrates a legacy tooth to structured data when using detailed clinical states", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <Odontogram
+        data={{
+          "21": {
+            status: "Saudável",
+            notes: "observação preservada",
+            faces: { right: { status: "Tratar" } },
+          },
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(getToothButton(21));
+    await user.click(screen.getByRole("button", { name: "Mais opções clínicas" }));
+    await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
+    await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
+    const preciseTargetButtons = screen.getAllByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
+    await user.click(preciseTargetButtons[preciseTargetButtons.length - 1]);
+    await user.click(screen.getByRole("button", { name: "Selecionar situação Em andamento" }));
+    await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
+      version: 2,
+      teeth: expect.objectContaining({
+        "21": expect.objectContaining({
+          notes: "observação preservada",
+          conditions: expect.arrayContaining([
+            expect.objectContaining({ type: "legado_tratar", targets: [{ kind: "surface", face: "right", region: "entire" }] }),
+            expect.objectContaining({ category: "achado", type: "carie", stage: "emAndamento" }),
+          ]),
+        }),
+      }),
+    }));
+  });
+
   it("opens an existing V2 occurrence in the editor without losing its targets", async () => {
     const user = userEvent.setup();
     render(

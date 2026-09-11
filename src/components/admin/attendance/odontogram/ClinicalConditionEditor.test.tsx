@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ClinicalConditionEditor } from "./ClinicalConditionEditor";
 
+async function selectStage(stage: string, user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(screen.getByRole("button", { name: `Selecionar situação ${stage}` }));
+}
+
 describe("ClinicalConditionEditor", () => {
   it("creates a completed resin condition for multiple precise regions", async () => {
     const user = userEvent.setup();
@@ -13,7 +17,7 @@ describe("ClinicalConditionEditor", () => {
     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
     await user.click(screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }));
     await user.click(screen.getByRole("button", { name: /vestibular.*face inteira/i }));
-    await user.selectOptions(screen.getByLabelText("Situação"), "concluido");
+    await selectStage("Concluído", user);
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
@@ -36,14 +40,14 @@ describe("ClinicalConditionEditor", () => {
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
     const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
     await user.click(target);
-    await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
+    await selectStage("Planejado / a tratar", user);
     await user.type(screen.getByLabelText("Observação da ocorrência"), "acompanhar por seis meses");
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText("Categoria")).toHaveValue("");
     expect(screen.getByLabelText("Procedimento")).toHaveValue("");
-    expect(screen.getByLabelText("Situação")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Selecionar situação Planejado / a tratar" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByLabelText("Observação da ocorrência")).toHaveValue("");
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
@@ -67,6 +71,19 @@ describe("ClinicalConditionEditor", () => {
     expect(target).toHaveClass("surface-selector__control--selected");
   });
 
+  it("offers every legend clinical stage as an accessible modal selection", async () => {
+    const user = userEvent.setup();
+    render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={() => undefined} />);
+
+    const stage = screen.getByRole("button", { name: "Selecionar situação Em andamento" });
+    expect(stage).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(stage);
+
+    expect(screen.getByRole("button", { name: "Selecionar situação Em andamento" })).toHaveAttribute("aria-pressed", "true");
+    expect(stage).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("blocks saving when the selected regions exceed the backend limit", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
@@ -84,7 +101,7 @@ describe("ClinicalConditionEditor", () => {
     ]) {
       await user.click(screen.getByRole("button", { name }));
     }
-    await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
+    await selectStage("Planejado / a tratar", user);
 
     expect(screen.getByRole("alert")).toHaveTextContent("no máximo 5 regiões");
     expect(screen.getByRole("button", { name: "Salvar ocorrência" })).toBeDisabled();
@@ -112,10 +129,10 @@ describe("ClinicalConditionEditor", () => {
 
     expect(screen.getByLabelText("Categoria")).toHaveValue("achado");
     expect(screen.getByLabelText("Procedimento")).toHaveValue("carie");
-    expect(screen.getByLabelText("Situação")).toHaveValue("planejado");
+    expect(screen.getByRole("button", { name: "Selecionar situação Planejado / a tratar" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("Observação da ocorrência")).toHaveValue("manter acompanhamento");
 
-    await user.selectOptions(screen.getByLabelText("Situação"), "concluido");
+    await selectStage("Concluído", user);
     await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ id: "existing-1", stage: "concluido" }));
@@ -144,7 +161,7 @@ describe("ClinicalConditionEditor", () => {
     expect(screen.getByLabelText("Procedimento")).toHaveValue("legado_tratar");
     expect(screen.getByRole("button", { name: /vestibular.*face inteira/i })).toHaveAttribute("aria-pressed", "true");
 
-    await user.selectOptions(screen.getByLabelText("Situação"), "monitorado");
+    await selectStage("Monitorado", user);
     await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({

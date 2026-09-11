@@ -4,6 +4,7 @@ import {
   createCondition,
   getAllowedTargets,
   getClinicalStageOptions,
+  getOdontogramStateDefinition,
   MAX_CONDITION_TARGETS,
   type ClinicalCategory,
   type ClinicalCondition,
@@ -11,6 +12,7 @@ import {
   type ClinicalStage,
   type ConditionTarget,
 } from "./odontogramModel";
+import { OdontogramStateSwatch } from "./OdontogramStateSwatch";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 type EditableCategory = ClinicalCategory;
@@ -133,12 +135,33 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initial
           {targetError ? <p className="text-sm text-amber-300" role="alert">{targetError}</p> : null}
         </div>
       ) : null}
-      <label className="block text-sm">Situação
-        <select aria-label="Situação" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" value={stage} onChange={(event) => setStage(event.target.value as ClinicalStage)}>
-          <option value="">Selecione</option>
-          {CLINICAL_STAGE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
-      </label>
+      <fieldset className="space-y-2" aria-label="Situação">
+        <legend className="text-sm">Situação</legend>
+        <p className="text-xs text-slate-400">Selecione o estado clínico da ocorrência.</p>
+        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+          {CLINICAL_STAGE_OPTIONS.map((item) => {
+            const definition = getOdontogramStateDefinition(item.value, "surface");
+            const selected = stage === item.value;
+            return (
+              <button
+                aria-label={`Selecionar situação ${item.label}`}
+                aria-pressed={selected}
+                className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                  selected
+                    ? "border-blue-400 bg-blue-500/15 text-white ring-1 ring-blue-400"
+                    : "border-slate-700 bg-slate-950/60 text-slate-200 hover:border-slate-500 hover:bg-slate-900"
+                }`}
+                key={item.value}
+                onClick={() => setStage(item.value)}
+                type="button"
+              >
+                <OdontogramStateSwatch definition={definition} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
       <label className="block text-sm">Observação da ocorrência
         <textarea aria-label="Observação da ocorrência" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100" maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>

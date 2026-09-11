@@ -142,6 +142,7 @@ const Odontogram = ({
   const [draftTooth, setDraftTooth] = useState<ToothData | null>(null);
   const [draftBaseline, setDraftBaseline] = useState<ToothData | null>(null);
   const [editingCondition, setEditingCondition] = useState<ClinicalCondition | null>(null);
+  const [legacyAdvancedOpen, setLegacyAdvancedOpen] = useState(false);
 
   useEffect(() => {
     if (!readOnly) return;
@@ -151,6 +152,7 @@ const Odontogram = ({
     setDraftTooth(null);
     setDraftBaseline(null);
     setEditingCondition(null);
+    setLegacyAdvancedOpen(false);
   }, [readOnly]);
 
   const openTooth = (toothNumber: number): void => {
@@ -165,6 +167,7 @@ const Odontogram = ({
     setWholeToothOpen(false);
     setDraftTooth(draft);
     setDraftBaseline(draft);
+    setLegacyAdvancedOpen(false);
   };
 
   const closeEditor = (): void => {
@@ -174,6 +177,7 @@ const Odontogram = ({
     setDraftTooth(null);
     setDraftBaseline(null);
     setEditingCondition(null);
+    setLegacyAdvancedOpen(false);
   };
 
   const setFaceCondition = (status: FaceStatus): void => {
@@ -281,6 +285,9 @@ const Odontogram = ({
       ? getTooth(legacyData, selectedTooth)
       : draftTooth ?? getTooth(legacyData, selectedTooth);
   const selectedLabels = selectedTooth === null ? null : getFaceLabels(selectedTooth);
+  const advancedLegacyData = !isLayeredData && selectedTooth !== null
+    ? normalizeOdontogram({ ...legacyData, [selectedTooth]: draftTooth ?? getTooth(legacyData, selectedTooth) })
+    : layeredData;
 
   return (
     <Card
@@ -520,6 +527,49 @@ const Odontogram = ({
                   </div>
                 ) : null}
               </section> : null}
+
+              {!isLayeredData ? (
+                <section className="min-w-0 rounded-xl border border-slate-700 bg-slate-950/30 p-3">
+                  <button
+                    aria-expanded={legacyAdvancedOpen}
+                    className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-slate-700 px-3 py-2 text-left text-sm font-medium text-slate-200 hover:border-slate-500 hover:bg-slate-900"
+                    onClick={() => setLegacyAdvancedOpen((open) => !open)}
+                    type="button"
+                  >
+                    <span>Mais opções clínicas</span>
+                    <span aria-hidden="true" className="text-slate-500">{legacyAdvancedOpen ? "−" : "+"}</span>
+                  </button>
+                  {legacyAdvancedOpen ? (
+                    <div className="mt-4 border-t border-slate-800 pt-4">
+                      <p className="mb-4 text-xs text-slate-400">
+                        Registre estados detalhados da legenda sem perder as marcações legadas deste dente.
+                      </p>
+                      <ClinicalConditionList
+                        conditions={advancedLegacyData.teeth[String(selectedTooth)]?.conditions ?? []}
+                        onEdit={setEditingCondition}
+                        onRemove={removeLayeredCondition}
+                        toothNumber={selectedTooth}
+                      />
+                      <div className="mt-5 border-t border-slate-700 pt-5">
+                        <h3 className="mb-3 text-sm font-semibold text-white">Nova ocorrência clínica</h3>
+                        <ClinicalConditionEditor
+                          initialCondition={editingCondition}
+                          onCancel={() => setEditingCondition(null)}
+                          onSave={(condition: ClinicalCondition) => {
+                            if (selectedTooth !== null) {
+                              onChange(upsertCondition(advancedLegacyData, selectedTooth, condition));
+                              setEditingCondition(null);
+                              setLegacyAdvancedOpen(false);
+                              closeEditor();
+                            }
+                          }}
+                          toothNumber={selectedTooth}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
 
               <div className="min-w-0 space-y-1.5">
                 <Label
