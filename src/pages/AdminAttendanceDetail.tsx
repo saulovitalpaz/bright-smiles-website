@@ -13,12 +13,13 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import PhotoGallery from "@/components/admin/attendance/PhotoGallery";
 import Odontogram from "@/components/admin/attendance/Odontogram";
-import FaceMap, { FaceRegionData } from "@/components/admin/attendance/FaceMap";
+import FacialHarmonizationWorkspace from "@/components/admin/attendance/facial/FacialHarmonizationWorkspace";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EvolutionTimeline from "@/components/admin/attendance/EvolutionTimeline";
 import { normalizeAppointmentType } from "@/lib/appointmentType";
 import { normalizeOdontogram, OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
+import { normalizeFacialNotes, FacialNotesDocument } from "@/components/admin/attendance/facial/facialModel";
 
 // Interfaces
 interface AppointmentData {
@@ -45,7 +46,7 @@ interface AppointmentData {
     price: string;
     paymentStatus: string;
     dentalNotes: OdontogramData;
-    facialNotes: Record<string, FaceRegionData>;
+    facialNotes: FacialNotesDocument;
 }
 
 interface LinkedReturnAppointment {
@@ -99,7 +100,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     price: "",
     paymentStatus: "received",
     dentalNotes: {},
-    facialNotes: {}
+    facialNotes: { version: 2, applications: [] }
 };
 
 interface AppointmentResponse {
@@ -181,7 +182,7 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
                 ? fetched.dentalNotes as OdontogramData
                 : {},
         ),
-        facialNotes: fetched.facialNotes && typeof fetched.facialNotes === "object" ? fetched.facialNotes : {},
+        facialNotes: normalizeFacialNotes(fetched.facialNotes),
         weight: fetched.weight || "",
         materials: fetched.materials || "",
         complications: fetched.complications || "",
@@ -779,10 +780,11 @@ const AdminAttendanceDetail = () => {
 
                         {/* Specific Regions - Face Map */}
                         {(data.appointmentType === 'harmonizacao' || data.appointmentType === 'ambos') && (
-                            <FaceMap
-                                data={data.facialNotes}
+                            <FacialHarmonizationWorkspace
+                                value={data.facialNotes}
                                 onChange={(notes) => updateField('facialNotes', notes)}
                                 readOnly={readOnly}
+                                onSave={handleSave}
                             />
                         )}
                         </div>

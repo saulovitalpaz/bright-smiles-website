@@ -55,6 +55,19 @@ describe("normalizeAppointmentResponse", () => {
         expect(appointment.dentalNotes.teeth["24"].conditions).toEqual(dentalNotes.teeth["24"].conditions);
     });
 
+    it("normalizes facial notes to the structured document while preserving legacy values", () => {
+        const facialNotes = {
+            nasolabial: { product: "Produto legado", dose: "0,2 ml", notes: "Plano profundo" },
+            version: 2,
+            applications: [{ id: "a1", regionId: "nasolabial-right", procedureType: "filler", coordinates: { x: 0.5, y: 0.5 }, amount: 0.2, unit: "ml" }],
+        };
+
+        const appointment = normalizeAppointmentResponse({ facialNotes });
+
+        expect(appointment.facialNotes).toMatchObject({ version: 2, legacyRegions: { nasolabial: { product: "Produto legado" } } });
+        expect(appointment.facialNotes.applications).toHaveLength(1);
+    });
+
     it("loads a linked patient when nullable appointment fields are returned", () => {
         const appointment = normalizeAppointmentResponse({
             id: 11,

@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Odontogram, { ToothData } from "./Odontogram";
 import FaceMap, { FaceRegionData } from "./FaceMap";
+import { toLegacyFaceMapData } from "./facial/facialModel";
 import { Button } from "@/components/ui/button";
 import { assetDeliveryUrl, isClinicalAssetReference, loadProtectedAsset, mediaUrl } from "@/lib/media";
 import { AppointmentType, normalizeAppointmentType } from "@/lib/appointmentType";
@@ -66,7 +67,7 @@ const EvolutionTimeline: React.FC<EvolutionTimelineProps> = ({ patientId, curren
                     appointmentType: normalizeAppointmentType(app.appointmentType),
                     photos: Array.isArray(app.photos) ? app.photos as string[] : [],
                     dentalNotes: app.dentalNotes && typeof app.dentalNotes === "object" ? app.dentalNotes as Record<string, ToothData> : {},
-                    facialNotes: app.facialNotes && typeof app.facialNotes === "object" ? app.facialNotes as Record<string, FaceRegionData> : {}
+                    facialNotes: toLegacyFaceMapData(app.facialNotes)
                 }));
                 setHistory(filterHistoricalAppointments(normalized, currentAppointmentId));
             }

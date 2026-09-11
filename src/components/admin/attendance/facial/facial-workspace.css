@@ -1,0 +1,162 @@
+.facial-map-canvas {
+  position: relative;
+  display: flex;
+  min-height: 26rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  background: hsl(var(--muted) / 0.22);
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.facial-harmonization-workspace {
+  min-height: min(82vh, 56rem);
+}
+
+.facial-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(19rem, 1fr);
+  gap: 1rem;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .facial-harmonization-workspace {
+    height: min(82vh, 56rem);
+    overflow: hidden;
+  }
+}
+
+.facial-map-canvas--marking svg {
+  cursor: crosshair;
+}
+
+.facial-map-canvas svg {
+  max-height: min(68vh, 38rem);
+}
+
+.facial-region {
+  cursor: pointer;
+  outline: none;
+}
+
+.facial-region path {
+  fill: hsl(var(--muted) / 0.08);
+  stroke: hsl(var(--muted-foreground) / 0.34);
+  stroke-width: 1.1;
+  transition: fill 160ms ease, stroke 160ms ease, stroke-width 160ms ease;
+}
+
+.facial-region:hover path,
+.facial-region:focus-visible path {
+  fill: hsl(var(--muted-foreground) / 0.16);
+  stroke: hsl(var(--foreground) / 0.72);
+}
+
+.facial-region[data-state="selected"] path {
+  fill: hsl(var(--foreground) / 0.16);
+  stroke: hsl(var(--foreground) / 0.9);
+  stroke-width: 2.6;
+}
+
+.facial-region[data-state="treated"] path {
+  fill: hsl(var(--primary) / 0.16);
+  stroke: hsl(var(--primary) / 0.76);
+  stroke-width: 1.6;
+}
+
+.facial-region[data-state="selected"]::after {
+  content: "";
+}
+
+.facial-application-marker {
+  cursor: pointer;
+  outline: none;
+}
+
+.facial-application-marker:focus-visible .facial-marker-ring,
+.facial-application-marker:hover .facial-marker-ring {
+  stroke-width: 3;
+}
+
+.facial-marker-dot,
+.facial-marker-ring {
+  vector-effect: non-scaling-stroke;
+}
+
+.facial-marker-dot {
+  fill: currentColor;
+  stroke: hsl(var(--background));
+  stroke-width: 2;
+}
+
+.facial-marker-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  opacity: 0.85;
+}
+
+.facial-marker-label {
+  fill: currentColor;
+  font-size: 8px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: hsl(var(--background));
+  stroke-width: 2px;
+}
+
+.facial-marker--botulinum-toxin { color: hsl(var(--chart-1, 221 83% 53%)); }
+.facial-marker--filler { color: hsl(var(--chart-2, 142 71% 45%)); }
+.facial-marker--biostimulator { color: hsl(var(--chart-3, 280 65% 60%)); }
+.facial-marker--thread { color: hsl(var(--chart-4, 24 95% 53%)); }
+.facial-marker--other { color: hsl(var(--chart-5, 0 72% 51%)); }
+
+.facial-map-hint {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.86);
+  color: hsl(var(--background));
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.facial-inspector-scroll {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 767px) {
+  .facial-harmonization-workspace {
+    min-height: 0;
+  }
+
+  .facial-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facial-workspace-grid > :last-child {
+    min-height: 20rem;
+    max-height: 45vh;
+    overflow: hidden;
+    position: sticky;
+    bottom: 0;
+  }
+
+  .facial-map-canvas {
+    min-height: 55vh;
+  }
+
+  .facial-map-canvas svg {
+    max-height: 58vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .facial-region path { transition: none; }
+}
