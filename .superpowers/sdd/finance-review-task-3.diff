@@ -1,0 +1,345 @@
+# Review package: 9ec0ce0..9f9231a
+
+## Commits
+9f9231a feat: manage global finance categories in settings
+
+## Files changed
+ src/pages/AdminSettings.test.tsx |  43 +++++++++++++++++
+ src/pages/AdminSettings.tsx      | 102 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 143 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/src/pages/AdminSettings.test.tsx b/src/pages/AdminSettings.test.tsx
+index ae8d508..1e72c88 100644
+--- a/src/pages/AdminSettings.test.tsx
++++ b/src/pages/AdminSettings.test.tsx
+@@ -1,15 +1,16 @@
+ import type { ReactNode } from "react";
+ import { render, screen, waitFor } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import axios, { AxiosHeaders, type AxiosResponse } from "axios";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
++import { toast } from "sonner";
+ 
+ import { API_URL } from "@/lib/api";
+ import AdminSettings from "./AdminSettings";
+ 
+ vi.mock("@/components/admin/AdminLayout", () => ({
+     default: ({ children, title }: { children: ReactNode; title: string }) => (
+         <main aria-label={title}>{children}</main>
+     ),
+ }));
+ 
+@@ -22,27 +23,29 @@ vi.mock("sonner", () => ({
+ 
+ vi.mock("axios", async (importOriginal) => {
+     const actual = await importOriginal<typeof import("axios")>();
+ 
+     return {
+         ...actual,
+         default: {
+             ...actual.default,
+             get: vi.fn(),
+             isAxiosError: vi.fn(() => false),
++            delete: vi.fn(),
+             patch: vi.fn(),
+             post: vi.fn(),
+         },
+     };
+ });
+ 
+ const axiosGetMock = vi.mocked(axios.get);
++const axiosDeleteMock = vi.mocked(axios.delete);
+ const axiosPatchMock = vi.mocked(axios.patch);
+ const axiosPostMock = vi.mocked(axios.post);
+ 
+ const globalSettings = {
+     clinic_name: "Núcleo Odontológico",
+     clinic_slogan: "Especializado & Harmonização",
+     contact_instagram: "clinica.nucleo",
+     contact_whatsapp: "5531999999999",
+     site_logo: "bucket://public/logo.png",
+     system_only_setting: "preservar sem editar",
+@@ -72,20 +75,21 @@ async function renderLoadedSettings() {
+ describe("AdminSettings professional settings", () => {
+     beforeEach(() => {
+         localStorage.clear();
+         vi.clearAllMocks();
+         axiosGetMock.mockImplementation((url) => Promise.resolve(
+             response(url === `${API_URL}/finance/categories`
+                 ? [{ id: 1, name: "Materiais" }]
+                 : globalSettings),
+         ));
+         axiosPostMock.mockResolvedValue(response({}));
++        axiosDeleteMock.mockResolvedValue(response({}));
+     });
+ 
+     it("anuncia o carregamento inicial das configurações", () => {
+         axiosGetMock.mockImplementationOnce(() => new Promise(() => undefined));
+ 
+         render(<AdminSettings />);
+ 
+         expect(
+             screen.getByRole("status", { name: "Carregando configurações" }),
+         ).toBeInTheDocument();
+@@ -258,24 +262,63 @@ describe("AdminSettings professional settings", () => {
+             "grid-cols-1",
+         );
+         expect(screen.getByRole("button", { name: "Salvar Todas as Configurações" })).toHaveClass(
+             "w-full",
+             "sm:w-auto",
+         );
+     });
+ 
+     it("lista e cadastra categorias financeiras globalmente", async () => {
+         const user = userEvent.setup();
++        axiosPostMock.mockResolvedValueOnce(response({ id: 2, name: "Laboratório" }));
+ 
+         await renderLoadedSettings();
+ 
+         expect(await screen.findByText("Materiais")).toBeInTheDocument();
+         await user.type(screen.getByLabelText("Nova categoria financeira"), "Laboratório");
+         await user.click(screen.getByRole("button", { name: "Adicionar categoria" }));
+ 
+         expect(axiosPostMock).toHaveBeenCalledWith(
+             `${API_URL}/finance/categories`,
+             { name: "Laboratório" },
+             { withCredentials: true },
+         );
++        expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
++            "LaboratórioRemover",
++            "MateriaisRemover",
++        ]);
++        expect(screen.getByLabelText("Nova categoria financeira")).toHaveValue("");
++    });
++
++    it("mantém a categoria visível e explica o conflito ao removê-la", async () => {
++        const user = userEvent.setup();
++        axiosDeleteMock.mockRejectedValueOnce({ response: { status: 409 } });
++        vi.mocked(axios.isAxiosError).mockReturnValueOnce(true);
++
++        await renderLoadedSettings();
++        await user.click(screen.getByRole("button", { name: "Remover categoria Materiais" }));
++
++        expect(axiosDeleteMock).toHaveBeenCalledWith(
++            `${API_URL}/finance/categories/1`,
++            { withCredentials: true },
++        );
++        expect(await screen.findByText("Materiais")).toBeInTheDocument();
++        expect(toast.error).toHaveBeenCalledWith(
++            "Não é possível remover uma categoria usada em transações.",
++        );
++    });
++
++    it("remove a categoria após a confirmação do servidor", async () => {
++        const user = userEvent.setup();
++
++        await renderLoadedSettings();
++        await user.click(screen.getByRole("button", { name: "Remover categoria Materiais" }));
++
++        expect(axiosDeleteMock).toHaveBeenCalledWith(
++            `${API_URL}/finance/categories/1`,
++            { withCredentials: true },
++        );
++        await waitFor(() => {
++            expect(screen.queryByText("Materiais")).not.toBeInTheDocument();
++        });
+     });
+ });
+diff --git a/src/pages/AdminSettings.tsx b/src/pages/AdminSettings.tsx
+index bd2805a..15f1f45 100644
+--- a/src/pages/AdminSettings.tsx
++++ b/src/pages/AdminSettings.tsx
+@@ -18,20 +18,25 @@ const EDITABLE_SETTING_KEYS = [
+     "contact_whatsapp",
+     "contact_instagram"
+ ] as const;
+ 
+ type ProfessionalProfile = {
+     name: string;
+     cro: string;
+     signatureUrl: string;
+ };
+ 
++type FinanceCategory = {
++    id: number;
++    name: string;
++};
++
+ const readProfessionalProfile = (): ProfessionalProfile => {
+     try {
+         const value = localStorage.getItem("admin_user");
+         if (!value) return { name: "", cro: "", signatureUrl: "" };
+ 
+         const parsed: unknown = JSON.parse(value);
+         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+             return { name: "", cro: "", signatureUrl: "" };
+         }
+ 
+@@ -41,50 +46,96 @@ const readProfessionalProfile = (): ProfessionalProfile => {
+             cro: typeof user.cro === "string" ? user.cro : "",
+             signatureUrl: typeof user.signatureUrl === "string" ? user.signatureUrl : "",
+         };
+     } catch {
+         return { name: "", cro: "", signatureUrl: "" };
+     }
+ };
+ 
+ const AdminSettings = () => {
+     const [settings, setSettings] = useState<Record<string, string>>({});
++    const [financeCategories, setFinanceCategories] = useState<FinanceCategory[]>([]);
++    const [newFinanceCategory, setNewFinanceCategory] = useState("");
+     const [professionalProfile, setProfessionalProfile] = useState(readProfessionalProfile);
+     const [isLoading, setIsLoading] = useState(true);
+     const [isSaving, setIsSaving] = useState(false);
+     const [isLogoUploading, setIsLogoUploading] = useState(false);
+     const [isSignatureUploading, setIsSignatureUploading] = useState(false);
++    const [isCategorySaving, setIsCategorySaving] = useState(false);
+     const [errorMessage, setErrorMessage] = useState("");
+     const logoFileInputRef = useRef<HTMLInputElement>(null);
+     const signatureFileInputRef = useRef<HTMLInputElement>(null);
+ 
+     useEffect(() => {
+         fetchSettings();
+     }, []);
+ 
+     const fetchSettings = async () => {
+         try {
+-            const res = await axios.get(`${API_URL}/settings`, { withCredentials: true });
+-            setSettings(res.data);
++            const [settingsResponse, categoriesResponse] = await Promise.all([
++                axios.get(`${API_URL}/settings`, { withCredentials: true }),
++                axios.get(`${API_URL}/finance/categories`, { withCredentials: true }),
++            ]);
++            setSettings(settingsResponse.data);
++            setFinanceCategories(categoriesResponse.data);
+         } catch (error) {
+             console.error("Error fetching settings:", error);
+             setErrorMessage("Não foi possível carregar as configurações. Tente novamente.");
+             toast.error("Erro ao carregar configurações");
+         } finally {
+             setIsLoading(false);
+         }
+     };
+ 
+     const handleUpdate = async (key: string, value: string) => {
+         setSettings(prev => ({ ...prev, [key]: value }));
+     };
+ 
++    const handleCreateFinanceCategory = async () => {
++        const name = newFinanceCategory.trim();
++        if (!name) {
++            toast.error("Informe o nome da categoria");
++            return;
++        }
++
++        setIsCategorySaving(true);
++        try {
++            const response = await axios.post(
++                `${API_URL}/finance/categories`,
++                { name },
++                { withCredentials: true },
++            );
++            setFinanceCategories((current) => [...current, response.data]
++                .sort((first, second) => first.name.localeCompare(second.name)));
++            setNewFinanceCategory("");
++            toast.success("Categoria adicionada!");
++        } catch {
++            toast.error("Não foi possível adicionar a categoria.");
++        } finally {
++            setIsCategorySaving(false);
++        }
++    };
++
++    const handleDeleteFinanceCategory = async (id: number) => {
++        try {
++            await axios.delete(`${API_URL}/finance/categories/${id}`, { withCredentials: true });
++            setFinanceCategories((current) => current.filter((category) => category.id !== id));
++            toast.success("Categoria removida!");
++        } catch (error) {
++            if (axios.isAxiosError(error) && error.response?.status === 409) {
++                toast.error("Não é possível remover uma categoria usada em transações.");
++                return;
++            }
++            toast.error("Não foi possível remover a categoria.");
++        }
++    };
++
+     const saveSettings = async () => {
+         if (!professionalProfile.name.trim() || !professionalProfile.cro.trim()) {
+             setErrorMessage("Informe o nome profissional e o CRO antes de salvar.");
+             toast.error("Nome profissional e CRO são obrigatórios");
+             return;
+         }
+         setIsSaving(true);
+         setErrorMessage("");
+         try {
+             const settingsRequests = Object.entries(settings)
+@@ -284,20 +335,67 @@ const AdminSettings = () => {
+                                     </Button>
+                                     <p className="text-sm text-slate-500">
+                                         PNG, JPEG ou WebP, até 5 MB. Confirme a alteração ao salvar.
+                                     </p>
+                                 </div>
+                             </div>
+                         </div>
+                     </CardContent>
+                 </Card>
+ 
++                <Card>
++                    <CardHeader>
++                        <CardTitle>Categorias financeiras</CardTitle>
++                        <CardDescription>
++                            Organize as categorias disponíveis para os lançamentos financeiros.
++                        </CardDescription>
++                    </CardHeader>
++                    <CardContent className="space-y-4">
++                        <div className="space-y-2">
++                            <Label htmlFor="new-finance-category">Nova categoria financeira</Label>
++                            <div className="flex flex-col gap-2 sm:flex-row">
++                                <Input
++                                    id="new-finance-category"
++                                    value={newFinanceCategory}
++                                    onChange={(event) => setNewFinanceCategory(event.target.value)}
++                                    placeholder="Ex: Materiais"
++                                    disabled={isCategorySaving}
++                                />
++                                <Button
++                                    type="button"
++                                    className="min-h-11 shrink-0"
++                                    onClick={handleCreateFinanceCategory}
++                                    disabled={isCategorySaving}
++                                >
++                                    {isCategorySaving ? "Adicionando..." : "Adicionar categoria"}
++                                </Button>
++                            </div>
++                        </div>
++                        <ul className="divide-y rounded-md border" aria-label="Categorias financeiras cadastradas">
++                            {financeCategories.map((category) => (
++                                <li key={category.id} className="flex items-center justify-between gap-4 p-3">
++                                    <span>{category.name}</span>
++                                    <Button
++                                        type="button"
++                                        variant="outline"
++                                        className="min-h-11 min-w-11"
++                                        aria-label={`Remover categoria ${category.name}`}
++                                        onClick={() => handleDeleteFinanceCategory(category.id)}
++                                    >
++                                        Remover
++                                    </Button>
++                                </li>
++                            ))}
++                        </ul>
++                    </CardContent>
++                </Card>
++
+                 <Card>
+                     <CardHeader>
+                         <CardTitle>Identidade Visual</CardTitle>
+                         <CardDescription>
+                             Gerencie a logo e o nome oficial da clínica que aparece em todo o site.
+                         </CardDescription>
+                     </CardHeader>
+                     <CardContent className="space-y-6">
+                         <div className="space-y-2">
+                             <Label htmlFor="site-logo">Logo do Site</Label>

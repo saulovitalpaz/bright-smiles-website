@@ -151,6 +151,7 @@ const patientSchema = z.object({
     name: z.string().min(1, "Name is required"),
     cpf: z.string().min(11, "CPF must be at least 11 characters"),
     birthDate: birthDateSchema.optional().nullable(),
+    sex: z.enum(['female', 'male']).nullable().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
     history: z.string().optional(),

@@ -314,7 +314,7 @@ function isV3(value: OdontogramData): value is OdontogramV3 {
 }
 
 function legacyCondition(type: ClinicalConditionType, target: ConditionTarget): ClinicalCondition {
-  return createCondition({ category: "legado", type, targets: [target], stage: "concluido" });
+  return createCondition({ category: "legado", type, targets: [target], stage: type === "legado_tratar" ? "planejado" : "concluido" });
 }
 
 export function normalizeOdontogram(data: OdontogramData | null | undefined): OdontogramV2 | OdontogramV3 {
@@ -351,7 +351,7 @@ export function removeCondition(data: LayeredOdontogram, toothNumber: number, co
 }
 
 export function getConditionDisplayName(type: ClinicalConditionType): string {
-  return type.replace(/^legado_/, "").replaceAll("_", " ");
+  return type.replace(/^legado_/, "").replace(/_/g, " ");
 }
 
 export function getClinicalStageLabel(stage: ClinicalStage): string {

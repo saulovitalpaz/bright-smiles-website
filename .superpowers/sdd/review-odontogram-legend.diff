@@ -1,0 +1,364 @@
+# Review package: fb6db7c..HEAD
+
+## Commits
+b4eb96d fix: clarify odontogram legend and target summaries
+
+## Files changed
+ .../admin/attendance/Odontogram.test.tsx           | 28 ++++++++++--
+ src/components/admin/attendance/Odontogram.tsx     | 52 ++++++++++++----------
+ .../odontogram/ClinicalConditionList.test.tsx      | 27 +++++++++--
+ .../odontogram/ClinicalConditionList.tsx           | 47 ++++++++++++++++++-
+ 4 files changed, 121 insertions(+), 33 deletions(-)
+
+## Diff
+diff --git a/src/components/admin/attendance/Odontogram.test.tsx b/src/components/admin/attendance/Odontogram.test.tsx
+index 451d088..fe315cf 100644
+--- a/src/components/admin/attendance/Odontogram.test.tsx
++++ b/src/components/admin/attendance/Odontogram.test.tsx
+@@ -1,11 +1,11 @@
+-import { render, screen } from "@testing-library/react";
++import { render, screen, within } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { describe, expect, it, vi } from "vitest";
+ import Odontogram from "./Odontogram";
+ 
+ function getToothButton(toothNumber: number): HTMLElement {
+   return screen.getAllByRole("button", {
+     name: new RegExp(`dente ${toothNumber}`, "i"),
+   })[0];
+ }
+ 
+@@ -185,28 +185,48 @@ describe("Odontogram face-first workflow", () => {
+             status: "Saudável",
+             notes: "",
+             faces: { center: { status: "Tratar" } },
+           },
+         }}
+         onChange={() => undefined}
+       />,
+     );
+ 
+     expect(container.querySelector(".bg-blue-400")).not.toBeInTheDocument();
+-    expect(screen.getByText("Área a tratar")).toBeInTheDocument();
+-    expect(screen.getByText("Área tratada")).toBeInTheDocument();
++    expect(screen.getByText("Tratar")).toBeInTheDocument();
++    expect(screen.getByText("Tratado")).toBeInTheDocument();
+     expect(container.querySelector('[data-face-key="center"]')).toHaveAttribute(
+       "data-face-status",
+       "Tratar",
+     );
+   });
+ 
++  it("shows each legend status once and explains region selection without alternate target names", () => {
++    const { container } = render(<Odontogram data={{}} onChange={() => undefined} />);
++    const legend = container.querySelector(".odontogram-legend");
++
++    expect(legend).not.toBeNull();
++    expect(within(legend as HTMLElement).getAllByText(/^Saudável$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Tratar$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Tratado$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Ausente$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Implante$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Ponte$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).queryByText("Área a tratar")).not.toBeInTheDocument();
++    expect(within(legend as HTMLElement).queryByText("Área tratada")).not.toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/face inteira/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/cervical/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/média/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/incisal\/oclusal/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/mais de uma região/i)).toBeInTheDocument();
++  });
++
+   it("closes an open editor when permissions become read-only", async () => {
+     const user = userEvent.setup();
+     const onChange = vi.fn();
+     const { rerender } = render(<Odontogram data={{}} onChange={onChange} />);
+ 
+     await user.click(getToothButton(16));
+     expect(screen.getByRole("dialog")).toBeInTheDocument();
+ 
+     rerender(<Odontogram data={{}} onChange={onChange} readOnly />);
+ 
+@@ -262,19 +282,19 @@ describe("Odontogram face-first workflow", () => {
+           },
+         }}
+         onChange={() => undefined}
+         printable
+         readOnly
+       />,
+     );
+ 
+     expect(screen.getByText("carie")).toBeInTheDocument();
+     expect(screen.getByText("Planejado")).toBeInTheDocument();
+-    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
++    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
+     expect(screen.getByText("avaliar profundidade")).toBeInTheDocument();
+     expect(screen.getByText("implante")).toBeInTheDocument();
+     expect(screen.getByText("Concluído")).toBeInTheDocument();
+     expect(screen.getByText("Dente inteiro")).toBeInTheDocument();
+     expect(screen.getByText("coroa instalada")).toBeInTheDocument();
+     expect(screen.queryByRole("button", { name: /remover/i })).not.toBeInTheDocument();
+   });
+ });
+diff --git a/src/components/admin/attendance/Odontogram.tsx b/src/components/admin/attendance/Odontogram.tsx
+index 587e61b..731a12c 100644
+--- a/src/components/admin/attendance/Odontogram.tsx
++++ b/src/components/admin/attendance/Odontogram.tsx
+@@ -87,20 +87,29 @@ const STATUS_STYLES: Record<ToothStatus, { badge: string; dot: string }> = {
+   Implante: {
+     badge: "border-violet-500/40 bg-violet-500/15 text-violet-200",
+     dot: "#8b5cf6",
+   },
+   Ponte: {
+     badge: "border-amber-500/40 bg-amber-500/15 text-amber-200",
+     dot: "#f59e0b",
+   },
+ };
+ 
++const STATUS_EXPLANATIONS: Record<ToothStatus, string> = {
++  Saudável: "sem marcação clínica",
++  Tratar: "área listrada",
++  Tratado: "área azul",
++  Ausente: "dente ausente",
++  Implante: "reabilitação com implante",
++  Ponte: "elemento protético",
++};
++
+ function isRecorded(tooth: ToothData): boolean {
+   return (
+     tooth.status !== "Saudável" ||
+     Boolean(tooth.notes) ||
+     Boolean(tooth.faces && Object.keys(tooth.faces).length)
+   );
+ }
+ 
+ function ConditionButton({
+   active,
+@@ -268,44 +277,41 @@ const Odontogram = ({
+             <span className="text-[9px] uppercase tracking-widest text-slate-600">Linha Oclusal</span>
+             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+           </div>
+ 
+           <TeethRow teeth={TEETH_LOWER} />
+           <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+             Arcada Inferior
+           </p>
+         </div>
+ 
+-        <div className="odontogram-legend mt-7 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
+-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
+-          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+-            <span
+-              aria-hidden="true"
+-              className="h-3 w-3 rounded-sm ring-1 ring-red-300/30"
+-              style={{ background: "repeating-linear-gradient(45deg,#b42318 0 2px,#fce8e6 2px 4px)" }}
+-            />
+-            Área a tratar
+-          </div>
+-          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+-            <span aria-hidden="true" className="h-3 w-3 rounded-sm bg-cyan-400 ring-1 ring-cyan-200/30" />
+-            Área tratada
+-          </div>
+-          {LEGEND_STATUSES.map((status) => (
+-            <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
+-              <span
+-                aria-hidden="true"
+-                className="h-3 w-3 rounded-full ring-1 ring-white/15"
+-                style={{ background: STATUS_STYLES[status].dot }}
+-              />
+-              {status}
++        <div className="odontogram-legend mt-7 min-w-0 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
++          <div className="flex min-w-0 flex-col gap-3">
++            <div className="flex min-w-0 flex-wrap items-center justify-center gap-3">
++              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
++              {LEGEND_STATUSES.map((status) => (
++                <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
++                  <span
++                    aria-hidden="true"
++                    className="h-3 w-3 rounded-full ring-1 ring-white/15"
++                    style={{ background: STATUS_STYLES[status].dot }}
++                  />
++                  <span>{status}</span>
++                  <span className="text-slate-500">— {STATUS_EXPLANATIONS[status]}</span>
++                </div>
++              ))}
+             </div>
+-          ))}
++            <p className="text-center text-[11px] text-slate-400">
++              Regiões: face inteira, cervical, média e incisal/oclusal. Se necessário, selecione mais de
++              uma região para a mesma ocorrência.
++            </p>
++          </div>
+         </div>
+ 
+         {readOnly && recorded.length > 0 ? (
+           <section aria-labelledby="odontogram-summary" className="mt-8 space-y-3">
+             <h4
+               className="text-[10px] font-bold uppercase tracking-widest text-slate-400"
+               id="odontogram-summary"
+             >
+               Resumo Clínico
+             </h4>
+diff --git a/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx b/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx
+index 4586734..d06d13d 100644
+--- a/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx
++++ b/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx
+@@ -12,44 +12,63 @@ describe("ClinicalConditionList", () => {
+       id: "c1",
+       category: "achado",
+       type: "carie",
+       stage: "planejado",
+       targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+       notes: "acompanhar evolução",
+     }]} />);
+ 
+     expect(screen.getByText("carie")).toBeInTheDocument();
+     expect(screen.getByText("Planejado")).toBeInTheDocument();
+-    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
++    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
+     expect(screen.getByText("acompanhar evolução")).toBeInTheDocument();
+ 
+     await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*oclusal/i }));
+ 
+     expect(onRemove).toHaveBeenCalledWith("c1");
+   });
+ 
++  it("groups repeated faces into concise multi-region summaries", () => {
++    render(<ClinicalConditionList toothNumber={16} conditions={[{
++      id: "c1",
++      category: "achado",
++      type: "carie",
++      stage: "planejado",
++      targets: [
++        { kind: "surface", face: "top", region: "cervical" },
++        { kind: "surface", face: "top", region: "middle" },
++        { kind: "surface", face: "center", region: "incisalOcclusal" },
++      ],
++    }]} />);
++
++    expect(screen.getByText("Vestibular (cervical, média), Oclusal / Incisal")).toBeInTheDocument();
++  });
++
+   it("uses unique removal labels to remove the second same-type occurrence", async () => {
+     const user = userEvent.setup();
+     const onRemove = vi.fn();
+ 
+     render(<ClinicalConditionList toothNumber={16} onRemove={onRemove} conditions={[
+       {
+         id: "c1",
+         category: "achado",
+         type: "carie",
+         stage: "planejado",
+-        targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
++        targets: [
++          { kind: "surface", face: "top", region: "cervical" },
++          { kind: "surface", face: "top", region: "middle" },
++        ],
+       },
+       {
+         id: "c2",
+         category: "achado",
+         type: "carie",
+-        stage: "concluido",
++        stage: "planejado",
+         targets: [{ kind: "tooth" }],
+       },
+     ]} />);
+ 
+-    await user.click(screen.getByRole("button", { name: /remover carie.*concluído.*dente inteiro/i }));
++    await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*dente inteiro/i }));
+ 
+     expect(onRemove).toHaveBeenCalledWith("c2");
+   });
+ });
+diff --git a/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx b/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx
+index 7989a83..5beac31 100644
+--- a/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx
++++ b/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx
+@@ -1,41 +1,84 @@
+ import type { JSX } from "react";
+ import {
+   getClinicalStageLabel,
+   getConditionDisplayName,
+-  getConditionTargetLabel,
++  getFaceLabels,
+   type ClinicalCondition,
+ } from "./odontogramModel";
+ 
+ interface ClinicalConditionListProps {
+   toothNumber: number;
+   conditions: ClinicalCondition[];
+   onRemove?: (conditionId: string) => void;
+   readOnly?: boolean;
+ }
+ 
++const REGION_LABELS = {
++  entire: "face inteira",
++  cervical: "cervical",
++  middle: "média",
++  incisalOcclusal: "incisal/oclusal",
++} as const;
++
++const REGION_ORDER = ["entire", "cervical", "middle", "incisalOcclusal"] as const;
++
++function formatConditionTargets(
++  toothNumber: number,
++  targets: ClinicalCondition["targets"],
++): string {
++  const faceLabels = getFaceLabels(toothNumber);
++  const groupedSurfaceTargets = new Map<string, Set<keyof typeof REGION_LABELS>>();
++  const targetLabels: string[] = [];
++
++  targets.forEach((target) => {
++    if (target.kind === "tooth") {
++      targetLabels.push("Dente inteiro");
++      return;
++    }
++
++    const regions = groupedSurfaceTargets.get(target.face) ?? new Set<keyof typeof REGION_LABELS>();
++    regions.add(target.region);
++    groupedSurfaceTargets.set(target.face, regions);
++  });
++
++  groupedSurfaceTargets.forEach((regions, face) => {
++    const orderedRegions = REGION_ORDER.filter((region) => regions.has(region));
++    const faceLabel = faceLabels[face as keyof typeof faceLabels];
++
++    if (orderedRegions.length === 1 && (orderedRegions[0] === "entire" || faceLabel === "Oclusal / Incisal")) {
++      targetLabels.push(faceLabel);
++      return;
++    }
++
++    targetLabels.push(`${faceLabel} (${orderedRegions.map((region) => REGION_LABELS[region]).join(", ")})`);
++  });
++
++  return targetLabels.join(", ");
++}
++
+ export function ClinicalConditionList({
+   toothNumber,
+   conditions,
+   onRemove,
+   readOnly = false,
+ }: ClinicalConditionListProps): JSX.Element {
+   if (!conditions.length) {
+     return <p className="text-sm text-slate-400">Nenhuma ocorrência registrada neste dente.</p>;
+   }
+ 
+   return (
+     <ol aria-label={`Ocorrências clínicas do dente ${toothNumber}`} className="space-y-2">
+       {conditions.map((condition) => {
+         const name = getConditionDisplayName(condition.type);
+         const stage = getClinicalStageLabel(condition.stage);
+-        const targets = condition.targets.map((target) => getConditionTargetLabel(toothNumber, target)).join(", ");
++        const targets = formatConditionTargets(toothNumber, condition.targets);
+         return (
+           <li className="rounded-lg border border-slate-700 bg-slate-950/30 p-3" key={condition.id}>
+             <p className="font-medium text-white">{name}</p>
+             <p className="text-xs text-slate-300">{stage}</p>
+             <p className="mt-2 text-xs text-slate-300">
+               {targets}
+             </p>
+             {condition.notes ? <p className="mt-2 text-xs text-slate-400">{condition.notes}</p> : null}
+             {!readOnly && onRemove ? (
+               <button aria-label={`Remover ${name}: ${stage}; ${targets}`} onClick={() => onRemove(condition.id)} type="button">Remover</button>

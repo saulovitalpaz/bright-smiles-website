@@ -159,7 +159,7 @@ describe("ClinicalConditionEditor", () => {
 
     expect(screen.getByLabelText("Categoria")).toHaveValue("legado");
     expect(screen.getByLabelText("Procedimento")).toHaveValue("legado_tratar");
-    expect(screen.getByRole("button", { name: /vestibular.*face inteira/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^vestibular.*face inteira$/i })).toHaveAttribute("aria-pressed", "true");
 
     await selectStage("Monitorado", user);
     await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));

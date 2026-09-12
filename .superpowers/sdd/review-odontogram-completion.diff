@@ -1,0 +1,815 @@
+# Review package: f320cb3..HEAD
+
+## Commits
+2539584 fix: disambiguate central odontogram region labels
+b4eb96d fix: clarify odontogram legend and target summaries
+fb6db7c fix: support precise multi-region odontogram selection
+
+## Files changed
+ .../admin/attendance/Odontogram.test.tsx           |  28 ++++-
+ src/components/admin/attendance/Odontogram.tsx     |  52 +++++----
+ .../odontogram/ClinicalConditionEditor.test.tsx    |  20 ++--
+ .../odontogram/ClinicalConditionList.test.tsx      |  49 ++++++++-
+ .../odontogram/ClinicalConditionList.tsx           |  54 +++++++++-
+ .../odontogram/ToothSurfaceSelector.test.tsx       |  57 +++++++++-
+ .../attendance/odontogram/ToothSurfaceSelector.tsx | 116 ++++++++++++++++-----
+ 7 files changed, 308 insertions(+), 68 deletions(-)
+
+## Diff
+diff --git a/src/components/admin/attendance/Odontogram.test.tsx b/src/components/admin/attendance/Odontogram.test.tsx
+index 451d088..fe315cf 100644
+--- a/src/components/admin/attendance/Odontogram.test.tsx
++++ b/src/components/admin/attendance/Odontogram.test.tsx
+@@ -1,11 +1,11 @@
+-import { render, screen } from "@testing-library/react";
++import { render, screen, within } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { describe, expect, it, vi } from "vitest";
+ import Odontogram from "./Odontogram";
+ 
+ function getToothButton(toothNumber: number): HTMLElement {
+   return screen.getAllByRole("button", {
+     name: new RegExp(`dente ${toothNumber}`, "i"),
+   })[0];
+ }
+ 
+@@ -185,28 +185,48 @@ describe("Odontogram face-first workflow", () => {
+             status: "Saudável",
+             notes: "",
+             faces: { center: { status: "Tratar" } },
+           },
+         }}
+         onChange={() => undefined}
+       />,
+     );
+ 
+     expect(container.querySelector(".bg-blue-400")).not.toBeInTheDocument();
+-    expect(screen.getByText("Área a tratar")).toBeInTheDocument();
+-    expect(screen.getByText("Área tratada")).toBeInTheDocument();
++    expect(screen.getByText("Tratar")).toBeInTheDocument();
++    expect(screen.getByText("Tratado")).toBeInTheDocument();
+     expect(container.querySelector('[data-face-key="center"]')).toHaveAttribute(
+       "data-face-status",
+       "Tratar",
+     );
+   });
+ 
++  it("shows each legend status once and explains region selection without alternate target names", () => {
++    const { container } = render(<Odontogram data={{}} onChange={() => undefined} />);
++    const legend = container.querySelector(".odontogram-legend");
++
++    expect(legend).not.toBeNull();
++    expect(within(legend as HTMLElement).getAllByText(/^Saudável$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Tratar$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Tratado$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Ausente$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Implante$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).getAllByText(/^Ponte$/)).toHaveLength(1);
++    expect(within(legend as HTMLElement).queryByText("Área a tratar")).not.toBeInTheDocument();
++    expect(within(legend as HTMLElement).queryByText("Área tratada")).not.toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/face inteira/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/cervical/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/média/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/incisal\/oclusal/i)).toBeInTheDocument();
++    expect(within(legend as HTMLElement).getByText(/mais de uma região/i)).toBeInTheDocument();
++  });
++
+   it("closes an open editor when permissions become read-only", async () => {
+     const user = userEvent.setup();
+     const onChange = vi.fn();
+     const { rerender } = render(<Odontogram data={{}} onChange={onChange} />);
+ 
+     await user.click(getToothButton(16));
+     expect(screen.getByRole("dialog")).toBeInTheDocument();
+ 
+     rerender(<Odontogram data={{}} onChange={onChange} readOnly />);
+ 
+@@ -262,19 +282,19 @@ describe("Odontogram face-first workflow", () => {
+           },
+         }}
+         onChange={() => undefined}
+         printable
+         readOnly
+       />,
+     );
+ 
+     expect(screen.getByText("carie")).toBeInTheDocument();
+     expect(screen.getByText("Planejado")).toBeInTheDocument();
+-    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
++    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
+     expect(screen.getByText("avaliar profundidade")).toBeInTheDocument();
+     expect(screen.getByText("implante")).toBeInTheDocument();
+     expect(screen.getByText("Concluído")).toBeInTheDocument();
+     expect(screen.getByText("Dente inteiro")).toBeInTheDocument();
+     expect(screen.getByText("coroa instalada")).toBeInTheDocument();
+     expect(screen.queryByRole("button", { name: /remover/i })).not.toBeInTheDocument();
+   });
+ });
+diff --git a/src/components/admin/attendance/Odontogram.tsx b/src/components/admin/attendance/Odontogram.tsx
+index 587e61b..731a12c 100644
+--- a/src/components/admin/attendance/Odontogram.tsx
++++ b/src/components/admin/attendance/Odontogram.tsx
+@@ -87,20 +87,29 @@ const STATUS_STYLES: Record<ToothStatus, { badge: string; dot: string }> = {
+   Implante: {
+     badge: "border-violet-500/40 bg-violet-500/15 text-violet-200",
+     dot: "#8b5cf6",
+   },
+   Ponte: {
+     badge: "border-amber-500/40 bg-amber-500/15 text-amber-200",
+     dot: "#f59e0b",
+   },
+ };
+ 
++const STATUS_EXPLANATIONS: Record<ToothStatus, string> = {
++  Saudável: "sem marcação clínica",
++  Tratar: "área listrada",
++  Tratado: "área azul",
++  Ausente: "dente ausente",
++  Implante: "reabilitação com implante",
++  Ponte: "elemento protético",
++};
++
+ function isRecorded(tooth: ToothData): boolean {
+   return (
+     tooth.status !== "Saudável" ||
+     Boolean(tooth.notes) ||
+     Boolean(tooth.faces && Object.keys(tooth.faces).length)
+   );
+ }
+ 
+ function ConditionButton({
+   active,
+@@ -268,44 +277,41 @@ const Odontogram = ({
+             <span className="text-[9px] uppercase tracking-widest text-slate-600">Linha Oclusal</span>
+             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+           </div>
+ 
+           <TeethRow teeth={TEETH_LOWER} />
+           <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+             Arcada Inferior
+           </p>
+         </div>
+ 
+-        <div className="odontogram-legend mt-7 flex min-w-0 flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
+-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
+-          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+-            <span
+-              aria-hidden="true"
+-              className="h-3 w-3 rounded-sm ring-1 ring-red-300/30"
+-              style={{ background: "repeating-linear-gradient(45deg,#b42318 0 2px,#fce8e6 2px 4px)" }}
+-            />
+-            Área a tratar
+-          </div>
+-          <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+-            <span aria-hidden="true" className="h-3 w-3 rounded-sm bg-cyan-400 ring-1 ring-cyan-200/30" />
+-            Área tratada
+-          </div>
+-          {LEGEND_STATUSES.map((status) => (
+-            <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
+-              <span
+-                aria-hidden="true"
+-                className="h-3 w-3 rounded-full ring-1 ring-white/15"
+-                style={{ background: STATUS_STYLES[status].dot }}
+-              />
+-              {status}
++        <div className="odontogram-legend mt-7 min-w-0 rounded-xl border border-slate-800 bg-[#0f172a] p-3 sm:p-4">
++          <div className="flex min-w-0 flex-col gap-3">
++            <div className="flex min-w-0 flex-wrap items-center justify-center gap-3">
++              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legenda:</span>
++              {LEGEND_STATUSES.map((status) => (
++                <div className="flex items-center gap-1.5 text-[11px] text-slate-300" key={status}>
++                  <span
++                    aria-hidden="true"
++                    className="h-3 w-3 rounded-full ring-1 ring-white/15"
++                    style={{ background: STATUS_STYLES[status].dot }}
++                  />
++                  <span>{status}</span>
++                  <span className="text-slate-500">— {STATUS_EXPLANATIONS[status]}</span>
++                </div>
++              ))}
+             </div>
+-          ))}
++            <p className="text-center text-[11px] text-slate-400">
++              Regiões: face inteira, cervical, média e incisal/oclusal. Se necessário, selecione mais de
++              uma região para a mesma ocorrência.
++            </p>
++          </div>
+         </div>
+ 
+         {readOnly && recorded.length > 0 ? (
+           <section aria-labelledby="odontogram-summary" className="mt-8 space-y-3">
+             <h4
+               className="text-[10px] font-bold uppercase tracking-widest text-slate-400"
+               id="odontogram-summary"
+             >
+               Resumo Clínico
+             </h4>
+diff --git a/src/components/admin/attendance/odontogram/ClinicalConditionEditor.test.tsx b/src/components/admin/attendance/odontogram/ClinicalConditionEditor.test.tsx
+index a9d0f9f..fefbd01 100644
+--- a/src/components/admin/attendance/odontogram/ClinicalConditionEditor.test.tsx
++++ b/src/components/admin/attendance/odontogram/ClinicalConditionEditor.test.tsx
+@@ -1,63 +1,69 @@
+ import { render, screen } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { describe, expect, it, vi } from "vitest";
+ import { ClinicalConditionEditor } from "./ClinicalConditionEditor";
+ 
+ describe("ClinicalConditionEditor", () => {
+-  it("creates a completed resin condition for the selected precise region", async () => {
++  it("creates a completed resin condition for multiple precise regions", async () => {
+     const user = userEvent.setup();
+     const onSave = vi.fn();
+     render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
+ 
+     await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
+     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
+-    await user.click(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i }));
++    await user.click(screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }));
++    await user.click(screen.getByRole("button", { name: /vestibular.*face inteira/i }));
+     await user.selectOptions(screen.getByLabelText("Situação"), "concluido");
+     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
+ 
+     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+       category: "restauracao",
+       type: "resina_composta",
+       stage: "concluido",
+-      targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
++      targets: [
++        { kind: "surface", face: "center", region: "incisalOcclusal" },
++        { kind: "surface", face: "top", region: "entire" },
++      ],
+     }));
+   });
+ 
+   it("saves from the precise region grid and resets every entered clinical detail", async () => {
+     const user = userEvent.setup();
+     const onSave = vi.fn();
+     render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
+ 
+     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
+     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
+-    const target = screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i });
++    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
+     await user.click(target);
+     await user.selectOptions(screen.getByLabelText("Situação"), "planejado");
+     await user.type(screen.getByLabelText("Observação da ocorrência"), "acompanhar por seis meses");
+     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
+ 
+     expect(onSave).toHaveBeenCalledTimes(1);
+     expect(screen.getByLabelText("Categoria")).toHaveValue("");
+     expect(screen.getByLabelText("Procedimento")).toHaveValue("");
+     expect(screen.getByLabelText("Situação")).toHaveValue("");
+     expect(screen.getByLabelText("Observação da ocorrência")).toHaveValue("");
+ 
+     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
+     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
+-    expect(screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i })).toHaveAttribute("aria-pressed", "false");
++    expect(
++      screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }),
++    ).toHaveAttribute("aria-pressed", "false");
+   });
+ 
+   it("uses readable dark select controls and visibly marks a selected region", async () => {
+     const user = userEvent.setup();
+     render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={() => undefined} />);
+ 
+     expect(screen.getByLabelText("Categoria")).toHaveClass("bg-slate-950", "text-slate-100");
+     await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
+     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
+-    const target = screen.getByRole("button", { name: /oclusal.*incisal ou oclusal/i });
++    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
+     await user.click(target);
+ 
+     expect(target).toHaveAttribute("aria-pressed", "true");
+-    expect(target).toHaveClass("bg-blue-500/20", "border-blue-400");
++    expect(target).toHaveClass("surface-selector__control--selected");
+   });
+ });
+diff --git a/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx b/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx
+index 4586734..6e4a7fd 100644
+--- a/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx
++++ b/src/components/admin/attendance/odontogram/ClinicalConditionList.test.tsx
+@@ -12,44 +12,85 @@ describe("ClinicalConditionList", () => {
+       id: "c1",
+       category: "achado",
+       type: "carie",
+       stage: "planejado",
+       targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
+       notes: "acompanhar evolução",
+     }]} />);
+ 
+     expect(screen.getByText("carie")).toBeInTheDocument();
+     expect(screen.getByText("Planejado")).toBeInTheDocument();
+-    expect(screen.getByText("Oclusal / Incisal - oclusal/incisal")).toBeInTheDocument();
++    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
+     expect(screen.getByText("acompanhar evolução")).toBeInTheDocument();
+ 
+     await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*oclusal/i }));
+ 
+     expect(onRemove).toHaveBeenCalledWith("c1");
+   });
+ 
++  it("groups repeated faces into concise multi-region summaries", () => {
++    render(<ClinicalConditionList toothNumber={16} conditions={[{
++      id: "c1",
++      category: "achado",
++      type: "carie",
++      stage: "planejado",
++      targets: [
++        { kind: "surface", face: "top", region: "cervical" },
++        { kind: "surface", face: "top", region: "middle" },
++        { kind: "surface", face: "center", region: "incisalOcclusal" },
++      ],
++    }]} />);
++
++    expect(screen.getByText("Vestibular (cervical, média), Oclusal / Incisal")).toBeInTheDocument();
++  });
++
++  it("distinguishes a legacy whole-center target from an incisal occlusal target", () => {
++    render(<ClinicalConditionList toothNumber={16} conditions={[
++      {
++        id: "c1",
++        category: "achado",
++        type: "carie",
++        stage: "planejado",
++        targets: [{ kind: "surface", face: "center", region: "entire" }],
++      },
++      {
++        id: "c2",
++        category: "restauracao",
++        type: "resina_composta",
++        stage: "concluido",
++        targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
++      },
++    ]} />);
++
++    expect(screen.getByText("Oclusal / Incisal (face inteira)")).toBeInTheDocument();
++    expect(screen.getByText("Oclusal / Incisal")).toBeInTheDocument();
++  });
++
+   it("uses unique removal labels to remove the second same-type occurrence", async () => {
+     const user = userEvent.setup();
+     const onRemove = vi.fn();
+ 
+     render(<ClinicalConditionList toothNumber={16} onRemove={onRemove} conditions={[
+       {
+         id: "c1",
+         category: "achado",
+         type: "carie",
+         stage: "planejado",
+-        targets: [{ kind: "surface", face: "center", region: "incisalOcclusal" }],
++        targets: [
++          { kind: "surface", face: "top", region: "cervical" },
++          { kind: "surface", face: "top", region: "middle" },
++        ],
+       },
+       {
+         id: "c2",
+         category: "achado",
+         type: "carie",
+-        stage: "concluido",
++        stage: "planejado",
+         targets: [{ kind: "tooth" }],
+       },
+     ]} />);
+ 
+-    await user.click(screen.getByRole("button", { name: /remover carie.*concluído.*dente inteiro/i }));
++    await user.click(screen.getByRole("button", { name: /remover carie.*planejado.*dente inteiro/i }));
+ 
+     expect(onRemove).toHaveBeenCalledWith("c2");
+   });
+ });
+diff --git a/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx b/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx
+index 7989a83..39312e7 100644
+--- a/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx
++++ b/src/components/admin/attendance/odontogram/ClinicalConditionList.tsx
+@@ -1,41 +1,91 @@
+ import type { JSX } from "react";
+ import {
+   getClinicalStageLabel,
+   getConditionDisplayName,
+-  getConditionTargetLabel,
++  getFaceLabels,
+   type ClinicalCondition,
+ } from "./odontogramModel";
+ 
+ interface ClinicalConditionListProps {
+   toothNumber: number;
+   conditions: ClinicalCondition[];
+   onRemove?: (conditionId: string) => void;
+   readOnly?: boolean;
+ }
+ 
++const REGION_LABELS = {
++  entire: "face inteira",
++  cervical: "cervical",
++  middle: "média",
++  incisalOcclusal: "incisal/oclusal",
++} as const;
++
++const REGION_ORDER = ["entire", "cervical", "middle", "incisalOcclusal"] as const;
++
++function formatConditionTargets(
++  toothNumber: number,
++  targets: ClinicalCondition["targets"],
++): string {
++  const faceLabels = getFaceLabels(toothNumber);
++  const groupedSurfaceTargets = new Map<string, Set<keyof typeof REGION_LABELS>>();
++  const targetLabels: string[] = [];
++
++  targets.forEach((target) => {
++    if (target.kind === "tooth") {
++      targetLabels.push("Dente inteiro");
++      return;
++    }
++
++    const regions = groupedSurfaceTargets.get(target.face) ?? new Set<keyof typeof REGION_LABELS>();
++    regions.add(target.region);
++    groupedSurfaceTargets.set(target.face, regions);
++  });
++
++  groupedSurfaceTargets.forEach((regions, face) => {
++    const orderedRegions = REGION_ORDER.filter((region) => regions.has(region));
++    const faceLabel = faceLabels[face as keyof typeof faceLabels];
++
++    if (orderedRegions.length === 1) {
++      const [region] = orderedRegions;
++      if (region === "incisalOcclusal") {
++        targetLabels.push(faceLabel);
++        return;
++      }
++      if (region === "entire" && face !== "center") {
++        targetLabels.push(faceLabel);
++        return;
++      }
++    }
++
++    targetLabels.push(`${faceLabel} (${orderedRegions.map((region) => REGION_LABELS[region]).join(", ")})`);
++  });
++
++  return targetLabels.join(", ");
++}
++
+ export function ClinicalConditionList({
+   toothNumber,
+   conditions,
+   onRemove,
+   readOnly = false,
+ }: ClinicalConditionListProps): JSX.Element {
+   if (!conditions.length) {
+     return <p className="text-sm text-slate-400">Nenhuma ocorrência registrada neste dente.</p>;
+   }
+ 
+   return (
+     <ol aria-label={`Ocorrências clínicas do dente ${toothNumber}`} className="space-y-2">
+       {conditions.map((condition) => {
+         const name = getConditionDisplayName(condition.type);
+         const stage = getClinicalStageLabel(condition.stage);
+-        const targets = condition.targets.map((target) => getConditionTargetLabel(toothNumber, target)).join(", ");
++        const targets = formatConditionTargets(toothNumber, condition.targets);
+         return (
+           <li className="rounded-lg border border-slate-700 bg-slate-950/30 p-3" key={condition.id}>
+             <p className="font-medium text-white">{name}</p>
+             <p className="text-xs text-slate-300">{stage}</p>
+             <p className="mt-2 text-xs text-slate-300">
+               {targets}
+             </p>
+             {condition.notes ? <p className="mt-2 text-xs text-slate-400">{condition.notes}</p> : null}
+             {!readOnly && onRemove ? (
+               <button aria-label={`Remover ${name}: ${stage}; ${targets}`} onClick={() => onRemove(condition.id)} type="button">Remover</button>
+diff --git a/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx
+index 1179235..9c8fb8a 100644
+--- a/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx
++++ b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.test.tsx
+@@ -1,38 +1,93 @@
+ import { render, screen } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { describe, expect, it, vi } from "vitest";
+ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
+ import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
+ 
+ describe("ToothSurfaceSelector", () => {
++  it("exposes an explicit incisal ou oclusal label for the center control in layered mode", () => {
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace={null}
++        onSelectFace={() => undefined}
++        selectedTargets={[]}
++        onTargetsChange={() => undefined}
++      />,
++    );
++
++    expect(
++      screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }),
++    ).toBeInTheDocument();
++  });
++
++  it("does not expose an ambiguous center face inteira option in the layered region grid", () => {
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace={null}
++        onSelectFace={() => undefined}
++        selectedTargets={[]}
++        onTargetsChange={() => undefined}
++      />,
++    );
++
++    expect(
++      screen.queryByRole("button", { name: /oclusal \/ incisal.*face inteira/i }),
++    ).not.toBeInTheDocument();
++  });
++
+   it("selects one real anatomical face without replacing other selected targets", async () => {
+     const user = userEvent.setup();
+     const onTargetsChange = vi.fn();
+     render(
+       <ToothSurfaceSelector
+         toothNumber={16}
+         data={{ status: "Saudável", notes: "" }}
+         selectedFace={null}
+         onSelectFace={() => undefined}
+         selectedTargets={[{ kind: "surface", face: "center", region: "incisalOcclusal" }]}
+         onTargetsChange={onTargetsChange}
+       />,
+     );
+ 
+-    await user.click(screen.getByRole("button", { name: "Vestibular", exact: true }));
++    await user.click(screen.getByRole("button", { name: /vestibular.*face inteira/i }));
+     expect(onTargetsChange).toHaveBeenCalledWith([
+       { kind: "surface", face: "center", region: "incisalOcclusal" },
+       { kind: "surface", face: "top", region: "entire" },
+     ]);
+   });
+ 
++  it("replaces an overlapping entire target when a subregion is selected", async () => {
++    const user = userEvent.setup();
++    const onTargetsChange = vi.fn();
++    render(
++      <ToothSurfaceSelector
++        toothNumber={16}
++        data={{ status: "Saudável", notes: "" }}
++        selectedFace={null}
++        onSelectFace={() => undefined}
++        selectedTargets={[{ kind: "surface", face: "top", region: "entire" }]}
++        onTargetsChange={onTargetsChange}
++      />,
++    );
++
++    await user.click(screen.getByRole("button", { name: /vestibular.*cervical/i }));
++
++    expect(onTargetsChange).toHaveBeenCalledWith([
++      { kind: "surface", face: "top", region: "cervical" },
++    ]);
++  });
++
+   it("selects the oclusal face without writing a condition", async () => {
+     const user = userEvent.setup();
+     const onSelectFace = vi.fn();
+ 
+     render(
+       <ToothSurfaceSelector
+         toothNumber={16}
+         data={{ status: "Saudável", notes: "" }}
+         selectedFace={null}
+         onSelectFace={onSelectFace}
+diff --git a/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx
+index 3c0e567..5c4e6f1 100644
+--- a/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx
++++ b/src/components/admin/attendance/odontogram/ToothSurfaceSelector.tsx
+@@ -21,30 +21,77 @@ interface ToothSurfaceSelectorProps {
+ }
+ 
+ const FACE_POSITIONS: Record<FaceKey, string> = {
+   top: "surface-selector__control--top",
+   right: "surface-selector__control--right",
+   bottom: "surface-selector__control--bottom",
+   left: "surface-selector__control--left",
+   center: "surface-selector__control--center",
+ };
+ 
++const FACE_REGION_OPTIONS: Readonly<Record<FaceKey, readonly ConditionTarget["region"][]>> = {
++  top: ["cervical", "middle"],
++  right: ["cervical", "middle"],
++  bottom: ["cervical", "middle"],
++  left: ["cervical", "middle"],
++  center: [],
++};
++
+ function getFaceStatus(data: ToothData, face: FaceKey): FaceStatus {
+   return data.faces?.[face]?.status ?? "Saudável";
+ }
+ 
+ function getFaceClass(status: FaceStatus): string {
+   if (status === "Tratar") return "surface-selector__face--treat";
+   if (status === "Tratado") return "surface-selector__face--treated";
+   return "surface-selector__face--healthy";
+ }
+ 
++function getDefaultRegion(face: FaceKey): ConditionTarget["region"] {
++  return face === "center" ? "incisalOcclusal" : "entire";
++}
++
++function getRegionLabel(region: ConditionTarget["region"]): string {
++  if (region === "incisalOcclusal") return "incisal ou oclusal";
++  if (region === "middle") return "média";
++  if (region === "cervical") return "cervical";
++  return "face inteira";
++}
++
++function isSameTarget(left: ConditionTarget, right: ConditionTarget): boolean {
++  if (left.kind !== right.kind) return false;
++  if (left.kind === "tooth" && right.kind === "tooth") return true;
++  return (
++    left.kind === "surface" &&
++    right.kind === "surface" &&
++    left.face === right.face &&
++    left.region === right.region
++  );
++}
++
++function isSelectedTarget(targets: ConditionTarget[], target: ConditionTarget): boolean {
++  return targets.some((item) => isSameTarget(item, target));
++}
++
++function normalizeTargets(targets: ConditionTarget[], target: ConditionTarget): ConditionTarget[] {
++  if (isSelectedTarget(targets, target)) {
++    return targets.filter((item) => !isSameTarget(item, target));
++  }
++  if (target.kind !== "surface") return [...targets, target];
++  const next = targets.filter((item) => {
++    if (item.kind !== "surface" || item.face !== target.face) return true;
++    if (target.region === "entire") return false;
++    return item.region !== "entire";
++  });
++  return [...next, target];
++}
++
+ interface FaceVisualProps {
+   path: string;
+   status: FaceStatus;
+   isSelected: boolean;
+   hatchId: string;
+ }
+ 
+ function HatchPattern({ id }: { id: string }): JSX.Element {
+   return (
+     <pattern
+@@ -97,28 +144,25 @@ export function ToothSurfaceSelector({
+   onSelectFace,
+   readOnly = false,
+   selectedTargets,
+   onTargetsChange,
+ }: ToothSurfaceSelectorProps): JSX.Element {
+   const instanceId = useId().replace(/:/g, "");
+   const family = getToothFamily(toothNumber);
+   const anatomy = ANATOMICAL_GEOMETRY[family].occlusal;
+   const labels = getFaceLabels(toothNumber);
+   const hatchId = `surface-hatch-${toothNumber}-${instanceId}`;
++  const layeredMode = Boolean(selectedTargets && onTargetsChange);
+ 
+   const toggleTarget = (target: ConditionTarget): void => {
+     if (!selectedTargets || !onTargetsChange || readOnly) return;
+-    const targetKey = JSON.stringify(target);
+-    const next = selectedTargets.some((item) => JSON.stringify(item) === targetKey)
+-      ? selectedTargets.filter((item) => JSON.stringify(item) !== targetKey)
+-      : [...selectedTargets, target];
+-    onTargetsChange(next);
++    onTargetsChange(normalizeTargets(selectedTargets, target));
+   };
+ 
+   return (
+     <div
+       className="tooth-surface-selector__container"
+       data-testid="tooth-surface-selector-container"
+     >
+       <div
+         className="tooth-surface-selector"
+         data-tooth-family={family}
+@@ -126,21 +170,24 @@ export function ToothSurfaceSelector({
+       >
+         <svg
+           aria-hidden="true"
+           className="surface-selector__base"
+           focusable="false"
+           viewBox={anatomy.viewBox}
+         >
+           <path className="surface-selector__outline" d={anatomy.outline} />
+           {FACE_KEYS.map((face) => {
+             const status = getFaceStatus(data, face);
+-            const isSelected = selectedFace === face;
++            const target: ConditionTarget = { kind: "surface", face, region: getDefaultRegion(face) };
++            const isSelected = layeredMode
++              ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
++              : selectedFace === face;
+ 
+             return (
+               <g key={face} data-surface-face={face}>
+                 <FaceVisual
+                   hatchId={`${hatchId}-base-${face}`}
+                   isSelected={isSelected}
+                   path={anatomy.faces[face]}
+                   status={status}
+                 />
+               </g>
+@@ -148,61 +195,76 @@ export function ToothSurfaceSelector({
+           })}
+           <g className="surface-selector__grooves">
+             {anatomy.grooves.map((groove) => (
+               <path d={groove} key={groove} />
+             ))}
+           </g>
+         </svg>
+ 
+         {FACE_KEYS.map((face) => {
+           const status = getFaceStatus(data, face);
+-          const isSelected = selectedFace === face;
++          const target: ConditionTarget = { kind: "surface", face, region: getDefaultRegion(face) };
++          const isSelected = layeredMode
++            ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
++            : selectedFace === face;
++          const ariaLabel = layeredMode
++            ? `${labels[face]} - ${getRegionLabel(target.region)}`
++            : `${labels[face]}: ${status}`;
+ 
+           return (
+             <button
+-              aria-label={`${labels[face]}: ${status}`}
++              aria-label={ariaLabel}
+               aria-pressed={isSelected}
+               className={`surface-selector__control ${FACE_POSITIONS[face]} ${getFaceClass(status)}${
+                 isSelected ? " surface-selector__control--selected" : ""
+               }`}
+               disabled={readOnly}
+               key={face}
+               onClick={() => {
+-                if (!readOnly) onSelectFace(face);
++                if (readOnly) return;
++                if (layeredMode) {
++                  toggleTarget(target);
++                  return;
++                }
++                onSelectFace(face);
+               }}
+               type="button"
+             >
+               <svg aria-hidden="true" focusable="false" viewBox={anatomy.viewBox}>
+                 <FaceVisual
+                   hatchId={`${hatchId}-${face}`}
+                   isSelected={isSelected}
+                   path={anatomy.faces[face]}
+                   status={status}
+                 />
+               </svg>
+             </button>
+           );
+         })}
+       </div>
+-      {selectedTargets && onTargetsChange ? (
+-        <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Faces anatômicas">
+-          {FACE_KEYS.map((face) => {
+-            const target: ConditionTarget = { kind: "surface", face, region: "entire" };
+-            const selected = selectedTargets.some((item) => JSON.stringify(item) === JSON.stringify(target));
+-            return (
+-              <button
+-                aria-pressed={selected}
+-                className={`min-h-11 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
+-                disabled={readOnly}
+-                key={face}
+-                onClick={() => toggleTarget(target)}
+-                type="button"
+-              >
+-                {labels[face]}
+-              </button>
+-            );
+-          })}
++      {layeredMode && selectedTargets ? (
++        <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Regiões anatômicas">
++          {FACE_KEYS.flatMap((face) =>
++            FACE_REGION_OPTIONS[face].map((region) => {
++              const target: ConditionTarget = { kind: "surface", face, region };
++              const selected = isSelectedTarget(selectedTargets, target);
++              const label = `${labels[face]} - ${getRegionLabel(region)}`;
++              return (
++                <button
++                  aria-label={label}
++                  aria-pressed={selected}
++                  className={`min-h-11 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
++                  disabled={readOnly}
++                  key={`${face}-${region}`}
++                  onClick={() => toggleTarget(target)}
++                  type="button"
++                >
++                  {label}
++                </button>
++              );
++            }),
++          )}
+         </div>
+       ) : null}
+     </div>
+   );
+ }

@@ -1,0 +1,208 @@
+# Review package: 20fdaa7..HEAD
+
+## Commits
+1dd8c9e feat: reorganize admin navigation and calendar route
+
+## Files changed
+ src/App.tsx                                       |  2 ++
+ src/components/admin/AdminLayout.tsx              | 28 +++++++++++++------
+ src/components/admin/navigation-contract.test.tsx | 34 +++++++++++++++++++++++
+ src/pages/AdminDashboard.tsx                      |  2 +-
+ 4 files changed, 57 insertions(+), 9 deletions(-)
+
+## Diff
+diff --git a/src/App.tsx b/src/App.tsx
+index aff76ca..f4bff96 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -19,20 +19,21 @@ import AdminAppointments from "./pages/AdminAppointments";
+ import AdminAttendanceDetail from "./pages/AdminAttendanceDetail";
+ import AdminStories from "./pages/AdminStories";
+ import AdminFinance from "./pages/AdminFinance";
+ import AdminAnalytics from "./pages/AdminAnalytics";
+ import AdminPrescription from "./pages/AdminPrescription";
+ import AdminDocuments from "./pages/AdminDocuments";
+ import AdminSettings from "./pages/AdminSettings";
+ import AdminPersonalFinance from "./pages/AdminPersonalFinance";
+ import AdminUsers from "./pages/AdminUsers";
+ import AdminPatients from "./pages/AdminPatients";
++import AdminCalendar from "./pages/AdminCalendar";
+ import PageTracker from "./components/PageTracker";
+ 
+ import { AuthProvider, ProtectedRoute, RoleProtectedRoute } from "./hooks/useAuth";
+ 
+ const queryClient = new QueryClient();
+ 
+ const App = () => (
+   <QueryClientProvider client={queryClient}>
+     <TooltipProvider>
+       <Toaster />
+@@ -56,20 +57,21 @@ const App = () => (
+             <Route path="/admin/finance" element={<ProtectedRoute><AdminFinance /></ProtectedRoute>} />
+             <Route path="/admin/personal-finance" element={<ProtectedRoute><AdminPersonalFinance /></ProtectedRoute>} />
+             <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
+             <Route path="/admin/documentos" element={<ProtectedRoute><AdminDocuments /></ProtectedRoute>} />
+ 
+             {/* Restricted: admin-only (manager gets redirected to dashboard) */}
+             <Route path="/admin/blog" element={<RoleProtectedRoute><AdminBlog /></RoleProtectedRoute>} />
+             <Route path="/admin/solicitacoes" element={<RoleProtectedRoute><AdminLeads /></RoleProtectedRoute>} />
+             <Route path="/admin/tratamentos" element={<RoleProtectedRoute><AdminTreatments /></RoleProtectedRoute>} />
+             <Route path="/admin/consultas" element={<RoleProtectedRoute><AdminAppointments /></RoleProtectedRoute>} />
++            <Route path="/admin/calendario" element={<RoleProtectedRoute><AdminCalendar /></RoleProtectedRoute>} />
+             <Route path="/admin/consultas/:id" element={<RoleProtectedRoute><AdminAttendanceDetail /></RoleProtectedRoute>} />
+             <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
+             <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />
+             <Route path="/admin/users" element={<RoleProtectedRoute><AdminUsers /></RoleProtectedRoute>} />
+             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
+ 
+             <Route path="*" element={<NotFound />} />
+           </Routes>
+         </AuthProvider>
+       </BrowserRouter>
+diff --git a/src/components/admin/AdminLayout.tsx b/src/components/admin/AdminLayout.tsx
+index ab2b038..727556b 100644
+--- a/src/components/admin/AdminLayout.tsx
++++ b/src/components/admin/AdminLayout.tsx
+@@ -5,22 +5,21 @@ import {
+     LayoutDashboard,
+     FileText,
+     Calendar,
+     LogOut,
+     ChevronRight,
+     Stethoscope,
+     DollarSign,
+     BarChart3,
+     ChevronLeft,
+     Menu,
+-    Settings,
+-    Users
++    Settings
+ } from "lucide-react";
+ import { Button } from "@/components/ui/button";
+ import { useQuery } from "@tanstack/react-query";
+ import axios from "axios";
+ 
+ import { API_URL } from "@/lib/api";
+ import { mediaUrl } from "@/lib/media";
+ 
+ interface AdminLayoutProps {
+     children: React.ReactNode;
+@@ -82,32 +81,45 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
+     const allMenuItems = [
+         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+         { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
+         {
+             label: "Conteúdo",
+             href: isManager ? "/admin/comentarios" : "/admin/blog",
+             icon: FileText,
+             subItems: contentSubItems
+         },
+         {
+-            label: "Consultas", href: "/admin/consultas", icon: Stethoscope, adminOnly: true, subItems: [
+-                { label: "Atendimentos", href: "/admin/consultas" },
++            label: "Atendimentos",
++            href: "/admin/consultas",
++            icon: Stethoscope,
++            adminOnly: true,
++            subItems: [
++                { label: "Consultas", href: "/admin/consultas" },
++                { label: "Pacientes", href: "/admin/pacientes" },
+                 { label: "Prescrição", href: "/admin/prescricao" },
+-                { label: "Termos & Doc", href: "/admin/documentos" },
++                { label: "Termos e Documentos", href: "/admin/documentos" },
+             ]
+         },
++        { label: "Calendário", href: "/admin/calendario", icon: Calendar, adminOnly: true },
+         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
+         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
+         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+-        { label: "Equipe", href: "/admin/users", icon: Users, adminOnly: true },
+-        { label: "Pacientes", href: "/admin/pacientes", icon: Users, adminOnly: true },
+-        { label: "Configurações", href: "/admin/settings", icon: Settings, adminOnly: true },
++        {
++            label: "Configurações",
++            href: "/admin/settings",
++            icon: Settings,
++            adminOnly: true,
++            subItems: [
++                { label: "Geral", href: "/admin/settings" },
++                { label: "Equipe", href: "/admin/users" },
++            ]
++        },
+     ];
+ 
+     // Filter: manager only sees items without adminOnly flag
+     const menuItems = isManager
+         ? allMenuItems.filter(item => !item.adminOnly)
+         : allMenuItems;
+ 
+     const activeNavClass = "bg-primary text-primary-foreground shadow-lg shadow-primary/20";
+     const inactiveNavClass = "text-slate-500 hover:bg-slate-800/50 hover:text-white";
+     const isItemActive = (item: (typeof menuItems)[number]) =>
+diff --git a/src/components/admin/navigation-contract.test.tsx b/src/components/admin/navigation-contract.test.tsx
+new file mode 100644
+index 0000000..f11c694
+--- /dev/null
++++ b/src/components/admin/navigation-contract.test.tsx
+@@ -0,0 +1,34 @@
++import fs from "node:fs";
++import path from "node:path";
++import { describe, expect, it } from "vitest";
++
++const readSource = (relativePath: string) =>
++    fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
++
++describe("admin navigation source contract", () => {
++    const appSource = readSource("src/App.tsx");
++    const layoutSource = readSource("src/components/admin/AdminLayout.tsx");
++    const dashboardSource = readSource("src/pages/AdminDashboard.tsx");
++    const authSource = readSource("src/hooks/useAuth.tsx");
++
++    it("registers the standalone calendar route", () => {
++        expect(appSource).toMatch(/path="\/admin\/calendario"/);
++    });
++
++    it("points the dashboard shortcut to the standalone calendar page", () => {
++        expect(dashboardSource).toContain("navigate('/admin/calendario')");
++        expect(dashboardSource).not.toContain("navigate('/admin/consultas?view=calendar')");
++    });
++
++    it("keeps attendances and settings grouped in the sidebar", () => {
++        expect(layoutSource).toMatch(/label:\s*["']Atendimentos["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Calendário["'][\s\S]*href:\s*["']\/admin\/calendario["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Pacientes["'][\s\S]*href:\s*["']\/admin\/pacientes["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Configurações["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Equipe["'][\s\S]*href:\s*["']\/admin\/users["']/);
++    });
++
++    it("does not broaden manager access to the clinical calendar", () => {
++        expect(authSource).not.toMatch(/MANAGER_ALLOWED_ROUTES[\s\S]*\/admin\/calendario/);
++    });
++});
+diff --git a/src/pages/AdminDashboard.tsx b/src/pages/AdminDashboard.tsx
+index dd4ac03..f3a7997 100644
+--- a/src/pages/AdminDashboard.tsx
++++ b/src/pages/AdminDashboard.tsx
+@@ -155,21 +155,21 @@ const AdminDashboard = () => {
+ 
+             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+                 {/* PRÓXIMA AGENDA */}
+                 <div className="admin-card p-5 md:p-8">
+                     <div className="flex items-center justify-between mb-6 md:mb-8">
+                         <div>
+                             <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Próxima Agenda</h3>
+                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Horários confirmados</p>
+                         </div>
+                         <button 
+-                            onClick={() => navigate('/admin/consultas?view=calendar')}
++                            onClick={() => navigate('/admin/calendario')}
+                             title="Ver Calendário"
+                             className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner hover:bg-blue-100 transition-colors cursor-pointer"
+                         >
+                             <Calendar size={20} className="md:w-6 md:h-6" />
+                         </button>
+                     </div>
+ 
+                     <div className="space-y-4">
+                         {stats.upcomingSchedule.length > 0 ? (
+                             stats.upcomingSchedule.map((item) => {

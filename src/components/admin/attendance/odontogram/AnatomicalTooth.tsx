@@ -48,7 +48,11 @@ export function AnatomicalTooth({
             : layeredWholeToothVisual.fill
     : null;
   const overlay = wholeToothDefinition.visual.fill;
-  const isMissing = wholeToothDefinition.visual.symbol === "cross";
+  const conditionSymbol = wholeToothCondition?.type === "implante" ? "implant"
+    : ["ponte_fixa", "legado_ponte"].includes(wholeToothCondition?.type ?? "") ? "bridge"
+      : ["dente_ausente", "legado_ausente"].includes(wholeToothCondition?.type ?? "") ? "cross"
+        : wholeToothDefinition.visual.symbol;
+  const isMissing = conditionSymbol === "cross";
   const accessibleName = [
     `Dente ${toothNumber}, ${data.status}`,
     wholeToothCondition ? `dente inteiro: ${getConditionDisplayName(wholeToothCondition.type)} (${getClinicalStageLabel(wholeToothCondition.stage)})` : null,
@@ -217,6 +221,7 @@ export function AnatomicalTooth({
         {isMissing ? (
           <g
             data-testid="missing-tooth-mark"
+            data-clinical-symbol="cross"
             data-anatomy-layer="missing-tooth-cross"
             stroke="#b42318"
             strokeWidth="3"
@@ -224,6 +229,16 @@ export function AnatomicalTooth({
           >
             <path d="M10.5 12L37.5 66" />
             <path d="M37.5 12L10.5 66" />
+          </g>
+        ) : null}
+        {conditionSymbol === "implant" ? (
+          <g data-clinical-symbol="implant" fill="none" stroke="#6d28d9" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M19 30H29V60H19ZM17 36H31M17 42H31M17 48H31M17 54H31M20 25H28" />
+          </g>
+        ) : null}
+        {conditionSymbol === "bridge" ? (
+          <g data-clinical-symbol="bridge" fill="none" stroke="#b45309" strokeWidth="3" strokeLinecap="round">
+            <path d="M9 53H39M11 47V62M37 47V62" />
           </g>
         ) : null}
       </g>

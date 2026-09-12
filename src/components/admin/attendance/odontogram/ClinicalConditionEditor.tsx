@@ -100,7 +100,7 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initial
       <label className="block text-sm">Procedimento
         <select aria-label="Procedimento" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100 disabled:opacity-60" disabled={!category} value={type} onChange={(event) => { setType(event.target.value as ClinicalConditionType); setTargets([]); setTargetError(""); }}>
           <option value="">Selecione</option>
-          {types.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
+          {types.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
         </select>
       </label>
       {type ? (

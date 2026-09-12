@@ -25,20 +25,6 @@ const Feedback = () => {
         e.preventDefault();
         setIsSubmitting(true);
         const form = e.target as HTMLFormElement;
-        const formData = new FormData(form);
-        const nameInput = formData.get("subject") as string; // Reused input for 'subject' as name/topic??
-        // Wait, input placeholder says "Assunto". Let's assume it is comment title/subject.
-        // Actually the backend Testimonial model has 'name', 'rating', 'comment'.
-        // The form has "Assunto" and "Comentario". I will map Assunto -> Name (or add a Name field).
-        // The user likely wants to be anonymous or provide name.
-        // Let's check the form fields:
-        // Input placeholder="Assunto (ex: Atendimento, Limpeza)"
-        // Textarea placeholder="Escreva seu comentário..."
-        // I should probably add a Name field if I can, but to avoid UI churn, I'll send Assunto as 'name' (topic) or just modify the form to ask for Name.
-        // BETTER: Change "Assunto" to "Nome (Opcional)" or just "Seu Nome".
-        // BUT, keeping to minimal changes: I will treat the first input as "Subject/Context" and append to comment, and send "Anônimo" or ask user.
-        // Actually, let's just use the Input for "Name/Subject".
-
         const subject = (form.elements.namedItem('subject') as HTMLInputElement).value;
         const comment = (form.elements.namedItem('comment') as HTMLTextAreaElement).value;
 

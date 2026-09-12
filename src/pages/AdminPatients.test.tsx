@@ -26,3 +26,22 @@ it("takes Edit and New directly to the patient form without submitting changes",
     expect(screen.getByLabelText("Nome *")).toHaveFocus();
     expect(vi.mocked(fetchClient).mock.calls.some(([, options]) => options?.method)).toBe(false);
 });
+
+it("loads, changes and clears the patient's sex in the edit form", async () => {
+    vi.mocked(fetchClient).mockImplementation(async path => ({ ok: true, json: async () => String(path).startsWith("/patients") ? [{ id: 1, name: "Paciente fictício", cpf: "00000000000", sex: "female" }] : [] }) as Response);
+    render(<MemoryRouter><AdminPatients /></MemoryRouter>);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Editar Paciente fictício" }));
+    expect(screen.getByLabelText("Sexo")).toHaveValue("female");
+    await user.selectOptions(screen.getByLabelText("Sexo"), "male");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    const saved = vi.mocked(fetchClient).mock.calls.find(([, options]) => options?.method === "PUT");
+    expect(JSON.parse(String(saved?.[1]?.body))).toMatchObject({ sex: "male" });
+    await user.click(await screen.findByRole("button", { name: "Editar Paciente fictício" }));
+    await user.selectOptions(screen.getByLabelText("Sexo"), "");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    const cleared = vi.mocked(fetchClient).mock.calls.filter(([, options]) => options?.method === "PUT").at(-1);
+    expect(JSON.parse(String(cleared?.[1]?.body))).toMatchObject({ sex: null });
+    await user.click(screen.getByRole("button", { name: "Novo paciente" }));
+    expect(screen.getByLabelText("Sexo")).toHaveValue("");
+});

@@ -28,6 +28,7 @@ interface AppointmentData {
     cpf: string;
     phone: string;
     birthDate: string | null;
+    sex: "female" | "male" | null;
     patientId: number | null;
     date: string;
     scheduledAt: string | null;
@@ -83,6 +84,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     cpf: "",
     phone: "",
     birthDate: null,
+    sex: null,
     patientId: null,
     date: new Date().toISOString(),
     scheduledAt: null,
@@ -109,7 +111,8 @@ interface AppointmentResponse {
     patientName?: string | null;
     cpf?: string | null;
     phone?: string | null;
-    patient?: { id?: number; name?: string; cpf?: string; phone?: string; birthDate?: string | null } | null;
+    birthDate?: string | null;
+    patient?: { id?: number; name?: string; cpf?: string; phone?: string; birthDate?: string | null; sex?: "female" | "male" | null } | null;
     date?: string | null;
     scheduledAt?: string | null;
     createdAt?: string | null;
@@ -162,6 +165,7 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
         cpf: fetched.cpf || patient.cpf || "",
         phone: fetched.phone || patient.phone || "",
         birthDate: fetched.birthDate || patient.birthDate || null,
+        sex: patient.sex ?? null,
         scheduledAt: fetched.scheduledAt || null,
         createdAt: fetched.createdAt || undefined,
         returnDate: fetched.returnDate || "",
@@ -237,10 +241,12 @@ const AdminAttendanceDetail = () => {
                 const leads = await res.json();
                 const lead = (leads as LeadResponse[]).find((l) => l.id === parseInt(leadIdStr));
                 if (lead) {
-                    const patientId = await resolveLeadPatient(lead);
+                    const patient = await resolveLeadPatient(lead);
                     setData({
                         ...draft,
-                        patientId,
+                        patientId: patient?.id ?? null,
+                        sex: patient?.sex ?? null,
+                        birthDate: patient?.birthDate ?? null,
                         patientName: lead.name || "",
                         cpf: lead.cpf || "",
                         phone: lead.phone || "",
@@ -258,14 +264,14 @@ const AdminAttendanceDetail = () => {
         }
     };
 
-    const resolveLeadPatient = async (lead: LeadResponse): Promise<number | null> => {
-        const findPatient = async (endpoint: string): Promise<number | null> => {
+    const resolveLeadPatient = async (lead: LeadResponse): Promise<AppointmentResponse["patient"]> => {
+        const findPatient = async (endpoint: string): Promise<AppointmentResponse["patient"]> => {
             try {
                 const patientRes = await fetchClient(endpoint);
                 if (!patientRes.ok) return null;
                 const patients = await patientRes.json();
                 if (Array.isArray(patients) && patients.length > 0 && Number.isFinite(patients[0]?.id)) {
-                    return patients[0].id;
+                    return patients[0];
                 }
             } catch (error) {
                 console.error("Error resolving lead patient:", error);
@@ -353,6 +359,7 @@ const AdminAttendanceDetail = () => {
             // keep it out of both POST and PUT appointment payloads.
             const {
                 phone: _phone,
+                sex: _sex,
                 id: _id,
                 createdAt: _createdAt,
                 ...payloadForRequest
@@ -523,12 +530,14 @@ const AdminAttendanceDetail = () => {
                                                         cpf: data.cpf,
                                                         phone: data.phone,
                                                         birthDate: data.birthDate,
+                                                        sex: data.sex,
                                                     } : null}
                                                     onSelect={(p) => {
                                                         updateField('patientName', p.name);
                                                         updateField('cpf', p.cpf);
                                                         updateField('phone', p.phone || '');
                                                         updateField('birthDate', p.birthDate || null);
+                                                        updateField('sex', p.sex ?? null);
                                                         updateField('patientId', p.id);
                                                     }}
                                                 />
@@ -782,6 +791,7 @@ const AdminAttendanceDetail = () => {
                         {(data.appointmentType === 'harmonizacao' || data.appointmentType === 'ambos') && (
                             <FacialHarmonizationWorkspace
                                 value={data.facialNotes}
+                                sex={data.sex}
                                 onChange={(notes) => updateField('facialNotes', notes)}
                                 readOnly={readOnly}
                                 onSave={handleSave}

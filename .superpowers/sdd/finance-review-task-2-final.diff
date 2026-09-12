@@ -1,0 +1,648 @@
+# Review package: 2e20338..3a0ffb3
+
+## Commits
+3a0ffb3 fix: keep legacy transactions immutable during backfill
+4db0026 fix: preserve legacy finance categories
+857f75d fix: harden finance category and transaction updates
+d0e5f64 feat: add dated finance categories and cumulative balances
+
+## Files changed
+ server/index.js                                    | 241 +++++++++++++++++----
+ .../migration.sql                                  |  21 ++
+ .../migration.sql                                  |   6 +
+ .../migration.sql                                  |   5 +
+ server/prisma/schema.prisma                        |  13 +-
+ server/test/finance-period-contract.test.js        |  99 ++++++++-
+ server/utils/financePeriod.js                      |  25 ++-
+ 7 files changed, 366 insertions(+), 44 deletions(-)
+
+## Diff
+diff --git a/server/index.js b/server/index.js
+index 0dc4419..2410744 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -30,21 +30,27 @@ const { createDashboardStatsHandler } = require('./routes/dashboard');
+ const { createAnalyticsHandlers } = require('./routes/analytics');
+ const {
+     parseOptionalDate,
+     normalizeScheduledAt,
+     normalizeReturnDate,
+     normalizeReturnDateForUpdate,
+     syncReturnAppointment,
+     buildUpcomingSchedule
+ } = require('./utils/schedule');
+ const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
+-const { parseFinancePeriod, financePeriodWhere, financeStatsWhere } = require('./utils/financePeriod');
++const {
++    parseFinancePeriod,
++    parseFinanceTransactionDate,
++    financePeriodWhere,
++    financeCumulativeWhere,
++    financeStatsWhere
++} = require('./utils/financePeriod');
+ const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
+ const auditLogger = require('./middleware/auditLogger');
+ const { hashPassword, verifyPassword } = require('./utils/passwords');
+ const sanitizeBlogContent = require('./utils/sanitizeBlogContent');
+ const {
+     SIGNATURE_IMAGE_TYPES,
+     isSupportedSignatureImage,
+     signatureExtension
+ } = require('./utils/signatureImage');
+ const {
+@@ -1497,108 +1503,265 @@ app.delete('/personal-finance/:id', authenticateToken, authorizeRole(['admin', '
+         await prisma.personalTransaction.delete({
+             where: { id: parseInt(req.params.id) }
+         });
+         res.json({ message: 'Transaction deleted' });
+     } catch (error) {
+         res.status(400).json({ error: error.message });
+     }
+ });
+ 
+ // Finance API
++const MAX_FINANCE_CATEGORY_NAME_LENGTH = 80;
++const normalizeFinanceCategoryName = (value) => typeof value === 'string' ? value.trim() : '';
++const isKnownPrismaError = (error, code) => error?.code === code;
++const hasFinanceField = (value, field) => Object.prototype.hasOwnProperty.call(value, field);
++const invalidFinanceTransaction = () => {
++    const error = new Error('Invalid finance transaction.');
++    error.statusCode = 400;
++    return error;
++};
++const parseFinanceTransactionId = (value) => {
++    const id = Number(value);
++    if (!Number.isInteger(id) || id < 1) throw invalidFinanceTransaction();
++    return id;
++};
++const validateFinanceTransactionInput = async (input, existingTransaction) => {
++    const isCreate = !existingTransaction;
++    const data = {};
++
++    if (isCreate || hasFinanceField(input, 'date')) {
++        data.date = parseFinanceTransactionDate(input.date);
++    }
++
++    if (isCreate || hasFinanceField(input, 'type')) {
++        if (!['income', 'expense'].includes(input.type)) throw invalidFinanceTransaction();
++        data.type = input.type;
++    }
++
++    if (isCreate || hasFinanceField(input, 'amount')) {
++        const numericAmount = Number(input.amount);
++        if (!Number.isFinite(numericAmount) || numericAmount <= 0) throw invalidFinanceTransaction();
++        data.amount = numericAmount;
++    }
++
++    if (isCreate || hasFinanceField(input, 'description')) {
++        if (input.description !== undefined && typeof input.description !== 'string') {
++            throw invalidFinanceTransaction();
++        }
++        data.description = input.description?.trim() || null;
++    }
++
++    if (isCreate || hasFinanceField(input, 'category')) {
++        if (input.category !== undefined && typeof input.category !== 'string') {
++            throw invalidFinanceTransaction();
++        }
++    }
++
++    const categoryName = normalizeFinanceCategoryName(
++        isCreate || hasFinanceField(input, 'category') ? input.category : existingTransaction.category
++    ) || 'Geral';
++    if (categoryName.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) throw invalidFinanceTransaction();
++
++    const type = isCreate || hasFinanceField(input, 'type') ? input.type : existingTransaction.type;
++    const financeCategory = await prisma.financeCategory.findUnique({ where: { name: categoryName } });
++    if (type === 'expense' && !financeCategory) throw invalidFinanceTransaction();
++
++    return {
++        ...data,
++        category: categoryName,
++        categoryId: financeCategory?.id || null
++    };
++};
++
++app.get('/finance/categories', authenticateToken, authorizeRole(['admin', 'manager']), async (_req, res) => {
++    try {
++        const categories = await prisma.financeCategory.findMany({ orderBy: { name: 'asc' } });
++        res.json(categories);
++    } catch (_error) {
++        res.status(500).json({ error: 'Unable to load finance categories.' });
++    }
++});
++
++app.post('/finance/categories', authenticateToken, authorizeRole(['admin']), async (req, res) => {
++    const name = normalizeFinanceCategoryName(req.body?.name);
++    if (!name || name.length > MAX_FINANCE_CATEGORY_NAME_LENGTH) {
++        return res.status(400).json({ error: 'A category name of up to 80 characters is required.' });
++    }
++
++    try {
++        const category = await prisma.financeCategory.create({ data: { name } });
++        res.status(201).json(category);
++    } catch (error) {
++        if (isKnownPrismaError(error, 'P2002')) {
++            return res.status(409).json({ error: 'A finance category with this name already exists.' });
++        }
++        res.status(500).json({ error: 'Unable to create finance category.' });
++    }
++});
++
++app.delete('/finance/categories/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
++    const id = Number(req.params.id);
++    if (!Number.isInteger(id) || id < 1) {
++        return res.status(400).json({ error: 'Invalid finance category id.' });
++    }
++
++    try {
++        const category = await prisma.financeCategory.findUnique({ where: { id } });
++        if (!category) return res.status(404).json({ error: 'Finance category not found.' });
++
++        const transactionCount = await prisma.financeTransaction.count({
++            where: { OR: [{ categoryId: id }, { category: category.name }] }
++        });
++        if (transactionCount > 0) {
++            return res.status(409).json({ error: 'Categories referenced by transactions cannot be deleted.' });
++        }
++        await prisma.financeCategory.delete({ where: { id } });
++        res.json({ message: 'Finance category deleted.' });
++    } catch (error) {
++        if (isKnownPrismaError(error, 'P2025')) {
++            return res.status(404).json({ error: 'Finance category not found.' });
++        }
++        if (isKnownPrismaError(error, 'P2003')) {
++            return res.status(409).json({ error: 'Categories referenced by transactions cannot be deleted.' });
++        }
++        res.status(500).json({ error: 'Unable to delete finance category.' });
++    }
++});
++
+ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+     try {
+         const period = parseFinancePeriod(req.query);
+         const where = financePeriodWhere(period);
+ 
+         const transactions = await prisma.financeTransaction.findMany({
+             where,
+             include: { patient: { select: { name: true, cpf: true, address: true } } },
+             orderBy: { date: 'desc' }
+         });
+         res.json(transactions);
+     } catch (error) {
+         res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance transactions.' });
+     }
+ });
+ 
+ app.post('/finance', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+     try {
+-        const { type, description, amount, category, patientId, receiptUrl } = req.body;
+-        const data = {
+-            type,
+-            description,
+-            amount: parseFloat(amount),
+-            category: category || 'Geral',
+-            paymentStatus: 'received'
+-        };
+-        if (patientId) data.patientId = parseInt(patientId);
+-        if (receiptUrl) data.receiptUrl = receiptUrl;
++        const { date, type, description, amount, category, patientId, receiptUrl } = req.body;
++        const data = await validateFinanceTransactionInput({ date, type, description, amount, category });
++        data.paymentStatus = 'received';
++        if (patientId !== undefined && patientId !== null && patientId !== '') {
++            const parsedPatientId = Number(patientId);
++            if (!Number.isInteger(parsedPatientId) || parsedPatientId < 1) {
++                return res.status(400).json({ error: 'Invalid patient id.' });
++            }
++            data.patientId = parsedPatientId;
++        }
++        if (receiptUrl !== undefined) {
++            if (typeof receiptUrl !== 'string') return res.status(400).json({ error: 'Receipt URL must be a string.' });
++            data.receiptUrl = receiptUrl;
++        }
+         const transaction = await prisma.financeTransaction.create({ data });
+         res.json(transaction);
+     } catch (error) {
+-        res.status(400).json({ error: error.message });
++        res.status(error.statusCode || 500).json({ error: error.statusCode ? 'Invalid finance transaction.' : 'Unable to create finance transaction.' });
+     }
+ });
+ 
+ app.put('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+     try {
+-        const { date, type, amount, category, description, patientId, receiptUrl, nfeUrl } = req.body;
+-        const data = {};
+-        if (date) data.date = new Date(date);
+-        if (type) data.type = type;
+-        if (amount) data.amount = parseFloat(amount);
+-        if (category) data.category = category;
+-        if (description) data.description = description;
+-        if (patientId !== undefined) data.patientId = patientId ? parseInt(patientId) : null;
+-        if (receiptUrl !== undefined) data.receiptUrl = receiptUrl;
+-        if (nfeUrl !== undefined) data.nfeUrl = nfeUrl;
++        const id = parseFinanceTransactionId(req.params.id);
++        const existingTransaction = await prisma.financeTransaction.findUnique({ where: { id } });
++        if (!existingTransaction) return res.status(404).json({ error: 'Finance transaction not found.' });
++
++        const data = await validateFinanceTransactionInput(req.body, existingTransaction);
++        if (hasFinanceField(req.body, 'patientId')) {
++            if (req.body.patientId === null || req.body.patientId === '') {
++                data.patientId = null;
++            } else {
++                const patientId = Number(req.body.patientId);
++                if (!Number.isInteger(patientId) || patientId < 1) throw invalidFinanceTransaction();
++                data.patientId = patientId;
++            }
++        }
++        for (const field of ['receiptUrl', 'nfeUrl']) {
++            if (!hasFinanceField(req.body, field)) continue;
++            if (req.body[field] !== null && typeof req.body[field] !== 'string') {
++                throw invalidFinanceTransaction();
++            }
++            data[field] = req.body[field];
++        }
+ 
+         const transaction = await prisma.financeTransaction.update({
+-            where: { id: parseInt(req.params.id) },
++            where: { id },
+             data
+         });
+         res.json(transaction);
+     } catch (error) {
+-        res.status(400).json({ error: error.message });
++        if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid finance transaction.' });
++        if (isKnownPrismaError(error, 'P2025')) return res.status(404).json({ error: 'Finance transaction not found.' });
++        if (isKnownPrismaError(error, 'P2002') || isKnownPrismaError(error, 'P2003')) {
++            return res.status(409).json({ error: 'Finance transaction update conflicts with existing records.' });
++        }
++        res.status(500).json({ error: 'Unable to update finance transaction.' });
+     }
+ });
+ 
+ app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+     try {
++        const id = parseFinanceTransactionId(req.params.id);
+         await prisma.financeTransaction.delete({
+-            where: { id: parseInt(req.params.id) }
++            where: { id }
+         });
+         res.json({ message: 'Transaction deleted' });
+     } catch (error) {
+-        res.status(400).json({ error: error.message });
++        if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid finance transaction.' });
++        if (isKnownPrismaError(error, 'P2025')) return res.status(404).json({ error: 'Finance transaction not found.' });
++        res.status(500).json({ error: 'Unable to delete finance transaction.' });
+     }
+ });
+ 
+ app.get('/finance/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+     try {
+         const period = parseFinancePeriod(req.query);
+         const endExclusive = period.endExclusive;
+         const filters = financeStatsWhere(period);
+-        const income = await prisma.financeTransaction.aggregate({
+-            where: filters.realizedIncome,
+-            _sum: { amount: true }
+-        });
+-        const pendingIncome = await prisma.financeTransaction.aggregate({ where: filters.pendingIncome, _sum: { amount: true } });
+-        const expense = await prisma.financeTransaction.aggregate({
+-            where: filters.expense,
+-            _sum: { amount: true }
+-        });
++        const cumulativeWhere = financeCumulativeWhere(period);
++        const cumulativeFilters = {
++            realizedIncome: { ...cumulativeWhere, type: 'income', paymentStatus: { notIn: ['pending', 'voided'] } },
++            expense: { ...cumulativeWhere, type: 'expense', paymentStatus: { not: 'voided' } }
++        };
++        const [income, pendingIncome, expense, openingIncome, openingExpense] = await Promise.all([
++            prisma.financeTransaction.aggregate({ where: filters.realizedIncome, _sum: { amount: true } }),
++            prisma.financeTransaction.aggregate({ where: filters.pendingIncome, _sum: { amount: true } }),
++            prisma.financeTransaction.aggregate({ where: filters.expense, _sum: { amount: true } }),
++            period.overview
++                ? Promise.resolve({ _sum: { amount: 0 } })
++                : prisma.financeTransaction.aggregate({ where: cumulativeFilters.realizedIncome, _sum: { amount: true } }),
++            period.overview
++                ? Promise.resolve({ _sum: { amount: 0 } })
++                : prisma.financeTransaction.aggregate({ where: cumulativeFilters.expense, _sum: { amount: true } })
++        ]);
++        const incomeTotal = income._sum.amount || 0;
++        const pendingIncomeTotal = pendingIncome._sum.amount || 0;
++        const expenseTotal = expense._sum.amount || 0;
++        const monthlyBalance = incomeTotal - expenseTotal;
++        const openingBalance = period.overview
++            ? 0
++            : (openingIncome._sum.amount || 0) - (openingExpense._sum.amount || 0);
+         res.json({
+-            income: income._sum.amount || 0,
+-            pendingIncome: pendingIncome._sum.amount || 0,
+-            expense: expense._sum.amount || 0,
+-            balance: (income._sum.amount || 0) - (expense._sum.amount || 0)
++            income: incomeTotal,
++            pendingIncome: pendingIncomeTotal,
++            expense: expenseTotal,
++            balance: monthlyBalance,
++            monthlyBalance,
++            openingBalance,
++            closingBalance: openingBalance + monthlyBalance
+         });
+     } catch (error) {
+         res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance statistics.' });
+     }
+ });
+ 
+ // NEW: NF-e Issuance Stub
+ app.post('/finance/nfe', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+     try {
+         // In a real scenario, this would call a provider like FocusNFe or eNotas
+diff --git a/server/prisma/migrations/20260909000000_add_finance_categories_and_optional_description/migration.sql b/server/prisma/migrations/20260909000000_add_finance_categories_and_optional_description/migration.sql
+new file mode 100644
+index 0000000..f08d770
+--- /dev/null
++++ b/server/prisma/migrations/20260909000000_add_finance_categories_and_optional_description/migration.sql
+@@ -0,0 +1,21 @@
++CREATE TABLE "FinanceCategory" (
++    "id" SERIAL NOT NULL,
++    "name" TEXT NOT NULL,
++    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    "updatedAt" TIMESTAMP(3) NOT NULL,
++
++    CONSTRAINT "FinanceCategory_pkey" PRIMARY KEY ("id")
++);
++
++CREATE UNIQUE INDEX "FinanceCategory_name_key" ON "FinanceCategory"("name");
++
++ALTER TABLE "FinanceTransaction" ADD COLUMN "categoryId" INTEGER;
++ALTER TABLE "FinanceTransaction" ALTER COLUMN "description" DROP NOT NULL;
++
++CREATE INDEX "FinanceTransaction_categoryId_idx" ON "FinanceTransaction"("categoryId");
++
++ALTER TABLE "FinanceTransaction"
++ADD CONSTRAINT "FinanceTransaction_categoryId_fkey"
++FOREIGN KEY ("categoryId") REFERENCES "FinanceCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
++
++INSERT INTO "FinanceCategory" ("name", "updatedAt") VALUES ('Geral', CURRENT_TIMESTAMP) ON CONFLICT ("name") DO NOTHING;
+diff --git a/server/prisma/migrations/20260909010000_restrict_finance_category_deletion/migration.sql b/server/prisma/migrations/20260909010000_restrict_finance_category_deletion/migration.sql
+new file mode 100644
+index 0000000..3bbe561
+--- /dev/null
++++ b/server/prisma/migrations/20260909010000_restrict_finance_category_deletion/migration.sql
+@@ -0,0 +1,6 @@
++ALTER TABLE "FinanceTransaction"
++DROP CONSTRAINT "FinanceTransaction_categoryId_fkey";
++
++ALTER TABLE "FinanceTransaction"
++ADD CONSTRAINT "FinanceTransaction_categoryId_fkey"
++FOREIGN KEY ("categoryId") REFERENCES "FinanceCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+diff --git a/server/prisma/migrations/20260909020000_backfill_legacy_finance_categories/migration.sql b/server/prisma/migrations/20260909020000_backfill_legacy_finance_categories/migration.sql
+new file mode 100644
+index 0000000..9062225
+--- /dev/null
++++ b/server/prisma/migrations/20260909020000_backfill_legacy_finance_categories/migration.sql
+@@ -0,0 +1,5 @@
++INSERT INTO "FinanceCategory" ("name", "updatedAt")
++SELECT DISTINCT TRIM("category"), CURRENT_TIMESTAMP
++FROM "FinanceTransaction"
++WHERE TRIM("category") <> ''
++ON CONFLICT ("name") DO NOTHING;
+diff --git a/server/prisma/schema.prisma b/server/prisma/schema.prisma
+index 9e4c154..101750a 100644
+--- a/server/prisma/schema.prisma
++++ b/server/prisma/schema.prisma
+@@ -176,38 +176,49 @@ model Lead {
+ model Testimonial {
+   id        Int      @id @default(autoincrement())
+   name      String?
+   rating    Int
+   comment   String
+   approved  Boolean  @default(false)
+   createdAt DateTime @default(now())
+   feeling   String?
+ }
+ 
++model FinanceCategory {
++  id           Int                  @id @default(autoincrement())
++  name         String               @unique
++  createdAt    DateTime             @default(now())
++  updatedAt    DateTime             @updatedAt
++  transactions FinanceTransaction[]
++}
++
+ model FinanceTransaction {
+   id          Int      @id @default(autoincrement())
+   type        String
+   amount      Float
+   category    String
+-  description String
++  categoryId  Int?
++  description String?
+   date        DateTime @default(now())
+   patientId   Int?
+   appointmentId Int? @unique
+   paymentStatus String @default("pending")
+   createdAt   DateTime @default(now())
+   updatedAt   DateTime @updatedAt
+   patient     Patient? @relation(fields: [patientId], references: [id])
+   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
++  categoryRef FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+   receiptUrl  String?
+   nfeUrl      String?
+ 
+   @@index([patientId])
++  @@index([categoryId])
+ }
+ 
+ model DocumentTemplate {
+   id        Int      @id @default(autoincrement())
+   title     String
+   content   String
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   kind      String   @default("text")
+   storageKey String?
+diff --git a/server/test/finance-period-contract.test.js b/server/test/finance-period-contract.test.js
+index 644e769..8cd9595 100644
+--- a/server/test/finance-period-contract.test.js
++++ b/server/test/finance-period-contract.test.js
+@@ -38,21 +38,21 @@ test('finance list and stats use the shared parser and remain private', () => {
+     const financeRoute = source.slice(source.indexOf("app.get('/finance'"), source.indexOf("app.post('/finance'"));
+     const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf("// NEW: NF-e"));
+ 
+     for (const route of [financeRoute, statsRoute]) {
+         assert.match(route, /authenticateToken/);
+         assert.match(route, /authorizeRole\(\['admin', 'manager'\]\)/);
+         assert.match(route, /parseFinancePeriod\(req\.query\)/);
+     }
+     assert.match(statsRoute, /pendingIncome/);
+     assert.match(statsRoute, /endExclusive/);
+-    assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus:\s*'received'/);
++    assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus\s*=\s*'received'/);
+ });
+ 
+ test('parseFinanceTransactionDate keeps YYYY-MM-DD at São Paulo midnight', () => {
+     assert.equal(parseFinanceTransactionDate('2026-08-15').toISOString(), '2026-08-15T03:00:00.000Z');
+ });
+ 
+ test('parseFinanceTransactionDate rejects missing and malformed dates', () => {
+     assert.throws(() => parseFinanceTransactionDate(), /date/i);
+     assert.throws(() => parseFinanceTransactionDate('2026-02-31'), /date/i);
+ });
+@@ -61,15 +61,108 @@ test('financeCumulativeWhere stops before the selected period', () => {
+     const period = parseFinancePeriod({ month: '3', year: '2026' });
+ 
+     assert.deepEqual(financeCumulativeWhere(period), { date: { lt: period.start } });
+ });
+ 
+ test('finance routes expose dated input and accounting totals', () => {
+     const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
+     const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
+     const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf('// NEW: NF-e'));
+ 
+-    assert.match(createRoute, /parseFinanceTransactionDate/);
+-    assert.match(createRoute, /description:.*null/);
++    assert.match(source, /parseFinanceTransactionDate/);
++    assert.match(source, /data\.description\s*=.*null/);
+     assert.match(statsRoute, /openingBalance/);
+     assert.match(statsRoute, /closingBalance/);
+ });
++
++test('finance schema keeps the legacy category while linking global categories', () => {
++    const schema = fs.readFileSync(path.resolve(__dirname, '../prisma/schema.prisma'), 'utf8');
++
++    assert.match(schema, /model FinanceCategory/);
++    assert.match(schema, /name\s+String\s+@unique/);
++    assert.match(schema, /categoryId\s+Int\?/);
++    assert.match(schema, /categoryRef\s+FinanceCategory\?\s+@relation\(fields: \[categoryId\], references: \[id\], onDelete: Restrict\)/);
++    assert.match(schema, /description\s+String\?/);
++    assert.match(schema, /@@index\(\[categoryId\]\)/);
++});
++
++test('finance category routes are private with least-privilege roles', () => {
++    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
++    const categoryRoutes = source.slice(source.indexOf("app.get('/finance/categories'"), source.indexOf("app.get('/finance'"));
++
++    assert.match(categoryRoutes, /app\.get\('\/finance\/categories', authenticateToken, authorizeRole\(\['admin', 'manager'\]\)/);
++    assert.match(categoryRoutes, /app\.post\('\/finance\/categories', authenticateToken, authorizeRole\(\['admin'\]\)/);
++    assert.match(categoryRoutes, /app\.delete\('\/finance\/categories\/:id', authenticateToken, authorizeRole\(\['admin'\]\)/);
++    assert.match(categoryRoutes, /category name/i);
++    assert.match(categoryRoutes, /409/);
++});
++
++test('finance creation validates dated cash-flow input without raw database errors', () => {
++    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
++    const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
++
++    assert.match(createRoute, /validateFinanceTransactionInput/);
++    assert.match(source, /Number\.isFinite/);
++    assert.match(source, /\['income', 'expense'\]/);
++    assert.match(source, /financeCategory\.findUnique/);
++    assert.match(source, /categoryId/);
++    assert.doesNotMatch(createRoute, /error\.message/);
++});
++
++test('finance updates use the creation contract and safe fixed errors', () => {
++    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
++    const updateRoute = source.slice(source.indexOf("app.put('/finance/:id'"), source.indexOf("app.delete('/finance/:id'"));
++    const deleteRoute = source.slice(source.indexOf("app.delete('/finance/:id'"), source.indexOf("app.get('/finance/stats'"));
++
++    assert.match(source, /const validateFinanceTransactionInput = async/);
++    assert.match(updateRoute, /validateFinanceTransactionInput/);
++    assert.match(updateRoute, /financeTransaction\.findUnique/);
++    assert.match(source, /categoryId/);
++    assert.match(updateRoute, /P2025/);
++    assert.match(updateRoute, /P2002/);
++    assert.doesNotMatch(updateRoute, /error\.message/);
++    assert.match(deleteRoute, /P2025/);
++    assert.doesNotMatch(deleteRoute, /error\.message/);
++});
++
++test('finance category deletion remains restrictive after the original migration', () => {
++    const schema = fs.readFileSync(path.resolve(__dirname, '../prisma/schema.prisma'), 'utf8');
++    const migration = fs.readFileSync(
++        path.resolve(__dirname, '../prisma/migrations/20260909010000_restrict_finance_category_deletion/migration.sql'),
++        'utf8'
++    );
++
++    assert.match(schema, /onDelete: Restrict/);
++    assert.match(migration, /DROP CONSTRAINT "FinanceTransaction_categoryId_fkey"/);
++    assert.match(migration, /ON DELETE RESTRICT ON UPDATE CASCADE/);
++});
++
++test('legacy finance categories are inserted without rewriting transactions and protected from deletion', () => {
++    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
++    const deleteRoute = source.slice(source.indexOf("app.delete('/finance/categories/:id'"), source.indexOf("app.get('/finance'", source.indexOf("app.delete('/finance/categories/:id'")));
++    const migration = fs.readFileSync(
++        path.resolve(__dirname, '../prisma/migrations/20260909020000_backfill_legacy_finance_categories/migration.sql'),
++        'utf8'
++    );
++
++    assert.match(migration, /INSERT INTO "FinanceCategory" \("name", "updatedAt"\)\s+SELECT DISTINCT TRIM\("category"\), CURRENT_TIMESTAMP/);
++    assert.doesNotMatch(migration, /UPDATE\s+"FinanceTransaction"/i);
++    assert.doesNotMatch(migration, /DELETE\s+FROM\s+"FinanceTransaction"/i);
++    assert.match(deleteRoute, /financeCategory\.findUnique/);
++    assert.match(deleteRoute, /OR:\s*\[\s*\{ categoryId: id \},\s*\{ category: category\.name \}\s*\]/);
++    assert.match(deleteRoute, /const id = Number\(req\.params\.id\)/);
++    assert.doesNotMatch(deleteRoute, /Number\.parseInt/);
++});
++
++test('finance migration preserves existing transactions and seeds Geral', () => {
++    const migration = fs.readFileSync(
++        path.resolve(__dirname, '../prisma/migrations/20260909000000_add_finance_categories_and_optional_description/migration.sql'),
++        'utf8'
++    );
++
++    assert.match(migration, /CREATE TABLE "FinanceCategory"/);
++    assert.match(migration, /ADD COLUMN "categoryId" INTEGER/);
++    assert.match(migration, /DROP NOT NULL/);
++    assert.match(migration, /ON DELETE SET NULL/);
++    assert.match(migration, /INSERT INTO "FinanceCategory" \("name", "updatedAt"\) VALUES \('Geral', CURRENT_TIMESTAMP\) ON CONFLICT \("name"\) DO NOTHING/);
++    assert.doesNotMatch(migration, /DELETE FROM "FinanceTransaction"/);
++});
+diff --git a/server/utils/financePeriod.js b/server/utils/financePeriod.js
+index ba1fdff..9d4db03 100644
+--- a/server/utils/financePeriod.js
++++ b/server/utils/financePeriod.js
+@@ -33,20 +33,43 @@ const parseFinancePeriod = ({ month, year } = {}) => {
+         timeZone: SAO_PAULO_TIME_ZONE,
+         start: toSaoPauloMidnight(numericYear, numericMonth),
+         endExclusive: toSaoPauloMidnight(nextYear, nextMonth)
+     };
+ };
+ 
+ const financePeriodWhere = (period = {}) => period.overview !== false ? {} : {
+     date: { gte: period.start, lt: period.endExclusive }
+ };
+ 
++const parseFinanceTransactionDate = (value) => {
++    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
++        throw invalidPeriod('date must use YYYY-MM-DD');
++    }
++    const [year, month, day] = value.split('-').map(Number);
++    const date = new Date(`${value}T00:00:00-03:00`);
++    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
++        throw invalidPeriod('date is invalid');
++    }
++    return date;
++};
++
++const financeCumulativeWhere = (period = {}) => period.overview !== false
++    ? {}
++    : { date: { lt: period.start } };
++
+ const financeStatsWhere = (period) => {
+     const periodWhere = financePeriodWhere(period);
+     return {
+         realizedIncome: { ...periodWhere, type: 'income', paymentStatus: { notIn: ['pending', 'voided'] } },
+         pendingIncome: { ...periodWhere, type: 'income', paymentStatus: 'pending' },
+         expense: { ...periodWhere, type: 'expense', paymentStatus: { not: 'voided' } }
+     };
+ };
+ 
+-module.exports = { parseFinancePeriod, financePeriodWhere, financeStatsWhere, SAO_PAULO_TIME_ZONE };
++module.exports = {
++    parseFinancePeriod,
++    parseFinanceTransactionDate,
++    financePeriodWhere,
++    financeCumulativeWhere,
++    financeStatsWhere,
++    SAO_PAULO_TIME_ZONE
++};

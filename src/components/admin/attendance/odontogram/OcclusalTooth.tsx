@@ -27,7 +27,7 @@ export function OcclusalTooth({ toothNumber, record }: OcclusalToothProps): JSX.
   });
   const affectedFaces = faceConditions
     .filter(({ last }) => last)
-    .map(({ face, last }) => `${getFaceLabels(toothNumber)[face]}: ${getConditionDisplayName(last!.type)} (${getClinicalStageLabel(last!.stage)})`);
+    .map(({ face, matching }) => `${getFaceLabels(toothNumber)[face]}: ${matching.map((condition) => `${getConditionDisplayName(condition.type)} (${getClinicalStageLabel(condition.stage)})`).join(", ")}`);
   const wholeCondition = getLatestWholeToothCondition(record);
   const wholeConditionVisual = wholeCondition ? getConditionVisual(wholeCondition) : null;
   const accessibleName = [

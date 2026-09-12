@@ -1,0 +1,3794 @@
+# Review package: 3650785..HEAD
+
+## Commits
+d2fe86d test: align contracts with split calendar page
+1dd8c9e feat: reorganize admin navigation and calendar route
+20fdaa7 refactor: separate appointment list from calendar
+8469db7 fix: restore authenticated analytics dashboard
+e435a26 fix: prune expired analytics caches
+7f25b5e fix: harden analytics collection and aggregation
+
+## Files changed
+ .superpowers/sdd/analytics-calendar-progress.md   |   8 +-
+ server/index.js                                   | 126 +----
+ server/routes/analytics.js                        | 403 ++++++++++++++
+ server/test/analytics-contract.test.js            | 229 ++++++++
+ server/test/calendar-contract.test.js             |  16 +-
+ server/test/manual-appointment-contract.test.js   |  22 +-
+ server/test/patient-workflow-contract.test.js     |   3 +-
+ server/test/user-security-contract.test.js        |   6 +-
+ src/App.tsx                                       |   2 +
+ src/components/PageTracker.tsx                    |  35 +-
+ src/components/admin/AdminLayout.tsx              |  28 +-
+ src/components/admin/navigation-contract.test.tsx |  34 ++
+ src/components/sections/Stories.tsx               |  16 +-
+ src/lib/analytics.test.ts                         |  58 ++
+ src/lib/analytics.ts                              |  18 +
+ src/pages/AdminAnalytics.test.tsx                 | 118 ++++
+ src/pages/AdminAnalytics.tsx                      | 372 +++++++------
+ src/pages/AdminAppointments.test.tsx              | 122 ++---
+ src/pages/AdminAppointments.tsx                   | 624 ++++------------------
+ src/pages/AdminCalendar.test.tsx                  | 116 ++++
+ src/pages/AdminCalendar.tsx                       | 562 +++++++++++++++++++
+ src/pages/AdminDashboard.tsx                      |   2 +-
+ src/pages/BlogPost.tsx                            |  16 +-
+ 23 files changed, 1978 insertions(+), 958 deletions(-)
+
+## Diff
+diff --git a/.superpowers/sdd/analytics-calendar-progress.md b/.superpowers/sdd/analytics-calendar-progress.md
+index bcb22b7..622d24c 100644
+--- a/.superpowers/sdd/analytics-calendar-progress.md
++++ b/.superpowers/sdd/analytics-calendar-progress.md
+@@ -1,9 +1,9 @@
+ # Analytics, Calendar and Navigation Progress
+ 
+ Plan: `docs/superpowers/plans/2026-08-15-analytics-calendar-navigation.md`
+ 
+-Task 1: pending
+-Task 2: pending
+-Task 3: pending
+-Task 4: pending
++Task 1: complete (commits 7f25b5e and e435a26, review clean; minor report-path/commit-list notes recorded by reviewer)
++Task 2: complete (commit 8469db7, review clean)
++Task 3: complete (commit 20fdaa7; focused tests 6/6; review found route/link pending for Task 4)
++Task 4: complete (commit 1dd8c9e; navigation contract passed; review clean with minor label wording note)
+ Task 5: pending
+diff --git a/server/index.js b/server/index.js
+index b38f52c..c7b9f74 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -13,20 +13,21 @@ const {
+     validateAssetDeliveryRequest
+ } = require('./utils/assetStorage');
+ const { uploadPatientDocument, deletePatientDocument, createPatientDocumentUrl } = require('./utils/patientDocumentStorage');
+ const { isSupportedUpload, isSupportedUploadForScope } = require('./utils/uploadValidation');
+ 
+ const cookieParser = require('cookie-parser');
+ const jwt = require('jsonwebtoken');
+ const { createEncryption } = require('./utils/encryption');
+ const { createUpdateLeadHandler } = require('./routes/leads');
+ const { createDashboardStatsHandler } = require('./routes/dashboard');
++const { createAnalyticsHandlers } = require('./routes/analytics');
+ const {
+     parseOptionalDate,
+     normalizeScheduledAt,
+     normalizeReturnDate,
+     normalizeReturnDateForUpdate,
+     syncReturnAppointment,
+     buildUpcomingSchedule
+ } = require('./utils/schedule');
+ const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
+ const { parseFinancePeriod, financePeriodWhere, financeStatsWhere } = require('./utils/financePeriod');
+@@ -65,20 +66,25 @@ const ALLOWED_ORIGINS = new Set([
+ const requireProductionSecret = (name) => {
+     const value = process.env[name];
+     if (isProduction && (typeof value !== 'string' || value.length < 32)) {
+         throw new Error('Invalid server security configuration.');
+     }
+     return value;
+ };
+ const JWT_SECRET = requireProductionSecret('JWT_SECRET') || 'development-only-jwt-secret-do-not-use-in-production';
+ requireProductionSecret('ENCRYPTION_KEY');
+ const { encrypt, decrypt, blindIndex } = createEncryption(process.env);
++const analyticsHandlers = createAnalyticsHandlers({
++    prisma,
++    secret: JWT_SECRET,
++    geoLookup: undefined
++});
+ const normalizeCpf = (value) => String(value || '').replace(/\D/g, '');
+ const findPatientByCpf = async (cpf, include) => {
+     const indexed = await prisma.patient.findUnique({
+         where: { cpfIndex: blindIndex(cpf) },
+         ...(include ? { include } : {})
+     });
+     if (indexed) return indexed;
+ 
+     const patients = await prisma.patient.findMany(include ? { include } : undefined);
+     return patients.find((patient) => normalizeCpf(decrypt(patient.cpf)) === normalizeCpf(cpf)) || null;
+@@ -1665,132 +1671,16 @@ app.delete('/patient-documents/:id', authenticateToken, authorizeRole(['admin',
+         if (!document) return res.status(404).json({ error: 'Document not found.' });
+         await deletePatientDocument(document.storageKey);
+         await prisma.patientDocument.delete({ where: { id } });
+         res.json({ message: 'Document deleted' });
+     } catch (error) {
+         res.status(400).json({ error: error.message });
+     }
+ });
+ 
+ // Analytics API
+-app.post('/analytics', async (req, res) => {
+-    try {
+-        const { source, path, type } = req.body;
+-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+-
+-        // Detailed Location Lookup
+-        let location = "Desconhecido";
+-        let geoInfo = {};
+-        try {
+-            const cleanIp = typeof ip === 'string' ? ip.split(',')[0].trim() : '127.0.0.1';
+-            const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+-
+-            // BOT/SERVER FILTER: Ignore common cloud provider locations or bot strings
+-            const isBot = userAgent.includes('bot') || userAgent.includes('crawler') || userAgent.includes('spider');
+-
+-            if (cleanIp !== '127.0.0.1' && cleanIp !== '::1' && !cleanIp.startsWith('192.168.') && !isBot) {
+-                const geoRes = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,district,lat,lon,as`);
+-                const geoData = await geoRes.json();
+-
+-                // Advanced Filter: Ignore data centers (Amazon, Google, Hetzner, etc)
+-                const isDataCenter = geoData.as && (
+-                    geoData.as.toLowerCase().includes('amazon') ||
+-                    geoData.as.toLowerCase().includes('google') ||
+-                    geoData.as.toLowerCase().includes('hetzner') ||
+-                    geoData.as.toLowerCase().includes('microsoft') ||
+-                    geoData.as.toLowerCase().includes('digitalocean')
+-                );
+-
+-                if (geoData.status === 'success' && !isDataCenter) {
+-                    location = `${geoData.city}, ${geoData.regionName} - ${geoData.country}`;
+-                    geoInfo = {
+-                        city: geoData.city,
+-                        state: geoData.regionName,
+-                        neighborhood: geoData.district || "Desconhecido",
+-                        latitude: geoData.lat,
+-                        longitude: geoData.lon
+-                    };
+-                } else if (isDataCenter) {
+-                    return res.status(200).json({ status: 'ignored' }); // Ignore bot/server hits
+-                }
+-            } else if (isBot) {
+-                return res.status(200).json({ status: 'ignored' });
+-            }
+-        } catch (geoErr) {
+-            console.error("Geo lookup failed:", geoErr);
+-        }
+-
+-        const event = await prisma.analyticsEvent.create({
+-            data: {
+-                type: type || 'pageview',
+-                path: path || '/',
+-                source: source || 'Direto',
+-                location: location,
+-                ip: typeof ip === 'string' ? ip.substring(0, 45) : 'unknown',
+-                userAgent: req.headers['user-agent'],
+-                ...geoInfo
+-            }
+-        });
+-        res.json(event);
+-    } catch (error) {
+-        console.error("Analytics Error:", error);
+-        res.status(200).json({ status: 'ignored' });
+-    }
+-});
+-
+-app.get('/analytics/stats', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
+-    try {
+-        const [events, leadsCount] = await Promise.all([
+-            prisma.analyticsEvent.findMany({ orderBy: { date: 'desc' } }),
+-            prisma.lead.count()
+-        ]);
+-
+-        const totalVisits = events.filter(e => e.type === 'pageview').length;
+-        const uniqueIps = new Set(events.map(e => e.ip)).size;
+-        const conversionRate = uniqueIps > 0 ? ((leadsCount / uniqueIps) * 100).toFixed(2) : 0;
+-
+-        // Group by Source
+-        const sources = events.reduce((acc, e) => {
+-            const s = e.source || 'Direto';
+-            acc[s] = (acc[s] || 0) + 1;
+-            return acc;
+-        }, {});
+-
+-        // Group by Location (City/State)
+-        const locations = events.reduce((acc, e) => {
+-            const loc = e.location || 'Brasil';
+-            acc[loc] = (acc[loc] || 0) + 1;
+-            return acc;
+-        }, {});
+-
+-        // Group by Neighborhood (Bairro) - NEW
+-        const neighborhoods = events.reduce((acc, e) => {
+-            if (e.neighborhood && e.neighborhood !== 'Desconhecido') {
+-                acc[e.neighborhood] = (acc[e.neighborhood] || 0) + 1;
+-            }
+-            return acc;
+-        }, {});
+-
+-        // Collect coordinates for heat map potentially
+-        const coordinates = events
+-            .filter(e => e.latitude && e.longitude)
+-            .map(e => ({ lat: e.latitude, lng: e.longitude }));
+-
+-        res.json({
+-            totalVisits,
+-            uniqueVisitors: uniqueIps,
+-            leadsCount,
+-            conversionRate,
+-            sources,
+-            locations,
+-            neighborhoods,
+-            coordinates: coordinates.slice(0, 100), // Recent 100 coordinates
+-            recentEvents: events.slice(0, 50)
+-        });
+-    } catch (error) {
+-        res.status(500).json({ error: error.message });
+-    }
+-});
++app.post('/analytics', analyticsHandlers.collect);
++app.get('/analytics/stats', authenticateToken, authorizeRole(['admin', 'manager']), analyticsHandlers.stats);
+ 
+ app.listen(port, () => {
+     console.log(`Server running on port ${port}`);
+ });
+diff --git a/server/routes/analytics.js b/server/routes/analytics.js
+new file mode 100644
+index 0000000..a7d5580
+--- /dev/null
++++ b/server/routes/analytics.js
+@@ -0,0 +1,403 @@
++const crypto = require('node:crypto');
++const net = require('node:net');
++
++const ACCEPTED_EVENT_TYPES = new Set(['pageview', 'blog_view', 'story_view']);
++const FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/i;
++const GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
++const GEO_LOOKUP_TIMEOUT_MS = 1500;
++const MAX_PATH_LENGTH = 512;
++const MAX_SOURCE_LENGTH = 120;
++const MAX_USER_AGENT_LENGTH = 512;
++const DEFAULT_PRUNE_BATCH_SIZE = 64;
++const DEFAULT_RATE_LIMIT_ENTRIES = 4096;
++const DEFAULT_GEO_CACHE_ENTRIES = 4096;
++
++const BOT_PATTERN = /(bot|crawler|spider|slurp|bingpreview|mediapartners-google|facebookexternalhit|whatsapp|telegrambot|preview|headless|uptime|monitor)/i;
++const TABLET_PATTERN = /(ipad|tablet|kindle|playbook|silk|sm-t|tab)/i;
++const MOBILE_PATTERN = /(mobile|iphone|ipod|android|blackberry|phone)/i;
++const DESKTOP_PATTERN = /(windows|macintosh|linux|x11|cros)/i;
++
++const clampText = (value, maxLength, fallback = '') => {
++    if (typeof value !== 'string') return fallback;
++    const trimmed = value.trim();
++    return (trimmed || fallback).slice(0, maxLength);
++};
++
++const normalizeEvent = (body) => {
++    const type = typeof body?.type === 'string' ? body.type.trim() : 'pageview';
++    const path = typeof body?.path === 'string' ? body.path.trim() : '/';
++    const source = typeof body?.source === 'string' ? body.source.trim().slice(0, MAX_SOURCE_LENGTH) : 'Direto';
++
++    if (!ACCEPTED_EVENT_TYPES.has(type) || !path.startsWith('/') || path.length > MAX_PATH_LENGTH) {
++        return null;
++    }
++
++    return {
++        type,
++        path,
++        source: source || 'Direto'
++    };
++};
++
++const roundCoordinate = (value) => {
++    const numeric = Number(value);
++    if (!Number.isFinite(numeric)) return null;
++    return Math.round(numeric * 100) / 100;
++};
++
++const normalizeIp = (value) => {
++    if (typeof value !== 'string') return '';
++
++    let normalized = value.trim();
++    if (!normalized) return '';
++
++    if (normalized.startsWith('::ffff:')) {
++        normalized = normalized.slice(7);
++    }
++
++    const zoneSeparator = normalized.indexOf('%');
++    if (zoneSeparator >= 0) {
++        normalized = normalized.slice(0, zoneSeparator);
++    }
++
++    return normalized.toLowerCase();
++};
++
++const isIpv4InRange = (ip, first, secondMin, secondMax) => {
++    const octets = ip.split('.').map((part) => Number(part));
++    return octets.length === 4
++        && octets[0] === first
++        && octets[1] >= secondMin
++        && octets[1] <= secondMax;
++};
++
++const isPrivateOrReservedIp = (input) => {
++    const ip = normalizeIp(input);
++    const version = net.isIP(ip);
++
++    if (version === 4) {
++        const octets = ip.split('.').map((part) => Number(part));
++        if (octets.length !== 4 || octets.some((part) => Number.isNaN(part) || part < 0 || part > 255)) return true;
++
++        if (octets[0] === 0 || octets[0] === 10 || octets[0] === 127) return true;
++        if (octets[0] === 169 && octets[1] === 254) return true;
++        if (octets[0] === 192 && octets[1] === 168) return true;
++        if (isIpv4InRange(ip, 172, 16, 31)) return true;
++        if (isIpv4InRange(ip, 100, 64, 127)) return true;
++        if (isIpv4InRange(ip, 198, 18, 19)) return true;
++        if (octets[0] === 192 && octets[1] === 0 && octets[2] === 0) return true;
++        if (octets[0] === 192 && octets[1] === 0 && octets[2] === 2) return true;
++        if (octets[0] === 198 && octets[1] === 51 && octets[2] === 100) return true;
++        if (octets[0] === 203 && octets[1] === 0 && octets[2] === 113) return true;
++        if (octets[0] >= 224) return true;
++        return false;
++    }
++
++    if (version === 6) {
++        return ip === '::1'
++            || ip === '::'
++            || ip.startsWith('fc')
++            || ip.startsWith('fd')
++            || ip.startsWith('fe8')
++            || ip.startsWith('fe9')
++            || ip.startsWith('fea')
++            || ip.startsWith('feb')
++            || ip.startsWith('2001:db8')
++            || ip.startsWith('64:ff9b:1')
++            || ip.startsWith('ff');
++    }
++
++    return true;
++};
++
++const buildVisitorFingerprint = (secret, ip) => crypto
++    .createHmac('sha256', String(secret || ''))
++    .update(`analytics-visitor:${normalizeIp(ip)}`)
++    .digest('hex');
++
++const isBotUserAgent = (userAgent) => BOT_PATTERN.test(userAgent || '');
++
++const pruneExpiredEntries = (store, currentTime, pruneBatchSize = DEFAULT_PRUNE_BATCH_SIZE) => {
++    let removed = 0;
++
++    for (const [key, entry] of store) {
++        if (removed >= pruneBatchSize) break;
++        if (!entry || entry.expiresAt <= currentTime) {
++            store.delete(key);
++            removed += 1;
++        }
++    }
++
++    return removed;
++};
++
++const enforceMaxEntries = (store, maxEntries) => {
++    while (store.size > maxEntries) {
++        const oldestKey = store.keys().next().value;
++        if (oldestKey === undefined) break;
++        store.delete(oldestKey);
++    }
++};
++
++const inspectStore = (store) => ({
++    size: store.size,
++    keys: Array.from(store.keys())
++});
++
++const createMemoryRateLimiter = ({
++    limit = 60,
++    windowMs = 60 * 1000,
++    now = () => Date.now(),
++    maxEntries = DEFAULT_RATE_LIMIT_ENTRIES,
++    pruneBatchSize = DEFAULT_PRUNE_BATCH_SIZE,
++    buckets = new Map()
++} = {}) => {
++
++    const limiter = {
++        consume(key) {
++            const currentTime = now();
++            pruneExpiredEntries(buckets, currentTime, pruneBatchSize);
++            const windowStart = currentTime - (currentTime % windowMs);
++            const expiresAt = windowStart + windowMs;
++            const existing = buckets.get(key);
++
++            if (!existing || existing.expiresAt <= currentTime) {
++                buckets.set(key, { count: 1, expiresAt });
++                enforceMaxEntries(buckets, maxEntries);
++                return true;
++            }
++
++            if (existing.count >= limit) {
++                return false;
++            }
++
++            existing.count += 1;
++            return true;
++        }
++    };
++
++    limiter.inspect = () => inspectStore(buckets);
++
++    return limiter;
++};
++
++const formatLocation = (geoInfo) => {
++    if (!geoInfo?.city || !geoInfo?.state || !geoInfo?.country) return null;
++    return `${geoInfo.city}, ${geoInfo.state} - ${geoInfo.country}`;
++};
++
++const createDefaultGeoLookup = (secret, {
++    now = () => Date.now(),
++    fetchImpl = fetch,
++    cache = new Map(),
++    cacheTtlMs = GEO_CACHE_TTL_MS,
++    maxEntries = DEFAULT_GEO_CACHE_ENTRIES,
++    pruneBatchSize = DEFAULT_PRUNE_BATCH_SIZE
++} = {}) => {
++    const lookup = async (ip) => {
++        const normalizedIp = normalizeIp(ip);
++        if (!normalizedIp || isPrivateOrReservedIp(normalizedIp)) return null;
++
++        const fingerprint = buildVisitorFingerprint(secret, normalizedIp);
++        const currentTime = now();
++        pruneExpiredEntries(cache, currentTime, pruneBatchSize);
++        const cached = cache.get(fingerprint);
++        if (cached && cached.expiresAt > currentTime) {
++            return cached.value;
++        }
++
++        const controller = new AbortController();
++        const timeout = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
++
++        try {
++            const response = await fetchImpl(
++                `https://ipwho.is/${encodeURIComponent(normalizedIp)}?fields=success,city,region,country,latitude,longitude`,
++                {
++                    method: 'GET',
++                    signal: controller.signal
++                }
++            );
++
++            if (!response.ok) {
++                cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
++                enforceMaxEntries(cache, maxEntries);
++                return null;
++            }
++
++            const payload = await response.json();
++            if (!payload || payload.success !== true) {
++                cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
++                enforceMaxEntries(cache, maxEntries);
++                return null;
++            }
++
++            const geoInfo = {
++                city: clampText(payload.city, 120, '') || null,
++                state: clampText(payload.region, 120, '') || null,
++                country: clampText(payload.country, 120, '') || null,
++                latitude: roundCoordinate(payload.latitude),
++                longitude: roundCoordinate(payload.longitude)
++            };
++
++            if (!geoInfo.city && !geoInfo.state && !geoInfo.country) {
++                cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
++                enforceMaxEntries(cache, maxEntries);
++                return null;
++            }
++
++            cache.set(fingerprint, { value: geoInfo, expiresAt: currentTime + cacheTtlMs });
++            enforceMaxEntries(cache, maxEntries);
++            return geoInfo;
++        } catch {
++            cache.set(fingerprint, { value: null, expiresAt: currentTime + cacheTtlMs });
++            enforceMaxEntries(cache, maxEntries);
++            return null;
++        } finally {
++            clearTimeout(timeout);
++        }
++    };
++
++    lookup.inspect = () => inspectStore(cache);
++
++    return lookup;
++};
++
++const normalizeStoredFingerprint = (secret, rawValue) => {
++    const value = normalizeIp(rawValue);
++    if (!value) return null;
++    if (FINGERPRINT_PATTERN.test(value)) return value.toLowerCase();
++    return buildVisitorFingerprint(secret, value);
++};
++
++const detectDevice = (userAgent) => {
++    const normalized = typeof userAgent === 'string' ? userAgent : '';
++
++    if (TABLET_PATTERN.test(normalized)) return 'tablet';
++    if (MOBILE_PATTERN.test(normalized)) return 'mobile';
++    if (DESKTOP_PATTERN.test(normalized)) return 'desktop';
++    return 'other';
++};
++
++const incrementCount = (bucket, key) => {
++    if (!key) return;
++    bucket[key] = (bucket[key] || 0) + 1;
++};
++
++const parseLegacyLocation = (location) => {
++    if (typeof location !== 'string') return { city: null, state: null };
++
++    const [cityPart, regionPart] = location.split(',');
++    const city = clampText(cityPart, 120, '') || null;
++    const state = clampText(regionPart?.split('-')[0], 120, '') || null;
++
++    return { city, state };
++};
++
++function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
++    const lookupGeo = geoLookup || createDefaultGeoLookup(secret);
++    const limiter = rateLimiter || createMemoryRateLimiter();
++
++    return {
++        async collect(req, res) {
++            const event = normalizeEvent(req.body);
++            if (!event) {
++                return res.status(400).json({ error: 'Invalid analytics event type.' });
++            }
++
++            const userAgent = clampText(req.headers?.['user-agent'], MAX_USER_AGENT_LENGTH, '');
++
++            if (isBotUserAgent(userAgent)) {
++                return res.status(202).json({ status: 'accepted' });
++            }
++
++            const ip = normalizeIp(req.ip);
++            const fingerprint = buildVisitorFingerprint(secret, ip);
++
++            if (!limiter.consume(fingerprint)) {
++                return res.status(202).json({ status: 'accepted' });
++            }
++
++            let geoInfo = null;
++            if (!isPrivateOrReservedIp(ip)) {
++                geoInfo = await lookupGeo(ip);
++            }
++
++            try {
++                await prisma.analyticsEvent.create({
++                    data: {
++                        type: event.type,
++                        path: event.path,
++                        source: event.source,
++                        ip: fingerprint,
++                        userAgent: userAgent || null,
++                        location: formatLocation(geoInfo),
++                        city: geoInfo?.city || null,
++                        state: geoInfo?.state || null,
++                        latitude: geoInfo?.latitude ?? null,
++                        longitude: geoInfo?.longitude ?? null
++                    }
++                });
++            } catch {
++                return res.status(202).json({ status: 'accepted' });
++            }
++
++            return res.status(202).json({ status: 'accepted' });
++        },
++
++        async stats(_req, res) {
++            try {
++                const [events, leadsCount] = await Promise.all([
++                    prisma.analyticsEvent.findMany({ orderBy: { date: 'desc' } }),
++                    prisma.lead.count()
++                ]);
++
++                const pageviews = events.filter((event) => event.type === 'pageview');
++                const uniqueVisitors = new Set(
++                    pageviews
++                        .map((event) => normalizeStoredFingerprint(secret, event.ip))
++                        .filter(Boolean)
++                ).size;
++
++                const sources = {};
++                const locations = {};
++                const regions = {};
++                const topPaths = {};
++                const devices = {};
++
++                for (const event of pageviews) {
++                    const legacyLocation = parseLegacyLocation(event.location);
++                    const city = clampText(event.city, 120, '') || legacyLocation.city;
++                    const state = clampText(event.state, 120, '') || legacyLocation.state;
++
++                    incrementCount(sources, clampText(event.source, MAX_SOURCE_LENGTH, 'Direto'));
++                    incrementCount(locations, city);
++                    incrementCount(regions, state);
++                    incrementCount(topPaths, clampText(event.path, MAX_PATH_LENGTH, '/'));
++                    incrementCount(devices, detectDevice(event.userAgent));
++                }
++
++                return res.json({
++                    totalVisits: pageviews.length,
++                    uniqueVisitors,
++                    leadsCount,
++                    conversionRate: uniqueVisitors > 0 ? ((leadsCount / uniqueVisitors) * 100).toFixed(2) : '0.00',
++                    sources,
++                    locations,
++                    regions,
++                    topPaths,
++                    devices
++                });
++            } catch (error) {
++                return res.status(500).json({ error: error.message });
++            }
++        }
++    };
++}
++
++module.exports = {
++    createAnalyticsHandlers,
++    __private: {
++        createMemoryRateLimiter,
++        createDefaultGeoLookup
++    }
++};
+diff --git a/server/test/analytics-contract.test.js b/server/test/analytics-contract.test.js
+new file mode 100644
+index 0000000..cf112c8
+--- /dev/null
++++ b/server/test/analytics-contract.test.js
+@@ -0,0 +1,229 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++
++const { createAnalyticsHandlers, __private } = require('../routes/analytics');
++
++const createResponse = () => {
++    const response = {
++        statusCode: 200,
++        body: undefined,
++        status(code) {
++            this.statusCode = code;
++            return this;
++        },
++        sendStatus(code) {
++            this.statusCode = code;
++            return this;
++        },
++        json(payload) {
++            this.body = payload;
++            return this;
++        }
++    };
++
++    return response;
++};
++
++test('collect rejects invalid event types without persisting analytics data', async () => {
++    let createCalls = 0;
++    const prisma = {
++        analyticsEvent: {
++            create: async () => {
++                createCalls += 1;
++                throw new Error('analyticsEvent.create should not run');
++            }
++        }
++    };
++    const handlers = createAnalyticsHandlers({ prisma, secret: 'test-secret' });
++    const res = createResponse();
++
++    await handlers.collect({
++        body: { type: 'signup', path: '/landing', source: 'Ads' },
++        headers: { 'user-agent': 'Mozilla/5.0' },
++        ip: '198.51.100.10'
++    }, res);
++
++    assert.equal(res.statusCode, 400);
++    assert.deepEqual(res.body, { error: 'Invalid analytics event type.' });
++    assert.equal(createCalls, 0);
++});
++
++test('collect accepts valid events, persists a fingerprint, stores geo fields and never returns the saved event', async () => {
++    const createCalls = [];
++    const geoLookupCalls = [];
++    const prisma = {
++        analyticsEvent: {
++            create: async ({ data }) => {
++                createCalls.push(data);
++                return { id: 1, ...data };
++            }
++        }
++    };
++    const handlers = createAnalyticsHandlers({
++        prisma,
++        secret: 'analytics-secret',
++        geoLookup: async (ip) => {
++            geoLookupCalls.push(ip);
++            return {
++                city: 'Sao Paulo',
++                state: 'SP',
++                country: 'Brazil',
++                latitude: -23.55,
++                longitude: -46.64
++            };
++        },
++        rateLimiter: { consume: () => true }
++    });
++    const res = createResponse();
++
++    await handlers.collect({
++        body: { type: 'pageview', path: '/implants', source: 'Instagram' },
++        headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' },
++        ip: '8.8.8.8'
++    }, res);
++
++    assert.equal(res.statusCode, 202);
++    assert.deepEqual(res.body, { status: 'accepted' });
++    assert.deepEqual(geoLookupCalls, ['8.8.8.8']);
++    assert.equal(createCalls.length, 1);
++    assert.match(createCalls[0].ip, /^[a-f0-9]{64}$/);
++    assert.notEqual(createCalls[0].ip, '8.8.8.8');
++    assert.equal(createCalls[0].city, 'Sao Paulo');
++    assert.equal(createCalls[0].state, 'SP');
++    assert.equal(createCalls[0].location, 'Sao Paulo, SP - Brazil');
++    assert.equal(createCalls[0].path, '/implants');
++    assert.equal(createCalls[0].source, 'Instagram');
++    assert.ok(!('event' in res.body));
++    assert.ok(!('id' in res.body));
++});
++
++test('stats aggregates only pageviews, excludes story events from sources and omits individual event payloads', async () => {
++    const prisma = {
++        analyticsEvent: {
++            findMany: async () => ([
++                {
++                    type: 'pageview',
++                    path: '/',
++                    source: 'Direto',
++                    location: 'Sao Paulo, SP - Brazil',
++                    city: 'Sao Paulo',
++                    state: 'SP',
++                    ip: '203.0.113.10',
++                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
++                },
++                {
++                    type: 'pageview',
++                    path: '/blog',
++                    source: 'Ads',
++                    location: 'Campinas, SP - Brazil',
++                    city: 'Campinas',
++                    state: 'SP',
++                    ip: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
++                    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'
++                },
++                {
++                    type: 'story_view',
++                    path: '/stories/sorriso',
++                    source: 'Instagram',
++                    location: 'Rio de Janeiro, RJ - Brazil',
++                    city: 'Rio de Janeiro',
++                    state: 'RJ',
++                    ip: '198.51.100.99',
++                    userAgent: 'Mozilla/5.0 (Linux; Android 14)'
++                }
++            ])
++        },
++        lead: {
++            count: async () => 1
++        }
++    };
++    const handlers = createAnalyticsHandlers({ prisma, secret: 'stats-secret' });
++    const res = createResponse();
++
++    await handlers.stats({}, res);
++
++    assert.equal(res.statusCode, 200);
++    assert.deepEqual(res.body, {
++        totalVisits: 2,
++        uniqueVisitors: 2,
++        leadsCount: 1,
++        conversionRate: '50.00',
++        sources: {
++            Direto: 1,
++            Ads: 1
++        },
++        locations: {
++            'Sao Paulo': 1,
++            Campinas: 1
++        },
++        regions: {
++            SP: 2
++        },
++        topPaths: {
++            '/': 1,
++            '/blog': 1
++        },
++        devices: {
++            desktop: 1,
++            mobile: 1
++        }
++    });
++    assert.ok(!('recentEvents' in res.body));
++    assert.ok(!('events' in res.body));
++});
++
++test('memory rate limiter prunes expired buckets before growing indefinitely', () => {
++    let nowMs = 0;
++    const limiter = __private.createMemoryRateLimiter({
++        limit: 1,
++        windowMs: 1000,
++        now: () => nowMs,
++        maxEntries: 2,
++        pruneBatchSize: 2
++    });
++
++    assert.equal(limiter.consume('visitor-a'), true);
++    assert.equal(limiter.consume('visitor-b'), true);
++    assert.equal(limiter.inspect().size, 2);
++
++    nowMs = 2000;
++
++    assert.equal(limiter.consume('visitor-c'), true);
++    assert.deepEqual(limiter.inspect().keys, ['visitor-c']);
++});
++
++test('default geo lookup prunes expired cache entries and reuses bounded storage', async () => {
++    let nowMs = 0;
++    let fetchCalls = 0;
++    const geoLookup = __private.createDefaultGeoLookup('geo-secret', {
++        now: () => nowMs,
++        maxEntries: 2,
++        pruneBatchSize: 2,
++        fetchImpl: async () => {
++            fetchCalls += 1;
++            return {
++                ok: true,
++                json: async () => ({
++                    success: true,
++                    city: `City ${fetchCalls}`,
++                    region: `Region ${fetchCalls}`,
++                    country: 'BR',
++                    latitude: -19.9234,
++                    longitude: -43.9456
++                })
++            };
++        }
++    });
++
++    await geoLookup('8.8.8.8');
++    await geoLookup('1.1.1.1');
++
++    assert.equal(geoLookup.inspect().size, 2);
++
++    nowMs = (24 * 60 * 60 * 1000) + 1;
++
++    await geoLookup('9.9.9.9');
++
++    assert.equal(fetchCalls, 3);
++    assert.equal(geoLookup.inspect().size, 1);
++});
+diff --git a/server/test/calendar-contract.test.js b/server/test/calendar-contract.test.js
+index 71b54c3..f40aa7a 100644
+--- a/server/test/calendar-contract.test.js
++++ b/server/test/calendar-contract.test.js
+@@ -23,44 +23,44 @@ test('calendar helper exposes shared entries and local week calculations', () =>
+     assert.match(helper, /export const buildCalendarEntries/);
+     assert.match(helper, /export const getWeekDays/);
+     assert.match(helper, /export const getDropDateTime/);
+     assert.match(helper, /export const professionalColor/);
+     assert.match(calendar, /onEventDrop/);
+     assert.match(calendar, /onEventOpen/);
+     assert.match(calendar, /data-drop-minutes/);
+ });
+ 
+ test('calendar UI exposes confirmed schedule moves and professional details', () => {
+-    const appointments = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
++    const calendarPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminCalendar.tsx'), 'utf8');
+     const calendar = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
+ 
+-    assert.match(appointments, /pendingDrop/);
+-    assert.match(appointments, /scheduledAt/);
+-    assert.match(appointments, /professional/);
+-    assert.match(appointments, /\/appointments\//);
+-    assert.match(appointments, /\/leads\//);
++    assert.match(calendarPage, /pendingDrop/);
++    assert.match(calendarPage, /scheduledAt/);
++    assert.match(calendarPage, /professional/);
++    assert.match(calendarPage, /\/appointments\//);
++    assert.match(calendarPage, /\/leads\//);
+     assert.match(calendar, /draggable/);
+     assert.match(calendar, /onDrop/);
+ });
+ 
+ test('calendar moves wait for confirmation and professional changes use separate updates', () => {
+-    const source = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
++    const source = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminCalendar.tsx'), 'utf8');
+     assert.match(source, /setPendingDrop\(/);
+     assert.match(source, /scheduledAt/);
+     assert.match(source, /professional/);
+     assert.match(source, /Confirmar/);
+     assert.match(source, /Cancelar/);
+     assert.match(source, /buildCalendarEntries/);
+ });
+ 
+ test('appointments require a professional while leads can clear one', () => {
+-    const source = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
++    const source = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminCalendar.tsx'), 'utf8');
+ 
+     assert.match(source, /const professional = professionalDraft\.trim\(\)/);
+     assert.match(source, /pendingDetails\.kind === "appointment" && !professional/);
+     assert.match(source, /pendingDetails\.kind === "lead" && \(/);
+     assert.match(source, /professional:\s*professional \|\| null/);
+ });
+ 
+ test('calendar expands its 30-minute slots for entries outside baseline hours', () => {
+     const source = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
+ 
+diff --git a/server/test/manual-appointment-contract.test.js b/server/test/manual-appointment-contract.test.js
+index 91faca7..d65196a 100644
+--- a/server/test/manual-appointment-contract.test.js
++++ b/server/test/manual-appointment-contract.test.js
+@@ -68,35 +68,35 @@ test('only scheduled appointments remain in dashboard-facing upcoming state', ()
+ 
+     const result = buildUpcomingSchedule({
+         appointments: [appointment(1, 'scheduled'), appointment(2, 'attended'), appointment(3, 'cancelled')]
+     });
+ 
+     assert.deepEqual(result.map((item) => item.id), [1]);
+ });
+ 
+ test('manual calendar creation keeps a complete, controlled appointment contract', () => {
+     const repoRoot = path.resolve(serverRoot, '..');
+-    const appointmentsPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminAppointments.tsx'), 'utf8');
++    const calendarPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminCalendar.tsx'), 'utf8');
+     const calendar = fs.readFileSync(path.join(repoRoot, 'src/components/admin/appointments/CalendarView.tsx'), 'utf8');
+     const calendarHelper = fs.readFileSync(path.join(repoRoot, 'src/lib/calendar.ts'), 'utf8');
+ 
+     assert.match(calendar, /onEventCreate/);
+-    assert.match(appointmentsPage, /setManualAppointmentDate/);
+-    assert.match(appointmentsPage, /DialogTitle>.*Novo atendimento/);
+-    assert.match(appointmentsPage, /fetchClient\(['"]\/appointments['"],\s*\{\s*method:\s*['"]POST['"]/);
+-    assert.match(appointmentsPage, /patientName/);
+-    assert.match(appointmentsPage, /procedure/);
+-    assert.match(appointmentsPage, /appointmentType/);
+-    assert.match(appointmentsPage, /professional/);
+-    assert.match(appointmentsPage, /scheduledAt/);
+-    assert.match(appointmentsPage, /paymentStatus/);
+-    assert.match(appointmentsPage, /refreshCalendarRecords/);
++    assert.match(calendarPage, /setManualAppointmentDate/);
++    assert.match(calendarPage, /DialogTitle>.*Novo atendimento/);
++    assert.match(calendarPage, /fetchClient\(['"]\/appointments['"],\s*\{\s*method:\s*['"]POST['"]/);
++    assert.match(calendarPage, /patientName/);
++    assert.match(calendarPage, /procedure/);
++    assert.match(calendarPage, /appointmentType/);
++    assert.match(calendarPage, /professional/);
++    assert.match(calendarPage, /scheduledAt/);
++    assert.match(calendarPage, /paymentStatus/);
++    assert.match(calendarPage, /refreshCalendarRecords/);
+     assert.match(calendarHelper, /status\?:\s*['"]scheduled['"]\s*\|\s*['"]attended['"]\s*\|\s*['"]cancelled['"]/);
+     assert.match(calendarHelper, /item\.status !== "attended" && item\.status !== "cancelled"/);
+ });
+ 
+ test('appointment migration repairs legacy status values before enforcing its contract', () => {
+     const migration = fs.readFileSync(
+         path.join(serverRoot, 'prisma/migrations/20260813000000_add_appointment_status/migration.sql'),
+         'utf8'
+     );
+ 
+diff --git a/server/test/patient-workflow-contract.test.js b/server/test/patient-workflow-contract.test.js
+index 6371f13..25f1211 100644
+--- a/server/test/patient-workflow-contract.test.js
++++ b/server/test/patient-workflow-contract.test.js
+@@ -137,13 +137,12 @@ test('admin patients page is registered and exposed in the admin navigation', ()
+     const appSource = fs.readFileSync(path.join(serverRoot, '..', 'src', 'App.tsx'), 'utf8');
+     const layoutSource = fs.readFileSync(
+         path.join(serverRoot, '..', 'src', 'components', 'admin', 'AdminLayout.tsx'),
+         'utf8'
+     );
+ 
+     assert.match(appSource, /import AdminPatients from ["']\.\/pages\/AdminPatients["']/);
+     assert.match(appSource, /path=["']\/admin\/pacientes["'][\s\S]*AdminPatients/);
+     assert.match(layoutSource, /label:\s*["']Pacientes["']/);
+     assert.match(layoutSource, /href:\s*["']\/admin\/pacientes["']/);
+-    assert.match(layoutSource, /icon:\s*Users/);
+-    assert.match(layoutSource, /adminOnly:\s*true/);
++    assert.match(layoutSource, /label:\s*["']Atendimentos["'][\s\S]*label:\s*["']Pacientes["'][\s\S]*href:\s*["']\/admin\/pacientes["']/);
+ });
+diff --git a/server/test/user-security-contract.test.js b/server/test/user-security-contract.test.js
+index c6c7cb2..df1e0cf 100644
+--- a/server/test/user-security-contract.test.js
++++ b/server/test/user-security-contract.test.js
+@@ -73,41 +73,41 @@ test('password utilities hash new passwords and recognize legacy credentials for
+ 
+     assert.match(hashed, /^scrypt\$/);
+     assert.notEqual(hashed, password);
+     assert.deepEqual(await verifyPassword(password, hashed), { valid: true, needsUpgrade: false });
+     assert.deepEqual(await verifyPassword('wrong-secret', hashed), { valid: false, needsUpgrade: false });
+     assert.deepEqual(await verifyPassword(password, password), { valid: true, needsUpgrade: true });
+ });
+ 
+ test('user management is admin-only, validated, hashed, and never selects password', () => {
+     const source = fs.readFileSync(path.join(serverRoot, 'index.js'), 'utf8');
+-    const appointments = fs.readFileSync(
+-        path.resolve(serverRoot, '..', 'src/pages/AdminAppointments.tsx'),
++    const calendarPage = fs.readFileSync(
++        path.resolve(serverRoot, '..', 'src/pages/AdminCalendar.tsx'),
+         'utf8'
+     );
+     const adminUsers = fs.readFileSync(
+         path.resolve(serverRoot, '..', 'src/pages/AdminUsers.tsx'),
+         'utf8'
+     );
+     const usersStart = source.indexOf("app.get('/users'");
+     const usersEnd = source.indexOf("app.patch('/users/me'", usersStart);
+     const routes = source.slice(usersStart, usersEnd);
+ 
+     assert.match(routes, /app\.get\('\/users', authenticateToken, authorizeRole\(\['admin'\]\)/);
+     assert.match(routes, /app\.post\('\/users', authenticateToken, authorizeRole\(\['admin'\]\)/);
+     assert.match(routes, /createUserSchema\.safeParse\(req\.body\)/);
+     assert.match(routes, /hashPassword\(result\.data\.password\)/);
+     assert.match(routes, /select:\s*SAFE_USER_SELECT/);
+     assert.doesNotMatch(routes, /data:\s*req\.body|findMany\(\s*\)/);
+     assert.match(source, /app\.get\('\/staff', authenticateToken, authorizeRole\(\['admin', 'dentist'\]\)/);
+     assert.match(source, /select:\s*STAFF_USER_SELECT/);
+-    assert.match(appointments, /fetchClient\("\/staff"\)/);
++    assert.match(calendarPage, /fetchClient\("\/staff"\)/);
+     assert.match(adminUsers, /type="password"/);
+     assert.match(adminUsers, /minLength=\{8\}/);
+ 
+     const selectStart = source.indexOf('const SAFE_USER_SELECT');
+     const selectEnd = source.indexOf('};', selectStart) + 2;
+     const safeSelect = source.slice(selectStart, selectEnd);
+     assert.doesNotMatch(safeSelect, /password/);
+ });
+ 
+ test('signature image validation checks both MIME type and file bytes', () => {
+diff --git a/src/App.tsx b/src/App.tsx
+index aff76ca..f4bff96 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -19,20 +19,21 @@ import AdminAppointments from "./pages/AdminAppointments";
+ import AdminAttendanceDetail from "./pages/AdminAttendanceDetail";
+ import AdminStories from "./pages/AdminStories";
+ import AdminFinance from "./pages/AdminFinance";
+ import AdminAnalytics from "./pages/AdminAnalytics";
+ import AdminPrescription from "./pages/AdminPrescription";
+ import AdminDocuments from "./pages/AdminDocuments";
+ import AdminSettings from "./pages/AdminSettings";
+ import AdminPersonalFinance from "./pages/AdminPersonalFinance";
+ import AdminUsers from "./pages/AdminUsers";
+ import AdminPatients from "./pages/AdminPatients";
++import AdminCalendar from "./pages/AdminCalendar";
+ import PageTracker from "./components/PageTracker";
+ 
+ import { AuthProvider, ProtectedRoute, RoleProtectedRoute } from "./hooks/useAuth";
+ 
+ const queryClient = new QueryClient();
+ 
+ const App = () => (
+   <QueryClientProvider client={queryClient}>
+     <TooltipProvider>
+       <Toaster />
+@@ -56,20 +57,21 @@ const App = () => (
+             <Route path="/admin/finance" element={<ProtectedRoute><AdminFinance /></ProtectedRoute>} />
+             <Route path="/admin/personal-finance" element={<ProtectedRoute><AdminPersonalFinance /></ProtectedRoute>} />
+             <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
+             <Route path="/admin/documentos" element={<ProtectedRoute><AdminDocuments /></ProtectedRoute>} />
+ 
+             {/* Restricted: admin-only (manager gets redirected to dashboard) */}
+             <Route path="/admin/blog" element={<RoleProtectedRoute><AdminBlog /></RoleProtectedRoute>} />
+             <Route path="/admin/solicitacoes" element={<RoleProtectedRoute><AdminLeads /></RoleProtectedRoute>} />
+             <Route path="/admin/tratamentos" element={<RoleProtectedRoute><AdminTreatments /></RoleProtectedRoute>} />
+             <Route path="/admin/consultas" element={<RoleProtectedRoute><AdminAppointments /></RoleProtectedRoute>} />
++            <Route path="/admin/calendario" element={<RoleProtectedRoute><AdminCalendar /></RoleProtectedRoute>} />
+             <Route path="/admin/consultas/:id" element={<RoleProtectedRoute><AdminAttendanceDetail /></RoleProtectedRoute>} />
+             <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
+             <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />
+             <Route path="/admin/users" element={<RoleProtectedRoute><AdminUsers /></RoleProtectedRoute>} />
+             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
+ 
+             <Route path="*" element={<NotFound />} />
+           </Routes>
+         </AuthProvider>
+       </BrowserRouter>
+diff --git a/src/components/PageTracker.tsx b/src/components/PageTracker.tsx
+index a8e4fac..a82ae8b 100644
+--- a/src/components/PageTracker.tsx
++++ b/src/components/PageTracker.tsx
+@@ -1,38 +1,25 @@
+ import { useEffect } from "react";
+ import { useLocation } from "react-router-dom";
+-import { API_URL } from "@/lib/api";
++import { trackAnalyticsEvent } from "@/lib/analytics";
+ 
+ const PageTracker = () => {
+     const location = useLocation();
+ 
+     useEffect(() => {
+-        const trackPage = async () => {
+-            try {
+-                // Determine source from URL params if any (e.g. ?utm_source=instagram)
+-                const searchParams = new URLSearchParams(window.location.search);
+-                const source = searchParams.get('utm_source') ||
+-                    searchParams.get('source') ||
+-                    (document.referrer.includes('instagram.com') ? 'Instagram' :
+-                        document.referrer.includes('google.com') ? 'Google' : 'Direto');
++        const searchParams = new URLSearchParams(window.location.search);
++        const source = searchParams.get("utm_source") ||
++            searchParams.get("source") ||
++            (document.referrer.includes("instagram.com") ? "Instagram" :
++                document.referrer.includes("google.com") ? "Google" : "Direto");
+ 
+-                await fetch(`${API_URL}/analytics`, {
+-                    method: 'POST',
+-                    headers: { 'Content-Type': 'application/json' },
+-                    body: JSON.stringify({
+-                        path: location.pathname,
+-                        type: 'pageview',
+-                        source: source
+-                    })
+-                });
+-            } catch (error) {
+-                // Silent fail for analytics
+-            }
+-        };
+-
+-        trackPage();
++        trackAnalyticsEvent({
++            path: location.pathname,
++            type: "pageview",
++            source,
++        });
+     }, [location.pathname]);
+ 
+     return null;
+ };
+ 
+ export default PageTracker;
+diff --git a/src/components/admin/AdminLayout.tsx b/src/components/admin/AdminLayout.tsx
+index ab2b038..727556b 100644
+--- a/src/components/admin/AdminLayout.tsx
++++ b/src/components/admin/AdminLayout.tsx
+@@ -5,22 +5,21 @@ import {
+     LayoutDashboard,
+     FileText,
+     Calendar,
+     LogOut,
+     ChevronRight,
+     Stethoscope,
+     DollarSign,
+     BarChart3,
+     ChevronLeft,
+     Menu,
+-    Settings,
+-    Users
++    Settings
+ } from "lucide-react";
+ import { Button } from "@/components/ui/button";
+ import { useQuery } from "@tanstack/react-query";
+ import axios from "axios";
+ 
+ import { API_URL } from "@/lib/api";
+ import { mediaUrl } from "@/lib/media";
+ 
+ interface AdminLayoutProps {
+     children: React.ReactNode;
+@@ -82,32 +81,45 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
+     const allMenuItems = [
+         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+         { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
+         {
+             label: "Conteúdo",
+             href: isManager ? "/admin/comentarios" : "/admin/blog",
+             icon: FileText,
+             subItems: contentSubItems
+         },
+         {
+-            label: "Consultas", href: "/admin/consultas", icon: Stethoscope, adminOnly: true, subItems: [
+-                { label: "Atendimentos", href: "/admin/consultas" },
++            label: "Atendimentos",
++            href: "/admin/consultas",
++            icon: Stethoscope,
++            adminOnly: true,
++            subItems: [
++                { label: "Consultas", href: "/admin/consultas" },
++                { label: "Pacientes", href: "/admin/pacientes" },
+                 { label: "Prescrição", href: "/admin/prescricao" },
+-                { label: "Termos & Doc", href: "/admin/documentos" },
++                { label: "Termos e Documentos", href: "/admin/documentos" },
+             ]
+         },
++        { label: "Calendário", href: "/admin/calendario", icon: Calendar, adminOnly: true },
+         { label: "Financeiro", href: "/admin/finance", icon: DollarSign },
+         ...(isManager || currentUser.username === 'Neli Vital' ? [{ label: "Minhas Finanças", href: "/admin/personal-finance", icon: DollarSign }] : []),
+         { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+-        { label: "Equipe", href: "/admin/users", icon: Users, adminOnly: true },
+-        { label: "Pacientes", href: "/admin/pacientes", icon: Users, adminOnly: true },
+-        { label: "Configurações", href: "/admin/settings", icon: Settings, adminOnly: true },
++        {
++            label: "Configurações",
++            href: "/admin/settings",
++            icon: Settings,
++            adminOnly: true,
++            subItems: [
++                { label: "Geral", href: "/admin/settings" },
++                { label: "Equipe", href: "/admin/users" },
++            ]
++        },
+     ];
+ 
+     // Filter: manager only sees items without adminOnly flag
+     const menuItems = isManager
+         ? allMenuItems.filter(item => !item.adminOnly)
+         : allMenuItems;
+ 
+     const activeNavClass = "bg-primary text-primary-foreground shadow-lg shadow-primary/20";
+     const inactiveNavClass = "text-slate-500 hover:bg-slate-800/50 hover:text-white";
+     const isItemActive = (item: (typeof menuItems)[number]) =>
+diff --git a/src/components/admin/navigation-contract.test.tsx b/src/components/admin/navigation-contract.test.tsx
+new file mode 100644
+index 0000000..f11c694
+--- /dev/null
++++ b/src/components/admin/navigation-contract.test.tsx
+@@ -0,0 +1,34 @@
++import fs from "node:fs";
++import path from "node:path";
++import { describe, expect, it } from "vitest";
++
++const readSource = (relativePath: string) =>
++    fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
++
++describe("admin navigation source contract", () => {
++    const appSource = readSource("src/App.tsx");
++    const layoutSource = readSource("src/components/admin/AdminLayout.tsx");
++    const dashboardSource = readSource("src/pages/AdminDashboard.tsx");
++    const authSource = readSource("src/hooks/useAuth.tsx");
++
++    it("registers the standalone calendar route", () => {
++        expect(appSource).toMatch(/path="\/admin\/calendario"/);
++    });
++
++    it("points the dashboard shortcut to the standalone calendar page", () => {
++        expect(dashboardSource).toContain("navigate('/admin/calendario')");
++        expect(dashboardSource).not.toContain("navigate('/admin/consultas?view=calendar')");
++    });
++
++    it("keeps attendances and settings grouped in the sidebar", () => {
++        expect(layoutSource).toMatch(/label:\s*["']Atendimentos["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Calendário["'][\s\S]*href:\s*["']\/admin\/calendario["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Pacientes["'][\s\S]*href:\s*["']\/admin\/pacientes["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Configurações["']/);
++        expect(layoutSource).toMatch(/label:\s*["']Equipe["'][\s\S]*href:\s*["']\/admin\/users["']/);
++    });
++
++    it("does not broaden manager access to the clinical calendar", () => {
++        expect(authSource).not.toMatch(/MANAGER_ALLOWED_ROUTES[\s\S]*\/admin\/calendario/);
++    });
++});
+diff --git a/src/components/sections/Stories.tsx b/src/components/sections/Stories.tsx
+index 554a3c5..bc1c2c3 100644
+--- a/src/components/sections/Stories.tsx
++++ b/src/components/sections/Stories.tsx
+@@ -1,15 +1,16 @@
+ import { useState, useEffect, useRef } from "react";
+ import { X, Play, Pause } from "lucide-react";
+ import { Dialog, DialogContent } from "@/components/ui/dialog";
+ import { motion, AnimatePresence } from "framer-motion";
+ import { API_URL } from "@/lib/api";
++import { trackAnalyticsEvent } from "@/lib/analytics";
+ import { mediaUrl } from "@/lib/media";
+ 
+ interface Story {
+     id: number;
+     title?: string;
+     url: string;
+     type: "image" | "video";
+     status: string;
+     createdAt: string;
+ }
+@@ -39,30 +40,25 @@ const Stories = () => {
+         }
+     };
+ 
+     // View Tracking
+     useEffect(() => {
+         if (selectedStoryIndex !== null && stories[selectedStoryIndex]) {
+             const story = stories[selectedStoryIndex];
+             // 1. Fire and forget legacy view increment
+             fetch(`${API_URL}/stories/${story.id}/view`, { method: 'POST' }).catch(() => { });
+ 
+-            // 2. Log to unified Analytics system
+-            fetch(`${API_URL}/analytics`, {
+-                method: 'POST',
+-                headers: { 'Content-Type': 'application/json' },
+-                body: JSON.stringify({
+-                    path: `/story/${story.id}`,
+-                    type: 'story_view',
+-                    source: 'Direto' // PageTracker handles UTMs on entry, here we mark as direct interaction
+-                })
+-            }).catch(() => { });
++            trackAnalyticsEvent({
++                path: `/story/${story.id}`,
++                type: "story_view",
++                source: "Direto",
++            });
+         }
+     }, [selectedStoryIndex, stories]);
+ 
+     // Progress Logic
+     useEffect(() => {
+         if (selectedStoryIndex === null || isPaused || !stories[selectedStoryIndex]) return;
+ 
+         const currentStory = stories[selectedStoryIndex];
+         let animationFrameId: number;
+         let startTime: number;
+diff --git a/src/lib/analytics.test.ts b/src/lib/analytics.test.ts
+new file mode 100644
+index 0000000..195b99f
+--- /dev/null
++++ b/src/lib/analytics.test.ts
+@@ -0,0 +1,58 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++
++import { API_URL } from "@/lib/api";
++
++type AnalyticsModule = typeof import("./analytics");
++
++const fetchMock = vi.fn();
++
++async function loadAnalyticsModule(): Promise<AnalyticsModule> {
++    const module = await import("./analytics").catch(() => null);
++    expect(module?.trackAnalyticsEvent).toBeTypeOf("function");
++    return module as AnalyticsModule;
++}
++
++describe("trackAnalyticsEvent", () => {
++    beforeEach(() => {
++        fetchMock.mockReset();
++        vi.stubGlobal("fetch", fetchMock);
++    });
++
++    afterEach(() => {
++        vi.unstubAllGlobals();
++    });
++
++    it("sends a normalized event with keepalive", async () => {
++        const { trackAnalyticsEvent } = await loadAnalyticsModule();
++
++        fetchMock.mockResolvedValueOnce({ ok: true });
++
++        trackAnalyticsEvent({ type: "pageview", path: "/blog", source: "Google" });
++
++        expect(fetchMock).toHaveBeenCalledWith(
++            `${API_URL}/analytics`,
++            expect.objectContaining({
++                method: "POST",
++                keepalive: true,
++                headers: { "Content-Type": "application/json" },
++                body: JSON.stringify({
++                    type: "pageview",
++                    path: "/blog",
++                    source: "Google",
++                }),
++            }),
++        );
++    });
++
++    it("silently handles fetch failures", async () => {
++        const { trackAnalyticsEvent } = await loadAnalyticsModule();
++
++        fetchMock.mockRejectedValueOnce(new Error("offline"));
++
++        expect(() => {
++            trackAnalyticsEvent({ type: "story_view", path: "/story/12", source: "Direto" });
++        }).not.toThrow();
++
++        await Promise.resolve();
++    });
++});
+diff --git a/src/lib/analytics.ts b/src/lib/analytics.ts
+new file mode 100644
+index 0000000..40f7693
+--- /dev/null
++++ b/src/lib/analytics.ts
+@@ -0,0 +1,18 @@
++import { API_URL } from "@/lib/api";
++
++export type AnalyticsEventType = "pageview" | "blog_view" | "story_view";
++
++export interface AnalyticsEvent {
++    type: AnalyticsEventType;
++    path: string;
++    source?: string;
++}
++
++export const trackAnalyticsEvent = (event: AnalyticsEvent): void => {
++    void fetch(`${API_URL}/analytics`, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        keepalive: true,
++        body: JSON.stringify(event),
++    }).catch(() => undefined);
++};
+diff --git a/src/pages/AdminAnalytics.test.tsx b/src/pages/AdminAnalytics.test.tsx
+new file mode 100644
+index 0000000..adc3229
+--- /dev/null
++++ b/src/pages/AdminAnalytics.test.tsx
+@@ -0,0 +1,118 @@
++import type { ReactNode } from "react";
++import { render, screen, waitFor } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++import { API_URL, fetchClient } from "@/lib/api";
++import AdminAnalytics from "./AdminAnalytics";
++
++vi.mock("@/components/admin/AdminLayout", () => ({
++    default: ({ children, title }: { children: ReactNode; title: string }) => (
++        <main aria-label={title}>{children}</main>
++    ),
++}));
++
++vi.mock("@/lib/api", () => ({
++    API_URL: "https://api.example.com",
++    fetchClient: vi.fn(),
++}));
++
++const fetchClientMock = vi.mocked(fetchClient);
++const fetchMock = vi.fn();
++
++const statsResponse = {
++    totalVisits: 12,
++    uniqueVisitors: 5,
++    conversionRate: "40.00",
++    leadsCount: 2,
++    sources: {
++        Google: 6,
++        Instagram: 3,
++        Direto: 3,
++    },
++    locations: {
++        "Belo Horizonte": 7,
++        "Nova Lima": 5,
++    },
++    regions: {
++        MG: 12,
++    },
++    topPaths: {
++        "/": 5,
++        "/blog": 4,
++        "/blog/clareamento": 3,
++    },
++    devices: {
++        mobile: 8,
++        desktop: 4,
++    },
++};
++
++const postsResponse = [
++    { id: 1, title: "Clareamento dental", views: 14 },
++    { id: 2, title: "Lentes de contato dental", views: 9 },
++];
++
++const response = (body: unknown, ok = true, status = ok ? 200 : 500) => ({
++    ok,
++    status,
++    json: vi.fn().mockResolvedValue(body),
++}) as unknown as Response;
++
++describe("AdminAnalytics", () => {
++    beforeEach(() => {
++        vi.clearAllMocks();
++        vi.stubGlobal("fetch", fetchMock);
++        fetchClientMock.mockResolvedValue(response(statsResponse));
++        fetchMock.mockResolvedValue(response(postsResponse));
++    });
++
++    it("loads protected stats with fetchClient and renders aggregate analytics", async () => {
++        render(<AdminAnalytics />);
++
++        await waitFor(() => {
++            expect(fetchClientMock).toHaveBeenCalledWith("/analytics/stats");
++        });
++        expect(fetchMock).toHaveBeenCalledWith(`${API_URL}/posts`);
++
++        expect(await screen.findByText("40.00%")).toBeInTheDocument();
++        expect(screen.getByText("Clareamento dental")).toBeInTheDocument();
++        expect(screen.getByText("/blog")).toBeInTheDocument();
++        expect(screen.getByText("mobile")).toBeInTheDocument();
++        expect(screen.getByText("MG")).toBeInTheDocument();
++    });
++
++    it("keeps metrics visible when the posts request fails", async () => {
++        fetchMock.mockRejectedValueOnce(new Error("posts offline"));
++
++        render(<AdminAnalytics />);
++
++        await waitFor(() => {
++            expect(fetchClientMock).toHaveBeenCalledWith("/analytics/stats");
++        });
++
++        expect(await screen.findByText("40.00%")).toBeInTheDocument();
++        expect(await screen.findByText(/não foi possível carregar os posts/i)).toBeInTheDocument();
++    });
++
++    it("shows a retry state when protected stats fail", async () => {
++        const user = userEvent.setup();
++
++        fetchClientMock
++            .mockResolvedValueOnce(response({ error: "unauthorized" }, false, 401))
++            .mockResolvedValueOnce(response(statsResponse));
++
++        render(<AdminAnalytics />);
++
++        expect(await screen.findByRole("alert")).toHaveTextContent(
++            "Não foi possível carregar as métricas.",
++        );
++
++        await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
++
++        await waitFor(() => {
++            expect(fetchClientMock).toHaveBeenCalledTimes(2);
++        });
++        expect(await screen.findByText("40.00%")).toBeInTheDocument();
++    });
++});
+diff --git a/src/pages/AdminAnalytics.tsx b/src/pages/AdminAnalytics.tsx
+index 6521923..bb782b0 100644
+--- a/src/pages/AdminAnalytics.tsx
++++ b/src/pages/AdminAnalytics.tsx
+@@ -1,267 +1,299 @@
+ import React, { useEffect, useState } from "react";
+ import AdminLayout from "@/components/admin/AdminLayout";
+-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
++import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+ import {
+-    Users,
+-    MessageSquare,
+-    TrendingUp,
+-    Globe,
+-    Target,
+-    MapPin,
+-    Calendar,
+     ArrowUpRight,
++    Calendar,
+     Eye,
+-    Smartphone
++    Globe,
++    MapPin,
++    Route,
++    Smartphone,
++    Target,
++    TrendingUp,
++    Users,
+ } from "lucide-react";
+-import { API_URL } from "@/lib/api";
+-import axios from "axios";
+ 
+-interface AnalyticsPost { id: number; title: string; views?: number; }
++import { API_URL, fetchClient } from "@/lib/api";
++
++interface AnalyticsPost {
++    id: number;
++    title: string;
++    views?: number;
++}
++
+ interface AnalyticsData {
+     totalVisits: number;
+     uniqueVisitors: number;
+     conversionRate: string;
+     leadsCount: number;
+     sources: Record<string, number>;
+     locations: Record<string, number>;
+-    neighborhoods?: Record<string, number>;
++    regions: Record<string, number>;
++    topPaths: Record<string, number>;
++    devices: Record<string, number>;
++}
++
++interface RankedMetric {
++    name: string;
++    count: number;
++    percentage: number;
+ }
+ 
++const emptyAnalytics: AnalyticsData = {
++    totalVisits: 0,
++    uniqueVisitors: 0,
++    conversionRate: "0.00",
++    leadsCount: 0,
++    sources: {},
++    locations: {},
++    regions: {},
++    topPaths: {},
++    devices: {},
++};
++
++const rankMetrics = (
++    metrics: Record<string, number>,
++    total: number,
++    limit = 6,
++): RankedMetric[] => (
++    Object.entries(metrics)
++        .map(([name, count]) => ({
++            name,
++            count,
++            percentage: Math.round((count / total) * 100),
++        }))
++        .sort((a, b) => b.count - a.count)
++        .slice(0, limit)
++);
++
++const toTopPosts = (posts: AnalyticsPost[]): AnalyticsPost[] => (
++    [...posts].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
++);
++
+ const AdminAnalytics = () => {
+-    const [stats, setStats] = useState({
+-        visits: 0,
+-        uniqueVisitors: 0,
+-        conversionRate: "0",
+-        posts: 0,
+-        comments: 0,
+-        leads: 0,
+-        topPosts: [] as AnalyticsPost[],
+-        sources: [] as { name: string, count: number, percentage: number }[],
+-        locations: [] as { name: string, count: number, percentage: number }[],
+-        neighborhoods: [] as { name: string, count: number, percentage: number }[]
+-    });
++    const [analytics, setAnalytics] = useState<AnalyticsData>(emptyAnalytics);
++    const [topPosts, setTopPosts] = useState<AnalyticsPost[]>([]);
+     const [loading, setLoading] = useState(true);
++    const [statsError, setStatsError] = useState<string | null>(null);
++    const [postsError, setPostsError] = useState<string | null>(null);
+ 
+-    useEffect(() => {
+-        const loadStats = async () => {
+-            try {
+-                const [dashStats, postsRes, analyticsRes] = await Promise.all([
+-                    axios.get(`${API_URL}/dashboard/stats`),
+-                    axios.get(`${API_URL}/posts`),
+-                    axios.get(`${API_URL}/analytics/stats`)
+-                ]);
+-
+-                const posts = postsRes.data as AnalyticsPost[];
+-                const analytics = analyticsRes.data as AnalyticsData;
+-                const topPosts = posts.sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
++    const loadStats = async () => {
++        setLoading(true);
++        setStatsError(null);
++        setPostsError(null);
+ 
+-                const sources = Object.entries(analytics.sources).map(([name, count]) => ({
+-                    name,
+-                    count,
+-                    percentage: Math.round((count / (analytics.totalVisits || 1)) * 100)
+-                })).sort((a, b) => b.count - a.count).slice(0, 6);
++        const [analyticsResult, postsResult] = await Promise.allSettled([
++            fetchClient("/analytics/stats"),
++            fetch(`${API_URL}/posts`),
++        ]);
+ 
+-                const locations = Object.entries(analytics.locations).map(([name, count]) => ({
+-                    name,
+-                    count,
+-                    percentage: Math.round((count / (analytics.totalVisits || 1)) * 100)
+-                })).sort((a, b) => b.count - a.count).slice(0, 6);
++        if (analyticsResult.status === "fulfilled" && analyticsResult.value.ok) {
++            const analyticsData = await analyticsResult.value.json() as AnalyticsData;
++            setAnalytics({
++                ...emptyAnalytics,
++                ...analyticsData,
++            });
++        } else {
++            setStatsError("Não foi possível carregar as métricas.");
++        }
+ 
+-                const neighborhoods = Object.entries(analytics.neighborhoods || {}).map(([name, count]) => ({
+-                    name,
+-                    count,
+-                    percentage: Math.round((count / (analytics.totalVisits || 1)) * 100)
+-                })).sort((a, b) => b.count - a.count).slice(0, 6);
++        if (postsResult.status === "fulfilled" && postsResult.value.ok) {
++            const posts = await postsResult.value.json() as AnalyticsPost[];
++            setTopPosts(toTopPosts(posts));
++        } else {
++            setTopPosts([]);
++            setPostsError("Não foi possível carregar os posts agora.");
++        }
+ 
+-                setStats({
+-                    visits: analytics.totalVisits,
+-                    uniqueVisitors: analytics.uniqueVisitors,
+-                    conversionRate: analytics.conversionRate,
+-                    posts: dashStats.data.posts,
+-                    comments: dashStats.data.testimonials,
+-                    leads: analytics.leadsCount,
+-                    topPosts,
+-                    sources,
+-                    locations,
+-                    neighborhoods
+-                });
++        setLoading(false);
++    };
+ 
+-            } catch (e) {
+-                console.error(e);
+-            } finally {
+-                setLoading(false);
+-            }
+-        };
+-        loadStats();
++    useEffect(() => {
++        void loadStats();
+     }, []);
+ 
++    const totalVisits = analytics.totalVisits || 1;
++    const sources = rankMetrics(analytics.sources, totalVisits);
++    const locations = rankMetrics(analytics.locations, totalVisits);
++    const regions = rankMetrics(analytics.regions, totalVisits);
++    const topPaths = rankMetrics(analytics.topPaths, totalVisits);
++    const devices = rankMetrics(analytics.devices, totalVisits);
++
+     const cards = [
+-        { label: "Visitas Totais", value: stats.visits, icon: Eye, color: "text-blue-600", bg: "bg-blue-100" },
+-        { label: "Vistantes Únicos", value: stats.uniqueVisitors, icon: Users, color: "text-indigo-600", bg: "bg-indigo-100" },
+-        { label: "Solicitações (Leads)", value: stats.leads, icon: Calendar, color: "text-orange-600", bg: "bg-orange-100" },
+-        { label: "Taxa de Conversão", value: `${stats.conversionRate}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-100" },
++        { label: "Visitas Totais", value: analytics.totalVisits, icon: Eye, color: "text-blue-600", bg: "bg-blue-100" },
++        { label: "Vistantes Únicos", value: analytics.uniqueVisitors, icon: Users, color: "text-indigo-600", bg: "bg-indigo-100" },
++        { label: "Solicitações (Leads)", value: analytics.leadsCount, icon: Calendar, color: "text-orange-600", bg: "bg-orange-100" },
++        { label: "Taxa de Conversão", value: `${analytics.conversionRate}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-100" },
+     ];
+ 
+-    if (loading) return (
+-        <AdminLayout title="Análise de Dados">
+-            <div className="p-12 text-center text-slate-500 italic">Carregando métricas...</div>
+-        </AdminLayout>
++    const renderRankedList = (
++        items: RankedMetric[],
++        emptyMessage: string,
++        barClassName: string,
++    ) => (
++        <div className="space-y-6">
++            {items.length > 0 ? (
++                items.map((item) => (
++                    <div key={item.name} className="flex items-center justify-between group">
++                        <div className="flex-1">
++                            <div className="mb-1 flex justify-between gap-3">
++                                <span className="break-all text-sm font-medium text-slate-700">{item.name}</span>
++                                <span className="text-sm font-bold text-slate-900">{item.percentage}%</span>
++                            </div>
++                            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
++                                <div
++                                    className={`h-full transition-all duration-1000 ${barClassName}`}
++                                    style={{ width: `${item.percentage}%` }}
++                                ></div>
++                            </div>
++                        </div>
++                    </div>
++                ))
++            ) : (
++                <p className="py-8 text-center text-sm italic text-slate-500">{emptyMessage}</p>
++            )}
++        </div>
+     );
+ 
++    if (loading) {
++        return (
++            <AdminLayout title="Análise de Dados">
++                <div className="p-12 text-center text-slate-500 italic">Carregando métricas...</div>
++            </AdminLayout>
++        );
++    }
++
++    if (statsError) {
++        return (
++            <AdminLayout title="Análise de Dados">
++                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm">
++                    <p role="alert" className="text-sm font-medium text-red-700">
++                        {statsError}
++                    </p>
++                    <button
++                        type="button"
++                        onClick={() => { void loadStats(); }}
++                        className="mt-4 inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
++                    >
++                        Tentar novamente
++                    </button>
++                </div>
++            </AdminLayout>
++        );
++    }
++
+     return (
+         <AdminLayout title="Análise de Dados">
+-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
++            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                 {cards.map((stat) => (
+-                    <Card key={stat.label} className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
++                    <Card key={stat.label} className="border-slate-100 shadow-sm transition-shadow hover:shadow-md">
+                         <CardContent className="p-6">
+-                            <div className="flex justify-between items-start mb-4">
++                            <div className="mb-4 flex items-start justify-between">
+                                 <div className={`${stat.bg} p-3 rounded-xl ${stat.color}`}>
+                                     <stat.icon size={24} />
+                                 </div>
+-                                <span className="flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
++                                <span className="flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
+                                     <ArrowUpRight size={14} className="mr-1" />
+                                     Real
+                                 </span>
+                             </div>
+-                            <h3 className="text-slate-500 text-sm font-medium">{stat.label}</h3>
+-                            <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
++                            <h3 className="text-sm font-medium text-slate-500">{stat.label}</h3>
++                            <p className="mt-1 text-2xl font-bold text-slate-900">{stat.value}</p>
+                         </CardContent>
+                     </Card>
+                 ))}
+             </div>
+ 
+-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+-                {/* TOP POSTS */}
++            <div className="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+                 <Card className="border-slate-200 shadow-sm">
+                     <CardHeader>
+-                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
++                        <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">
+                             <TrendingUp size={20} className="text-primary" /> Posts Mais Lidos
+                         </CardTitle>
+                     </CardHeader>
+                     <CardContent>
+                         <div className="space-y-4">
+-                            {stats.topPosts.length > 0 ? (
+-                                stats.topPosts.map((post, i) => (
+-                                    <div key={post.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+-                                        <span className="font-bold text-slate-300 text-lg w-6">#{i + 1}</span>
+-                                        <div className="flex-1 min-w-0">
+-                                            <p className="font-semibold text-slate-900 truncate text-sm">{post.title}</p>
++                            {topPosts.length > 0 ? (
++                                topPosts.map((post, index) => (
++                                    <div key={post.id} className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-slate-50">
++                                        <span className="w-6 text-lg font-bold text-slate-300">#{index + 1}</span>
++                                        <div className="min-w-0 flex-1">
++                                            <p className="truncate text-sm font-semibold text-slate-900">{post.title}</p>
+                                         </div>
+-                                        <div className="flex items-center gap-1 text-slate-600 font-medium text-xs">
++                                        <div className="flex items-center gap-1 text-xs font-medium text-slate-600">
+                                             <Eye size={12} />
+                                             {post.views || 0}
+                                         </div>
+                                     </div>
+                                 ))
++                            ) : postsError ? (
++                                <p className="py-8 text-center text-sm italic text-slate-500">{postsError}</p>
+                             ) : (
+-                                <p className="text-slate-500 italic text-sm text-center py-8">Nenhum post visualizado.</p>
++                                <p className="py-8 text-center text-sm italic text-slate-500">Nenhum post visualizado.</p>
+                             )}
+                         </div>
+                     </CardContent>
+                 </Card>
+ 
+-                {/* ORIGEM DO TRÁFEGO */}
+                 <Card className="border-slate-200 shadow-sm">
+                     <CardHeader>
+-                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
++                        <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">
+                             <Globe size={20} className="text-blue-500" /> Origem do Tráfego
+                         </CardTitle>
+                     </CardHeader>
+                     <CardContent>
+-                        <div className="space-y-6">
+-                            {stats.sources.length > 0 ? (
+-                                stats.sources.map((s, i) => (
+-                                    <div key={s.name} className="flex items-center justify-between group">
+-                                        <div className="flex-1">
+-                                            <div className="flex justify-between mb-1">
+-                                                <span className="text-sm font-medium text-slate-700">{s.name}</span>
+-                                                <span className="text-sm font-bold text-slate-900">{s.percentage}%</span>
+-                                            </div>
+-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+-                                                <div
+-                                                    className="h-full bg-blue-500 transition-all duration-1000"
+-                                                    style={{ width: `${s.percentage}%` }}
+-                                                ></div>
+-                                            </div>
+-                                        </div>
+-                                    </div>
+-                                ))
+-                            ) : (
+-                                <p className="text-slate-500 italic text-sm text-center py-8">Dados de tráfego insuficientes.</p>
+-                            )}
+-                        </div>
++                        {renderRankedList(sources, "Dados de tráfego insuficientes.", "bg-blue-500")}
+                     </CardContent>
+                 </Card>
+ 
+-                {/* LOCALIZAÇÃO (CIDADES) */}
+                 <Card className="border-slate-200 shadow-sm">
+                     <CardHeader>
+-                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
++                        <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">
+                             <Globe size={20} className="text-emerald-500" /> Cidades Principais
+                         </CardTitle>
+                     </CardHeader>
+                     <CardContent>
+-                        <div className="space-y-6">
+-                            {stats.locations.length > 0 ? (
+-                                stats.locations.map((l, i) => (
+-                                    <div key={l.name} className="flex items-center justify-between group">
+-                                        <div className="flex-1">
+-                                            <div className="flex justify-between mb-1">
+-                                                <span className="text-sm font-medium text-slate-700">{l.name}</span>
+-                                                <span className="text-sm font-bold text-slate-900">{l.percentage}%</span>
+-                                            </div>
+-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+-                                                <div
+-                                                    className="h-full bg-emerald-500 transition-all duration-1000"
+-                                                    style={{ width: `${l.percentage}%` }}
+-                                                ></div>
+-                                            </div>
+-                                        </div>
+-                                    </div>
+-                                ))
+-                            ) : (
+-                                <p className="text-slate-500 italic text-sm text-center py-8">Aguardando dados geográficos.</p>
+-                            )}
+-                        </div>
++                        {renderRankedList(locations, "Aguardando dados geográficos.", "bg-emerald-500")}
+                     </CardContent>
+                 </Card>
+ 
+-                {/* ZONAS QUENTES (BAIRROS) */}
+                 <Card className="border-slate-200 shadow-sm">
+                     <CardHeader>
+-                        <CardTitle className="text-xl font-serif flex items-center gap-2 text-slate-900">
+-                            <MapPin size={20} className="text-orange-500" /> Zonas Quentes (Bairros)
++                        <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">
++                            <Route size={20} className="text-violet-500" /> Páginas Mais Visitadas
+                         </CardTitle>
+-                        <CardDescription>Dados silenciosos via IP sem permissão GPS</CardDescription>
+                     </CardHeader>
+                     <CardContent>
+-                        <div className="space-y-6">
+-                            {stats.neighborhoods.length > 0 ? (
+-                                stats.neighborhoods.map((n, i) => (
+-                                    <div key={n.name} className="flex items-center justify-between group">
+-                                        <div className="flex-1">
+-                                            <div className="flex justify-between mb-1">
+-                                                <span className="text-sm font-medium text-slate-700">{n.name}</span>
+-                                                <span className="text-sm font-bold text-slate-900">{n.percentage}%</span>
+-                                            </div>
+-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+-                                                <div
+-                                                    className="h-full bg-orange-500 transition-all duration-1000"
+-                                                    style={{ width: `${n.percentage}%` }}
+-                                                ></div>
+-                                            </div>
+-                                        </div>
+-                                    </div>
+-                                ))
+-                            ) : (
+-                                <p className="text-slate-500 italic text-sm text-center py-8">Capturando dados de bairros...</p>
+-                            )}
+-                        </div>
++                        {renderRankedList(topPaths, "Ainda não há páginas ranqueadas.", "bg-violet-500")}
++                    </CardContent>
++                </Card>
++
++                <Card className="border-slate-200 shadow-sm">
++                    <CardHeader>
++                        <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">
++                            <Smartphone size={20} className="text-sky-500" /> Dispositivos
++                        </CardTitle>
++                    </CardHeader>
++                    <CardContent>
++                        {renderRankedList(devices, "Dispositivos ainda sem volume suficiente.", "bg-sky-500")}
++                    </CardContent>
++                </Card>
++
++                <Card className="border-slate-200 shadow-sm">
++                    <CardHeader>
++                        <CardTitle className="flex items-center gap-2 text-xl font-serif text-slate-900">
++                            <MapPin size={20} className="text-orange-500" /> Regiões Aproximadas
++                        </CardTitle>
++                        <CardDescription>Estimativa agregada via IP sem permissão de GPS</CardDescription>
++                    </CardHeader>
++                    <CardContent>
++                        {renderRankedList(regions, "Capturando aproximações regionais...", "bg-orange-500")}
+                     </CardContent>
+                 </Card>
+             </div>
+         </AdminLayout>
+     );
+ };
+ 
+ export default AdminAnalytics;
+diff --git a/src/pages/AdminAppointments.test.tsx b/src/pages/AdminAppointments.test.tsx
+index ed81806..ff428c8 100644
+--- a/src/pages/AdminAppointments.test.tsx
++++ b/src/pages/AdminAppointments.test.tsx
+@@ -1,121 +1,113 @@
+ import type { ReactNode } from "react";
+ import { render, screen, waitFor } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ 
+ import { fetchClient } from "@/lib/api";
+-import { buildCalendarEntries } from "@/lib/calendar";
+ import AdminAppointments from "./AdminAppointments";
+ 
+ const { invalidateQueriesMock, navigateMock } = vi.hoisted(() => ({
+     invalidateQueriesMock: vi.fn(),
+     navigateMock: vi.fn(),
+ }));
+ 
+ vi.mock("@/components/admin/AdminLayout", () => ({
+     default: ({ children, title }: { children: ReactNode; title: string }) => (
+         <main aria-label={title}>{children}</main>
+     ),
+ }));
+ 
+-vi.mock("@/components/admin/appointments/CalendarView", () => ({
+-    CalendarView: ({ onEventCreate }: { onEventCreate?: (date: Date) => void }) => (
+-        <button type="button" onClick={() => onEventCreate?.(new Date(2026, 7, 14, 9, 0))}>
+-            Criar horário de teste
+-        </button>
+-    ),
+-}));
+-
+ vi.mock("@/lib/api", () => ({ fetchClient: vi.fn() }));
+ 
+ vi.mock("@tanstack/react-query", () => ({
+     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
+ }));
+ 
+ vi.mock("react-router-dom", () => ({
+     useNavigate: () => navigateMock,
+-    useSearchParams: () => [new URLSearchParams("view=calendar")],
++    useSearchParams: () => [new URLSearchParams()],
+ }));
+ 
+ vi.mock("sonner", () => ({
+     toast: { error: vi.fn(), success: vi.fn() },
+ }));
+ 
+ const fetchClientMock = vi.mocked(fetchClient);
+ 
+-const response = (body: unknown, ok = true, status = ok ? 200 : 500) => ({
++const response = (body: unknown, ok = true) => ({
+     ok,
+-    status,
+     json: vi.fn().mockResolvedValue(body),
+ }) as unknown as Response;
+ 
+-const initialResponse = (path: string) => {
+-    if (path === "/staff") return response([{ id: 7, name: "Dra. Sofia", role: "dentist" }]);
+-    return response([]);
+-};
+-
+-async function openCompletedManualForm() {
+-    const user = userEvent.setup();
+-    await waitFor(() => expect(fetchClientMock).toHaveBeenCalledWith("/staff"));
+-    await user.click(screen.getByRole("button", { name: "Criar horário de teste" }));
+-    await user.type(screen.getByLabelText("Paciente"), "Marina Alves");
+-    await user.type(screen.getByLabelText("Procedimento"), "Avaliação");
+-    return user;
+-}
+-
+-describe("AdminAppointments manual calendar creation", () => {
++describe("AdminAppointments", () => {
+     beforeEach(() => {
+         localStorage.setItem("admin_user", JSON.stringify({ name: "Dra. Sofia", role: "admin" }));
+         vi.clearAllMocks();
+-        invalidateQueriesMock.mockResolvedValue(undefined);
+-        fetchClientMock.mockImplementation(async (path) => initialResponse(String(path)));
++        fetchClientMock.mockResolvedValue(response([
++            {
++                id: 1,
++                patientId: 11,
++                patientName: "Marina Alves",
++                cpf: "12345678900",
++                date: "2026-08-20T10:00:00.000Z",
++                scheduledAt: "2026-08-20T10:00:00.000Z",
++                procedure: "Consulta de avaliação",
++                notes: "",
++                professional: "Dra. Sofia",
++            },
++            {
++                id: 2,
++                patientId: 12,
++                patientName: "Carlos Lima",
++                cpf: "98765432100",
++                date: "2026-08-21T14:00:00.000Z",
++                scheduledAt: "2026-08-21T14:00:00.000Z",
++                procedure: "Consulta de retorno",
++                notes: "",
++                professional: "Dr. Pedro",
++            },
++        ]));
+     });
+ 
+-    it("keeps the modal and controlled values after an unexpected POST failure", async () => {
+-        fetchClientMock.mockImplementation(async (path, options) => {
+-            if (path === "/appointments" && options?.method === "POST") {
+-                return response({ error: "Prisma P2002 database detail" }, false, 500);
+-            }
+-            return initialResponse(String(path));
+-        });
++    it("shows only the appointment list and filters by patient or local date", async () => {
+         render(<AdminAppointments />);
+-        const user = await openCompletedManualForm();
++        const user = userEvent.setup();
++
++        expect(await screen.findByText("Marina Alves")).toBeInTheDocument();
++        expect(screen.getByText("Carlos Lima")).toBeInTheDocument();
++
++        await user.type(screen.getByLabelText("Pesquisar paciente ou CPF"), "Marina");
++        expect(screen.getByText("Marina Alves")).toBeInTheDocument();
++        expect(screen.queryByText("Carlos Lima")).not.toBeInTheDocument();
+ 
+-        await user.click(screen.getByRole("button", { name: "Criar atendimento" }));
++        await user.clear(screen.getByLabelText("Pesquisar paciente ou CPF"));
++        await user.type(screen.getByLabelText("Filtrar por data"), "2026-08-20");
+ 
+-        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível criar o atendimento.");
+-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+-        expect(screen.getByLabelText("Paciente")).toHaveValue("Marina Alves");
+-        expect(screen.getByLabelText("Procedimento")).toHaveValue("Avaliação");
+-        expect(screen.queryByText(/Prisma P2002/)).not.toBeInTheDocument();
++        expect(screen.getByText("Consulta de avaliação")).toBeInTheDocument();
++        expect(screen.queryByText("Consulta de retorno")).not.toBeInTheDocument();
++        expect(screen.queryByRole("button", { name: "Criar horário de teste" })).not.toBeInTheDocument();
++        expect(screen.queryByRole("button", { name: "Calendário" })).not.toBeInTheDocument();
+     });
+ 
+-    it("closes after success and refreshes appointment, lead, and dashboard state", async () => {
+-        fetchClientMock.mockImplementation(async (path) => initialResponse(String(path)));
++    it("navigates to the appointment detail from the list", async () => {
+         render(<AdminAppointments />);
+-        const user = await openCompletedManualForm();
+ 
+-        await user.click(screen.getByRole("button", { name: "Criar atendimento" }));
++        const [firstAction] = await screen.findAllByRole("button", { name: "Ver Evolução" });
++        await userEvent.setup().click(firstAction);
+ 
+-        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+-        expect(fetchClientMock.mock.calls.filter(([path]) => path === "/appointments")).toHaveLength(3);
+-        expect(fetchClientMock.mock.calls.filter(([path]) => path === "/leads")).toHaveLength(2);
+-        expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["dashboard-stats"] });
+-        expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["leads"] });
++        expect(navigateMock).toHaveBeenCalledWith("/admin/consultas/1?patientId=11");
+     });
+-});
+ 
+-describe("AdminAppointments return calendar state", () => {
+-    it("carries the linked-source marker into the calendar detail entry", () => {
+-        const entries = buildCalendarEntries([{
+-            id: 42,
+-            patientName: "Marina Alves",
+-            procedure: "Retorno: Avaliação",
+-            scheduledAt: "2026-08-20T16:00:00.000Z",
+-            parentAppointmentId: 41,
+-        }]);
+-
+-        expect(entries).toHaveLength(1);
+-        expect(entries[0]).toMatchObject({ isReturn: true });
++    it("shows an empty state when no records match both filters", async () => {
++        render(<AdminAppointments />);
++        const user = userEvent.setup();
++
++        await screen.findByText("Marina Alves");
++        await user.type(screen.getByLabelText("Pesquisar paciente ou CPF"), "Paciente inexistente");
++        await user.type(screen.getByLabelText("Filtrar por data"), "2026-08-22");
++
++        await waitFor(() => {
++            expect(screen.getByText("Nenhum atendimento encontrado")).toBeInTheDocument();
++        });
+     });
+ });
+diff --git a/src/pages/AdminAppointments.tsx b/src/pages/AdminAppointments.tsx
+index ed8862c..81aa513 100644
+--- a/src/pages/AdminAppointments.tsx
++++ b/src/pages/AdminAppointments.tsx
+@@ -1,422 +1,234 @@
+-import React, { useState, useEffect } from "react";
++import React, { useEffect, useMemo, useState } from "react";
++import { useNavigate, useSearchParams } from "react-router-dom";
++import { Search, User, History, Plus, Trash2, Stethoscope } from "lucide-react";
++import { toast } from "sonner";
++
+ import AdminLayout from "@/components/admin/AdminLayout";
+ import { fetchClient } from "@/lib/api";
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+ import { Card, CardContent } from "@/components/ui/card";
+-import { Search, User, History, Plus, Trash2, Stethoscope } from "lucide-react";
+-import { toast } from "sonner";
+-import { useNavigate, useSearchParams } from "react-router-dom";
+ import { Badge } from "@/components/ui/badge";
+ import {
+     AlertDialog,
+     AlertDialogAction,
+     AlertDialogCancel,
+     AlertDialogContent,
+     AlertDialogDescription,
+     AlertDialogFooter,
+     AlertDialogHeader,
+     AlertDialogTitle,
+     AlertDialogTrigger,
+ } from "@/components/ui/alert-dialog";
+-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+-import { Label } from "@/components/ui/label";
+-import { CalendarView } from "@/components/admin/appointments/CalendarView";
+-import { buildCalendarEntries, CalendarEntry } from "@/lib/calendar";
+-import { useQueryClient } from "@tanstack/react-query";
+ 
+ interface AppointmentRecord {
+     id: number;
+     patientId?: number | null;
+     patientName: string;
+     cpf?: string;
+     date: string;
+     scheduledAt?: string | null;
+     createdAt?: string;
+     procedure: string;
+     notes: string;
+     professional: string;
+     status?: "scheduled" | "attended" | "cancelled";
+-    parentAppointmentId?: number | null;
+     patient?: {
+         name: string;
+         cpf: string;
+     };
+ }
+ 
+-interface LeadRecord {
+-    id: number;
+-    name?: string | null;
+-    status?: string | null;
+-    scheduledAt?: string | null;
+-    treatment?: string | null;
+-    createdAt?: string | null;
+-    professional?: string | null;
+-}
++const getLocalCalendarDay = (value?: string | null) => {
++    if (!value) return "";
+ 
+-interface StaffUser {
+-    id: number;
+-    name: string;
+-    role: string;
+-}
++    const date = new Date(value);
++    if (Number.isNaN(date.getTime())) return "";
+ 
+-interface ManualAppointmentForm {
+-    patientName: string;
+-    procedure: string;
+-    appointmentType: "odontologia" | "harmonizacao" | "ambos";
+-    professional: string;
+-    scheduledAt: string;
+-    price: string;
+-    paymentStatus: "" | "paid" | "pending" | "courtesy";
+-}
+-
+-const toDateTimeLocalValue = (date: Date) => {
+-    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+-    return localDate.toISOString().slice(0, 16);
++    const year = date.getFullYear();
++    const month = String(date.getMonth() + 1).padStart(2, "0");
++    const day = String(date.getDate()).padStart(2, "0");
++    return `${year}-${month}-${day}`;
+ };
+ 
+ const AdminAppointments = () => {
+-    const queryClient = useQueryClient();
+     const [searchTerm, setSearchTerm] = useState("");
++    const [dateFilter, setDateFilter] = useState("");
+     const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
+     const [searchParams] = useSearchParams();
+-    const initialViewMode = searchParams.get("view") === "calendar" ? "calendar" : "list";
+-    const [viewMode, setViewMode] = useState<"list" | "calendar">(initialViewMode);
+-    const [leads, setLeads] = useState<LeadRecord[]>([]);
+-    const [staff, setStaff] = useState<StaffUser[]>([]);
+-    const [calendarDate, setCalendarDate] = useState(new Date());
+-    const [pendingDrop, setPendingDrop] = useState<{ entry: CalendarEntry; scheduledAt: string } | null>(null);
+-    const [pendingDetails, setPendingDetails] = useState<CalendarEntry | null>(null);
+-    const [professionalDraft, setProfessionalDraft] = useState("");
+-    const [isSavingCalendarChange, setIsSavingCalendarChange] = useState(false);
+-    const [manualAppointmentDate, setManualAppointmentDate] = useState<Date | null>(null);
+-    const [manualAppointment, setManualAppointment] = useState<ManualAppointmentForm>({
+-        patientName: "",
+-        procedure: "",
+-        appointmentType: "odontologia",
+-        professional: "",
+-        scheduledAt: "",
+-        price: "",
+-        paymentStatus: ""
+-    });
+-    const [manualAppointmentError, setManualAppointmentError] = useState("");
+-    const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
+     const navigate = useNavigate();
+     const leadId = searchParams.get("leadId");
+ 
+     const userStr = localStorage.getItem("admin_user");
+     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional" };
+ 
+     useEffect(() => {
+-        fetchAppointments();
+-        fetchCalendarData();
++        void fetchAppointments();
+     }, []);
+ 
++    useEffect(() => {
++        if (leadId) {
++            navigate(`/admin/consultas/new?leadId=${leadId}`);
++        }
++    }, [leadId, navigate]);
++
+     const fetchAppointments = async () => {
+         try {
+             const res = await fetchClient("/appointments");
+-            if (res.ok) {
+-                const data = await res.json();
+-                setAppointments(data);
+-            } else {
++            if (!res.ok) {
+                 toast.error("Erro ao carregar atendimentos.");
++                return;
+             }
++
++            const data = await res.json();
++            setAppointments(Array.isArray(data) ? data : []);
+         } catch (error) {
+             console.error("Failed to fetch appointments:", error);
+             toast.error("Erro ao carregar atendimentos.");
+         }
+     };
+ 
+-    useEffect(() => {
+-        if (leadId) {
+-            navigate(`/admin/consultas/new?leadId=${leadId}`);
+-        }
+-    }, [leadId, navigate]);
+-
+     const handleDelete = async (id: number) => {
+         try {
+             const res = await fetchClient(`/appointments/${id}`, {
+-                method: 'DELETE',
++                method: "DELETE",
+             });
+-            if (res.ok) {
+-                toast.success("Atendimento excluído com sucesso.");
+-                fetchAppointments();
+-            } else {
++
++            if (!res.ok) {
+                 toast.error("Erro ao excluir atendimento.");
++                return;
+             }
++
++            toast.success("Atendimento excluído com sucesso.");
++            await fetchAppointments();
+         } catch (error) {
+             console.error("Error deleting appointment:", error);
+             toast.error("Erro de conexão ao excluir.");
+         }
+     };
+ 
+-    const filteredAppointments = appointments.filter(record => {
+-        const name = (record.patientName || record.patient?.name || "").toLowerCase();
+-        const cpf = (record.cpf || record.patient?.cpf || "");
+-        const term = searchTerm.toLowerCase();
+-        return name.includes(term) || cpf.includes(term);
+-    });
+-
+-    const formatDate = (dateStr: string) => {
+-        try {
+-            return new Date(dateStr).toLocaleString('pt-BR', {
+-                day: '2-digit',
+-                month: '2-digit',
+-                year: 'numeric',
+-                hour: '2-digit',
+-                minute: '2-digit'
+-            });
+-        } catch (e) {
+-            return dateStr;
+-        }
+-    };
+-
+-    const fetchCalendarData = async () => {
+-        try {
+-            const [leadsResponse, usersResponse] = await Promise.all([
+-                fetchClient("/leads"),
+-                fetchClient("/staff")
+-            ]);
+-            const [leadsBody, usersBody] = await Promise.all([
+-                leadsResponse.json().catch(() => ({})),
+-                usersResponse.json().catch(() => ({}))
+-            ]);
+-
+-            if (!leadsResponse.ok || !usersResponse.ok) {
+-                throw new Error(leadsBody.error || usersBody.error || "Erro ao carregar agenda.");
+-            }
+-
+-            const calendarLeads = Array.isArray(leadsBody) ? leadsBody as LeadRecord[] : [];
+-            const calendarStaff = Array.isArray(usersBody) ? usersBody as StaffUser[] : [];
+-            setLeads(calendarLeads);
+-            setStaff(calendarStaff.filter((user) => user.role !== "manager"));
+-        } catch (error) {
+-            toast.error(error instanceof Error ? error.message : "Erro ao carregar agenda.");
+-        }
+-    };
++    const filteredAppointments = useMemo(() => {
++        const normalizedTerm = searchTerm.trim().toLowerCase();
+ 
+-    const updateCalendarEntry = async (
+-        entry: CalendarEntry,
+-        payload: { scheduledAt?: string | null; professional?: string | null }
+-    ) => {
+-        const endpoint = entry.kind === "lead" ? "/leads/" + entry.leadId : "/appointments/" + entry.id;
+-        const response = await fetchClient(endpoint, {
+-            method: "PUT",
+-            body: JSON.stringify(payload)
++        return appointments.filter((record) => {
++            const patientName = (record.patientName || record.patient?.name || "").toLowerCase();
++            const cpf = record.cpf || record.patient?.cpf || "";
++            const matchesSearch = !normalizedTerm || patientName.includes(normalizedTerm) || cpf.includes(normalizedTerm);
++            const matchesDate = !dateFilter || getLocalCalendarDay(record.scheduledAt || record.date) === dateFilter;
++            return matchesSearch && matchesDate;
+         });
+-        const body = await response.json().catch(() => ({}));
+-        if (!response.ok) throw new Error(body.error || "Não foi possível atualizar a agenda.");
+-        return body;
+-    };
+-
+-    const refreshCalendarRecords = async () => {
+-        await Promise.all([fetchAppointments(), fetchCalendarData()]);
+-    };
+-
+-    const openManualAppointment = (date: Date) => {
+-        const defaultProfessional = staff.some((user) => user.name === currentUser.name)
+-            ? currentUser.name
+-            : staff[0]?.name || "";
++    }, [appointments, dateFilter, searchTerm]);
+ 
+-        setManualAppointmentDate(date);
+-        setManualAppointment({
+-            patientName: "",
+-            procedure: "",
+-            appointmentType: "odontologia",
+-            professional: defaultProfessional,
+-            scheduledAt: toDateTimeLocalValue(date),
+-            price: "",
+-            paymentStatus: ""
+-        });
+-        setManualAppointmentError("");
+-    };
+-
+-    const updateManualAppointment = <K extends keyof ManualAppointmentForm>(
+-        field: K,
+-        value: ManualAppointmentForm[K]
+-    ) => {
+-        setManualAppointment((current) => ({ ...current, [field]: value }));
+-    };
+-
+-    const createManualAppointment = async () => {
+-        const patientName = manualAppointment.patientName.trim();
+-        const procedure = manualAppointment.procedure.trim();
+-        const professional = manualAppointment.professional.trim();
+-        const scheduledDate = new Date(manualAppointment.scheduledAt);
+-
+-        if (!patientName || !procedure || !professional || Number.isNaN(scheduledDate.getTime())) {
+-            setManualAppointmentError("Preencha paciente, procedimento, profissional, data e horário.");
+-            return;
+-        }
+-
+-        const payload: Record<string, string | number> = {
+-            patientName,
+-            procedure,
+-            appointmentType: manualAppointment.appointmentType,
+-            professional,
+-            date: scheduledDate.toISOString(),
+-            scheduledAt: scheduledDate.toISOString()
+-        };
+-
+-        if (manualAppointment.price.trim()) payload.price = Number(manualAppointment.price);
+-        if (manualAppointment.paymentStatus) payload.paymentStatus = manualAppointment.paymentStatus;
+-
+-        setIsCreatingAppointment(true);
+-        setManualAppointmentError("");
++    const formatDate = (dateStr: string) => {
+         try {
+-            const response = await fetchClient("/appointments", {
+-                method: "POST",
+-                body: JSON.stringify(payload)
++            return new Date(dateStr).toLocaleString("pt-BR", {
++                day: "2-digit",
++                month: "2-digit",
++                year: "numeric",
++                hour: "2-digit",
++                minute: "2-digit",
+             });
+-            const body = await response.json().catch(() => ({}));
+-            if (!response.ok) {
+-                throw new Error(
+-                    response.status >= 500
+-                        ? "Não foi possível criar o atendimento."
+-                        : body.error || "Não foi possível criar o atendimento."
+-                );
+-            }
+-
+-            await Promise.all([
+-                refreshCalendarRecords(),
+-                queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+-                queryClient.invalidateQueries({ queryKey: ["leads"] })
+-            ]);
+-            setManualAppointmentDate(null);
+-            toast.success("Atendimento agendado com sucesso.");
+-        } catch (error) {
+-            setManualAppointmentError(error instanceof Error ? error.message : "Não foi possível criar o atendimento.");
+-        } finally {
+-            setIsCreatingAppointment(false);
+-        }
+-    };
+-
+-    const confirmDrop = async () => {
+-        if (!pendingDrop) return;
+-
+-        setIsSavingCalendarChange(true);
+-        try {
+-            await updateCalendarEntry(pendingDrop.entry, { scheduledAt: pendingDrop.scheduledAt });
+-            await refreshCalendarRecords();
+-            setPendingDrop(null);
+-            toast.success("Horário atualizado com sucesso.");
+-        } catch (error) {
+-            toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
+-        } finally {
+-            setIsSavingCalendarChange(false);
+-        }
+-    };
+-
+-    const saveProfessional = async () => {
+-        if (!pendingDetails) return;
+-
+-        const professional = professionalDraft.trim();
+-        if (pendingDetails.kind === "appointment" && !professional) {
+-            toast.error("Selecione um profissional para o atendimento.");
+-            return;
+-        }
+-
+-        setIsSavingCalendarChange(true);
+-        try {
+-            await updateCalendarEntry(pendingDetails, { professional: professional || null });
+-            await refreshCalendarRecords();
+-            setPendingDetails(null);
+-            toast.success("Profissional atualizado com sucesso.");
+-        } catch (error) {
+-            toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
+-        } finally {
+-            setIsSavingCalendarChange(false);
++        } catch {
++            return dateStr;
+         }
+     };
+ 
+     const formatScheduledAt = (record: AppointmentRecord) => formatDate(record.scheduledAt || record.date);
+     const formatClinicalDate = (record: AppointmentRecord) => formatDate(record.date);
+-    const formatCreatedAt = (record: AppointmentRecord) => record.createdAt ? formatDate(record.createdAt) : null;
++    const formatCreatedAt = (record: AppointmentRecord) => (record.createdAt ? formatDate(record.createdAt) : null);
+ 
+     return (
+         <AdminLayout title="Atendimentos & Consultas">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full md:w-auto">
+                     <Card className="border-slate-100 shadow-sm min-w-0">
+                         <CardContent className="p-6">
+                             <div className="flex items-center gap-4">
+                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                     <Stethoscope size={20} />
+                                 </div>
+                                 <div>
+                                     <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Atendimentos</p>
+                                     <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
+                                 </div>
+                             </div>
+                         </CardContent>
+                     </Card>
+                 </div>
+-                {currentUser.role !== 'manager' && (
+-                    <Button onClick={() => navigate('/admin/consultas/new')} className="bg-primary hover:bg-primary/90 h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 w-full md:w-auto">
++                {currentUser.role !== "manager" && (
++                    <Button
++                        onClick={() => navigate("/admin/consultas/new")}
++                        className="bg-primary hover:bg-primary/90 h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 w-full md:w-auto"
++                    >
+                         <Plus size={20} /> Novo Atendimento
+                     </Button>
+                 )}
+             </div>
+ 
+-            <div className="mb-6 flex flex-wrap gap-2">
+-                <Button
+-                    type="button"
+-                    variant={viewMode === "list" ? "default" : "outline"}
+-                    onClick={() => setViewMode("list")}
+-                >
+-                    Lista
+-                </Button>
+-                <Button
+-                    type="button"
+-                    variant={viewMode === "calendar" ? "default" : "outline"}
+-                    onClick={() => setViewMode("calendar")}
+-                >
+-                    Calendário
+-                </Button>
+-            </div>
+-
+-            {viewMode === "list" && (
+             <div className="admin-card p-6 w-full">
+-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
++                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                     <div>
+                         <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900">Histórico de Pacientes</h2>
+                         <p className="text-sm text-slate-500">Consulte ou acompanhe registros evolutivos.</p>
+                     </div>
+-                    <div className="relative w-full md:w-96">
+-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+-                        <Input
+-                            placeholder="Pesquisar paciente ou CPF..."
+-                            className="pl-10 h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
+-                            value={searchTerm}
+-                            onChange={(e) => setSearchTerm(e.target.value)}
+-                        />
++                    <div className="grid w-full lg:w-auto gap-3 md:grid-cols-2">
++                        <div className="relative w-full lg:w-96">
++                            <label htmlFor="appointments-search" className="sr-only">Pesquisar paciente ou CPF</label>
++                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
++                            <Input
++                                id="appointments-search"
++                                aria-label="Pesquisar paciente ou CPF"
++                                placeholder="Pesquisar paciente ou CPF..."
++                                className="pl-10 h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
++                                value={searchTerm}
++                                onChange={(event) => setSearchTerm(event.target.value)}
++                            />
++                        </div>
++                        <div className="w-full lg:w-52">
++                            <label htmlFor="appointments-date-filter" className="sr-only">Filtrar por data</label>
++                            <Input
++                                id="appointments-date-filter"
++                                aria-label="Filtrar por data"
++                                type="date"
++                                className="h-12 bg-slate-50 border-slate-100 focus:ring-primary/20 rounded-xl font-medium"
++                                value={dateFilter}
++                                onChange={(event) => setDateFilter(event.target.value)}
++                            />
++                        </div>
+                     </div>
+                 </div>
+ 
+                 <div className="divide-y divide-slate-100">
+                     {filteredAppointments.length > 0 ? (
+                         filteredAppointments.map((record) => (
+-                            <div key={record.id} className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4 group">
++                            <div
++                                key={record.id}
++                                className="py-4 md:py-6 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-xl px-2 md:px-4 -mx-2 md:-mx-4 group"
++                            >
+                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+-                                    <div className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer" onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}>
++                                    <div
++                                        className="flex items-center gap-4 w-full sm:w-auto flex-1 cursor-pointer"
++                                        onClick={() => navigate(`/admin/consultas/${record.id}?patientId=${record.patientId ?? ""}`)}
++                                    >
+                                         <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
+                                             <User size={24} />
+                                         </div>
+                                         <div className="min-w-0">
+                                             <div className="flex items-center gap-2">
+                                                 <h3 className="font-bold text-slate-900 text-lg leading-tight truncate">
+                                                     {record.patientName || record.patient?.name}
+                                                 </h3>
+-                                                {currentUser.role === 'manager' && (
+-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-100">Controle</Badge>
++                                                {currentUser.role === "manager" && (
++                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-100">
++                                                        Controle
++                                                    </Badge>
+                                                 )}
+                                             </div>
+                                             <div className="flex flex-wrap items-center gap-3 mt-1">
+                                                 <span className="text-xs font-bold text-primary uppercase tracking-widest">{record.procedure}</span>
+                                                 <span className="text-xs text-slate-300">|</span>
+                                                 <span className="text-xs text-slate-500 font-mono hidden sm:inline">
+                                                     {record.cpf || record.patient?.cpf}
+                                                 </span>
+                                                 <span className="text-xs text-slate-300 hidden sm:inline">|</span>
+                                                 <span className="text-xs text-slate-500 flex items-center gap-1 font-medium whitespace-nowrap">
+@@ -433,24 +245,28 @@ const AdminAppointments = () => {
+                                                         <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                                                             Criado em {formatCreatedAt(record)}
+                                                         </span>
+                                                     </>
+                                                 )}
+                                             </div>
+                                         </div>
+                                     </div>
+ 
+                                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+-                                        {currentUser.role !== 'manager' && (
++                                        {currentUser.role !== "manager" && (
+                                             <AlertDialog>
+                                                 <AlertDialogTrigger asChild>
+-                                                    <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
++                                                    <Button
++                                                        variant="ghost"
++                                                        size="icon"
++                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
++                                                    >
+                                                         <Trash2 size={18} />
+                                                     </Button>
+                                                 </AlertDialogTrigger>
+                                                 <AlertDialogContent>
+                                                     <AlertDialogHeader>
+                                                         <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+                                                         <AlertDialogDescription>
+                                                             Isso apagará permanentemente o registro de atendimento do paciente {record.patientName}. Esta ação não pode ser desfeita.
+                                                         </AlertDialogDescription>
+                                                     </AlertDialogHeader>
+@@ -477,255 +293,15 @@ const AdminAppointments = () => {
+                         <div className="text-center py-16">
+                             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                 <Search size={40} />
+                             </div>
+                             <h3 className="text-lg font-bold text-slate-900 mb-2">Nenhum atendimento encontrado</h3>
+                             <p className="text-slate-500 font-medium">Não há registros com os filtros atuais ou o sistema está vazio.</p>
+                         </div>
+                     )}
+                 </div>
+             </div>
+-            )}
+-
+-            {viewMode === "calendar" && (
+-                <div className="admin-card p-6 w-full">
+-                    <CalendarView
+-                        entries={buildCalendarEntries(appointments, leads)}
+-                        anchorDate={calendarDate}
+-                        onAnchorDateChange={setCalendarDate}
+-                        onEventOpen={(entry) => {
+-                            setPendingDetails(entry);
+-                            setProfessionalDraft(entry.professional || "");
+-                        }}
+-                        onEventDrop={(entry, scheduledAt) => setPendingDrop({ entry, scheduledAt })}
+-                        onEventCreate={openManualAppointment}
+-                    />
+-                </div>
+-            )}
+-
+-            <Dialog
+-                open={Boolean(manualAppointmentDate)}
+-                onOpenChange={(open) => {
+-                    if (!open && !isCreatingAppointment) {
+-                        setManualAppointmentDate(null);
+-                        setManualAppointmentError("");
+-                    }
+-                }}
+-            >
+-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+-                    <DialogHeader>
+-                        <DialogTitle>Novo atendimento</DialogTitle>
+-                        <DialogDescription>
+-                            Cadastre um atendimento diretamente no horário selecionado da agenda.
+-                        </DialogDescription>
+-                    </DialogHeader>
+-                    <div className="grid gap-4 py-2 sm:grid-cols-2">
+-                        <div className="space-y-2 sm:col-span-2">
+-                            <Label htmlFor="manual-patient-name">Paciente</Label>
+-                            <Input
+-                                id="manual-patient-name"
+-                                value={manualAppointment.patientName}
+-                                onChange={(event) => updateManualAppointment("patientName", event.target.value)}
+-                                autoComplete="name"
+-                                disabled={isCreatingAppointment}
+-                            />
+-                        </div>
+-                        <div className="space-y-2">
+-                            <Label htmlFor="manual-procedure">Procedimento</Label>
+-                            <Input
+-                                id="manual-procedure"
+-                                value={manualAppointment.procedure}
+-                                onChange={(event) => updateManualAppointment("procedure", event.target.value)}
+-                                disabled={isCreatingAppointment}
+-                            />
+-                        </div>
+-                        <div className="space-y-2">
+-                            <Label htmlFor="manual-appointment-type">Tipo de atendimento</Label>
+-                            <Select
+-                                value={manualAppointment.appointmentType}
+-                                onValueChange={(value: ManualAppointmentForm["appointmentType"]) => updateManualAppointment("appointmentType", value)}
+-                                disabled={isCreatingAppointment}
+-                            >
+-                                <SelectTrigger id="manual-appointment-type">
+-                                    <SelectValue />
+-                                </SelectTrigger>
+-                                <SelectContent>
+-                                    <SelectItem value="odontologia">Odontologia</SelectItem>
+-                                    <SelectItem value="harmonizacao">Harmonização facial</SelectItem>
+-                                    <SelectItem value="ambos">Ambos</SelectItem>
+-                                </SelectContent>
+-                            </Select>
+-                        </div>
+-                        <div className="space-y-2">
+-                            <Label htmlFor="manual-professional">Profissional</Label>
+-                            <Select
+-                                value={manualAppointment.professional}
+-                                onValueChange={(value) => updateManualAppointment("professional", value)}
+-                                disabled={isCreatingAppointment}
+-                            >
+-                                <SelectTrigger id="manual-professional">
+-                                    <SelectValue placeholder="Selecione o profissional" />
+-                                </SelectTrigger>
+-                                <SelectContent>
+-                                    {staff.map((user) => (
+-                                        <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
+-                                    ))}
+-                                </SelectContent>
+-                            </Select>
+-                        </div>
+-                        <div className="space-y-2">
+-                            <Label htmlFor="manual-scheduled-at">Data e horário</Label>
+-                            <Input
+-                                id="manual-scheduled-at"
+-                                type="datetime-local"
+-                                value={manualAppointment.scheduledAt}
+-                                onChange={(event) => updateManualAppointment("scheduledAt", event.target.value)}
+-                                disabled={isCreatingAppointment}
+-                            />
+-                        </div>
+-                        <div className="space-y-2">
+-                            <Label htmlFor="manual-price">Valor (opcional)</Label>
+-                            <Input
+-                                id="manual-price"
+-                                type="number"
+-                                min="0"
+-                                step="0.01"
+-                                value={manualAppointment.price}
+-                                onChange={(event) => updateManualAppointment("price", event.target.value)}
+-                                disabled={isCreatingAppointment}
+-                            />
+-                        </div>
+-                        <div className="space-y-2">
+-                            <Label htmlFor="manual-payment-status">Status do pagamento (opcional)</Label>
+-                            <Select
+-                                value={manualAppointment.paymentStatus || "unspecified"}
+-                                onValueChange={(value) => updateManualAppointment("paymentStatus", value === "unspecified" ? "" : value as ManualAppointmentForm["paymentStatus"])}
+-                                disabled={isCreatingAppointment}
+-                            >
+-                                <SelectTrigger id="manual-payment-status">
+-                                    <SelectValue />
+-                                </SelectTrigger>
+-                                <SelectContent>
+-                                    <SelectItem value="unspecified">Não informado</SelectItem>
+-                                    <SelectItem value="paid">Recebido</SelectItem>
+-                                    <SelectItem value="pending">A receber</SelectItem>
+-                                    <SelectItem value="courtesy">Cortesia / retorno</SelectItem>
+-                                </SelectContent>
+-                            </Select>
+-                        </div>
+-                    </div>
+-                    {manualAppointmentError && (
+-                        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+-                            {manualAppointmentError}
+-                        </p>
+-                    )}
+-                    <DialogFooter>
+-                        <Button
+-                            type="button"
+-                            variant="outline"
+-                            onClick={() => setManualAppointmentDate(null)}
+-                            disabled={isCreatingAppointment}
+-                        >
+-                            Cancelar
+-                        </Button>
+-                        <Button
+-                            type="button"
+-                            onClick={() => void createManualAppointment()}
+-                            disabled={isCreatingAppointment}
+-                        >
+-                            {isCreatingAppointment ? "Salvando..." : "Criar atendimento"}
+-                        </Button>
+-                    </DialogFooter>
+-                </DialogContent>
+-            </Dialog>
+-
+-            <AlertDialog
+-                open={Boolean(pendingDrop)}
+-                onOpenChange={(open) => {
+-                    if (!open && !isSavingCalendarChange) setPendingDrop(null);
+-                }}
+-            >
+-                <AlertDialogContent>
+-                    <AlertDialogHeader>
+-                        <AlertDialogTitle>Confirmar novo horário</AlertDialogTitle>
+-                        <AlertDialogDescription>
+-                            {pendingDrop && (
+-                                <>
+-                                    Você deseja mover {pendingDrop.entry.patientName} de {formatDate(pendingDrop.entry.scheduledAt)} para {formatDate(pendingDrop.scheduledAt)}?
+-                                </>
+-                            )}
+-                        </AlertDialogDescription>
+-                    </AlertDialogHeader>
+-                    <AlertDialogFooter>
+-                        <AlertDialogCancel disabled={isSavingCalendarChange}>Cancelar</AlertDialogCancel>
+-                        <AlertDialogAction
+-                            disabled={isSavingCalendarChange}
+-                            onClick={(event) => {
+-                                event.preventDefault();
+-                                void confirmDrop();
+-                            }}
+-                        >
+-                            Confirmar novo horário
+-                        </AlertDialogAction>
+-                    </AlertDialogFooter>
+-                </AlertDialogContent>
+-            </AlertDialog>
+-
+-            <Dialog
+-                open={Boolean(pendingDetails)}
+-                onOpenChange={(open) => {
+-                    if (!open && !isSavingCalendarChange) setPendingDetails(null);
+-                }}
+-            >
+-                <DialogContent>
+-                    <DialogHeader>
+-                        <DialogTitle>Detalhes do agendamento</DialogTitle>
+-                        <DialogDescription>
+-                            {pendingDetails && "Altere somente o profissional responsável por este agendamento."}
+-                        </DialogDescription>
+-                    </DialogHeader>
+-                    {pendingDetails && (
+-                        <div className="space-y-4 text-sm text-slate-700">
+-                            <div>
+-                                <p className="text-xs font-medium uppercase text-slate-500">Paciente</p>
+-                                <p className="font-semibold text-slate-900">{pendingDetails.patientName}</p>
+-                            </div>
+-                            <div>
+-                                <p className="text-xs font-medium uppercase text-slate-500">Tratamento/procedimento</p>
+-                                <p>{pendingDetails.treatment || pendingDetails.procedure || pendingDetails.appointmentType || "Agendamento"}</p>
+-                            </div>
+-                            {pendingDetails.isReturn && (
+-                                <div>
+-                                    <p className="text-xs font-medium uppercase text-slate-500">Vínculo</p>
+-                                    <p className="font-medium text-emerald-700">Retorno vinculado a uma consulta anterior</p>
+-                                </div>
+-                            )}
+-                            <div>
+-                                <p className="text-xs font-medium uppercase text-slate-500">Data e horário</p>
+-                                <p>{formatDate(pendingDetails.scheduledAt)}</p>
+-                            </div>
+-                            <div className="space-y-2">
+-                                <p className="text-xs font-medium uppercase text-slate-500">Profissional</p>
+-                                <Select value={professionalDraft || (pendingDetails.kind === "lead" ? "unassigned" : "")} onValueChange={(value) => setProfessionalDraft(value === "unassigned" ? "" : value)}>
+-                                    <SelectTrigger><SelectValue placeholder="Selecione o profissional" /></SelectTrigger>
+-                                    <SelectContent>
+-                                        {pendingDetails.kind === "lead" && (
+-                                            <SelectItem value="unassigned">Sem profissional</SelectItem>
+-                                        )}
+-                                        {staff.map((user) => <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>)}
+-                                    </SelectContent>
+-                                </Select>
+-                            </div>
+-                            <p className="text-xs text-slate-500">Altere data e horário arrastando o cartão na agenda ou no formulário de consulta existente.</p>
+-                        </div>
+-                    )}
+-                    <DialogFooter>
+-                        <Button type="button" variant="outline" onClick={() => setPendingDetails(null)} disabled={isSavingCalendarChange}>Cancelar</Button>
+-                        <Button type="button" onClick={() => void saveProfessional()} disabled={isSavingCalendarChange}>Salvar profissional</Button>
+-                    </DialogFooter>
+-                </DialogContent>
+-            </Dialog>
+         </AdminLayout>
+     );
+ };
+ 
+ export default AdminAppointments;
+diff --git a/src/pages/AdminCalendar.test.tsx b/src/pages/AdminCalendar.test.tsx
+new file mode 100644
+index 0000000..1e6422c
+--- /dev/null
++++ b/src/pages/AdminCalendar.test.tsx
+@@ -0,0 +1,116 @@
++import type { ReactNode } from "react";
++import { render, screen, waitFor } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++import { fetchClient } from "@/lib/api";
++import { buildCalendarEntries } from "@/lib/calendar";
++import AdminCalendar from "./AdminCalendar";
++
++const { invalidateQueriesMock } = vi.hoisted(() => ({
++    invalidateQueriesMock: vi.fn(),
++}));
++
++vi.mock("@/components/admin/AdminLayout", () => ({
++    default: ({ children, title }: { children: ReactNode; title: string }) => (
++        <main aria-label={title}>{children}</main>
++    ),
++}));
++
++vi.mock("@/components/admin/appointments/CalendarView", () => ({
++    CalendarView: ({ onEventCreate }: { onEventCreate?: (date: Date) => void }) => (
++        <button type="button" onClick={() => onEventCreate?.(new Date(2026, 7, 14, 9, 0))}>
++            Criar horário de teste
++        </button>
++    ),
++}));
++
++vi.mock("@/lib/api", () => ({ fetchClient: vi.fn() }));
++
++vi.mock("@tanstack/react-query", () => ({
++    useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
++}));
++
++vi.mock("sonner", () => ({
++    toast: { error: vi.fn(), success: vi.fn() },
++}));
++
++const fetchClientMock = vi.mocked(fetchClient);
++
++const response = (body: unknown, ok = true, status = ok ? 200 : 500) => ({
++    ok,
++    status,
++    json: vi.fn().mockResolvedValue(body),
++}) as unknown as Response;
++
++const initialResponse = (path: string) => {
++    if (path === "/appointments") return response([]);
++    if (path === "/staff") return response([{ id: 7, name: "Dra. Sofia", role: "dentist" }]);
++    return response([]);
++};
++
++async function openCompletedManualForm() {
++    const user = userEvent.setup();
++    await waitFor(() => expect(fetchClientMock).toHaveBeenCalledWith("/staff"));
++    await user.click(screen.getByRole("button", { name: "Criar horário de teste" }));
++    await user.type(screen.getByLabelText("Paciente"), "Marina Alves");
++    await user.type(screen.getByLabelText("Procedimento"), "Avaliação");
++    return user;
++}
++
++describe("AdminCalendar manual calendar creation", () => {
++    beforeEach(() => {
++        localStorage.setItem("admin_user", JSON.stringify({ name: "Dra. Sofia", role: "admin" }));
++        vi.clearAllMocks();
++        invalidateQueriesMock.mockResolvedValue(undefined);
++        fetchClientMock.mockImplementation(async (path) => initialResponse(String(path)));
++    });
++
++    it("keeps the modal and controlled values after an unexpected POST failure", async () => {
++        fetchClientMock.mockImplementation(async (path, options) => {
++            if (path === "/appointments" && options?.method === "POST") {
++                return response({ error: "Prisma P2002 database detail" }, false, 500);
++            }
++            return initialResponse(String(path));
++        });
++        render(<AdminCalendar />);
++        const user = await openCompletedManualForm();
++
++        await user.click(screen.getByRole("button", { name: "Criar atendimento" }));
++
++        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível criar o atendimento.");
++        expect(screen.getByRole("dialog")).toBeInTheDocument();
++        expect(screen.getByLabelText("Paciente")).toHaveValue("Marina Alves");
++        expect(screen.getByLabelText("Procedimento")).toHaveValue("Avaliação");
++        expect(screen.queryByText(/Prisma P2002/)).not.toBeInTheDocument();
++    });
++
++    it("closes after success and refreshes appointment, lead, and dashboard state", async () => {
++        fetchClientMock.mockImplementation(async (path) => initialResponse(String(path)));
++        render(<AdminCalendar />);
++        const user = await openCompletedManualForm();
++
++        await user.click(screen.getByRole("button", { name: "Criar atendimento" }));
++
++        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
++        expect(fetchClientMock.mock.calls.filter(([path]) => path === "/appointments")).toHaveLength(3);
++        expect(fetchClientMock.mock.calls.filter(([path]) => path === "/leads")).toHaveLength(2);
++        expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["dashboard-stats"] });
++        expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ["leads"] });
++    });
++});
++
++describe("AdminCalendar return calendar state", () => {
++    it("carries the linked-source marker into the calendar detail entry", () => {
++        const entries = buildCalendarEntries([{
++            id: 42,
++            patientName: "Marina Alves",
++            procedure: "Retorno: Avaliação",
++            scheduledAt: "2026-08-20T16:00:00.000Z",
++            parentAppointmentId: 41,
++        }]);
++
++        expect(entries).toHaveLength(1);
++        expect(entries[0]).toMatchObject({ isReturn: true });
++    });
++});
+diff --git a/src/pages/AdminCalendar.tsx b/src/pages/AdminCalendar.tsx
+new file mode 100644
+index 0000000..99f57bf
+--- /dev/null
++++ b/src/pages/AdminCalendar.tsx
+@@ -0,0 +1,562 @@
++import React, { useEffect, useState } from "react";
++import { toast } from "sonner";
++import { useQueryClient } from "@tanstack/react-query";
++
++import AdminLayout from "@/components/admin/AdminLayout";
++import { CalendarView } from "@/components/admin/appointments/CalendarView";
++import { fetchClient } from "@/lib/api";
++import { buildCalendarEntries, CalendarEntry } from "@/lib/calendar";
++import { Button } from "@/components/ui/button";
++import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import {
++    AlertDialog,
++    AlertDialogAction,
++    AlertDialogCancel,
++    AlertDialogContent,
++    AlertDialogDescription,
++    AlertDialogFooter,
++    AlertDialogHeader,
++    AlertDialogTitle,
++} from "@/components/ui/alert-dialog";
++
++interface AppointmentRecord {
++    id: number;
++    patientName: string;
++    date: string;
++    scheduledAt?: string | null;
++    createdAt?: string;
++    procedure: string;
++    notes: string;
++    professional: string;
++    appointmentType?: "odontologia" | "harmonizacao" | "ambos";
++    status?: "scheduled" | "attended" | "cancelled";
++    parentAppointmentId?: number | null;
++    patientId?: number | null;
++    patient?: {
++        name: string;
++        cpf: string;
++    };
++}
++
++interface LeadRecord {
++    id: number;
++    name?: string | null;
++    status?: string | null;
++    scheduledAt?: string | null;
++    treatment?: string | null;
++    createdAt?: string | null;
++    professional?: string | null;
++}
++
++interface StaffUser {
++    id: number;
++    name: string;
++    role: string;
++}
++
++interface ManualAppointmentForm {
++    patientName: string;
++    procedure: string;
++    appointmentType: "odontologia" | "harmonizacao" | "ambos";
++    professional: string;
++    scheduledAt: string;
++    price: string;
++    paymentStatus: "" | "paid" | "pending" | "courtesy";
++}
++
++const toDateTimeLocalValue = (date: Date) => {
++    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
++    return localDate.toISOString().slice(0, 16);
++};
++
++const AdminCalendar = () => {
++    const queryClient = useQueryClient();
++    const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
++    const [leads, setLeads] = useState<LeadRecord[]>([]);
++    const [staff, setStaff] = useState<StaffUser[]>([]);
++    const [calendarDate, setCalendarDate] = useState(new Date());
++    const [pendingDrop, setPendingDrop] = useState<{ entry: CalendarEntry; scheduledAt: string } | null>(null);
++    const [pendingDetails, setPendingDetails] = useState<CalendarEntry | null>(null);
++    const [professionalDraft, setProfessionalDraft] = useState("");
++    const [isSavingCalendarChange, setIsSavingCalendarChange] = useState(false);
++    const [manualAppointmentDate, setManualAppointmentDate] = useState<Date | null>(null);
++    const [manualAppointment, setManualAppointment] = useState<ManualAppointmentForm>({
++        patientName: "",
++        procedure: "",
++        appointmentType: "odontologia",
++        professional: "",
++        scheduledAt: "",
++        price: "",
++        paymentStatus: "",
++    });
++    const [manualAppointmentError, setManualAppointmentError] = useState("");
++    const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
++
++    const userStr = localStorage.getItem("admin_user");
++    const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional" };
++
++    useEffect(() => {
++        void fetchAppointments();
++        void fetchCalendarData();
++    }, []);
++
++    const fetchAppointments = async () => {
++        try {
++            const res = await fetchClient("/appointments");
++            if (!res.ok) {
++                toast.error("Erro ao carregar atendimentos.");
++                return;
++            }
++
++            const data = await res.json();
++            setAppointments(Array.isArray(data) ? data : []);
++        } catch (error) {
++            console.error("Failed to fetch appointments:", error);
++            toast.error("Erro ao carregar atendimentos.");
++        }
++    };
++
++    const fetchCalendarData = async () => {
++        try {
++            const [leadsResponse, usersResponse] = await Promise.all([
++                fetchClient("/leads"),
++                fetchClient("/staff"),
++            ]);
++            const [leadsBody, usersBody] = await Promise.all([
++                leadsResponse.json().catch(() => ({})),
++                usersResponse.json().catch(() => ({})),
++            ]);
++
++            if (!leadsResponse.ok || !usersResponse.ok) {
++                throw new Error(
++                    (typeof leadsBody === "object" && leadsBody && "error" in leadsBody ? String(leadsBody.error) : "") ||
++                    (typeof usersBody === "object" && usersBody && "error" in usersBody ? String(usersBody.error) : "") ||
++                    "Erro ao carregar agenda."
++                );
++            }
++
++            const calendarLeads = Array.isArray(leadsBody) ? leadsBody as LeadRecord[] : [];
++            const calendarStaff = Array.isArray(usersBody) ? usersBody as StaffUser[] : [];
++            setLeads(calendarLeads);
++            setStaff(calendarStaff.filter((user) => user.role !== "manager"));
++        } catch (error) {
++            toast.error(error instanceof Error ? error.message : "Erro ao carregar agenda.");
++        }
++    };
++
++    const updateCalendarEntry = async (
++        entry: CalendarEntry,
++        payload: { scheduledAt?: string | null; professional?: string | null }
++    ) => {
++        const endpoint = entry.kind === "lead" ? `/leads/${entry.leadId}` : `/appointments/${entry.id}`;
++        const response = await fetchClient(endpoint, {
++            method: "PUT",
++            body: JSON.stringify(payload),
++        });
++        const body = await response.json().catch(() => ({}));
++
++        if (!response.ok) {
++            throw new Error(
++                typeof body === "object" && body && "error" in body
++                    ? String(body.error)
++                    : "Não foi possível atualizar a agenda."
++            );
++        }
++
++        return body;
++    };
++
++    const refreshCalendarRecords = async () => {
++        await Promise.all([fetchAppointments(), fetchCalendarData()]);
++    };
++
++    const openManualAppointment = (date: Date) => {
++        const defaultProfessional = staff.some((user) => user.name === currentUser.name)
++            ? currentUser.name
++            : staff[0]?.name || "";
++
++        setManualAppointmentDate(date);
++        setManualAppointment({
++            patientName: "",
++            procedure: "",
++            appointmentType: "odontologia",
++            professional: defaultProfessional,
++            scheduledAt: toDateTimeLocalValue(date),
++            price: "",
++            paymentStatus: "",
++        });
++        setManualAppointmentError("");
++    };
++
++    const updateManualAppointment = <K extends keyof ManualAppointmentForm>(
++        field: K,
++        value: ManualAppointmentForm[K]
++    ) => {
++        setManualAppointment((current) => ({ ...current, [field]: value }));
++    };
++
++    const createManualAppointment = async () => {
++        const patientName = manualAppointment.patientName.trim();
++        const procedure = manualAppointment.procedure.trim();
++        const professional = manualAppointment.professional.trim();
++        const scheduledDate = new Date(manualAppointment.scheduledAt);
++
++        if (!patientName || !procedure || !professional || Number.isNaN(scheduledDate.getTime())) {
++            setManualAppointmentError("Preencha paciente, procedimento, profissional, data e horário.");
++            return;
++        }
++
++        const payload: Record<string, string | number> = {
++            patientName,
++            procedure,
++            appointmentType: manualAppointment.appointmentType,
++            professional,
++            date: scheduledDate.toISOString(),
++            scheduledAt: scheduledDate.toISOString(),
++        };
++
++        if (manualAppointment.price.trim()) payload.price = Number(manualAppointment.price);
++        if (manualAppointment.paymentStatus) payload.paymentStatus = manualAppointment.paymentStatus;
++
++        setIsCreatingAppointment(true);
++        setManualAppointmentError("");
++        try {
++            const response = await fetchClient("/appointments", {
++                method: "POST",
++                body: JSON.stringify(payload),
++            });
++            const body = await response.json().catch(() => ({}));
++
++            if (!response.ok) {
++                throw new Error(
++                    response.status >= 500
++                        ? "Não foi possível criar o atendimento."
++                        : typeof body === "object" && body && "error" in body
++                            ? String(body.error)
++                            : "Não foi possível criar o atendimento."
++                );
++            }
++
++            await Promise.all([
++                refreshCalendarRecords(),
++                queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
++                queryClient.invalidateQueries({ queryKey: ["leads"] }),
++            ]);
++            setManualAppointmentDate(null);
++            toast.success("Atendimento agendado com sucesso.");
++        } catch (error) {
++            setManualAppointmentError(error instanceof Error ? error.message : "Não foi possível criar o atendimento.");
++        } finally {
++            setIsCreatingAppointment(false);
++        }
++    };
++
++    const confirmDrop = async () => {
++        if (!pendingDrop) return;
++
++        setIsSavingCalendarChange(true);
++        try {
++            await updateCalendarEntry(pendingDrop.entry, { scheduledAt: pendingDrop.scheduledAt });
++            await refreshCalendarRecords();
++            setPendingDrop(null);
++            toast.success("Horário atualizado com sucesso.");
++        } catch (error) {
++            toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
++        } finally {
++            setIsSavingCalendarChange(false);
++        }
++    };
++
++    const saveProfessional = async () => {
++        if (!pendingDetails) return;
++
++        const professional = professionalDraft.trim();
++        if (pendingDetails.kind === "appointment" && !professional) {
++            toast.error("Selecione um profissional para o atendimento.");
++            return;
++        }
++
++        setIsSavingCalendarChange(true);
++        try {
++            await updateCalendarEntry(pendingDetails, { professional: professional || null });
++            await refreshCalendarRecords();
++            setPendingDetails(null);
++            toast.success("Profissional atualizado com sucesso.");
++        } catch (error) {
++            toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a agenda.");
++        } finally {
++            setIsSavingCalendarChange(false);
++        }
++    };
++
++    const formatDate = (dateStr: string) => {
++        try {
++            return new Date(dateStr).toLocaleString("pt-BR", {
++                day: "2-digit",
++                month: "2-digit",
++                year: "numeric",
++                hour: "2-digit",
++                minute: "2-digit",
++            });
++        } catch {
++            return dateStr;
++        }
++    };
++
++    return (
++        <AdminLayout title="Calendário">
++            <div className="admin-card p-6 w-full">
++                <CalendarView
++                    entries={buildCalendarEntries(appointments, leads)}
++                    anchorDate={calendarDate}
++                    onAnchorDateChange={setCalendarDate}
++                    onEventOpen={(entry) => {
++                        setPendingDetails(entry);
++                        setProfessionalDraft(entry.professional || "");
++                    }}
++                    onEventDrop={(entry, scheduledAt) => setPendingDrop({ entry, scheduledAt })}
++                    onEventCreate={openManualAppointment}
++                />
++            </div>
++
++            <Dialog
++                open={Boolean(manualAppointmentDate)}
++                onOpenChange={(open) => {
++                    if (!open && !isCreatingAppointment) {
++                        setManualAppointmentDate(null);
++                        setManualAppointmentError("");
++                    }
++                }}
++            >
++                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
++                    <DialogHeader>
++                        <DialogTitle>Novo atendimento</DialogTitle>
++                        <DialogDescription>
++                            Cadastre um atendimento diretamente no horário selecionado da agenda.
++                        </DialogDescription>
++                    </DialogHeader>
++                    <div className="grid gap-4 py-2 sm:grid-cols-2">
++                        <div className="space-y-2 sm:col-span-2">
++                            <Label htmlFor="manual-patient-name">Paciente</Label>
++                            <Input
++                                id="manual-patient-name"
++                                value={manualAppointment.patientName}
++                                onChange={(event) => updateManualAppointment("patientName", event.target.value)}
++                                autoComplete="name"
++                                disabled={isCreatingAppointment}
++                            />
++                        </div>
++                        <div className="space-y-2">
++                            <Label htmlFor="manual-procedure">Procedimento</Label>
++                            <Input
++                                id="manual-procedure"
++                                value={manualAppointment.procedure}
++                                onChange={(event) => updateManualAppointment("procedure", event.target.value)}
++                                disabled={isCreatingAppointment}
++                            />
++                        </div>
++                        <div className="space-y-2">
++                            <Label htmlFor="manual-appointment-type">Tipo de atendimento</Label>
++                            <Select
++                                value={manualAppointment.appointmentType}
++                                onValueChange={(value: ManualAppointmentForm["appointmentType"]) => updateManualAppointment("appointmentType", value)}
++                                disabled={isCreatingAppointment}
++                            >
++                                <SelectTrigger id="manual-appointment-type">
++                                    <SelectValue />
++                                </SelectTrigger>
++                                <SelectContent>
++                                    <SelectItem value="odontologia">Odontologia</SelectItem>
++                                    <SelectItem value="harmonizacao">Harmonização facial</SelectItem>
++                                    <SelectItem value="ambos">Ambos</SelectItem>
++                                </SelectContent>
++                            </Select>
++                        </div>
++                        <div className="space-y-2">
++                            <Label htmlFor="manual-professional">Profissional</Label>
++                            <Select
++                                value={manualAppointment.professional}
++                                onValueChange={(value) => updateManualAppointment("professional", value)}
++                                disabled={isCreatingAppointment}
++                            >
++                                <SelectTrigger id="manual-professional">
++                                    <SelectValue placeholder="Selecione o profissional" />
++                                </SelectTrigger>
++                                <SelectContent>
++                                    {staff.map((user) => (
++                                        <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
++                                    ))}
++                                </SelectContent>
++                            </Select>
++                        </div>
++                        <div className="space-y-2">
++                            <Label htmlFor="manual-scheduled-at">Data e horário</Label>
++                            <Input
++                                id="manual-scheduled-at"
++                                type="datetime-local"
++                                value={manualAppointment.scheduledAt}
++                                onChange={(event) => updateManualAppointment("scheduledAt", event.target.value)}
++                                disabled={isCreatingAppointment}
++                            />
++                        </div>
++                        <div className="space-y-2">
++                            <Label htmlFor="manual-price">Valor (opcional)</Label>
++                            <Input
++                                id="manual-price"
++                                type="number"
++                                min="0"
++                                step="0.01"
++                                value={manualAppointment.price}
++                                onChange={(event) => updateManualAppointment("price", event.target.value)}
++                                disabled={isCreatingAppointment}
++                            />
++                        </div>
++                        <div className="space-y-2">
++                            <Label htmlFor="manual-payment-status">Status do pagamento (opcional)</Label>
++                            <Select
++                                value={manualAppointment.paymentStatus || "unspecified"}
++                                onValueChange={(value) => updateManualAppointment("paymentStatus", value === "unspecified" ? "" : value as ManualAppointmentForm["paymentStatus"])}
++                                disabled={isCreatingAppointment}
++                            >
++                                <SelectTrigger id="manual-payment-status">
++                                    <SelectValue />
++                                </SelectTrigger>
++                                <SelectContent>
++                                    <SelectItem value="unspecified">Não informado</SelectItem>
++                                    <SelectItem value="paid">Recebido</SelectItem>
++                                    <SelectItem value="pending">A receber</SelectItem>
++                                    <SelectItem value="courtesy">Cortesia / retorno</SelectItem>
++                                </SelectContent>
++                            </Select>
++                        </div>
++                    </div>
++                    {manualAppointmentError && (
++                        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
++                            {manualAppointmentError}
++                        </p>
++                    )}
++                    <DialogFooter>
++                        <Button
++                            type="button"
++                            variant="outline"
++                            onClick={() => setManualAppointmentDate(null)}
++                            disabled={isCreatingAppointment}
++                        >
++                            Cancelar
++                        </Button>
++                        <Button
++                            type="button"
++                            onClick={() => void createManualAppointment()}
++                            disabled={isCreatingAppointment}
++                        >
++                            {isCreatingAppointment ? "Salvando..." : "Criar atendimento"}
++                        </Button>
++                    </DialogFooter>
++                </DialogContent>
++            </Dialog>
++
++            <AlertDialog
++                open={Boolean(pendingDrop)}
++                onOpenChange={(open) => {
++                    if (!open && !isSavingCalendarChange) setPendingDrop(null);
++                }}
++            >
++                <AlertDialogContent>
++                    <AlertDialogHeader>
++                        <AlertDialogTitle>Confirmar novo horário</AlertDialogTitle>
++                        <AlertDialogDescription>
++                            {pendingDrop && (
++                                <>
++                                    Você deseja mover {pendingDrop.entry.patientName} de {formatDate(pendingDrop.entry.scheduledAt)} para {formatDate(pendingDrop.scheduledAt)}?
++                                </>
++                            )}
++                        </AlertDialogDescription>
++                    </AlertDialogHeader>
++                    <AlertDialogFooter>
++                        <AlertDialogCancel disabled={isSavingCalendarChange}>Cancelar</AlertDialogCancel>
++                        <AlertDialogAction
++                            disabled={isSavingCalendarChange}
++                            onClick={(event) => {
++                                event.preventDefault();
++                                void confirmDrop();
++                            }}
++                        >
++                            Confirmar novo horário
++                        </AlertDialogAction>
++                    </AlertDialogFooter>
++                </AlertDialogContent>
++            </AlertDialog>
++
++            <Dialog
++                open={Boolean(pendingDetails)}
++                onOpenChange={(open) => {
++                    if (!open && !isSavingCalendarChange) setPendingDetails(null);
++                }}
++            >
++                <DialogContent>
++                    <DialogHeader>
++                        <DialogTitle>Detalhes do agendamento</DialogTitle>
++                        <DialogDescription>
++                            {pendingDetails && "Altere somente o profissional responsável por este agendamento."}
++                        </DialogDescription>
++                    </DialogHeader>
++                    {pendingDetails && (
++                        <div className="space-y-4 text-sm text-slate-700">
++                            <div>
++                                <p className="text-xs font-medium uppercase text-slate-500">Paciente</p>
++                                <p className="font-semibold text-slate-900">{pendingDetails.patientName}</p>
++                            </div>
++                            <div>
++                                <p className="text-xs font-medium uppercase text-slate-500">Tratamento/procedimento</p>
++                                <p>{pendingDetails.treatment || pendingDetails.procedure || pendingDetails.appointmentType || "Agendamento"}</p>
++                            </div>
++                            {pendingDetails.isReturn && (
++                                <div>
++                                    <p className="text-xs font-medium uppercase text-slate-500">Vínculo</p>
++                                    <p className="font-medium text-emerald-700">Retorno vinculado a uma consulta anterior</p>
++                                </div>
++                            )}
++                            <div>
++                                <p className="text-xs font-medium uppercase text-slate-500">Data e horário</p>
++                                <p>{formatDate(pendingDetails.scheduledAt)}</p>
++                            </div>
++                            <div className="space-y-2">
++                                <p className="text-xs font-medium uppercase text-slate-500">Profissional</p>
++                                <Select
++                                    value={professionalDraft || (pendingDetails.kind === "lead" ? "unassigned" : "")}
++                                    onValueChange={(value) => setProfessionalDraft(value === "unassigned" ? "" : value)}
++                                >
++                                    <SelectTrigger>
++                                        <SelectValue placeholder="Selecione o profissional" />
++                                    </SelectTrigger>
++                                    <SelectContent>
++                                        {pendingDetails.kind === "lead" && (
++                                            <SelectItem value="unassigned">Sem profissional</SelectItem>
++                                        )}
++                                        {staff.map((user) => (
++                                            <SelectItem key={user.id} value={user.name}>{user.name}</SelectItem>
++                                        ))}
++                                    </SelectContent>
++                                </Select>
++                            </div>
++                            <p className="text-xs text-slate-500">Altere data e horário arrastando o cartão na agenda ou no formulário de consulta existente.</p>
++                        </div>
++                    )}
++                    <DialogFooter>
++                        <Button type="button" variant="outline" onClick={() => setPendingDetails(null)} disabled={isSavingCalendarChange}>
++                            Cancelar
++                        </Button>
++                        <Button type="button" onClick={() => void saveProfessional()} disabled={isSavingCalendarChange}>
++                            Salvar profissional
++                        </Button>
++                    </DialogFooter>
++                </DialogContent>
++            </Dialog>
++        </AdminLayout>
++    );
++};
++
++export default AdminCalendar;
+diff --git a/src/pages/AdminDashboard.tsx b/src/pages/AdminDashboard.tsx
+index dd4ac03..f3a7997 100644
+--- a/src/pages/AdminDashboard.tsx
++++ b/src/pages/AdminDashboard.tsx
+@@ -155,21 +155,21 @@ const AdminDashboard = () => {
+ 
+             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+                 {/* PRÓXIMA AGENDA */}
+                 <div className="admin-card p-5 md:p-8">
+                     <div className="flex items-center justify-between mb-6 md:mb-8">
+                         <div>
+                             <h3 className="font-serif font-black text-lg md:text-2xl text-slate-900">Próxima Agenda</h3>
+                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">Horários confirmados</p>
+                         </div>
+                         <button 
+-                            onClick={() => navigate('/admin/consultas?view=calendar')}
++                            onClick={() => navigate('/admin/calendario')}
+                             title="Ver Calendário"
+                             className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center shadow-inner hover:bg-blue-100 transition-colors cursor-pointer"
+                         >
+                             <Calendar size={20} className="md:w-6 md:h-6" />
+                         </button>
+                     </div>
+ 
+                     <div className="space-y-4">
+                         {stats.upcomingSchedule.length > 0 ? (
+                             stats.upcomingSchedule.map((item) => {
+diff --git a/src/pages/BlogPost.tsx b/src/pages/BlogPost.tsx
+index 46f95ac..774e692 100644
+--- a/src/pages/BlogPost.tsx
++++ b/src/pages/BlogPost.tsx
+@@ -1,17 +1,18 @@
+ import { useParams, Link } from "react-router-dom";
+ import Header from "@/components/layout/Header";
+ import Footer from "@/components/layout/Footer";
+ import { Button } from "@/components/ui/button";
+ import { ArrowLeft, User, Clock, Share2, ChevronLeft, ChevronRight, Maximize2, X, BookOpen, ExternalLink } from "lucide-react";
+ import { useState, useEffect } from "react";
+ import { API_URL } from "@/lib/api";
++import { trackAnalyticsEvent } from "@/lib/analytics";
+ import { mediaUrl } from "@/lib/media";
+ 
+ interface BlogReference {
+     title: string;
+     url: string;
+     authors?: string;
+     journal?: string;
+     year?: string | number;
+ }
+ 
+@@ -41,30 +42,25 @@ const BlogPost = () => {
+         if (slug) {
+             fetch(`${API_URL}/posts/${slug}`)
+                 .then(res => res.json())
+                 .then(data => {
+                     setPost(data as BlogPostData);
+                     setIsLoading(false);
+                     // 1. Fire and forget legacy view increment
+                     if (data.id) {
+                         fetch(`${API_URL}/posts/${data.id}/view`, { method: 'POST' }).catch(() => { });
+                     }
+-                    // 2. Log to unified Analytics system
+-                    fetch(`${API_URL}/analytics`, {
+-                        method: 'POST',
+-                        headers: { 'Content-Type': 'application/json' },
+-                        body: JSON.stringify({
+-                            path: `/blog/${slug}`,
+-                            type: 'blog_view',
+-                            source: 'Direto'
+-                        })
+-                    }).catch(() => { });
++                    trackAnalyticsEvent({
++                        path: `/blog/${slug}`,
++                        type: "blog_view",
++                        source: "Direto",
++                    });
+                 })
+                 .catch(err => {
+                     console.error(err);
+                     setIsLoading(false);
+                 });
+         }
+     }, [slug]);
+ 
+     if (isLoading) {
+         return (

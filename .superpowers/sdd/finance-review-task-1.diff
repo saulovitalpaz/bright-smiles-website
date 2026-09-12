@@ -1,0 +1,210 @@
+# Review package: aee5bc8..2e20338
+
+## Commits
+2e20338 test: cover finance date categories and accounting flow
+
+## Files changed
+ server/test/finance-period-contract.test.js   | 33 ++++++++++++++++++-
+ src/components/admin/finance-contract.test.ts | 47 +++++++++++++++++++++++++++
+ src/pages/AdminSettings.test.tsx              | 22 ++++++++++++-
+ src/pages/finance-pages-layout.test.ts        |  5 +++
+ 4 files changed, 105 insertions(+), 2 deletions(-)
+
+## Diff
+diff --git a/server/test/finance-period-contract.test.js b/server/test/finance-period-contract.test.js
+index 593b4fa..644e769 100644
+--- a/server/test/finance-period-contract.test.js
++++ b/server/test/finance-period-contract.test.js
+@@ -1,16 +1,21 @@
+ const test = require('node:test');
+ const assert = require('node:assert/strict');
+ const fs = require('node:fs');
+ const path = require('node:path');
+ 
+-const { parseFinancePeriod, financeStatsWhere } = require('../utils/financePeriod');
++const {
++    financeCumulativeWhere,
++    financeStatsWhere,
++    parseFinancePeriod,
++    parseFinanceTransactionDate
++} = require('../utils/financePeriod');
+ 
+ test('parseFinancePeriod uses São Paulo month boundaries with an exclusive end', () => {
+     const period = parseFinancePeriod({ month: '3', year: '2026' });
+ 
+     assert.equal(period.overview, false);
+     assert.equal(period.start.toISOString(), '2026-03-01T03:00:00.000Z');
+     assert.equal(period.endExclusive.toISOString(), '2026-04-01T03:00:00.000Z');
+ });
+ 
+ test('parseFinancePeriod supports explicit overview and rejects partial or invalid months', () => {
+@@ -35,10 +40,36 @@ test('finance list and stats use the shared parser and remain private', () => {
+ 
+     for (const route of [financeRoute, statsRoute]) {
+         assert.match(route, /authenticateToken/);
+         assert.match(route, /authorizeRole\(\['admin', 'manager'\]\)/);
+         assert.match(route, /parseFinancePeriod\(req\.query\)/);
+     }
+     assert.match(statsRoute, /pendingIncome/);
+     assert.match(statsRoute, /endExclusive/);
+     assert.match(source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'")), /paymentStatus:\s*'received'/);
+ });
++
++test('parseFinanceTransactionDate keeps YYYY-MM-DD at São Paulo midnight', () => {
++    assert.equal(parseFinanceTransactionDate('2026-08-15').toISOString(), '2026-08-15T03:00:00.000Z');
++});
++
++test('parseFinanceTransactionDate rejects missing and malformed dates', () => {
++    assert.throws(() => parseFinanceTransactionDate(), /date/i);
++    assert.throws(() => parseFinanceTransactionDate('2026-02-31'), /date/i);
++});
++
++test('financeCumulativeWhere stops before the selected period', () => {
++    const period = parseFinancePeriod({ month: '3', year: '2026' });
++
++    assert.deepEqual(financeCumulativeWhere(period), { date: { lt: period.start } });
++});
++
++test('finance routes expose dated input and accounting totals', () => {
++    const source = fs.readFileSync(path.resolve(__dirname, '../index.js'), 'utf8');
++    const createRoute = source.slice(source.indexOf("app.post('/finance'"), source.indexOf("app.put('/finance/:id'"));
++    const statsRoute = source.slice(source.indexOf("app.get('/finance/stats'"), source.indexOf('// NEW: NF-e'));
++
++    assert.match(createRoute, /parseFinanceTransactionDate/);
++    assert.match(createRoute, /description:.*null/);
++    assert.match(statsRoute, /openingBalance/);
++    assert.match(statsRoute, /closingBalance/);
++});
+diff --git a/src/components/admin/finance-contract.test.ts b/src/components/admin/finance-contract.test.ts
+new file mode 100644
+index 0000000..bc4b905
+--- /dev/null
++++ b/src/components/admin/finance-contract.test.ts
+@@ -0,0 +1,47 @@
++import { readFileSync } from "node:fs";
++import { resolve } from "node:path";
++import { describe, expect, it } from "vitest";
++
++const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
++
++describe("finance navigation and accounting contracts", () => {
++    const header = read("src/components/layout/Header.tsx");
++    const financePage = read("src/pages/AdminFinance.tsx");
++    const financePdf = read("src/components/admin/FinanceReportPDF.tsx");
++    const settingsPage = read("src/pages/AdminSettings.tsx");
++
++    it("removes Stories and Contato from the public header", () => {
++        expect(header).not.toMatch(/\{ label: "Stories"/);
++        expect(header).not.toMatch(/\{ label: "Contato"/);
++    });
++
++    it("uses dated transactions with nullable descriptions", () => {
++        expect(financePage).toContain('type="date"');
++        expect(financePage).toContain("newDate");
++        expect(financePage).toContain("description: newDesc.trim() || null");
++        expect(financePage).toContain("date: newDate");
++    });
++
++    it("keeps finance records independent from appointment identifiers", () => {
++        for (const source of [financePage, financePdf]) {
++            expect(source).not.toContain("appointmentId");
++            expect(source).not.toMatch(/atendimento\s+n[uºo]mero/i);
++            expect(source).not.toContain("nº do atendimento");
++        }
++        expect(financePage).toContain("t.patient?.name");
++    });
++
++    it("exposes accounting totals without browser print controls", () => {
++        expect(financePage).toContain("openingBalance");
++        expect(financePage).toContain("closingBalance");
++        expect(financePage).toContain("categorySummary");
++        expect(financePage).not.toContain("window.print()");
++        expect(financePage).not.toContain("<Printer");
++    });
++
++    it("uses the global finance categories endpoint", () => {
++        expect(settingsPage).toContain("/finance/categories");
++        expect(settingsPage).toContain("Categorias financeiras");
++        expect(settingsPage).not.toContain('"finance_categories"');
++    });
++});
+diff --git a/src/pages/AdminSettings.test.tsx b/src/pages/AdminSettings.test.tsx
+index 30d9c8a..ae8d508 100644
+--- a/src/pages/AdminSettings.test.tsx
++++ b/src/pages/AdminSettings.test.tsx
+@@ -66,21 +66,25 @@ async function renderLoadedSettings() {
+     render(<AdminSettings />);
+     await screen.findByRole("heading", {
+         name: "Identidade e Assinatura Profissional",
+     });
+ }
+ 
+ describe("AdminSettings professional settings", () => {
+     beforeEach(() => {
+         localStorage.clear();
+         vi.clearAllMocks();
+-        axiosGetMock.mockResolvedValue(response(globalSettings));
++        axiosGetMock.mockImplementation((url) => Promise.resolve(
++            response(url === `${API_URL}/finance/categories`
++                ? [{ id: 1, name: "Materiais" }]
++                : globalSettings),
++        ));
+         axiosPostMock.mockResolvedValue(response({}));
+     });
+ 
+     it("anuncia o carregamento inicial das configurações", () => {
+         axiosGetMock.mockImplementationOnce(() => new Promise(() => undefined));
+ 
+         render(<AdminSettings />);
+ 
+         expect(
+             screen.getByRole("status", { name: "Carregando configurações" }),
+@@ -251,11 +255,27 @@ describe("AdminSettings professional settings", () => {
+             "max-w-full",
+         );
+         expect(screen.getByTestId("professional-settings-fields")).toHaveClass(
+             "grid-cols-1",
+         );
+         expect(screen.getByRole("button", { name: "Salvar Todas as Configurações" })).toHaveClass(
+             "w-full",
+             "sm:w-auto",
+         );
+     });
++
++    it("lista e cadastra categorias financeiras globalmente", async () => {
++        const user = userEvent.setup();
++
++        await renderLoadedSettings();
++
++        expect(await screen.findByText("Materiais")).toBeInTheDocument();
++        await user.type(screen.getByLabelText("Nova categoria financeira"), "Laboratório");
++        await user.click(screen.getByRole("button", { name: "Adicionar categoria" }));
++
++        expect(axiosPostMock).toHaveBeenCalledWith(
++            `${API_URL}/finance/categories`,
++            { name: "Laboratório" },
++            { withCredentials: true },
++        );
++    });
+ });
+diff --git a/src/pages/finance-pages-layout.test.ts b/src/pages/finance-pages-layout.test.ts
+index 37dd8cf..0827df9 100644
+--- a/src/pages/finance-pages-layout.test.ts
++++ b/src/pages/finance-pages-layout.test.ts
+@@ -19,11 +19,16 @@ describe("finance page layout contracts", () => {
+     expect(clinicFinance).toContain('className="min-w-0 space-y-3 lg:hidden"');
+     expect(clinicFinance).toContain("min-w-0 flex-col");
+   });
+ 
+   it("stacks personal finance fields and exposes row actions on touch", () => {
+     expect(personalFinance).toContain('className="grid grid-cols-1 gap-4 sm:grid-cols-2"');
+     expect(personalFinance).toContain("flex min-w-0 flex-col gap-4");
+     expect(personalFinance).toContain("sm:opacity-0 sm:group-hover:opacity-100");
+     expect(personalFinance).toContain("aria-label={`Excluir ${t.description}`}");
+   });
++
++  it("keeps the clinic finance report inside the print layout root", () => {
++    expect(clinicFinance).toContain("print-report");
++    expect(clinicFinance).toContain("DownloadFinanceReportButton");
++  });
+ });

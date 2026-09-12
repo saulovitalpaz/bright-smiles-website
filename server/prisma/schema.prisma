@@ -172,6 +172,7 @@ model Patient {
   address       String?
   history       String?
   birthDate     DateTime?
+  sex           String?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   consent       Boolean              @default(false)

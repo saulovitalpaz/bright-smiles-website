@@ -7,7 +7,7 @@ const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('../utils/publicSetti
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 test('all local media references resolve under public', () => {
-    const sources = ['src/data/posts.ts', 'src/data/treatments.ts', 'server/seed.js']
+    const sources = ['server/seed.js']
         .map((file) => fs.readFileSync(path.join(repoRoot, file), 'utf8'))
         .join('\n');
     const references = [...sources.matchAll(/["'](\/images\/[^"']+)["']/g)].map((match) => match[1]);

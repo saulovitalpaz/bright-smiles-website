@@ -5,6 +5,13 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 
 describe("AnatomicalTooth", () => {
   it.each([
+    ["implante", "implant"], ["ponte_fixa", "bridge"], ["dente_ausente", "cross"],
+  ] as const)("renders the legend symbol for layered %s", (type, symbol) => {
+    const { container } = render(<AnatomicalTooth toothNumber={16} data={{ status: "Saudável", notes: "" }}
+      record={{ notes: "", conditions: [{ id: "symbol", category: "protese", type, stage: "concluido", targets: [{ kind: "tooth" }] }] }} />);
+    expect(container.querySelector(`[data-clinical-symbol="${symbol}"]`)).toBeInTheDocument();
+  });
+  it.each([
     [11, "incisor"],
     [13, "canine"],
     [15, "premolar"],

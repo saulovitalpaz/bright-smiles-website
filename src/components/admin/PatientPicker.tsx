@@ -24,6 +24,7 @@ interface Patient {
     phone?: string;
     address?: string;
     birthDate?: string | null;
+    sex?: "female" | "male" | null;
 }
 
 interface PatientPickerProps {

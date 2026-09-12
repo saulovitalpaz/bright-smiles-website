@@ -24,6 +24,10 @@ import {
 } from "./odontogramModel";
 
 describe("odontogramModel", () => {
+  it("keeps legacy treatment-needed faces pending during migration", () => {
+    const result = normalizeOdontogram({ "16": { status: "Saudável", notes: "", faces: { top: { status: "Tratar" } } } });
+    expect(result.teeth["16"].conditions[0]).toMatchObject({ type: "legado_tratar", stage: "planejado" });
+  });
   it("normalizes legacy status, faces and notes without dropping data", () => {
     const result = normalizeOdontogram({
       "16": {

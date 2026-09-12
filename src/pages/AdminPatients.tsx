@@ -21,6 +21,7 @@ interface Patient {
     address?: string | null;
     history?: string | null;
     birthDate?: string | null;
+    sex?: "female" | "male" | null;
     consent?: boolean;
     consentDate?: string | null;
     odontogram?: unknown;
@@ -43,6 +44,7 @@ const emptyForm: PatientForm = {
     address: "",
     history: "",
     birthDate: "",
+    sex: null,
     odontogram: "",
 };
 
@@ -130,6 +132,7 @@ const AdminPatients = () => {
             address: patient.address || "",
             history: patient.history || "",
             birthDate: patient.birthDate ? patient.birthDate.slice(0, 10) : "",
+            sex: patient.sex ?? null,
             odontogram: typeof patient.odontogram === "string" ? patient.odontogram : patient.odontogram ? JSON.stringify(patient.odontogram, null, 2) : "",
         });
         focusPatientForm();
@@ -160,6 +163,7 @@ const AdminPatients = () => {
                 address: form.address || undefined,
                 history: form.history || undefined,
                 birthDate: form.birthDate || null,
+                sex: form.sex ?? null,
                 odontogram,
             };
             const response = await fetchClient(editingId ? `/patients/${editingId}` : "/patients", {
@@ -237,6 +241,14 @@ const AdminPatients = () => {
                         <CardHeader className="flex flex-row items-center justify-between gap-2"><CardTitle>{editingId ? "Editar paciente" : "Novo paciente"}</CardTitle><Button type="button" variant="ghost" className="min-h-11" onClick={() => setFormOpen(false)}>Recolher</Button></CardHeader>
                         <CardContent><form onSubmit={savePatient} className="space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><div className="space-y-2"><Label htmlFor="patient-name">Nome *</Label><Input ref={nameInputRef} autoComplete="name" id="patient-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-cpf">CPF *</Label><Input id="patient-cpf" value={form.cpf} onChange={(event) => setForm({ ...form, cpf: event.target.value })} required /></div><div className="space-y-2"><Label htmlFor="patient-birth-date">Data de nascimento</Label><Input id="patient-birth-date" type="date" value={form.birthDate || ""} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} max={new Date().toISOString().slice(0, 10)} /><p className="text-xs text-slate-500">{form.birthDate ? formatAgeSummary(form.birthDate) : "A idade será calculada pela data informada."}</p></div><div className="space-y-2"><Label htmlFor="patient-phone">Telefone</Label><Input type="tel" autoComplete="tel" id="patient-phone" value={form.phone || ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div><div className="space-y-2"><Label htmlFor="patient-address">Endereço</Label><Input id="patient-address" value={form.address || ""} onChange={(event) => setForm({ ...form, address: event.target.value })} /></div></div>
+                            <div className="space-y-2">
+                                <Label htmlFor="patient-sex">Sexo</Label>
+                                <select id="patient-sex" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={form.sex ?? ""} onChange={(event) => setForm({ ...form, sex: event.target.value === "male" ? "male" : event.target.value === "female" ? "female" : null })}>
+                                    <option value="">Não informado</option>
+                                    <option value="female">Feminino</option>
+                                    <option value="male">Masculino</option>
+                                </select>
+                            </div>
                             <div className="space-y-2"><Label htmlFor="patient-history">Histórico</Label><Textarea id="patient-history" rows={3} value={form.history || ""} onChange={(event) => setForm({ ...form, history: event.target.value })} /></div>
                             <AttendanceSection title="Dados complementares do odontograma" summary="Editar registro existente"><div className="space-y-2"><Label htmlFor="patient-odontogram">Registro do odontograma</Label><Textarea id="patient-odontogram" rows={3} value={String(form.odontogram || "")} onChange={(event) => setForm({ ...form, odontogram: event.target.value })} /></div></AttendanceSection>
                             <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" disabled={saving} className="w-full sm:flex-1">{saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Save className="mr-2" size={16} />}{editingId ? "Salvar alterações" : "Cadastrar paciente"}</Button><Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto"><RotateCcw size={16} className="mr-2" /> Limpar</Button></div>

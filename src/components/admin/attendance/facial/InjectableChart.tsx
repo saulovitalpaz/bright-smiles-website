@@ -6,7 +6,7 @@ import "./injectable-chart.css";
 import StockProductPicker from "./StockProductPicker";
 import { doseInStockUnit, type StockProduct } from "@/lib/stock";
 
-type Props = { value: unknown; onChange: (value: FacialNotesDocument) => void; onSave?: () => void; onViewSummary?: () => void; readOnly?: boolean };
+type Props = { value: unknown; onChange: (value: FacialNotesDocument) => void; onSave?: () => void; onViewSummary?: () => void; readOnly?: boolean; sex?: "female" | "male" | null };
 type Position = { x: number; y: number };
 const procedures: { value: FacialProcedureType; label: string; color: string; unit: "U" | "ml" | "fio"; arrow?: boolean }[] = [
   { value: "botulinum-toxin", label: "Toxina Botulínica", color: "#22a86b", unit: "U" },
@@ -31,7 +31,7 @@ const regionAt = ({ x, y }: Position) => {
   return `malar-${side}`;
 };
 
-export default function InjectableChart({ value, onChange, onSave, onViewSummary, readOnly = false }: Props) {
+export default function InjectableChart({ value, onChange, onSave, onViewSummary, readOnly = false, sex }: Props) {
   const [document, setDocument] = useState(() => normalizeFacialNotes(value));
   const incoming = useRef(JSON.stringify(normalizeFacialNotes(value)));
   const [procedure, setProcedure] = useState(procedures[0]);
@@ -125,7 +125,7 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
             onPointerCancel={() => { pointer.current = null; setPreview(null); }}
             onPointerUp={e => { if (!pointer.current) return; const origin = pointer.current; pointer.current = null; const end = positionAt(e); if (mode === "arrow" && Math.hypot(origin.x - end.x, origin.y - end.y) > .015) create(start ?? origin, end); else place(end); }}
             onKeyDown={e => { if (e.target !== e.currentTarget || readOnly) return; if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); const p = keyboardPosition.current; keyboardPosition.current = { x: Math.max(0, Math.min(1, p.x + (e.key === "ArrowLeft" ? -.01 : e.key === "ArrowRight" ? .01 : 0))), y: Math.max(0, Math.min(1, p.y + (e.key === "ArrowUp" ? -.01 : e.key === "ArrowDown" ? .01 : 0))) }; setPreview(keyboardPosition.current); } if (e.key === "Enter" || e.key === " ") { e.preventDefault(); place(keyboardPosition.current); } }}>
-            <image href="/facial-chart-front.png" width="750" height="1000" preserveAspectRatio="none" />
+            <image href={sex === "male" ? "/facial-chart-front-male.png" : "/facial-chart-front.png"} width="750" height="1000" preserveAspectRatio="none" />
             {applications.filter(a => a.coordinates).map(a => {
               const x = a.coordinates!.x * 750, y = a.coordinates!.y * 1000;
               const color = procedures.find(p => p.value === a.procedureType)?.color ?? "#8b45e5";

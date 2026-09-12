@@ -3,6 +3,7 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import {
   FACE_KEYS,
   getFaceLabels,
+  getConditionTargetLabel,
   getOdontogramStateDefinition,
   getToothFamily,
   type FaceKey,
@@ -182,6 +183,14 @@ export function ToothSurfaceSelector({
     onTargetsChange(normalizeTargets(selectedTargets, target));
   };
 
+  const isFaceSelected = (face: FaceKey): boolean => Boolean(selectedTargets?.some((target) => target.kind === "surface" && target.face === face));
+  const toggleFaceTarget = (target: SurfaceTarget): void => {
+    if (readOnly || !onTargetsChange || !selectedTargets) return;
+    onTargetsChange(isFaceSelected(target.face)
+      ? selectedTargets.filter((item) => item.kind !== "surface" || item.face !== target.face)
+      : normalizeTargets(selectedTargets, target));
+  };
+
   return (
     <div
       className="tooth-surface-selector__container"
@@ -204,7 +213,7 @@ export function ToothSurfaceSelector({
             const status = getFaceStatus(data, face);
             const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
             const isSelected = layeredMode
-              ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
+              ? isFaceSelected(face)
               : multiSurfaceMode
                 ? Boolean(selectedSurfaces?.includes(face))
                 : selectedFace === face;
@@ -218,7 +227,7 @@ export function ToothSurfaceSelector({
                 data-selected={isSelected || undefined}
                 onClick={() => {
                   if (layeredMode) {
-                    toggleTarget(target);
+                    toggleFaceTarget(target);
                   } else {
                     toggleSurface(face);
                   }
@@ -227,7 +236,7 @@ export function ToothSurfaceSelector({
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
                     if (layeredMode) {
-                      toggleTarget(target);
+                      toggleFaceTarget(target);
                     } else {
                       toggleSurface(face);
                     }
@@ -300,7 +309,7 @@ export function ToothSurfaceSelector({
         {FACE_KEYS.map((face) => {
           const target: SurfaceTarget = { kind: "surface", face, region: getDefaultRegion(face) };
           const isSelected = layeredMode
-            ? Boolean(selectedTargets && isSelectedTarget(selectedTargets, target))
+            ? isFaceSelected(face)
             : multiSurfaceMode
               ? Boolean(selectedSurfaces?.includes(face))
               : selectedFace === face;
@@ -313,7 +322,7 @@ export function ToothSurfaceSelector({
               key={`text-${face}`}
               onClick={() => {
                 if (layeredMode) {
-                  toggleTarget(target);
+                  toggleFaceTarget(target);
                 } else {
                   toggleSurface(face);
                 }
@@ -347,6 +356,18 @@ export function ToothSurfaceSelector({
               );
             }),
           )}
+        </div>
+      ) : null}
+      {layeredMode && selectedTargets?.length ? (
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Regiões selecionadas">
+          {selectedTargets.map((target) => (
+            <button type="button" disabled={readOnly} key={getConditionTargetLabel(toothNumber, target)}
+              className="min-h-11 rounded-lg border border-blue-400 px-2 text-xs text-blue-100"
+              aria-label={`Remover região ${getConditionTargetLabel(toothNumber, target)}`}
+              onClick={() => toggleTarget(target)}>
+              {getConditionTargetLabel(toothNumber, target)} ×
+            </button>
+          ))}
         </div>
       ) : null}
     </div>

@@ -16,8 +16,16 @@ describe("finance page layout contracts", () => {
   });
 
   it("keeps narrow clinic finance content inside flexible containers", () => {
-    expect(clinicFinance).toContain('className="min-w-0 space-y-3 lg:hidden"');
+    const mobileClasses = clinicFinance.match(/<div className="([^"]+)">\{displayedTransactions\.map\(\(t\) => <article/)?.[1].split(/\s+/);
+    expect(mobileClasses).toEqual(expect.arrayContaining(["min-w-0", "md:hidden"]));
+    expect(mobileClasses).not.toContain("hidden");
     expect(clinicFinance).toContain("min-w-0 flex-col");
+  });
+
+  it("switches from transaction cards to a scrollable table at the same breakpoint", () => {
+    const tableClasses = clinicFinance.match(/<div className="([^"]+)"><table/)?.[1].split(/\s+/);
+    expect(tableClasses).toEqual(expect.arrayContaining(["admin-scroll-region", "hidden", "md:block"]));
+    expect(tableClasses).not.toContain("lg:block");
   });
 
   it("stacks personal finance fields and exposes row actions on touch", () => {

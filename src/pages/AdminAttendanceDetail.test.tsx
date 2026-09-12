@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { formatDateTimeInput, normalizeAppointmentResponse } from "./AdminAttendanceDetail";
 
 describe("normalizeAppointmentResponse", () => {
+    it("loads sex from the linked patient and keeps unknown records neutral", () => {
+        expect(normalizeAppointmentResponse({ patient: { sex: "male" } }).sex).toBe("male");
+        expect(normalizeAppointmentResponse({ patient: { sex: "female" } }).sex).toBe("female");
+        expect(normalizeAppointmentResponse({}).sex).toBeNull();
+    });
     it("normalizes legacy odontogram data when loading an appointment", () => {
         const appointment = normalizeAppointmentResponse({
             dentalNotes: {

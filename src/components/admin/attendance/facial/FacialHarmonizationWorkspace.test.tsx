@@ -16,6 +16,19 @@ function setup(value: unknown = { version: 2, applications: [] }, readOnly = fal
   return { ...result, onChange, mark, confirm, map };
 }
 describe("FacialHarmonizationWorkspace direct annotation", () => {
+  it("changes only the background when patient sex changes and preserves the marker", () => {
+    const value = { version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] };
+    const onChange = vi.fn();
+    const { container, rerender } = render(<FacialHarmonizationWorkspace value={value} onChange={onChange} sex="female" />);
+    const marker = container.querySelector(".injectable-mark");
+    expect(container.querySelector("image")).toHaveAttribute("href", "/facial-chart-front.png");
+    rerender(<FacialHarmonizationWorkspace value={value} onChange={onChange} sex="male" />);
+    expect(container.querySelector("image")).toHaveAttribute("href", "/facial-chart-front-male.png");
+    expect(container.querySelector(".injectable-mark")).toBe(marker);
+    expect(onChange).not.toHaveBeenCalled();
+    rerender(<FacialHarmonizationWorkspace value={value} onChange={onChange} />);
+    expect(container.querySelector("image")).toHaveAttribute("href", "/facial-chart-front.png");
+  });
   it("links the selected catalog product to the exact marker without a stock write", async () => {
     vi.mocked(loadStockProducts).mockResolvedValue([{ id: "p1", name: "Toxina catálogo", procedureType: "botulinum-toxin", stockUnit: "ml", quantity: 2, concentration: 50, price: 100, active: true, version: 1 }]);
     const { mark, confirm, onChange } = setup(); mark(375, 300);
