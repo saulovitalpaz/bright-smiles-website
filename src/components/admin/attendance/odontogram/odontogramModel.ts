@@ -376,8 +376,13 @@ export function getClinicalStageVisuals(): ReadonlyArray<ConditionVisual> {
 
 export function getConditionTargetLabel(toothNumber: number, target: ConditionTarget): string {
   if (target.kind === "tooth") return "Dente inteiro";
-  const region = target.region === "incisalOcclusal" ? "incisal/oclusal"
+  const region = target.region === "incisalOcclusal" ? target.face === "center" ? "incisal/oclusal" : getCrownThirdLabel(toothNumber)
     : target.region === "middle" ? "média"
       : target.region === "cervical" ? "cervical" : "face inteira";
   return `${getFaceLabels(toothNumber)[target.face]} - ${region}`;
+}
+
+export function getCrownThirdLabel(toothNumber: number): "incisal" | "oclusal" {
+  const family = getToothFamily(toothNumber);
+  return family === "incisor" || family === "canine" ? "incisal" : "oclusal";
 }

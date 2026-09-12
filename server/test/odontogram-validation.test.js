@@ -20,6 +20,14 @@ test('accepts a bounded permanent layered odontogram', () => {
   assert.equal(odontogramSchema.safeParse(valid).success, true);
 });
 
+test('preserves every lateral incisal or occlusal third as distinct from the central surface', () => {
+  for (const face of ['top', 'right', 'bottom', 'left']) {
+    const targets = [{ kind: 'surface', face, region: 'incisalOcclusal' }];
+    const value = { ...valid, teeth: { '16': { notes: '', conditions: [{ ...valid.teeth['16'].conditions[0], targets }] } } };
+    assert.deepEqual(odontogramSchema.parse(value).teeth['16'].conditions[0].targets, targets);
+  }
+});
+
 test('rejects a clinical condition with more than five targets', () => {
   const tooManyTargets = {
     ...valid,

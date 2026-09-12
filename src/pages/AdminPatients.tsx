@@ -22,6 +22,7 @@ interface Patient {
     history?: string | null;
     birthDate?: string | null;
     sex?: "female" | "male" | null;
+    weight?: string | null;
     consent?: boolean;
     consentDate?: string | null;
     odontogram?: unknown;
@@ -45,6 +46,7 @@ const emptyForm: PatientForm = {
     history: "",
     birthDate: "",
     sex: null,
+    weight: "",
     odontogram: "",
 };
 
@@ -133,6 +135,7 @@ const AdminPatients = () => {
             history: patient.history || "",
             birthDate: patient.birthDate ? patient.birthDate.slice(0, 10) : "",
             sex: patient.sex ?? null,
+            weight: patient.weight || "",
             odontogram: typeof patient.odontogram === "string" ? patient.odontogram : patient.odontogram ? JSON.stringify(patient.odontogram, null, 2) : "",
         });
         focusPatientForm();
@@ -150,6 +153,10 @@ const AdminPatients = () => {
             toast.error("Nome e CPF são obrigatórios.");
             return;
         }
+        if (form.weight?.trim() && (!/^\d{1,4}([.,]\d{1,3})?$/.test(form.weight.trim()) || Number(form.weight.replace(',', '.')) <= 0 || Number(form.weight.replace(',', '.')) > 1000)) {
+            toast.error("Informe o peso em kg, maior que zero e até 1000.");
+            return;
+        }
         setSaving(true);
         try {
             let odontogram: unknown = form.odontogram || null;
@@ -164,6 +171,7 @@ const AdminPatients = () => {
                 history: form.history || undefined,
                 birthDate: form.birthDate || null,
                 sex: form.sex ?? null,
+                weight: form.weight?.trim() || null,
                 odontogram,
             };
             const response = await fetchClient(editingId ? `/patients/${editingId}` : "/patients", {
@@ -249,6 +257,7 @@ const AdminPatients = () => {
                                     <option value="male">Masculino</option>
                                 </select>
                             </div>
+                            <div className="space-y-2"><Label htmlFor="patient-weight">Peso (kg)</Label><Input id="patient-weight" inputMode="decimal" maxLength={8} value={form.weight || ""} onChange={event => setForm({ ...form, weight: event.target.value })} /><p className="text-xs text-slate-500">Mantenha o peso atualizado para consulta nos atendimentos e prescrições.</p></div>
                             <div className="space-y-2"><Label htmlFor="patient-history">Histórico</Label><Textarea id="patient-history" rows={3} value={form.history || ""} onChange={(event) => setForm({ ...form, history: event.target.value })} /></div>
                             <AttendanceSection title="Dados complementares do odontograma" summary="Editar registro existente"><div className="space-y-2"><Label htmlFor="patient-odontogram">Registro do odontograma</Label><Textarea id="patient-odontogram" rows={3} value={String(form.odontogram || "")} onChange={(event) => setForm({ ...form, odontogram: event.target.value })} /></div></AttendanceSection>
                             <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" disabled={saving} className="w-full sm:flex-1">{saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Save className="mr-2" size={16} />}{editingId ? "Salvar alterações" : "Cadastrar paciente"}</Button><Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto"><RotateCcw size={16} className="mr-2" /> Limpar</Button></div>

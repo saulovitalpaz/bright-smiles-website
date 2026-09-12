@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi, beforeAll } from "vitest";
+import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
 import FacialHarmonizationWorkspace from "./FacialHarmonizationWorkspace";
 import { normalizeFacialNotes } from "./facialModel";
 import { loadStockProducts } from "@/lib/stock";
 vi.mock("@/lib/stock", async original => ({ ...await original<typeof import("@/lib/stock")>(), loadStockProducts: vi.fn() }));
 
 beforeAll(() => { window.PointerEvent = MouseEvent as typeof PointerEvent; });
+beforeEach(() => { vi.mocked(loadStockProducts).mockReset().mockResolvedValue([]); });
 function setup(value: unknown = { version: 2, applications: [] }, readOnly = false) {
   const onChange = vi.fn();
   const result = render(<FacialHarmonizationWorkspace value={value} onChange={onChange} readOnly={readOnly} />);
@@ -32,9 +33,18 @@ describe("FacialHarmonizationWorkspace direct annotation", () => {
   it("links the selected catalog product to the exact marker without a stock write", async () => {
     vi.mocked(loadStockProducts).mockResolvedValue([{ id: "p1", name: "Toxina catálogo", procedureType: "botulinum-toxin", stockUnit: "ml", quantity: 2, concentration: 50, price: 100, active: true, version: 1 }]);
     const { mark, confirm, onChange } = setup(); mark(375, 300);
-    fireEvent.click(screen.getByRole("button", { name: "Selecionar produto do estoque" }));
     fireEvent.click(await screen.findByRole("button", { name: /Toxina catálogo/ })); confirm("10");
     expect(onChange.mock.lastCall![0].applications[0]).toMatchObject({ productId: "p1", productName: "Toxina catálogo", amount: 10, unit: "U", coordinates: { x: .5, y: .3 } });
+  });
+  it("loads products of the correct class as soon as a cannula marking is created", async () => {
+    vi.mocked(loadStockProducts).mockResolvedValue([{ id: "p2", name: "Preenchedor teste", procedureType: "filler", stockUnit: "ml", quantity: 2, concentration: null, price: 100, active: true, version: 1 }]);
+    const { mark, confirm, onChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: /Preenchimento 0 ml/ }));
+    mark(225, 550, 300, 500);
+    fireEvent.click(await screen.findByRole("button", { name: /Preenchedor teste/ }));
+    expect(loadStockProducts).toHaveBeenCalledWith("filler", expect.any(AbortSignal));
+    confirm("0,5");
+    expect(onChange.mock.lastCall![0].applications[0]).toMatchObject({ productId: "p2", procedureType: "filler", amount: .5, unit: "ml" });
   });
   it("creates needle points without external region selection and totals their amounts", () => {
     const { mark, confirm, onChange } = setup();

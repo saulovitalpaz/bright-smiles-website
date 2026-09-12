@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { ClinicalConditionList } from "./ClinicalConditionList";
 
 describe("ClinicalConditionList", () => {
+  it.each([[11, "Vestibular (incisal)"], [16, "Vestibular (oclusal)"]] as const)("retains the lateral third in the summary for tooth %i", (toothNumber, label) => {
+    render(<ClinicalConditionList toothNumber={Number(toothNumber)} conditions={[{
+      id: "third", category: "achado", type: "carie", stage: "planejado",
+      targets: [{ kind: "surface", face: "top", region: "incisalOcclusal" }],
+    }]} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
   it("shows clinical details and removes the exact occurrence id", async () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();

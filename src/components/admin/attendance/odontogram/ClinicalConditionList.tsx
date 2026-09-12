@@ -3,6 +3,7 @@ import {
   getClinicalStageLabel,
   getConditionDisplayName,
   getFaceLabels,
+  getCrownThirdLabel,
   type ClinicalCondition,
 } from "./odontogramModel";
 
@@ -48,7 +49,7 @@ function formatConditionTargets(
 
     if (orderedRegions.length === 1) {
       const [region] = orderedRegions;
-      if (region === "incisalOcclusal") {
+      if (region === "incisalOcclusal" && face === "center") {
         targetLabels.push(faceLabel);
         return;
       }
@@ -58,7 +59,7 @@ function formatConditionTargets(
       }
     }
 
-    targetLabels.push(`${faceLabel} (${orderedRegions.map((region) => REGION_LABELS[region]).join(", ")})`);
+    targetLabels.push(`${faceLabel} (${orderedRegions.map((region) => region === "incisalOcclusal" && face !== "center" ? getCrownThirdLabel(toothNumber) : REGION_LABELS[region]).join(", ")})`);
   });
 
   return targetLabels.join(", ");

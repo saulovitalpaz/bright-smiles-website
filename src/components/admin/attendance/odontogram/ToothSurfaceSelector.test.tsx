@@ -5,6 +5,21 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
+  it.each([11, 13, 16, 24, 31, 36, 41, 46, 51, 55, 61, 65, 71, 75, 81, 85])("offers all three crown thirds on each lateral face of tooth %i", async toothNumber => {
+    const { getFaceLabels, getToothFamily } = await import("./odontogramModel");
+    const labels = getFaceLabels(toothNumber);
+    const family = getToothFamily(toothNumber);
+    const lastThird = family === "incisor" || family === "canine" ? "incisal" : "oclusal";
+    const onTargetsChange = vi.fn();
+    render(<ToothSurfaceSelector toothNumber={toothNumber} data={{ status: "Saudável", notes: "" }} selectedFace={null} onSelectFace={() => {}} selectedTargets={[]} onTargetsChange={onTargetsChange} />);
+    const user = userEvent.setup();
+    for (const face of ["top", "right", "bottom", "left"] as const) {
+      for (const [label, region] of [["cervical", "cervical"], ["média", "middle"], [lastThird, "incisalOcclusal"]]) {
+        await user.click(screen.getByRole("button", { name: `${labels[face]} - ${label}` }));
+        expect(onTargetsChange).toHaveBeenLastCalledWith([{ kind: "surface", face, region }]);
+      }
+    }
+  });
   it("exposes an explicit incisal ou oclusal label for the center control in layered mode", () => {
     const { container } = render(
       <ToothSurfaceSelector

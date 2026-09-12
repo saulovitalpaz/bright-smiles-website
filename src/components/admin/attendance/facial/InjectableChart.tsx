@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Check, Circle, Hand, Maximize, Minimize, Minus, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Circle, Hand, Maximize, Minimize, Minus, X } from "lucide-react";
 import SessionSummaryBar from "./SessionSummaryBar";
 import { normalizeFacialNotes, summarizeFacialNotes, type FacialApplication, type FacialNotesDocument, type FacialProcedureType } from "./facialModel";
 import "./injectable-chart.css";
@@ -58,7 +58,7 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
   }, [value]);
   useEffect(() => { if (editing) editor.current?.querySelector("input")?.focus(); }, [editing]);
   const commit = (next: FacialNotesDocument) => { incoming.current = JSON.stringify(next); setDocument(next); onChange(next); };
-  const open = (application: FacialApplication) => { setEditing(application); setSelectedProduct(null); setShowProductPicker(false); setAmount(application.amount === undefined ? "" : format(application.amount)); setError(""); setStart(null); setPreview(null); };
+  const open = (application: FacialApplication) => { setEditing(application); setSelectedProduct(null); setShowProductPicker(!application.productId); setAmount(application.amount === undefined ? "" : format(application.amount)); setError(""); setStart(null); setPreview(null); };
   const create = (position: Position, endCoordinates?: Position) => {
     if (readOnly) return;
     open({ id: crypto.randomUUID(), regionId: regionAt(position), procedureType: procedure.value, unit: procedure.unit, coordinates: position,
@@ -109,7 +109,7 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
         <p className="injectable-instruction">{readOnly ? "Selecione uma marcação para consultar o registro." : mode === "select" ? "Selecione uma marcação para editar." : mode === "arrow" ? "Arraste do ponto de entrada até o fim do trajeto. Também é possível tocar no início e no fim." : "Toque no local da aplicação direta com agulha."}</p>
         <label className="injectable-label-toggle"><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} />Mostrar quantidades</label>
         <details className="injectable-history"><summary>Registros ({document.applications.length})</summary>
-          {document.applications.map(a => <button key={a.id} type="button" onClick={() => open(a)}>{procedures.find(p => p.value === a.procedureType)?.label} · {format(a.amount ?? 0)} {a.unit}{!a.coordinates && " · sem posição"}</button>)}
+          {document.applications.map(a => <button key={a.id} type="button" onClick={() => open(a)}>{a.productName || procedures.find(p => p.value === a.procedureType)?.label} · {format(a.amount ?? 0)} {a.unit}{!a.coordinates && " · sem posição"}</button>)}
           {Object.entries(document.legacyRegions ?? {}).map(([region, data]) => <p key={region}><strong>{region}</strong>: {[data.product, data.dose, data.notes].filter(Boolean).join(" · ")}</p>)}
         </details>
       </aside>
@@ -145,7 +145,7 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
             {preview && !pointer.current && !start && !editing && <circle cx={preview.x * 750} cy={preview.y * 1000} r="10" stroke={procedure.color} fill="none" strokeWidth="2" pointerEvents="none" />}
           </svg>
           {editing && <div ref={editor} role="dialog" aria-label="Quantidade da aplicação" className="injectable-popover" style={{ left: `${Math.max(26, Math.min(74, (editing.coordinates?.x ?? .5) * 100))}%`, top: `${Math.max(20, Math.min(85, (editing.coordinates?.y ?? .5) * 100))}%` }}>
-            {!readOnly && <button type="button" className="facial-product-trigger" onClick={() => setShowProductPicker(!showProductPicker)}>{editing.productName || "Selecionar produto do estoque"}</button>}
+            {!readOnly && <button type="button" className="facial-product-trigger" aria-expanded={showProductPicker} onClick={() => setShowProductPicker(!showProductPicker)}><span>{editing.productName ? `${editing.productName} · Trocar produto` : showProductPicker ? "Produto do estoque" : "Selecionar produto do estoque"}</span><ChevronDown size={16} aria-hidden="true" /></button>}
             {!readOnly && showProductPicker && <StockProductPicker procedureType={editing.procedureType} selectedId={editing.productId} onSelect={product => { setSelectedProduct(product); setEditing({ ...editing, productId: product.id, productName: product.name, unit: product.stockUnit === "unit" ? "fio" : editing.unit === "U" ? "U" : "ml" }); setShowProductPicker(false); }} />}
             <form onSubmit={e => { e.preventDefault(); save(); }}>
               <label><span>{editing.device || "Aplicação"} · {editing.unit ?? "ml"}</span><input aria-label="Quantidade" inputMode="decimal" value={amount} readOnly={readOnly} placeholder="0" onChange={e => { setAmount(e.target.value); setError(""); }} aria-invalid={!!error} /></label>

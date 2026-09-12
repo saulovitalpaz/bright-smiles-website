@@ -3,6 +3,7 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import {
   FACE_KEYS,
   getFaceLabels,
+  getCrownThirdLabel,
   getConditionTargetLabel,
   getOdontogramStateDefinition,
   getToothFamily,
@@ -36,10 +37,10 @@ const FACE_POSITIONS: Record<FaceKey, string> = {
 };
 
 const FACE_REGION_OPTIONS: Readonly<Record<FaceKey, readonly SurfaceRegion[]>> = {
-  top: ["cervical", "middle"],
-  right: ["cervical", "middle"],
-  bottom: ["cervical", "middle"],
-  left: ["cervical", "middle"],
+  top: ["cervical", "middle", "incisalOcclusal"],
+  right: ["cervical", "middle", "incisalOcclusal"],
+  bottom: ["cervical", "middle", "incisalOcclusal"],
+  left: ["cervical", "middle", "incisalOcclusal"],
   center: [],
 };
 
@@ -335,27 +336,33 @@ export function ToothSurfaceSelector({
         })}
       </div>
       {layeredMode && selectedTargets ? (
-        <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Regiões anatômicas">
-          {FACE_KEYS.flatMap((face) =>
-            FACE_REGION_OPTIONS[face].map((region) => {
-              const target: SurfaceTarget = { kind: "surface", face, region };
-              const selected = isSelectedTarget(selectedTargets, target);
-              const label = `${labels[face]} - ${getRegionLabel(region)}`;
-              return (
-                <button
-                  aria-label={label}
-                  aria-pressed={selected}
-                  className={`min-h-11 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
-                  disabled={readOnly}
-                  key={`${face}-${region}`}
-                  onClick={() => toggleTarget(target)}
-                  type="button"
-                >
-                  {label}
-                </button>
-              );
-            }),
-          )}
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Regiões anatômicas">
+          {FACE_KEYS.filter(face => FACE_REGION_OPTIONS[face].length).map(face => (
+            <fieldset key={face} className="min-w-0 rounded-lg border border-slate-700 p-2">
+              <legend className="px-1 text-xs font-semibold text-slate-300">{labels[face]}</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {FACE_REGION_OPTIONS[face].map((region) => {
+                  const target: SurfaceTarget = { kind: "surface", face, region };
+                  const selected = isSelectedTarget(selectedTargets, target);
+                  const regionLabel = region === "incisalOcclusal" ? getCrownThirdLabel(toothNumber) : getRegionLabel(region);
+                  const label = `${labels[face]} - ${regionLabel}`;
+                  return (
+                    <button
+                      aria-label={label}
+                      aria-pressed={selected}
+                      className={`min-h-11 min-w-0 rounded-md border px-2 text-xs text-slate-100 transition-colors ${selected ? "border-blue-400 bg-blue-500/20 ring-1 ring-blue-400" : "border-slate-600 bg-slate-950 hover:border-slate-400"}`}
+                      disabled={readOnly}
+                      key={`${face}-${region}`}
+                      onClick={() => toggleTarget(target)}
+                      type="button"
+                    >
+                      {regionLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ))}
         </div>
       ) : null}
       {layeredMode && selectedTargets?.length ? (

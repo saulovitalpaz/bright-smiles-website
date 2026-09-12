@@ -5,6 +5,8 @@ const procedureTypes = ['botulinum-toxin', 'filler', 'biostimulator', 'bioremode
 const quantitySchema = z.number().finite().min(0).max(1000000).multipleOf(0.000001);
 const stockProductSchema = z.object({
     name: z.string().trim().min(1).max(160).refine(value => !/[<>]/.test(value)),
+    batch: z.string().trim().max(100).refine(value => !/[<>\x00-\x1f]/.test(value)).nullable().optional(),
+    reconstitutedAt: z.iso.date().transform(value => new Date(`${value}T00:00:00.000Z`)).nullable().optional(),
     procedureType: z.enum(procedureTypes),
     stockUnit: z.enum(['ml', 'unit']),
     concentration: z.number().finite().positive().max(1000000).nullable(),

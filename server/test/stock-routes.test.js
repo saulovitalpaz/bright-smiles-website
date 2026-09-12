@@ -36,6 +36,42 @@ test('rejects invalid product and adjustment input without accessing database', 
         assert.equal((await request('/stock/products/p1/adjustments', 'admin', 'POST', { quantity: 0, reason: '' })).status, 400);
     });
 });
+
+test('a newly registered product is returned for its class with batch and reconstitution date', async () => {
+    const catalog = [];
+    const tx = {
+        stockProduct: { create: async ({ data }) => { const product = { id: 'p1', version: 0, ...data }; catalog.push(product); return product; } },
+        stockMovement: { create: async () => ({}) },
+    };
+    await withApi({
+        $transaction: run => run(tx),
+        stockProduct: { findMany: async ({ where }) => catalog.filter(product => product.procedureType === where.procedureType) },
+    }, async request => {
+        const product = { name: 'Produto fictício', procedureType: 'filler', stockUnit: 'ml', concentration: null, price: 100, active: true, batch: 'LOTE-TESTE', reconstitutedAt: '2026-09-12' };
+        assert.equal((await request('/stock/products', 'dentist', 'POST', { quantity: 2, product })).status, 201);
+        const response = await request('/stock/products?procedureType=filler', 'dentist');
+        assert.equal(response.status, 200);
+        const matches = await response.json();
+        assert.equal(matches.length, 1);
+        assert.equal(matches[0].active, true);
+        assert.equal(matches[0].batch, 'LOTE-TESTE');
+        assert.equal(matches[0].reconstitutedAt, '2026-09-12T00:00:00.000Z');
+        assert.deepEqual(await (await request('/stock/products?procedureType=botulinum-toxin', 'dentist')).json(), []);
+    });
+});
+
+test('product edits preserve omitted traceability fields and allow explicitly clearing them', async () => {
+    let stored = { id: 'p1', name: 'Produto fictício', procedureType: 'filler', stockUnit: 'ml', concentration: null, price: 100, quantity: 2, version: 0, active: true, batch: 'LOTE-TESTE', reconstitutedAt: new Date('2026-09-12T00:00:00Z') };
+    const tx = { $queryRaw: async () => [stored], stockProduct: { update: async ({ data }) => { stored = { ...stored, ...data, version: stored.version + 1 }; return stored; } } };
+    await withApi({ $transaction: run => run(tx) }, async request => {
+        const product = { name: stored.name, procedureType: stored.procedureType, stockUnit: stored.stockUnit, concentration: null, price: 120, active: true };
+        assert.equal((await request('/stock/products/p1', 'admin', 'PUT', { product, version: 0 })).status, 200);
+        assert.equal(stored.batch, 'LOTE-TESTE');
+        assert.ok(stored.reconstitutedAt instanceof Date);
+        assert.equal((await request('/stock/products/p1', 'admin', 'PUT', { product: { ...product, batch: null, reconstitutedAt: null }, version: 1 })).status, 200);
+        assert.equal(stored.batch, null); assert.equal(stored.reconstitutedAt, null);
+    });
+});
 test('appointment routes reconcile stock inside both save transactions', () => {
     const create = source.slice(source.indexOf("app.post('/appointments'"), source.indexOf("app.put('/appointments/:id'"));
     const update = source.slice(source.indexOf("app.put('/appointments/:id'"), source.indexOf("app.delete('/appointments/:id'"));

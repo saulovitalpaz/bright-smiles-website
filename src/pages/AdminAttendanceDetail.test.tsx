@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { formatDateTimeInput, normalizeAppointmentResponse } from "./AdminAttendanceDetail";
 
 describe("normalizeAppointmentResponse", () => {
+    it("keeps current patient weight separate from the historical appointment weight", () => {
+        const result = normalizeAppointmentResponse({ weight: "70", patient: { weight: "72.5" } });
+        expect(result.patientWeight).toBe("72.5");
+        expect(result.weight).toBe("70");
+        expect(normalizeAppointmentResponse({ weight: "70" }).patientWeight).toBeNull();
+    });
     it("loads sex from the linked patient and keeps unknown records neutral", () => {
         expect(normalizeAppointmentResponse({ patient: { sex: "male" } }).sex).toBe("male");
         expect(normalizeAppointmentResponse({ patient: { sex: "female" } }).sex).toBe("female");

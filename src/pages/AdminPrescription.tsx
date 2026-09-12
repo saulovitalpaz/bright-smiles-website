@@ -61,6 +61,7 @@ const AdminPrescription = () => {
         address: "",
         phone: "",
         birthDate: null as string | null,
+        weight: null as string | null,
         odontogram: {} as OdontogramData,
         odontogramSourceAppointmentId: null as number | null,
     });
@@ -115,6 +116,7 @@ const AdminPrescription = () => {
                     address: data.address || "",
                     phone: data.phone || "",
                     birthDate: data.birthDate || null,
+                    weight: data.weight ?? null,
                     odontogram: data.odontogram || {},
                     odontogramSourceAppointmentId: null,
                 });
@@ -293,6 +295,7 @@ const AdminPrescription = () => {
                                             address: p.address || "",
                                             phone: p.phone || "",
                                             birthDate: p.birthDate || null,
+                                            weight: p.weight ?? null,
                                             odontogram: {},
                                             odontogramSourceAppointmentId: null,
                                         });
@@ -301,6 +304,7 @@ const AdminPrescription = () => {
                                 />
                             </div>
 
+                            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600"><p>Peso cadastral: {patientData.weight ? `${patientData.weight.replace('.', ',')} kg` : "Não informado"}</p>{patientData.id && <Link className="mt-1 inline-flex min-h-11 items-center text-primary underline" to={`/admin/pacientes?edit=${patientData.id}`}>Atualizar dados do paciente</Link>}</div>
                             <AttendanceSection title="Dados cadastrais" summary={patientData.name || "Preencher ou editar nome e contato"}>
 <div className="space-y-1.5">
                                 <Label htmlFor="prescription-patient-name" className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">

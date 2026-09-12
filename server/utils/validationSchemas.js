@@ -152,6 +152,10 @@ const patientSchema = z.object({
     cpf: z.string().min(11, "CPF must be at least 11 characters"),
     birthDate: birthDateSchema.optional().nullable(),
     sex: z.enum(['female', 'male']).nullable().optional(),
+    weight: z.string().trim().regex(/^\d{1,4}([.,]\d{1,3})?$/, 'Informe o peso em kg.')
+        .transform(value => String(Number(value.replace(',', '.'))))
+        .refine(value => Number(value) > 0 && Number(value) <= 1000, 'Informe um peso maior que zero e até 1000 kg.')
+        .nullable().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
     history: z.string().optional(),

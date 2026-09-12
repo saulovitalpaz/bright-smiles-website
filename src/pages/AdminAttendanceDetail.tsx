@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Save, Trash2, Calendar, CalendarCheck, User, Clock, Stethoscope, CreditCard, Activity } from "lucide-react";
+import { ChevronLeft, Save, Trash2, Calendar, CalendarCheck, User, Clock, Stethoscope, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
@@ -37,6 +37,7 @@ interface AppointmentData {
     professional: string;
     notes: string;
     weight: string;
+    patientWeight: string | null;
     materials: string;
     complications: string;
     returnDate: string;
@@ -92,6 +93,7 @@ const DEFAULT_APPOINTMENT: AppointmentData = {
     professional: "",
     notes: "",
     weight: "",
+    patientWeight: null,
     materials: "",
     complications: "",
     returnDate: "",
@@ -112,7 +114,7 @@ interface AppointmentResponse {
     cpf?: string | null;
     phone?: string | null;
     birthDate?: string | null;
-    patient?: { id?: number; name?: string; cpf?: string; phone?: string; birthDate?: string | null; sex?: "female" | "male" | null } | null;
+    patient?: { id?: number; name?: string; cpf?: string; phone?: string; birthDate?: string | null; sex?: "female" | "male" | null; weight?: string | null } | null;
     date?: string | null;
     scheduledAt?: string | null;
     createdAt?: string | null;
@@ -188,6 +190,7 @@ export const normalizeAppointmentResponse = (fetched: AppointmentResponse): Appo
         ),
         facialNotes: normalizeFacialNotes(fetched.facialNotes),
         weight: fetched.weight || "",
+        patientWeight: patient.weight ?? null,
         materials: fetched.materials || "",
         complications: fetched.complications || "",
         notes: fetched.notes || ""
@@ -246,6 +249,7 @@ const AdminAttendanceDetail = () => {
                         ...draft,
                         patientId: patient?.id ?? null,
                         sex: patient?.sex ?? null,
+                        patientWeight: patient?.weight ?? null,
                         birthDate: patient?.birthDate ?? null,
                         patientName: lead.name || "",
                         cpf: lead.cpf || "",
@@ -360,6 +364,8 @@ const AdminAttendanceDetail = () => {
             const {
                 phone: _phone,
                 sex: _sex,
+                patientWeight: _patientWeight,
+                weight: _historicalWeight,
                 id: _id,
                 createdAt: _createdAt,
                 ...payloadForRequest
@@ -386,7 +392,7 @@ const AdminAttendanceDetail = () => {
                 if (isNew) {
                     navigate(`/admin/consultas/${saved.id}`, { replace: true });
                 } else {
-                    setData(normalizeAppointmentResponse(saved));
+                    setData(previous => normalizeAppointmentResponse({ ...saved, patient: saved.patient ?? { id: previous.patientId, birthDate: previous.birthDate, sex: previous.sex, weight: previous.patientWeight } }));
                 }
             } else {
                 const error = await res.json().catch(() => null);
@@ -531,6 +537,7 @@ const AdminAttendanceDetail = () => {
                                                         phone: data.phone,
                                                         birthDate: data.birthDate,
                                                         sex: data.sex,
+                                                        weight: data.patientWeight,
                                                     } : null}
                                                     onSelect={(p) => {
                                                         updateField('patientName', p.name);
@@ -538,6 +545,7 @@ const AdminAttendanceDetail = () => {
                                                         updateField('phone', p.phone || '');
                                                         updateField('birthDate', p.birthDate || null);
                                                         updateField('sex', p.sex ?? null);
+                                                        updateField('patientWeight', p.weight ?? null);
                                                         updateField('patientId', p.id);
                                                     }}
                                                 />
@@ -553,6 +561,8 @@ const AdminAttendanceDetail = () => {
                                                 )}
                                             </div>
                                         )}
+                                        <p className="mt-2 text-sm text-slate-600">Peso cadastral: {data.patientWeight ? `${data.patientWeight.replace('.', ',')} kg` : 'Não informado'}</p>
+                                        {data.weight && <p className="text-xs text-slate-500">Peso registrado neste atendimento: {data.weight} (histórico)</p>}
                                         {id === 'new' ? (
                                             <>
                                                 <div className="grid grid-cols-2 gap-3 pt-2">
@@ -676,12 +686,9 @@ const AdminAttendanceDetail = () => {
                                 <h2>Regiões clínicas</h2>
                                 <p>Registre anotações por região sem perder o contexto do atendimento.</p>
                             </div>
-                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                            <AttendanceSection title="Diário clínico geral" summary={data.notes || data.complications ? "Informações preenchidas" : "Anamnese e intercorrências"} defaultOpen>
+                        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                            <AttendanceSection className="lg:col-span-2" title="Diário clínico" summary={data.notes || data.complications ? "Informações preenchidas" : "Anamnese e intercorrências"} defaultOpen>
                                 <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
-                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                        <Stethoscope size={16} /> Diário Clínico Geral
-                                    </h4>
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold text-slate-600">Descrição do Caso (Anamnese/Evolução)</Label>
                                         <Textarea
@@ -705,39 +712,19 @@ const AdminAttendanceDetail = () => {
                                 </CardContent></Card>
                             </AttendanceSection>
 
-                            <AttendanceSection title="Protocolo geral" summary={data.weight || data.materials ? "Informações preenchidas" : "Peso e materiais"}>
-                                <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
-                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                        <CreditCard size={16} /> Resumo de Protocolo Geral
-                                    </h4>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-600">Peso do Paciente (kg)</Label>
-                                        <Input
-                                            value={data.weight}
-                                            onChange={(e) => updateField('weight', e.target.value)}
-                                            placeholder="75kg"
-                                            className="h-10 bg-slate-50 border-slate-100"
-                                            disabled={readOnly}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-slate-600">Lote Global / Materiais Diversos</Label>
-                                        <Textarea
-                                            value={data.materials}
-                                            onChange={(e) => updateField('materials', e.target.value)}
-                                            placeholder="Seringas, gazes, lotes não mapeados nas regiões..."
-                                            className="min-h-[145px] bg-slate-50 border-slate-100"
-                                            disabled={readOnly}
-                                        />
-                                    </div>
-                                </CardContent></Card>
+                            <AttendanceSection title="Materiais complementares" summary={data.materials ? "Anotações registradas" : "Insumos não registrados no mapa"}>
+                                <div className="space-y-2">
+                                    <Label htmlFor="attendance-materials" className="text-xs font-bold text-slate-600">Outros materiais e observações</Label>
+                                    <Textarea id="attendance-materials" value={data.materials}
+                                        onChange={e => updateField('materials', e.target.value)}
+                                        placeholder="Seringas, gazes e outros insumos..."
+                                        className="min-h-[100px] bg-slate-50 border-slate-100" disabled={readOnly} />
+                                    <p className="text-xs text-slate-500">Registre aqui apenas os insumos complementares. Produto e dose de cada aplicação ficam no histórico do facemap.</p>
+                                </div>
                             </AttendanceSection>
-                            
-                            <AttendanceSection className="lg:col-span-2" title="Faturamento automático" summary={data.price ? `R$ ${data.price}` : "Valor e status no caixa"}>
+
+                            <AttendanceSection title="Faturamento" summary={data.price ? `R$ ${data.price}` : "Valor e status no caixa"}>
                                 <Card className="border-0 shadow-none"><CardContent className="space-y-4 p-0">
-                                    <h4 className="text-sm font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                        <CreditCard size={16} /> Faturamento Automático
-                                    </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold text-slate-600">Valor Cobrado (R$)</Label>

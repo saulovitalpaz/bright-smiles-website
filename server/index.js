@@ -675,7 +675,7 @@ app.get('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
             include: { patient: true, returnAppointment: true }
         });
         if (!item) return res.status(404).json({ error: 'Appointment not found' });
-        res.json(item);
+        res.json(item.patient ? { ...item, patient: { ...item.patient, weight: decrypt(item.patient.weight) } } : item);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -1067,7 +1067,8 @@ app.get('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), asy
         const decryptedPatients = patients.map(p => ({
             ...p,
             cpf: decrypt(p.cpf),
-            history: decrypt(p.history)
+            history: decrypt(p.history),
+            weight: decrypt(p.weight)
         }));
 
         // Filter in memory if search is provided (since we can't search encrypted securely with current design)
@@ -1114,7 +1115,8 @@ app.get('/patients/:cpf', authenticateToken, authorizeRole(['admin', 'dentist'])
         res.json({
             ...patientByCpf,
             cpf: decrypt(patientByCpf.cpf),
-            history: decrypt(patientByCpf.history)
+            history: decrypt(patientByCpf.history),
+            weight: decrypt(patientByCpf.weight)
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -1126,7 +1128,7 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
     try {
-        const { cpf, history, consentDate, birthDate, ...rest } = result.data;
+        const { cpf, history, weight, consentDate, birthDate, ...rest } = result.data;
 
         const encryptedCpf = encrypt(cpf);
         const encryptedHistory = encrypt(history);
@@ -1138,6 +1140,7 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
         const data = {
             ...rest,
             history: encryptedHistory,
+            ...(weight !== undefined ? { weight: encrypt(weight) } : {}),
             ...(birthDate !== undefined ? { birthDate: birthDate === null ? null : new Date(birthDate) } : {})
         };
 
@@ -1158,7 +1161,8 @@ app.post('/patients', authenticateToken, authorizeRole(['admin', 'dentist']), as
             id: patient.id,
             ...patient,
             cpf: decrypt(patient.cpf),
-            history: decrypt(patient.history)
+            history: decrypt(patient.history),
+            weight: decrypt(patient.weight)
         });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -1173,12 +1177,13 @@ app.put('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist']),
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid patient id.' });
 
     try {
-        const { cpf, history, consentDate, birthDate, ...rest } = result.data;
+        const { cpf, history, weight, consentDate, birthDate, ...rest } = result.data;
         const data = {
             ...rest,
             cpf: encrypt(cpf),
             cpfIndex: blindIndex(cpf),
             history: encrypt(history),
+            ...(weight !== undefined ? { weight: encrypt(weight) } : {}),
             ...(birthDate !== undefined ? { birthDate: birthDate === null ? null : new Date(birthDate) } : {})
         };
 
@@ -1194,7 +1199,8 @@ app.put('/patients/:id', authenticateToken, authorizeRole(['admin', 'dentist']),
         res.json({
             ...patient,
             cpf: decrypt(patient.cpf),
-            history: decrypt(patient.history)
+            history: decrypt(patient.history),
+            weight: decrypt(patient.weight)
         });
     } catch (error) {
         if (error.code === 'P2025') return res.status(404).json({ error: 'Patient not found' });

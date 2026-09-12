@@ -8,6 +8,22 @@ async function selectStage(stage: string, user: ReturnType<typeof userEvent.setu
 }
 
 describe("ClinicalConditionEditor", () => {
+  it("saves and reloads a lateral incisal third without converting it into the central surface", async () => {
+    const onSave = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(<ClinicalConditionEditor toothNumber={11} onCancel={() => {}} onSave={onSave} />);
+    await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
+    await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
+    await user.click(screen.getByRole("button", { name: "Vestibular - incisal" }));
+    await selectStage("Planejado / a tratar", user);
+    await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
+    const condition = JSON.parse(JSON.stringify(onSave.mock.lastCall![0]));
+    expect(condition.targets).toEqual([{ kind: "surface", face: "top", region: "incisalOcclusal" }]);
+    rerender(<ClinicalConditionEditor toothNumber={11} initialCondition={condition} onCancel={() => {}} onSave={onSave} />);
+    expect(screen.getByRole("button", { name: "Vestibular - incisal" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));
+    expect(onSave.mock.lastCall![0]).toMatchObject({ id: condition.id, targets: condition.targets });
+  });
   it("creates a completed resin condition for multiple precise regions", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();

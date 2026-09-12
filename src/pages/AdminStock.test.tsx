@@ -13,9 +13,9 @@ describe("AdminStock", () => {
     vi.mocked(adminApi.post).mockResolvedValue({ data: product });
     render(<AdminStock />); await screen.findByText("Toxina teste");
     fireEvent.click(screen.getByRole("button", { name: "Novo produto" }));
-    for (const [label, value] of [["Nome do produto", "Produto novo"], ["Quantidade inicial (ml)", "2,5"], ["Concentração (UI/ml)", "50"], ["Preço por ml (R$)", "100"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    for (const [label, value] of [["Nome do produto", "Produto novo"], ["Lote", "LOTE-TESTE"], ["Data de reconstituição", "2026-09-12"], ["Quantidade inicial (ml)", "2,5"], ["Concentração (UI/ml)", "50"], ["Preço por ml (R$)", "100"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
-    await waitFor(() => expect(adminApi.post).toHaveBeenCalledWith("/stock/products", { product: { name: "Produto novo", procedureType: "botulinum-toxin", stockUnit: "ml", concentration: 50, price: 100, active: true }, quantity: 2.5 }));
+    await waitFor(() => expect(adminApi.post).toHaveBeenCalledWith("/stock/products", { product: { name: "Produto novo", batch: "LOTE-TESTE", reconstitutedAt: "2026-09-12", procedureType: "botulinum-toxin", stockUnit: "ml", concentration: 50, price: 100, active: true }, quantity: 2.5 }));
   });
   it("retains stock adjustment values when saving fails", async () => {
     vi.mocked(adminApi.post).mockRejectedValue(new Error());
