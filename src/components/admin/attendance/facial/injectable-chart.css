@@ -1,0 +1,78 @@
+.injectable-workspace { min-width: 0; color: hsl(var(--foreground)); }
+.injectable-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.injectable-heading p { color: hsl(var(--muted-foreground)); font-size: 10px; letter-spacing: .18em; margin-bottom: 5px; }
+.injectable-heading h2 { font-size: 22px; font-weight: 600; }
+.injectable-heading > span { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.injectable-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; }
+.injectable-sidebar { padding: 14px 0; min-width: 0; }
+.injectable-sidebar h3 { font-size: 16px; font-weight: 600; margin: 0 12px 18px; }
+.injectable-procedures { display: flex; flex-direction: column; gap: 8px; }
+.injectable-procedure { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 12px; border-radius: 11px; text-align: left; font-size: 13px; font-weight: 500; transition: background .15s; }
+.injectable-procedure:hover { background: hsl(var(--muted)); }
+.injectable-procedure[aria-pressed=true] { background: #8642df; color: white; box-shadow: 0 4px 12px #8642df20; }
+.injectable-procedure small { font-size: 11px; white-space: nowrap; background: hsl(var(--muted)); color: hsl(var(--foreground)); border-radius: 7px; padding: 3px 5px; }
+.injectable-procedure[aria-pressed=true] small { background: #ffffffde; color: #6830b4; }
+.injectable-swatch { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px #ffffff60; }
+.injectable-swatch--arrow { border-radius: 3px; clip-path: polygon(0 0,100% 50%,0 100%); width: 12px; height: 14px; }
+.injectable-tools { display: flex; gap: 8px; border-top: 1px solid hsl(var(--border)); padding-top: 18px; margin-top: 20px; }
+.injectable-tools button { min-height: 44px; flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid hsl(var(--border)); border-radius: 8px; font-size: 11px; }
+.injectable-tools button[aria-pressed=true] { border-color: #8642df; color: #8642df; background: #8642df0d; }
+.injectable-instruction { margin: 14px 0; font-size: 12px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+.injectable-label-toggle { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; }
+.injectable-label-toggle input { accent-color: #8642df; width: 16px; height: 16px; }
+.injectable-history { font-size: 12px; margin-top: 12px; }
+.injectable-history summary { cursor: pointer; padding: 12px 0; }
+.injectable-history button { display: block; min-height: 44px; text-align: left; width: 100%; border-bottom: 1px solid hsl(var(--border)); }
+.injectable-history p { padding: 8px 0; overflow-wrap: anywhere; }
+.injectable-stage { position: relative; border: 1px solid hsl(var(--border)); border-radius: 14px; background: white; display: flex; justify-content: center; align-items: center; padding: 12px 24px 30px; min-width: 0; }
+.injectable-face { position: relative; width: min(100%, 470px); aspect-ratio: 3 / 4; }
+.injectable-svg { display: block; width: 100%; height: 100%; touch-action: none; border-radius: 10px; }
+.injectable-svg--point,.injectable-svg--arrow { cursor: crosshair; }
+.injectable-svg--select { cursor: default; }
+.injectable-stage-tools { position: absolute; z-index: 2; right: 14px; top: 14px; display: grid; gap: 10px; }
+.injectable-stage-tools button { width: 44px; height: 44px; border-radius: 50%; background: #9147e8; color: white; display: grid; place-items: center; box-shadow: 0 3px 10px #8642df25; }
+.injectable-stage-tools button[aria-pressed=true] { background: #59249a; }
+.injectable-mark { cursor: pointer; outline: none; }
+.injectable-mark:focus-visible .injectable-hit { stroke: #59249a; stroke-width: 3; }
+.injectable-view-label { position: absolute; bottom: 9px; left: 18px; color: #77717d; font-size: 12px; }
+.injectable-popover { position: absolute; z-index: 3; width: min(270px, 96%); transform: translate(-50%, calc(-100% - 17px)); background: white; color: #302939; border-radius: 17px; padding: 12px; box-shadow: 0 12px 40px #31204430; }
+.injectable-popover::after { content: ''; position: absolute; left: calc(50% - 8px); bottom: -8px; width: 16px; height: 16px; background: white; transform: rotate(45deg); }
+.injectable-popover form { display: flex; align-items: flex-end; gap: 8px; }
+.injectable-popover label { min-width: 0; flex: 1; }
+.injectable-popover label span { display: block; font-size: 10px; color: #706777; margin-bottom: 5px; }
+.injectable-popover input { width: 100%; min-height: 48px; border: 2px solid #9964c7; border-radius: 9px; padding: 8px; outline-offset: 2px; font-size: 16px; }
+.injectable-popover button { width: 46px; height: 48px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+.injectable-confirm { background: #e0f7e9; color: #168553; }
+.injectable-remove { background: #fde6eb; color: #ac3e59; }
+.injectable-popover .injectable-close { position: absolute; right: -10px; top: -16px; width: 32px; height: 32px; border-radius: 50%; background: white; border: 1px solid #ede7f2; }
+.injectable-popover p { font-size: 12px; margin-top: 8px; }
+.injectable-popover [role=alert] { color: #ae2341; }
+.injectable-popover:has(.facial-stock-picker) { top: 50% !important; left: 50% !important; transform: translate(-50%, -50%); width: min(340px, 98%); max-height: 90%; overflow-y: auto; }
+.injectable-popover .facial-product-trigger { display: block; width: 100%; height: auto; min-height: 36px; padding: 5px 0; margin-bottom: 7px; color: #7134b4; text-align: left; font-size: 12px; }
+.facial-stock-picker { margin-bottom: 12px; }
+.facial-stock-picker label { display: grid; gap: 6px; font-size: 12px; }
+.facial-stock-picker input { min-height: 44px; }
+.facial-stock-results { max-height: 180px; overflow-y: auto; }
+.facial-stock-results button { width: 100%; height: auto; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+.facial-stock-results button[aria-pressed=true] { background: #f2eafa; }
+.facial-stock-results strong { font-size: 12px; }
+.facial-stock-results span { font-size: 10px; color: #6f6475; }
+.injectable-workspace button:focus-visible,.injectable-workspace input:focus-visible,.injectable-svg:focus-visible { outline: 2px solid #8642df; outline-offset: 3px; }
+.injectable-workspace--expanded { position: fixed; inset: 12px; z-index: 60; padding: 24px; overflow: auto; border-radius: 16px; background: hsl(var(--background)); box-shadow: 0 0 0 100vmax #0009; }
+.injectable-workspace--expanded .injectable-face { width: min(100%, 560px); }
+@media (max-width: 767px) {
+  .injectable-layout { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .injectable-sidebar { padding: 0; }
+  .injectable-sidebar h3 { margin-bottom: 10px; }
+  .injectable-procedures { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+  .injectable-procedure { font-size: 11px; gap: 6px; padding: 8px; min-height: 48px; }
+  .injectable-procedure small { font-size: 10px; }
+  .injectable-tools { margin-top: 10px; padding-top: 10px; }
+  .injectable-stage { padding: 16px 4px 28px; }
+  .injectable-instruction { margin: 8px 0; }
+  .injectable-stage-tools { right: 8px; top: 8px; }
+  .injectable-heading > span { display: none; }
+  .injectable-workspace--expanded { inset: 4px; padding: 14px; }
+  .injectable-popover { left: 50% !important; }
+}
+@media (prefers-reduced-motion: reduce) { .injectable-procedure { transition: none; } }

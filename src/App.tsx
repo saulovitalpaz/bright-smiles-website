@@ -29,6 +29,7 @@ const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
 const AdminPrescription = lazy(() => import("./pages/AdminPrescription"));
 const AdminDocuments = lazy(() => import("./pages/AdminDocuments"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
+const AdminStock = lazy(() => import("./pages/AdminStock"));
 const AdminPersonalFinance = lazy(() => import("./pages/AdminPersonalFinance"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminPatients = lazy(() => import("./pages/AdminPatients"));
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/admin/consultas/:id" element={<RoleProtectedRoute><AdminAttendanceDetail /></RoleProtectedRoute>} />
             <Route path="/admin/prescricao" element={<RoleProtectedRoute><AdminPrescription /></RoleProtectedRoute>} />
             <Route path="/admin/settings" element={<RoleProtectedRoute><AdminSettings /></RoleProtectedRoute>} />
+            <Route path="/admin/settings/estoque" element={<RoleProtectedRoute><AdminStock /></RoleProtectedRoute>} />
             <Route path="/admin/users" element={<RoleProtectedRoute><AdminUsers /></RoleProtectedRoute>} />
             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
 

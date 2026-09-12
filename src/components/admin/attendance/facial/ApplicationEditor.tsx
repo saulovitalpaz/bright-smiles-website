@@ -19,7 +19,7 @@ type ApplicationEditorProps = {
 type EditorState = {
   productName: string;
   amount: string;
-  unit: "U" | "ml" | "";
+  unit: "U" | "ml" | "fio" | "";
   technique: string;
   plane: string;
   device: string;
@@ -87,6 +87,7 @@ export function ApplicationEditor({ regionId, procedureType, application, onSave
             <option value="">Selecione</option>
             <option value="U">U</option>
             <option value="ml">ml</option>
+            <option value="fio">Fio</option>
           </select>
         </div>
       </div>

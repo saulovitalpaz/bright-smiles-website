@@ -39,6 +39,8 @@ const {
     buildUpcomingSchedule
 } = require('./utils/schedule');
 const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
+const { registerStockRoutes } = require('./routes/stock');
+const { syncFacialStock, validateFacialNotes, StockError } = require('./utils/facialStock');
 const {
     parseFinancePeriod,
     parseFinanceTransactionDate,
@@ -221,6 +223,8 @@ const authorizeRole = (roles) => {
         next();
     };
 };
+
+registerStockRoutes(app, prisma, authenticateToken, authorizeRole);
 
 app.post('/upload', authenticateToken, authorizeRole(['admin', 'dentist']), upload.single('file'), async (req, res) => {
     try {
@@ -682,6 +686,8 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
 
     const payload = { ...result.data };
+    try { if (payload.facialNotes !== undefined) payload.facialNotes = validateFacialNotes(payload.facialNotes); }
+    catch { return res.status(400).json({ error: 'Registro facial inválido. Verifique pontos, doses e produtos.' }); }
     try {
         payload.date = parseOptionalDate(payload.date, 'Invalid appointment date');
         if (!payload.date) {
@@ -710,11 +716,13 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
                 returnDate: payload.returnDate
             });
             await syncAppointmentFinance(tx, appointment);
+            await syncFacialStock(tx, appointment, req.user.id);
             return { ...appointment, returnAppointment };
         });
 
         res.json(appointment);
     } catch (error) {
+        if (error instanceof StockError) return res.status(error.statusCode).json({ error: String(error.message) });
         res.status(500).json({ error: 'Unable to create appointment.' });
     }
 });
@@ -733,9 +741,12 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
         parentAppointment,
         parentAppointmentId,
         returnAppointment,
+        stockUsages,
         ...data
     } = req.body || {};
     const hasReturnDate = Object.prototype.hasOwnProperty.call(data, 'returnDate');
+    try { if (data.facialNotes !== undefined) data.facialNotes = validateFacialNotes(data.facialNotes); }
+    catch { return res.status(400).json({ error: 'Registro facial inválido. Verifique pontos, doses e produtos.' }); }
 
     if (data.status !== undefined) {
         const statusResult = appointmentStatusSchema.safeParse(data.status);
@@ -813,10 +824,12 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
                 ? await syncReturnAppointment(tx, appointment, { returnDate })
                 : appointment.returnAppointment;
             await syncAppointmentFinance(tx, appointment);
+            await syncFacialStock(tx, appointment, req.user.id);
             return { ...appointment, returnAppointment: linkedReturn };
         });
         res.json(appointment);
     } catch (error) {
+        if (error instanceof StockError) return res.status(error.statusCode).json({ error: String(error.message) });
         if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid appointment or return date.' });
         if (error.code === 'P2025') return res.status(404).json({ error: 'Appointment not found' });
         res.status(500).json({ error: 'Unable to update appointment.' });
@@ -826,12 +839,16 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
 app.delete('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma.appointment.delete({
-            where: { id: parseInt(id) }
+        await prisma.$transaction(async tx => {
+            const appointmentId = Number(id);
+            if (!Number.isInteger(appointmentId) || appointmentId <= 0) throw new StockError('Atendimento inválido.');
+            const usages = await tx.stockUsage.count({ where: { appointmentId } });
+            if (usages) throw new StockError('Este atendimento possui consumo de estoque. Corrija as aplicações antes de excluir.', 409);
+            await tx.appointment.delete({ where: { id: appointmentId } });
         });
         res.json({ message: 'Appointment deleted' });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(error instanceof StockError ? error.statusCode : 400).json({ error: error instanceof StockError ? error.message : 'Não foi possível excluir o atendimento.' });
     }
 });
 

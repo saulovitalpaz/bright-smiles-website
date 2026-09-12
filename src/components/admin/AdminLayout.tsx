@@ -152,6 +152,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 adminOnly: true,
                 subItems: [
                     { label: "Geral", href: "/admin/settings" },
+                    { label: "Estoque", href: "/admin/settings/estoque" },
                     { label: "Equipe", href: "/admin/users" },
                 ]
             },

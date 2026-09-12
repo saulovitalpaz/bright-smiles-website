@@ -7,6 +7,8 @@ export type FacialProcedureType =
   | "filler"
   | "biostimulator"
   | "thread"
+  | "bioremodeler"
+  | "skinbooster"
   | "other";
 
 export type FacialRegion = {
@@ -24,10 +26,11 @@ export type FacialApplication = {
   regionId: string;
   procedureType: FacialProcedureType;
   coordinates?: { x: number; y: number };
+  endCoordinates?: { x: number; y: number };
   productId?: string;
   productName?: string;
   amount?: number;
-  unit?: "U" | "ml";
+  unit?: "U" | "ml" | "fio";
   technique?: string;
   plane?: string;
   device?: string;
@@ -160,6 +163,8 @@ export const PROCEDURE_OPTIONS: Array<{ value: FacialProcedureType; label: strin
   { value: "filler", label: "Preenchimento" },
   { value: "biostimulator", label: "Bioestimulador" },
   { value: "thread", label: "Fios" },
+  { value: "bioremodeler", label: "Biorremodelador" },
+  { value: "skinbooster", label: "Skinbooster" },
   { value: "other", label: "Outro" },
 ];
 
@@ -225,11 +230,15 @@ const normalizeApplication = (value: unknown, index: number): FacialApplication 
     procedureType,
   };
   if (x !== undefined && y !== undefined) application.coordinates = { x, y };
+  const end = asRecord(record.endCoordinates);
+  const endX = clamp01(end?.x);
+  const endY = clamp01(end?.y);
+  if (endX !== undefined && endY !== undefined) application.endCoordinates = { x: endX, y: endY };
   if (asText(record.productId)) application.productId = asText(record.productId);
   if (asText(record.productName)) application.productName = asText(record.productName);
   const amount = asNumber(record.amount);
   if (amount !== undefined) application.amount = amount;
-  if (record.unit === "U" || record.unit === "ml") application.unit = record.unit;
+  if (record.unit === "U" || record.unit === "ml" || record.unit === "fio") application.unit = record.unit;
   for (const key of ["technique", "plane", "device", "notes"] as const) {
     const text = asText(record[key]);
     if (text) application[key] = text;
