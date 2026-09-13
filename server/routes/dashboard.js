@@ -1,9 +1,8 @@
 function createDashboardStatsHandler(prisma, buildUpcomingSchedule) {
     return async (req, res) => {
         try {
-            const [users, posts, appointments, leads, testimonials, pendingLeadCount] = await Promise.all([
+            const [users, appointments, leads, testimonials, pendingLeadCount] = await Promise.all([
                 prisma.user.count(),
-                prisma.post.count(),
                 prisma.appointment.count(),
                 prisma.lead.count(),
                 prisma.testimonial.count(),
@@ -46,23 +45,24 @@ function createDashboardStatsHandler(prisma, buildUpcomingSchedule) {
                 orderBy: { createdAt: 'desc' }
             });
 
-            const recentStock = ['admin', 'dentist'].includes(req.user?.role)
-                ? (await prisma.stockProduct.findMany({
-                    take: 3,
+            const stock = ['admin', 'dentist'].includes(req.user?.role)
+                ? await prisma.stockProduct.findMany({
                     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-                    select: { id: true, name: true, quantity: true, stockUnit: true, price: true }
-                })).map(product => ({
+                    select: { id: true, name: true, quantity: true, stockUnit: true, price: true, reconstitutedAt: true }
+                }) : undefined;
+            const stockTotalValue = stock?.reduce((total, product) => total + Number(product.quantity) * Number(product.price), 0);
+            const recentStock = stock?.slice(0, 3).map(product => ({
                     id: product.id,
                     name: product.name,
                     quantity: Number(product.quantity),
                     stockUnit: product.stockUnit,
-                    stockValue: Number(product.quantity) * Number(product.price)
-                })) : undefined;
+                    reconstitutedAt: product.reconstitutedAt
+                }));
 
             res.json({
                 recentStock,
+                stockTotalValue,
                 users,
-                posts,
                 appointments,
                 leads,
                 pendingLeadCount,

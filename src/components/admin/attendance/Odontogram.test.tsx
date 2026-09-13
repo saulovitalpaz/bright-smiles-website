@@ -211,7 +211,7 @@ describe("Odontogram face-first workflow", () => {
     await user.click(getToothButton(21));
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    const preciseTargetButtons = screen.getAllByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
+    const preciseTargetButtons = screen.getAllByRole("button", { name: /oclusal \/ incisal.*face inteira/i });
     await user.click(preciseTargetButtons[preciseTargetButtons.length - 1]);
     await user.click(screen.getByRole("button", { name: "Selecionar situação Em andamento" }));
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
@@ -262,7 +262,7 @@ describe("Odontogram face-first workflow", () => {
 
     expect(screen.getByLabelText("Categoria")).toHaveValue("achado");
     expect(screen.getByLabelText("Procedimento")).toHaveValue("carie");
-    expect(screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Desselecionar face Oclusal / Incisal" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /^vestibular.*face inteira$/i })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -303,8 +303,8 @@ describe("Odontogram face-first workflow", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     await user.click(getToothButton(16));
     await user.click(screen.getByRole("button", { name: /^Editar carie:/ }));
-    expect(screen.getByRole("button", { name: "Vestibular - cervical" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Distal - média" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Remover região Vestibular.*cervical/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Remover região Distal.*média/i })).toBeInTheDocument();
   });
 
   it("does not expose editing controls in read-only mode", () => {
@@ -368,11 +368,9 @@ describe("Odontogram face-first workflow", () => {
     expect(within(legend as HTMLElement).getByTestId("legend-swatch-tooth-missing")).toHaveAttribute("data-symbol", "cross");
     expect(within(legend as HTMLElement).getByTestId("legend-swatch-tooth-implant")).toHaveAttribute("data-symbol", "implant");
     expect(within(legend as HTMLElement).getByTestId("legend-swatch-tooth-bridge")).toHaveAttribute("data-symbol", "bridge");
-    expect(within(legend as HTMLElement).getByText(/face inteira/i)).toBeInTheDocument();
-    expect(within(legend as HTMLElement).getByText(/cervical/i)).toBeInTheDocument();
-    expect(within(legend as HTMLElement).getByText(/média/i)).toBeInTheDocument();
-    expect(within(legend as HTMLElement).getByText(/incisal\/oclusal/i)).toBeInTheDocument();
-    expect(within(legend as HTMLElement).getByText(/mais de uma região/i)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/faces inteiras/i)).toBeInTheDocument();
+    expect(within(legend as HTMLElement).queryByText(/cervical|média/i)).not.toBeInTheDocument();
+    expect(within(legend as HTMLElement).getByText(/mais de uma face/i)).toBeInTheDocument();
   });
 
   it("closes an open editor when permissions become read-only", async () => {

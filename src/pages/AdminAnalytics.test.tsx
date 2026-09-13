@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { API_URL, fetchClient } from "@/lib/api";
+import { fetchClient } from "@/lib/api";
 import AdminAnalytics from "./AdminAnalytics";
 
 vi.mock("@/components/admin/AdminLayout", () => ({
@@ -43,19 +43,14 @@ const statsResponse = {
     ],
     topPaths: {
         "/": 5,
-        "/blog": 4,
-        "/blog/clareamento": 3,
+        "/tratamentos": 4,
+        "/tratamento/clareamento": 3,
     },
     devices: {
         mobile: 8,
         desktop: 4,
     },
 };
-
-const postsResponse = [
-    { id: 1, title: "Clareamento dental", views: 14 },
-    { id: 2, title: "Lentes de contato dental", views: 9 },
-];
 
 const response = (body: unknown, ok = true, status = ok ? 200 : 500) => ({
     ok,
@@ -68,7 +63,6 @@ describe("AdminAnalytics", () => {
         vi.clearAllMocks();
         vi.stubGlobal("fetch", fetchMock);
         fetchClientMock.mockResolvedValue(response(statsResponse));
-        fetchMock.mockResolvedValue(response(postsResponse));
     });
 
     it("loads protected stats with fetchClient and renders aggregate analytics", async () => {
@@ -77,11 +71,10 @@ describe("AdminAnalytics", () => {
         await waitFor(() => {
             expect(fetchClientMock).toHaveBeenCalledWith("/analytics/stats");
         });
-        expect(fetchMock).toHaveBeenCalledWith(`${API_URL}/posts`);
+        expect(fetchMock).not.toHaveBeenCalled();
 
         expect(await screen.findByText("40.00%")).toBeInTheDocument();
-        expect(screen.getByText("Clareamento dental")).toBeInTheDocument();
-        expect(screen.getByText("/blog")).toBeInTheDocument();
+        expect(screen.getByText("/tratamentos")).toBeInTheDocument();
         expect(screen.getByText("mobile")).toBeInTheDocument();
         expect(screen.getByText("Governador Valadares, MG")).toBeInTheDocument();
         expect(screen.getByText(/até 200 km da clínica/i)).toBeInTheDocument();
@@ -92,17 +85,11 @@ describe("AdminAnalytics", () => {
         expect(nearbyCard).toHaveTextContent("80%");
     });
 
-    it("keeps metrics visible when the posts request fails", async () => {
-        fetchMock.mockRejectedValueOnce(new Error("posts offline"));
-
+    it("shows a recoverable error when the protected request rejects", async () => {
+        fetchClientMock.mockRejectedValueOnce(new Error("offline"));
         render(<AdminAnalytics />);
-
-        await waitFor(() => {
-            expect(fetchClientMock).toHaveBeenCalledWith("/analytics/stats");
-        });
-
-        expect(await screen.findByText("40.00%")).toBeInTheDocument();
-        expect(await screen.findByText(/não foi possível carregar os posts/i)).toBeInTheDocument();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar as métricas.");
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("shows a retry state when protected stats fail", async () => {

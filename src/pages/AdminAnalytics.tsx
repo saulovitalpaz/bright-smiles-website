@@ -9,17 +9,10 @@ import {
     Route,
     Smartphone,
     Target,
-    TrendingUp,
     Users,
 } from "lucide-react";
 
-import { API_URL, fetchClient } from "@/lib/api";
-
-interface AnalyticsPost {
-    id: number;
-    title: string;
-    views?: number;
-}
+import { fetchClient } from "@/lib/api";
 
 interface AnalyticsData {
     totalVisits: number;
@@ -77,46 +70,27 @@ const rankMetrics = (
         .slice(0, limit)
 );
 
-const toTopPosts = (posts: AnalyticsPost[]): AnalyticsPost[] => (
-    [...posts].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5)
-);
-
 const AdminAnalytics = () => {
     const [analytics, setAnalytics] = useState<AnalyticsData>(emptyAnalytics);
-    const [topPosts, setTopPosts] = useState<AnalyticsPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [statsError, setStatsError] = useState<string | null>(null);
-    const [postsError, setPostsError] = useState<string | null>(null);
 
     const loadStats = async () => {
         setLoading(true);
         setStatsError(null);
-        setPostsError(null);
-
-        const [analyticsResult, postsResult] = await Promise.allSettled([
-            fetchClient("/analytics/stats"),
-            fetch(`${API_URL}/posts`),
-        ]);
-
-        if (analyticsResult.status === "fulfilled" && analyticsResult.value.ok) {
-            const analyticsData = await analyticsResult.value.json() as AnalyticsData;
+        try {
+            const response = await fetchClient("/analytics/stats");
+            if (!response.ok) throw new Error("Analytics unavailable");
+            const analyticsData = await response.json() as AnalyticsData;
             setAnalytics({
                 ...emptyAnalytics,
                 ...analyticsData,
             });
-        } else {
+        } catch {
             setStatsError("Não foi possível carregar as métricas.");
+        } finally {
+            setLoading(false);
         }
-
-        if (postsResult.status === "fulfilled" && postsResult.value.ok) {
-            const posts = await postsResult.value.json() as AnalyticsPost[];
-            setTopPosts(toTopPosts(posts));
-        } else {
-            setTopPosts([]);
-            setPostsError("Não foi possível carregar os posts agora.");
-        }
-
-        setLoading(false);
     };
 
     useEffect(() => {
@@ -235,35 +209,6 @@ const AdminAnalytics = () => {
             </div>
 
             <div className="mb-6 grid items-start grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-                            <TrendingUp size={20} className="text-primary" /> Posts Mais Lidos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {topPosts.length > 0 ? (
-                                topPosts.map((post, index) => (
-                                    <div key={post.id} className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-slate-50">
-                                        <span className="w-6 text-lg font-bold text-slate-300">#{index + 1}</span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-semibold text-slate-900">{post.title}</p>
-                                        </div>
-                                        <div className="flex items-center gap-1 text-xs font-medium text-slate-600">
-                                            <Eye size={12} />
-                                            {post.views || 0}
-                                        </div>
-                                    </div>
-                                ))
-                            ) : postsError ? (
-                                <p className="py-8 text-center text-sm italic text-slate-500">{postsError}</p>
-                            ) : (
-                                <p className="py-8 text-center text-sm italic text-slate-500">Nenhum post visualizado.</p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
 
                 <Card className="border-slate-200 shadow-sm">
                     <CardHeader>

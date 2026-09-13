@@ -1,6 +1,6 @@
 import { API_URL } from "@/lib/api";
 
-export type AnalyticsEventType = "pageview" | "blog_view" | "story_view";
+export type AnalyticsEventType = "pageview" | "story_view";
 
 export interface AnalyticsEvent {
     type: AnalyticsEventType;

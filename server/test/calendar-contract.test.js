@@ -77,5 +77,5 @@ test('week groups days without forced desktop widths and day creation uses nativ
     assert.match(source, /calendar-week-agenda">\{days\.map\(day => renderDayAgenda\(day\)\)\}/);
     assert.doesNotMatch(source, /min-w-\[(65\.75|52)rem\]|isFractional/);
     assert.match(source, /<button type="button" aria-label=\{"Criar atendimento em "/);
-    assert.match(source, /onEventCreate\(new Date\(getDropDateTime\(anchorDate, minutes\)\)\)/);
+    assert.match(source, /onEventCreate\(new Date\(getDropDateTime\(day, minutes\)\)\)/);
 });

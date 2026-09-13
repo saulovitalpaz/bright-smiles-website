@@ -49,7 +49,9 @@ describe("PrescriptionGenerator document helpers", () => {
       },
     });
 
-    const output = await pdf(document).toBlob();
+    const renderer = pdf();
+    renderer.updateContainer(document);
+    const output = await renderer.toBlob();
     const rawPdf = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);
@@ -64,7 +66,8 @@ describe("PrescriptionGenerator document helpers", () => {
   }, 20_000);
 
   it("keeps the odontogram on its own first page before a short prescription", async () => {
-    const output = await pdf(createElement(PrescriptionDocument, {
+    const renderer = pdf();
+    renderer.updateContainer(createElement(PrescriptionDocument, {
       data: {
         name: "Paciente Teste",
         cpf: "000.000.000-00",
@@ -74,7 +77,8 @@ describe("PrescriptionGenerator document helpers", () => {
       content: "Uso conforme orientação.",
       includeOdontogram: true,
       odontogram: { "16": { status: "Implante", notes: "", faces: {} } },
-    })).toBlob();
+    }));
+    const output = await renderer.toBlob();
     const rawPdf = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);

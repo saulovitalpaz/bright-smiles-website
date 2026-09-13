@@ -20,6 +20,8 @@ import EvolutionTimeline from "@/components/admin/attendance/EvolutionTimeline";
 import { normalizeAppointmentType } from "@/lib/appointmentType";
 import { normalizeOdontogram, OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
 import { normalizeFacialNotes, FacialNotesDocument } from "@/components/admin/attendance/facial/facialModel";
+import { AttendanceOdontogramPrint } from "@/components/admin/attendance/AttendanceOdontogramPrint";
+import { hasCompleteProfessionalIdentity, readStoredProfessionalIdentity } from "@/lib/professional-signature";
 
 // Interfaces
 interface AppointmentData {
@@ -199,6 +201,15 @@ const AdminAttendanceDetail = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [newWeight, setNewWeight] = useState("");
+    const [printReady, setPrintReady] = useState(false);
+    const professional = readStoredProfessionalIdentity();
+    useEffect(() => {
+        if (!printReady) return;
+        const clear = () => setPrintReady(false);
+        window.addEventListener("afterprint", clear);
+        const frame = requestAnimationFrame(() => window.print());
+        return () => { cancelAnimationFrame(frame); window.removeEventListener("afterprint", clear); };
+    }, [printReady]);
     const [activeTab, setActiveTab] = useState<"current" | "evolution">("current");
 
     const userStr = localStorage.getItem("admin_user");
@@ -453,10 +464,10 @@ const AdminAttendanceDetail = () => {
 
                     <TabsContent value="current" className="space-y-6 md:space-y-8 outline-none">
                         {/* Basic Info Section */}
-                        <Card id="attendance-step-summary" className="attendance-editor-card scroll-mt-24 border-slate-200 shadow-sm overflow-visible">
+                        <div id="attendance-step-summary" className="scroll-mt-24"><AttendanceSection title="Etapa 1 · Dados do atendimento" summary={data.patientName || "Selecione o paciente"} defaultOpen={id === 'new'}>
                             <CardContent className="p-3 sm:p-4">
                                 <div className="grid items-start grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
-                                    <AttendanceSection className="lg:col-span-2" title="Paciente e CPF" summary={data.patientName || "Selecione o paciente"} defaultOpen={id === 'new'}>
+                                    <div className="space-y-2 lg:col-span-2"><h3 className="text-sm font-semibold">Paciente e CPF</h3>
                                         {!readOnly && (
                                             <div className="space-y-2">
                                                 <PatientPicker
@@ -518,7 +529,7 @@ const AdminAttendanceDetail = () => {
                                                 <span className="text-sm font-mono text-slate-500">{data.cpf}</span>
                                             </div>
                                         )}
-                                    </AttendanceSection>
+                                    </div>
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -609,7 +620,7 @@ const AdminAttendanceDetail = () => {
                                     )}
                                 </div>
                             </CardContent>
-                        </Card>
+                        </AttendanceSection></div>
 
                         {/* Secondary Clinical Indicators */}
                         <div id="attendance-step-regions" className="scroll-mt-24 space-y-3">
@@ -703,6 +714,10 @@ const AdminAttendanceDetail = () => {
                                 onChange={(notes) => updateField('dentalNotes', notes)}
                                 readOnly={readOnly}
                                 birthDate={data.birthDate}
+                                onPrint={() => {
+                                    if (!hasCompleteProfessionalIdentity(professional)) return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
+                                    setPrintReady(true);
+                                }}
                             />
                         )}
 
@@ -759,6 +774,7 @@ const AdminAttendanceDetail = () => {
                 </Tabs>
             </div>
             </AttendanceWorkspace>
+            {printReady && <AttendanceOdontogramPrint data={data.dentalNotes} patientName={data.patientName} cpf={data.cpf} birthDate={data.birthDate} professional={professional} />}
         </AdminLayout>
     );
 };

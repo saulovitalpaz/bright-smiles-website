@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -18,15 +18,10 @@ interface Treatment {
 }
 
 const Services = () => {
-  const { data: treatments, isLoading, error } = useQuery({
+  const { data: treatments, isLoading, error, refetch } = useQuery<Treatment[]>({
     queryKey: ['recentTreatments'],
     queryFn: async () => {
       const res = await axios.get(`${API_URL}/treatments`);
-      // The API returns all treatments ordered by createdAt desc (if we set that up, otherwise we slice frontend)
-      // Backend default order might be ID or creation. 
-      // Let's assume we want the first 6 from the response which usually are the "default" list.
-      // If we want specifically "newest", the API should support sorting or we sort here. 
-      // Our API implementation: `orderBy: { createdAt: 'desc' }` was added in server/index.js line 156.
       return res.data;
     }
   });
@@ -51,48 +46,45 @@ const Services = () => {
         </div>
 
         {/* Services Grid */}
-        <div className="flex overflow-x-auto pb-6 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 snap-x snap-mandatory no-scrollbar">
+        <div className="home-card-grid" aria-busy={isLoading}>
           {isLoading && (
-            <div className="col-span-full flex justify-center py-12 w-full">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
+            <><span role="status" className="sr-only">Carregando tratamentos</span>{[0, 1, 2].map(key => <div key={key} className="home-card-skeleton" aria-hidden="true" />)}</>
           )}
 
-          {!isLoading && displayedTreatments.length === 0 && (
+          {error && <div role="alert" className="col-span-full space-y-3 text-center"><p>Não foi possível carregar os tratamentos.</p><Button variant="outline" onClick={() => void refetch()}>Tentar novamente</Button></div>}
+          {!isLoading && !error && displayedTreatments.length === 0 && (
             <div className="col-span-full text-center py-12 text-muted-foreground w-full">
               Nenhum tratamento cadastrado ainda.
             </div>
           )}
 
           {displayedTreatments.map((service: Treatment) => (
-            <Link key={service.id} to={`/tratamentos/${service.slug}`} className="group h-full min-w-[280px] sm:min-w-0 snap-center">
-              <Card className="overflow-hidden h-full border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 flex flex-col">
+            <Link key={service.id} to={`/tratamentos/${service.slug}`} className="home-content-link group">
+              <Card className="home-content-card">
                 <div className="aspect-[4/3] sm:aspect-[16/10] overflow-hidden bg-secondary/5">
                   {service.image ? (
                     <img
                       src={mediaUrl(service.image) || service.image}
                       alt={service.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      onError={(e) => (e.target as HTMLImageElement).src = '/placeholder.png'}
+                      width={640} height={400} loading="lazy" decoding="async"
+                      onError={event => { if (event.currentTarget.getAttribute('src') !== '/placeholder.png') event.currentTarget.src = '/placeholder.png'; }}
                     />
                   ) : (
-                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
-                      Img
-                    </div>
+                    <img src="/placeholder.png" alt="" width={640} height={400} loading="lazy" />
                   )}
                 </div>
-                <CardContent className="p-4 flex flex-col flex-grow">
-                  <span className="text-[10px] sm:text-[10px] uppercase tracking-widest text-primary font-bold mb-1">
+                <CardContent className="home-card-content">
+                  <span className="home-card-meta font-medium">
                     {service.category}
                   </span>
-                  <h3 className="font-serif text-base lg:text-lg font-semibold text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
+                  <h3 className="font-serif font-semibold text-foreground">
                     {service.title}
                   </h3>
-                  <p className="text-muted-foreground text-xs sm:text-xs line-clamp-3 mb-3 flex-grow">
+                  <p className="home-card-copy">
                     {service.description}
                   </p>
-                  <span className="text-xs font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all mt-auto">
-                    Saiba mais <ArrowRight className="w-3.5 h-3.5" />
+                  <span className="home-card-action mt-auto">
+                    Saiba mais <ArrowRight className="w-4 h-4" aria-hidden="true" />
                   </span>
                 </CardContent>
               </Card>
@@ -102,12 +94,10 @@ const Services = () => {
 
         {/* CTA */}
         <div className="text-center mt-8 sm:mt-10 md:mt-12">
-          <Link to="/tratamentos">
-            <Button variant="outline" size="lg" className="gap-2 text-sm sm:text-base">
+            <Button asChild variant="outline" size="lg" className="gap-2 text-sm sm:text-base"><Link to="/tratamentos">
               Ver todos os tratamentos
               <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
+          </Link></Button>
         </div>
       </div>
     </section>

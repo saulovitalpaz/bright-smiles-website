@@ -5,22 +5,19 @@ import { ANATOMICAL_GEOMETRY } from "./odontogramGeometry";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
 
 describe("ToothSurfaceSelector", () => {
-  it.each([11, 13, 16, 24, 31, 36, 41, 46, 51, 55, 61, 65, 71, 75, 81, 85])("offers all three crown thirds on each lateral face of tooth %i", async toothNumber => {
-    const { getFaceLabels, getToothFamily } = await import("./odontogramModel");
+  it.each([11, 13, 16, 24, 31, 36, 41, 46, 51, 55, 61, 65, 71, 75, 81, 85])("offers only entire faces on tooth %i", async toothNumber => {
+    const { getFaceLabels } = await import("./odontogramModel");
     const labels = getFaceLabels(toothNumber);
-    const family = getToothFamily(toothNumber);
-    const lastThird = family === "incisor" || family === "canine" ? "incisal" : "oclusal";
     const onTargetsChange = vi.fn();
     render(<ToothSurfaceSelector toothNumber={toothNumber} data={{ status: "Saudável", notes: "" }} selectedFace={null} onSelectFace={() => {}} selectedTargets={[]} onTargetsChange={onTargetsChange} />);
     const user = userEvent.setup();
-    for (const face of ["top", "right", "bottom", "left"] as const) {
-      for (const [label, region] of [["cervical", "cervical"], ["média", "middle"], [lastThird, "incisalOcclusal"]]) {
-        await user.click(screen.getByRole("button", { name: `${labels[face]} - ${label}` }));
-        expect(onTargetsChange).toHaveBeenLastCalledWith([{ kind: "surface", face, region }]);
-      }
+    expect(screen.queryByLabelText("Regiões anatômicas")).not.toBeInTheDocument();
+    for (const face of ["top", "right", "bottom", "left", "center"] as const) {
+      await user.click(screen.getByRole("button", { name: `${labels[face]} - face inteira` }));
+      expect(onTargetsChange).toHaveBeenLastCalledWith([{ kind: "surface", face, region: "entire" }]);
     }
   });
-  it("exposes an explicit incisal ou oclusal label for the center control in layered mode", () => {
+  it("exposes the whole occlusal face in layered mode", () => {
     const { container } = render(
       <ToothSurfaceSelector
         toothNumber={16}
@@ -33,11 +30,11 @@ describe("ToothSurfaceSelector", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }),
+      screen.getByRole("button", { name: /oclusal \/ incisal.*face inteira/i }),
     ).toBeInTheDocument();
   });
 
-  it("does not expose an ambiguous center face inteira option in the layered region grid", () => {
+  it("does not expose subdivisions in the layered region grid", () => {
     render(
       <ToothSurfaceSelector
         toothNumber={16}
@@ -50,7 +47,7 @@ describe("ToothSurfaceSelector", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: /oclusal \/ incisal.*face inteira/i }),
+      screen.queryByRole("button", { name: /cervical|média|incisal ou oclusal/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -75,7 +72,7 @@ describe("ToothSurfaceSelector", () => {
     ]);
   });
 
-  it("replaces an overlapping entire target when a subregion is selected", async () => {
+  it("preserves historical regional targets while adding another entire face", async () => {
     const user = userEvent.setup();
     const onTargetsChange = vi.fn();
     render(
@@ -84,15 +81,16 @@ describe("ToothSurfaceSelector", () => {
         data={{ status: "Saudável", notes: "" }}
         selectedFace={null}
         onSelectFace={() => undefined}
-        selectedTargets={[{ kind: "surface", face: "top", region: "entire" }]}
+        selectedTargets={[{ kind: "surface", face: "top", region: "cervical" }]}
         onTargetsChange={onTargetsChange}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /vestibular.*cervical/i }));
+    await user.click(screen.getByRole("button", { name: /distal.*face inteira/i }));
 
     expect(onTargetsChange).toHaveBeenCalledWith([
       { kind: "surface", face: "top", region: "cervical" },
+      { kind: "surface", face: "left", region: "entire" },
     ]);
   });
 

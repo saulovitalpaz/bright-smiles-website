@@ -65,9 +65,6 @@ const Footer = () => {
               <a href="#equipe" className="block text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Nossa Equipe
               </a>
-              <a href="#blog" className="block text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Blog
-              </a>
               <a href="#contato" className="block text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Contato
               </a>

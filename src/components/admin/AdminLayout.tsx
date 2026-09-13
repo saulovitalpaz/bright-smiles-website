@@ -22,6 +22,7 @@ import axios from "axios";
 import { API_URL } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { AdminPwaInstallAction } from "@/components/admin/AdminPwaProvider";
+import "@/styles/admin-typography.css";
 
 interface AdminLayoutProps {
     children: React.ReactNode;
@@ -117,7 +118,6 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             : [
                 { label: "Comentários", href: "/admin/comentarios" },
                 { label: "Tratamentos", href: "/admin/tratamentos" },
-                { label: "Blog", href: "/admin/blog" },
                 { label: "Stories", href: "/admin/stories" }
             ];
 
@@ -126,7 +126,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
             { label: "Solicitações", href: "/admin/solicitacoes", icon: Calendar, adminOnly: true },
             {
                 label: "Conteúdo",
-                href: isManager ? "/admin/comentarios" : "/admin/blog",
+                href: "/admin/comentarios",
                 icon: FileText,
                 subItems: contentSubItems
             },
@@ -308,7 +308,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                             onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}
                         />
                     </div>
-                    <div className={`relative z-10 min-w-0 lg:text-center ${isCollapsed ? "lg:hidden" : ""}`}>
+                    <div className={`admin-brand relative z-10 min-w-0 lg:text-center ${isCollapsed ? "lg:hidden" : ""}`}>
                         <h2 className="font-serif font-bold text-sm text-white leading-tight mb-1">{clinicName}</h2>
                         <div className="hidden text-[9px] text-[hsl(43,74%,49%)] font-bold uppercase tracking-[0.15em] leading-relaxed lg:block">
                             <p>{settings?.clinic_slogan || "Especializado & Harmonização"}</p>

@@ -6,6 +6,7 @@ import Odontogram from "@/components/admin/attendance/Odontogram";
 import { normalizeOdontogram, type OdontogramData } from "@/components/admin/attendance/odontogram/odontogramModel";
 import { DownloadPrescriptionButton } from "@/components/PrescriptionGenerator";
 import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature";
+import { PrintPatientCard } from "@/components/admin/PrintPatientCard";
 import { ConsentDialog } from "@/components/ConsentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ type StoredPrescription = {
     content: string;
 };
 
-type PrintTarget = "prescription" | "odontogram";
+type PrintTarget = "prescription";
 
 const AdminPrescription = () => {
     const [searchParams] = useSearchParams();
@@ -262,16 +263,6 @@ const AdminPrescription = () => {
         setPrintTarget("prescription");
     };
 
-    const handlePrintOdontogram = () => {
-        if (!Object.keys(normalizedOdontogram.teeth).length) {
-            return toast.error("Nenhum odontograma registrado para este paciente.");
-        }
-        if (!canIssueDocument) {
-            return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
-        }
-        setPrintTarget("odontogram");
-    };
-
     return (
         <AdminLayout title="Prescrição Clínica">
             <AttendanceWorkspace active="prescricao">
@@ -360,9 +351,6 @@ const AdminPrescription = () => {
                                 </Button>
                                 <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
                                     <Printer size={16} /> Imprimir
-                                </Button>
-                                <Button onClick={handlePrintOdontogram} size="sm" variant="ghost" className="gap-2">
-                                    <Printer size={16} /> Imprimir odontograma
                                 </Button>
                                 <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
                                     <Switch
@@ -458,36 +446,7 @@ const AdminPrescription = () => {
              {/* PRINTABLE PREVIEW (Hidden in UI, visible in print) */}
             {printTarget && (
                 <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} data-print-target={printTarget} id="printable-recipe">
-                    {printTarget === "odontogram" ? (
-                        <>
-                            <div className="print-section mb-5 flex items-center gap-4 border-b border-slate-200 pb-4">
-                                <img src="/images/logo-oficial.png" alt="Logo" className="h-14 w-14 object-contain" />
-                                <div>
-                                    <h1 className="text-lg font-serif font-black uppercase leading-tight tracking-wider text-slate-900">Núcleo Odontológico</h1>
-                                    <p className="text-[8px] font-medium uppercase tracking-[0.2em] text-slate-400">Especializado & Harmonização</p>
-                                </div>
-                                <div className="ml-auto text-right">
-                                    <p className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Odontograma emitido em</p>
-                                    <p className="text-xs font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                </div>
-                            </div>
-                            <div className="print-patient-block mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">
-                                <p className="text-[7px] font-black uppercase tracking-[0.15em] text-primary">Paciente</p>
-                                <p className="font-serif text-sm font-bold text-slate-900">{patientData.name || "________________________________"}</p>
-                                <p className="mt-1 font-mono text-[11px] font-bold text-slate-700">CPF: {patientData.cpf || "___.___.___-__"}</p>
-                            </div>
-                            <div className="print-odontogram">
-                                <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Mapeamento Dentário</p>
-                                <Odontogram
-                                    data={patientData.odontogram}
-                                    onChange={() => {}}
-                                    readOnly
-                                    printable
-                                    birthDate={patientData.birthDate}
-                                />
-                            </div>
-                        </>
-                    ) : isPrescriptionPrint ? (
+                    {isPrescriptionPrint ? (
                         <>
                             {/* The odontogram is an independent print page; prescription starts on the next page. */}
                             {includeOdontogram && Object.keys(normalizedOdontogram.teeth).length > 0 && (
@@ -517,28 +476,7 @@ const AdminPrescription = () => {
                                 </div>
                             </div>
 
-                            <div className="print-patient-block mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">
-                                <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-                                    <div className="col-span-7">
-                                        <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">Paciente</p>
-                                        <p className="font-serif text-sm font-bold text-slate-900">{patientData.name || "________________________________"}</p>
-                                    </div>
-                                    <div className="col-span-3">
-                                        <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">CPF</p>
-                                        <p className="font-mono text-[11px] font-bold text-slate-700">{patientData.cpf || "___.___.___-__"}</p>
-                                    </div>
-                                    <div className="col-span-2 text-right">
-                                        <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">Telefone</p>
-                                        <p className="font-mono text-[10px] text-slate-600">{patientData.phone || "—"}</p>
-                                    </div>
-                                    {patientData.address && (
-                                        <div className="col-span-12 border-t border-slate-200/60 pt-1.5">
-                                            <p className="mb-0.5 text-[7px] font-black uppercase tracking-[0.15em] text-primary">Endereço</p>
-                                            <p className="text-[10px] italic text-slate-600">{patientData.address}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <PrintPatientCard patient={patientData} />
 
                             <div className="print-flow-content mb-6 rounded-xl border border-dotted border-slate-200 px-5 py-3 font-serif text-base leading-relaxed text-slate-800">
                                 <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>

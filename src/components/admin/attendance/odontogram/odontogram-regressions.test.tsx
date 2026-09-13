@@ -18,18 +18,18 @@ describe("odontogram regressions", () => {
     expect(screen.queryByRole("button", { name: "Mais opções clínicas" })).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    await user.click(screen.getByRole("button", { name: "Vestibular - cervical" }));
-    await user.click(screen.getByRole("button", { name: "Mesial - média" }));
+    await user.click(screen.getByRole("button", { name: "Vestibular - face inteira" }));
+    await user.click(screen.getByRole("button", { name: "Mesial - face inteira" }));
     expect(screen.getByRole("button", { name: "Mapa: desselecionar face Vestibular" })).toHaveAttribute("aria-pressed", "true");
     await user.click(screen.getByRole("button", { name: "Selecionar situação Planejado / a tratar" }));
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
     await user.click(screen.getByRole("button", { name: /editar carie/i }));
-    expect(screen.getByRole("button", { name: "Vestibular - cervical" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Mesial - média" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Vestibular - face inteira" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Mesial - face inteira" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("Observações Clínicas")).toHaveValue("preservar");
     await user.click(screen.getByRole("button", { name: "Mapa: desselecionar face Vestibular" }));
-    expect(screen.getByRole("button", { name: "Vestibular - cervical" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Mesial - média" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Vestibular - face inteira" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Mesial - face inteira" })).toHaveAttribute("aria-pressed", "true");
   }, 15000);
 
   it("identifies every occurrence on the arch even when two share a face", () => {

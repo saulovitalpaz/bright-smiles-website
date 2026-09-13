@@ -145,7 +145,7 @@ test('stats aggregates only pageviews, excludes story events from sources and om
                 },
                 {
                     type: 'pageview',
-                    path: '/blog',
+                    path: '/tratamento/clareamento',
                     source: 'Ads',
                     location: 'Ipatinga, MG - Brazil',
                     city: 'Ipatinga',
@@ -199,7 +199,7 @@ test('stats aggregates only pageviews, excludes story events from sources and om
         ],
         topPaths: {
             '/': 1,
-            '/blog': 1
+            '/tratamento/clareamento': 1
         },
         devices: {
             desktop: 1,
@@ -217,7 +217,7 @@ test('stats ranks only public page paths and nearby IP-derived locations within 
                 { type: 'pageview', path: '/admin?source=menu', source: 'Direto', city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, ip: 'visitor-admin', userAgent: 'Mozilla/5.0' },
                 { type: 'pageview', path: '/tratamentos', source: 'Google', city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, ip: 'visitor-near', userAgent: 'Mozilla/5.0' },
                 { type: 'pageview', path: '/', source: 'Direto', city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, ip: 'visitor-home', userAgent: 'Mozilla/5.0' },
-                { type: 'pageview', path: '/blog', source: 'Ads', city: 'Belo Horizonte', state: 'MG', latitude: -19.92, longitude: -43.94, ip: 'visitor-far', userAgent: 'Mozilla/5.0' }
+                { type: 'pageview', path: '/tratamento/clareamento', source: 'Ads', city: 'Belo Horizonte', state: 'MG', latitude: -19.92, longitude: -43.94, ip: 'visitor-far', userAgent: 'Mozilla/5.0' }
             ])
         },
         lead: { count: async () => 0 }
@@ -227,7 +227,7 @@ test('stats ranks only public page paths and nearby IP-derived locations within 
 
     await handlers.stats({}, res);
 
-    assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 1, '/blog': 1 });
+    assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 1, '/tratamento/clareamento': 1 });
     assert.ok(!('/admin' in res.body.topPaths));
     assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares', 'Ipatinga']);
     assert.deepEqual(res.body.regions, { MG: 2 });

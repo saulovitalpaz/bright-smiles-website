@@ -5,7 +5,7 @@ const safeFontSize = /^(?:0|\d+(?:\.\d+)?)(?:px|pt|pc|in|cm|mm|em|rem|ex|ch|vw|v
 const safeColor = /^(?:#[0-9a-f]{3,8}|rgba?\(\s*[\d.,%\s]+\)|hsla?\(\s*[\d.,%\s]+\)|[a-z]+)$/i;
 const safeLineHeight = /^(?:normal|1|(?:0|\d+(?:\.\d+)?)(?:px|pt|em|rem|%)?)$/i;
 
-const sanitizeBlogContent = (content) => {
+const sanitizeRichContent = (content) => {
     if (typeof content !== 'string') return '';
 
     return sanitizeHtml(content, {
@@ -54,4 +54,4 @@ const sanitizeBlogContent = (content) => {
     });
 };
 
-module.exports = sanitizeBlogContent;
+module.exports = sanitizeRichContent;

@@ -39,7 +39,6 @@ test('clinical, operational and administrative endpoints require least-privilege
 
 test('content mutation endpoints are admin-only and public testimonials are approved-only', () => {
     for (const [method, route] of [
-        ['post', '/posts'], ['put', '/posts/:id'], ['delete', '/posts/:id'],
         ['post', '/treatments'], ['put', '/treatments/:id'], ['delete', '/treatments/:id'],
         ['post', '/treatments/:id/results'], ['delete', '/treatment-results/:id'],
         ['post', '/stories'], ['delete', '/stories/:id'],

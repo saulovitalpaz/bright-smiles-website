@@ -41,6 +41,7 @@ export type FacialLegacyRegionData = FaceRegionData;
 
 export type FacialNotesDocument = {
   version: 2;
+  skinTone?: "light" | "light-brown";
   applications: FacialApplication[];
   legacyRegions?: Record<string, FacialLegacyRegionData>;
 };
@@ -258,7 +259,7 @@ export function normalizeFacialNotes(value: unknown): FacialNotesDocument {
     });
   }
   Object.entries(record).forEach(([key, region]) => {
-    if (key === "version" || key === "applications" || key === "legacyRegions") return;
+    if (key === "version" || key === "applications" || key === "legacyRegions" || key === "skinTone") return;
     const normalized = normalizeLegacyRegion(region);
     if (normalized) legacyRegions[key] = normalized;
   });
@@ -268,6 +269,7 @@ export function normalizeFacialNotes(value: unknown): FacialNotesDocument {
   return {
     version: 2,
     applications,
+    ...(record.skinTone === "light" || record.skinTone === "light-brown" ? { skinTone: record.skinTone } : {}),
     ...(Object.keys(legacyRegions).length ? { legacyRegions } : {}),
   };
 }

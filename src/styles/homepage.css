@@ -1,0 +1,60 @@
+/* Preserve the public brand while sharing card rhythm and interaction states. */
+.homepage {
+  --home-reading: hsl(30 10% 36%);
+  --home-link: hsl(38 78% 28%);
+}
+.dark .homepage {
+  --home-reading: hsl(30 10% 76%);
+  --home-link: hsl(45 80% 65%);
+}
+.homepage .home-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1.5rem;
+}
+.homepage .home-content-link { display: flex; min-width: 0; border-radius: var(--radius); }
+.homepage .home-content-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  border-radius: var(--radius);
+  transition: transform 200ms ease-out;
+}
+.homepage .home-content-card img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 250ms ease-out;
+}
+.homepage .home-card-content { display: flex; flex: 1; flex-direction: column; gap: .75rem; padding: 1.25rem; }
+.homepage .home-card-content h3 { font-size: 1.25rem; line-height: 1.4; }
+.homepage .home-card-copy { flex: 1; color: var(--home-reading); font-size: .875rem; line-height: 1.65; }
+.homepage .home-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; color: var(--home-reading); font-size: .75rem; line-height: 1.5; }
+.homepage .home-card-action { display: inline-flex; align-items: center; gap: .5rem; color: var(--home-link); font-size: .875rem; font-weight: 600; }
+.homepage .home-card-action svg { transition: transform 200ms ease-out; }
+.homepage .home-content-link:focus-visible .home-card-action { text-decoration: underline; }
+.homepage .home-contact-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 3rem;
+  max-width: 80rem; margin-inline: auto; padding-inline: 0;
+}
+.homepage #contato :is(p, h4) { color: var(--home-reading); }
+.homepage :is(#tratamentos, #contato) > .container { padding-inline: 1rem; }
+.homepage #tratamentos .text-primary,
+.homepage #contato button.text-primary { color: var(--home-link); }
+.homepage #tratamentos .text-muted-foreground { color: var(--home-reading); }
+.homepage .home-card-skeleton { min-height: 23rem; border-radius: var(--radius); background: hsl(var(--muted)); }
+@media (min-width: 640px) {
+  .homepage .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .homepage .home-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .homepage .home-contact-layout { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 2rem; padding-inline: 1rem; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .homepage .home-content-link:hover .home-content-card { transform: translateY(-3px); }
+  .homepage .home-content-link:hover img { transform: scale(1.025); }
+  .homepage .home-content-link:hover .home-card-action svg { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .homepage .home-content-card, .homepage .home-content-card img, .homepage .home-card-action svg { transition: none; transform: none; }
+}

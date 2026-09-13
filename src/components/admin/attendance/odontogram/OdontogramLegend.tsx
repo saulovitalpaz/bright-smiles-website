@@ -37,7 +37,7 @@ export function OdontogramLegend(): JSX.Element {
           <LegendGroup definitions={groups.tooth} title="Dente inteiro" expanded={expanded} />
         </div>
         <p className={`${expanded ? "block" : "hidden print:block"} text-[11px] text-slate-400`}>
-          Regiões: face inteira, cervical, média e incisal/oclusal. Se necessário, selecione mais de uma região para a mesma ocorrência.
+          Selecione faces inteiras no mapa. É possível marcar mais de uma face para a mesma ocorrência.
         </p>
       </div>
     </div>

@@ -14,6 +14,8 @@ import {
   type ClinicalCondition, type Dentition, type OdontogramData,
 } from "./odontogram/odontogramModel";
 import { derivePatientAge } from "@/lib/patient-age";
+import { Button } from "@/components/ui/button";
+import { Printer } from "lucide-react";
 
 export type { ToothData, ToothFaceData } from "./odontogram/odontogramModel";
 
@@ -24,9 +26,10 @@ interface OdontogramProps {
   printable?: boolean;
   birthDate?: string | Date | null;
   dentition?: Dentition;
+  onPrint?: () => void;
 }
 
-const Odontogram = ({ data, onChange, readOnly = false, printable = false, birthDate = null, dentition }: OdontogramProps): JSX.Element => {
+const Odontogram = ({ data, onChange, readOnly = false, printable = false, birthDate = null, dentition, onPrint }: OdontogramProps): JSX.Element => {
   const derivedDentition = derivePatientAge(birthDate).dentition;
   const requestedDentition = dentition ?? (derivedDentition === "legacy" ? "permanent" : derivedDentition);
   const layeredData = useMemo(() => {
@@ -90,6 +93,7 @@ const Odontogram = ({ data, onChange, readOnly = false, printable = false, birth
     <Card className={`odontogram-card overflow-hidden border-slate-800 bg-[#0a1120] text-slate-200 shadow-2xl${printable ? " odontogram-card--printable" : ""}`} data-printable={printable || undefined}>
       <CardHeader className="odontogram-header border-b border-slate-800/70 p-4 sm:p-6">
         <CardTitle className="font-serif text-xl tracking-wide text-white">Odontograma</CardTitle>
+        {onPrint && !printable && <Button type="button" variant="outline" className="no-print w-fit gap-2 text-foreground" onClick={onPrint}><Printer size={16} aria-hidden="true" />Imprimir odontograma</Button>}
         <CardDescription className="text-sm text-slate-400">Selecione o dente para registrar a condição e suas regiões diretamente no formulário clínico.</CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 touch-pan-y overflow-x-hidden p-2 min-[360px]:p-3 sm:p-6">

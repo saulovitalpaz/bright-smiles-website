@@ -325,7 +325,7 @@ const AdminPersonalFinance = () => {
                                 ) : transactions.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-20 text-slate-300">
                                         <Receipt size={48} className="mb-4 opacity-20" />
-                                        <p className="font-serif italic text-lg">Nenhuma movimentação registrada.</p>
+                                        <p className="text-sm">Nenhuma movimentação registrada.</p>
                                     </div>
                                 ) : (
                                     transactions.map(t => (
@@ -350,7 +350,7 @@ const AdminPersonalFinance = () => {
                                              </div>
                                              <div className="flex w-full min-w-0 items-center justify-between gap-3 sm:w-auto sm:gap-6">
                                                  <div className="min-w-0 text-right">
-                                                     <p className={`break-words text-lg font-black ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                     <p className={`break-words text-sm font-semibold tabular-nums ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                          {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
                                                      </p>
                                                      {t.receiptUrl && (

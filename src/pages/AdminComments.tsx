@@ -7,7 +7,7 @@ import axios from "axios";
 import { adminApi } from "@/lib/api";
 import { toast } from "sonner";
 
-interface AdminComment { id: number; name: string; comment?: string; content?: string; approved: boolean; createdAt: string; }
+interface AdminComment { id: number; name: string | null; rating: number; comment: string; approved: boolean; createdAt: string; }
 
 const AdminComments = () => {
     const queryClient = useQueryClient();

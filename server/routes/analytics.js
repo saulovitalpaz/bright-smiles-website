@@ -1,7 +1,7 @@
 const crypto = require('node:crypto');
 const net = require('node:net');
 
-const ACCEPTED_EVENT_TYPES = new Set(['pageview', 'blog_view', 'story_view']);
+const ACCEPTED_EVENT_TYPES = new Set(['pageview', 'story_view']);
 const FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/i;
 const GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1500;

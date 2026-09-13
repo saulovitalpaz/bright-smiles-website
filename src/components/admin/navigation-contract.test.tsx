@@ -12,6 +12,9 @@ describe("admin navigation source contract", () => {
     const authSource = readSource("src/hooks/useAuth.tsx");
     const prescriptionSource = readSource("src/pages/AdminPrescription.tsx");
     const documentsSource = readSource("src/pages/AdminDocuments.tsx");
+    const documentPrintSource = readSource("src/components/admin/ClinicDocumentPrint.tsx");
+    const attendanceSource = readSource("src/pages/AdminAttendanceDetail.tsx");
+    const odontogramPrintSource = readSource("src/components/admin/attendance/AttendanceOdontogramPrint.tsx");
     const cssSource = readSource("src/index.css");
 
     it("registers the standalone calendar route", () => {
@@ -48,8 +51,9 @@ describe("admin navigation source contract", () => {
     });
 
     it("exposes separate prescription and odontogram print targets", () => {
-        expect(prescriptionSource).toContain('type PrintTarget = "prescription" | "odontogram"');
-        expect(prescriptionSource).toContain('setPrintTarget("odontogram")');
+        expect(prescriptionSource).toContain('type PrintTarget = "prescription"');
+        expect(prescriptionSource).not.toContain('setPrintTarget("odontogram")');
+        expect(odontogramPrintSource).toContain('data-print-target="odontogram"');
         expect(prescriptionSource).toContain("data-print-target={printTarget}");
         expect(prescriptionSource).toContain("print-page-odontogram");
     });
@@ -69,8 +73,8 @@ describe("admin navigation source contract", () => {
 
     it("keeps standalone odontogram printing without an inclusion card", () => {
         expect(prescriptionSource).not.toContain("Incluir Odontograma na Receita");
-        expect(prescriptionSource).toContain("Imprimir odontograma");
-        expect(prescriptionSource).toContain("handlePrintOdontogram");
+        expect(prescriptionSource).not.toContain("Imprimir odontograma");
+        expect(attendanceSource).toContain("AttendanceOdontogramPrint");
         expect(prescriptionSource).toContain("normalizeOdontogram(patientData.odontogram)");
     });
 
@@ -82,8 +86,8 @@ describe("admin navigation source contract", () => {
     it("mounts the document print root only for an active print request", () => {
         expect(documentsSource).toContain("isPrintReady");
         expect(documentsSource).toContain("setIsPrintReady(true)");
-        expect(documentsSource).toContain('data-print-target="document"');
-        expect(documentsSource).toContain("hidden print-only print-root");
+        expect(documentPrintSource).toContain('data-print-target="document"');
+        expect(documentPrintSource).toContain("hidden print-only print-root");
     });
 
     it("keeps printable roots outside the interactive attendance workspace", () => {

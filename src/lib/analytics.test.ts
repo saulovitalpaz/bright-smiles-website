@@ -27,7 +27,7 @@ describe("trackAnalyticsEvent", () => {
 
         fetchMock.mockResolvedValueOnce({ ok: true });
 
-        trackAnalyticsEvent({ type: "pageview", path: "/blog", source: "Google" });
+        trackAnalyticsEvent({ type: "pageview", path: "/tratamentos", source: "Google" });
 
         expect(fetchMock).toHaveBeenCalledWith(
             `${API_URL}/analytics`,
@@ -37,7 +37,7 @@ describe("trackAnalyticsEvent", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     type: "pageview",
-                    path: "/blog",
+                    path: "/tratamentos",
                     source: "Google",
                 }),
             }),

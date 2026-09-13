@@ -8,19 +8,13 @@ async function selectStage(stage: string, user: ReturnType<typeof userEvent.setu
 }
 
 describe("ClinicalConditionEditor", () => {
-  it("saves and reloads a lateral incisal third without converting it into the central surface", async () => {
+  it("updates a historical lateral incisal third without converting or erasing its target", async () => {
     const onSave = vi.fn();
     const user = userEvent.setup();
-    const { rerender } = render(<ClinicalConditionEditor toothNumber={11} onCancel={() => {}} onSave={onSave} />);
-    await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
-    await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    await user.click(screen.getByRole("button", { name: "Vestibular - incisal" }));
-    await selectStage("Planejado / a tratar", user);
-    await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
-    const condition = JSON.parse(JSON.stringify(onSave.mock.lastCall![0]));
-    expect(condition.targets).toEqual([{ kind: "surface", face: "top", region: "incisalOcclusal" }]);
-    rerender(<ClinicalConditionEditor toothNumber={11} initialCondition={condition} onCancel={() => {}} onSave={onSave} />);
-    expect(screen.getByRole("button", { name: "Vestibular - incisal" })).toHaveAttribute("aria-pressed", "true");
+    const condition = { id: "historical", category: "achado", type: "carie", stage: "planejado", targets: [{ kind: "surface", face: "top", region: "incisalOcclusal" }] } as const;
+    render(<ClinicalConditionEditor toothNumber={11} initialCondition={JSON.parse(JSON.stringify(condition))} onCancel={() => {}} onSave={onSave} />);
+    expect(screen.getByRole("button", { name: /Remover região Vestibular.*incisal/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Vestibular - incisal" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Atualizar ocorrência" }));
     expect(onSave.mock.lastCall![0]).toMatchObject({ id: condition.id, targets: condition.targets });
   });
@@ -31,7 +25,7 @@ describe("ClinicalConditionEditor", () => {
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
-    await user.click(screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }));
+    await user.click(screen.getByRole("button", { name: /oclusal \/ incisal.*face inteira/i }));
     await user.click(screen.getByRole("button", { name: /vestibular.*face inteira/i }));
     await selectStage("Concluído", user);
     await user.click(screen.getByRole("button", { name: "Salvar ocorrência" }));
@@ -41,7 +35,7 @@ describe("ClinicalConditionEditor", () => {
       type: "resina_composta",
       stage: "concluido",
       targets: [
-        { kind: "surface", face: "center", region: "incisalOcclusal" },
+        { kind: "surface", face: "center", region: "entire" },
         { kind: "surface", face: "top", region: "entire" },
       ],
     }));
@@ -54,7 +48,7 @@ describe("ClinicalConditionEditor", () => {
 
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
-    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
+    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*face inteira/i });
     await user.click(target);
     await selectStage("Planejado / a tratar", user);
     await user.type(screen.getByLabelText("Observação da ocorrência"), "acompanhar por seis meses");
@@ -69,7 +63,7 @@ describe("ClinicalConditionEditor", () => {
     await user.selectOptions(screen.getByLabelText("Categoria"), "achado");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "carie");
     expect(
-      screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i }),
+      screen.getByRole("button", { name: /oclusal \/ incisal.*face inteira/i }),
     ).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -80,7 +74,7 @@ describe("ClinicalConditionEditor", () => {
     expect(screen.getByLabelText("Categoria")).toHaveClass("bg-slate-950", "text-slate-100");
     await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
     await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
-    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*incisal ou oclusal/i });
+    const target = screen.getByRole("button", { name: /oclusal \/ incisal.*face inteira/i });
     await user.click(target);
 
     expect(target).toHaveAttribute("aria-pressed", "true");
@@ -103,24 +97,20 @@ describe("ClinicalConditionEditor", () => {
   it("blocks saving when the selected regions exceed the backend limit", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} />);
-
-    await user.selectOptions(screen.getByLabelText("Categoria"), "restauracao");
-    await user.selectOptions(screen.getByLabelText("Procedimento"), "resina_composta");
-    for (const name of [
-      /vestibular.*cervical/i,
-      /vestibular.*média/i,
-      /mesial.*cervical/i,
-      /mesial.*média/i,
-      /distal.*cervical/i,
-      /distal.*média/i,
-    ]) {
-      await user.click(screen.getByRole("button", { name }));
-    }
-    await selectStage("Planejado / a tratar", user);
+    render(<ClinicalConditionEditor toothNumber={16} onCancel={() => undefined} onSave={onSave} initialCondition={{
+      id: "historical-five", category: "restauracao", type: "resina_composta", stage: "planejado",
+      targets: [
+        { kind: "surface", face: "top", region: "cervical" },
+        { kind: "surface", face: "top", region: "middle" },
+        { kind: "surface", face: "right", region: "cervical" },
+        { kind: "surface", face: "right", region: "middle" },
+        { kind: "surface", face: "left", region: "cervical" },
+      ],
+    }} />);
+    await user.click(screen.getByRole("button", { name: /oclusal \/ incisal.*face inteira/i }));
 
     expect(screen.getByRole("alert")).toHaveTextContent("no máximo 5 regiões");
-    expect(screen.getByRole("button", { name: "Salvar ocorrência" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Atualizar ocorrência" })).toBeDisabled();
     expect(onSave).not.toHaveBeenCalled();
   });
 

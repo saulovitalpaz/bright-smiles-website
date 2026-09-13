@@ -23,6 +23,7 @@ const treatments = [
 const AppointmentForm = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -54,14 +55,16 @@ const AppointmentForm = () => {
     }
 
     setIsSubmitting(true);
+    setSubmitError("");
 
     try {
       // 1. Save to Backend (Lead)
-      await fetch(`${API_URL}/leads`, {
+      const response = await fetch(`${API_URL}/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       });
+      if (!response.ok) throw new Error("Lead request rejected");
 
       // 2. Open WhatsApp
       const whatsappMessage = encodeURIComponent(
@@ -73,7 +76,7 @@ const AppointmentForm = () => {
         `*Mensagem:* ${formData.message.trim() || "Sem mensagem adicional"}`
       );
 
-      window.open(`https://wa.me/5533991219695?text=${whatsappMessage}`, "_blank");
+      window.open(`https://wa.me/5533991219695?text=${whatsappMessage}`, "_blank", "noopener,noreferrer");
 
       toast({
         title: "Solicitação Recebida!",
@@ -91,21 +94,20 @@ const AppointmentForm = () => {
         location: ""
       });
 
-    } catch (error) {
-      console.error("Erro ao salvar lead", error);
+    } catch {
+      setSubmitError("Não foi possível enviar sua solicitação. Seus dados foram mantidos; tente novamente.");
       toast({
         title: "Erro de conexão",
         description: "Não foi possível salvar seu pedido, mas tente pelo WhatsApp direto.",
         variant: "destructive"
       });
-      // Still open WhatsApp as fallback
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <section id="agendamento" className="section-padding">
+    <section id="agendamento" className="min-w-0">
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
           <Card className="border-primary/20">
@@ -235,6 +237,7 @@ const AppointmentForm = () => {
                   />
                 </div>
 
+                {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
                 <Button
                   type="submit"
                   size="lg"

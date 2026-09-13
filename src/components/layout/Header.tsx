@@ -28,7 +28,6 @@ const Header = () => {
     { label: "Início", href: "/" },
     { label: "Tratamentos", href: "/tratamentos" },
     { label: "Equipe", href: isHome ? "#equipe" : "/#equipe" },
-    { label: "Blog", href: "/blog" },
   ];
 
   return (

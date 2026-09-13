@@ -8,8 +8,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TreatmentList from "./pages/TreatmentList";
 import TreatmentDetail from "./pages/TreatmentDetail";
-import BlogList from "./pages/BlogList";
-import BlogPost from "./pages/BlogPost";
 import PageTracker from "./components/PageTracker";
 import AdminPwaProvider from "./components/admin/AdminPwaProvider";
 import PageLoadBoundary from "./components/PageLoadBoundary";
@@ -17,7 +15,6 @@ import { AuthProvider, ProtectedRoute, RoleProtectedRoute } from "./hooks/useAut
 
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const AdminBlog = lazy(() => import("./pages/AdminBlog"));
 const AdminLeads = lazy(() => import("./pages/AdminLeads"));
 const AdminComments = lazy(() => import("./pages/AdminComments"));
 const AdminTreatments = lazy(() => import("./pages/AdminTreatments"));
@@ -59,8 +56,6 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/tratamentos" element={<TreatmentList />} />
             <Route path="/tratamentos/:slug" element={<TreatmentDetail />} />
-            <Route path="/blog" element={<BlogList />} />
-            <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/admin" element={<AdminLogin />} />
 
             {/* Protected Admin Routes */}
@@ -74,7 +69,6 @@ const App = () => (
             <Route path="/admin/documentos" element={<ProtectedRoute><AdminDocuments /></ProtectedRoute>} />
 
             {/* Restricted: admin-only (manager gets redirected to dashboard) */}
-            <Route path="/admin/blog" element={<RoleProtectedRoute><AdminBlog /></RoleProtectedRoute>} />
             <Route path="/admin/solicitacoes" element={<RoleProtectedRoute><AdminLeads /></RoleProtectedRoute>} />
             <Route path="/admin/tratamentos" element={<RoleProtectedRoute><AdminTreatments /></RoleProtectedRoute>} />
             <Route path="/admin/consultas" element={<RoleProtectedRoute><AdminAppointments /></RoleProtectedRoute>} />

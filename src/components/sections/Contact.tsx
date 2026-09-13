@@ -6,14 +6,12 @@ import { LeadCaptureDialog } from "@/components/LeadCaptureDialog";
 
 const Contact = () => {
   const [open, setOpen] = useState(false);
-  const whatsappNumber = "5533991219695";
-  const whatsappMessage = encodeURIComponent("Olá! Gostaria de agendar uma consulta no Núcleo Odontológico Especializado.");
   const mapUrl = "https://maps.app.goo.gl/chx7grgranKEyPhP8";
 
   return (
-    <section id="contato" className="section-padding bg-accent text-accent-foreground">
+    <section id="contato" className="min-w-0 text-foreground">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center">
+        <div className="grid min-w-0 grid-cols-1 gap-8">
           {/* Left Content */}
           <div>
             <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
@@ -27,8 +25,8 @@ const Contact = () => {
             </p>
 
             {/* WhatsApp CTA */}
-            <div onClick={() => setOpen(true)}>
-              <Button size="lg" className="gap-2 mb-6 sm:mb-8 text-sm sm:text-base h-10 sm:h-11">
+            <div>
+              <Button onClick={() => setOpen(true)} size="lg" className="gap-2 mb-6 sm:mb-8 text-sm sm:text-base min-h-11">
                 <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                 Agendar
               </Button>
@@ -91,19 +89,7 @@ const Contact = () => {
               <CardContent className="p-0">
                 {/* Map Embed */}
                 <div className="aspect-[16/10] sm:aspect-video relative">
-                  <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3750.8!2d-41.5!3d-18.8!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTjCsDQ4JzAwLjAiUyA0McKwMzAnMDAuMCJX!5e0!3m2!1spt-BR!2sbr!4v1"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className="absolute inset-0"
-                    title="Localização do Consultório"
-                  />
-                  {/* Fallback overlay with button */}
-                  <div className="absolute inset-0 bg-muted/90 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-muted/50 flex items-center justify-center">
                     <div className="text-center p-8">
                       <MapPin className="w-12 h-12 text-primary mx-auto mb-4" />
                       <p className="text-muted-foreground mb-4">

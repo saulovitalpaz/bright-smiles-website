@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { addDays, addMonths, format, isSameMonth, isToday, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -27,6 +27,7 @@ type ViewMode = "day" | "week" | "month";
 
 const dayKey = (date: Date) => format(date, "yyyy-MM-dd");
 const dateLabel = (date: Date) => format(date, "dd/MM/yyyy");
+const isStandalone = () => Boolean(window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone);
 const atNine = (day: Date) => {
     const date = new Date(day);
     date.setHours(9, 0, 0, 0);
@@ -51,7 +52,24 @@ export const CalendarView = ({
     entries, anchorDate, onAnchorDateChange, onEventOpen, onEventDrop, onEventCreate,
 }: CalendarViewProps) => {
     const [viewMode, setViewMode] = useState<ViewMode>("week");
-    const days = viewMode === "week" ? getWeekDays(anchorDate) : [anchorDate];
+    const [standalone, setStandalone] = useState(isStandalone);
+    const dayScroller = useRef<HTMLDivElement>(null);
+    const selectedDay = useRef<HTMLElement>(null);
+    const threeDayView = viewMode === "day" && !standalone;
+    const days = viewMode === "week" ? getWeekDays(anchorDate) : threeDayView ? [addDays(anchorDate, -1), anchorDate, addDays(anchorDate, 1)] : [anchorDate];
+    useEffect(() => {
+        const query = window.matchMedia?.("(display-mode: standalone)");
+        const update = () => setStandalone(isStandalone());
+        query?.addEventListener?.("change", update);
+        return () => query?.removeEventListener?.("change", update);
+    }, []);
+    const anchorKey = dayKey(anchorDate);
+    useEffect(() => {
+        const scroller = dayScroller.current;
+        const selected = selectedDay.current;
+        if (!threeDayView || !scroller || !selected) return;
+        scroller.scrollLeft = selected.offsetLeft - (scroller.clientWidth - selected.clientWidth) / 2;
+    }, [threeDayView, anchorKey]);
     const entriesByDay = useMemo(() => {
         const grouped = new Map<string, CalendarEntry[]>();
         for (const entry of entries) {
@@ -183,19 +201,27 @@ export const CalendarView = ({
             )}
 
             {viewMode === "day" && (
-                <section aria-label={"Horários de " + dateLabel(anchorDate)} className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div ref={dayScroller} className="relative max-w-full min-w-0 overflow-x-auto pb-2" tabIndex={threeDayView ? 0 : undefined} role={threeDayView ? "region" : undefined} aria-label={threeDayView ? "Agenda diária: dia anterior, selecionado e seguinte" : undefined}>
+                <div className={threeDayView ? "grid min-w-[48rem] grid-cols-3 items-start gap-3" : "min-w-0"}>
+                {days.map(day => <section key={dayKey(day)} ref={dayKey(day) === anchorKey ? selectedDay : undefined} data-selected={dayKey(day) === anchorKey}
+                    aria-label={"Horários de " + dateLabel(day)} className={"min-w-0 overflow-hidden rounded-xl border bg-white " + (threeDayView && dayKey(day) === anchorKey ? "border-amber-600 ring-1 ring-inset ring-amber-600" : "border-slate-200")}>
+                    {threeDayView && <h3 className={"border-b p-3 text-sm font-semibold " + (dayKey(day) === anchorKey ? "border-amber-200 bg-amber-50 text-amber-950" : "border-slate-200 bg-slate-50 text-slate-700")}>
+                        <span className="capitalize">{format(day, "EEE", { locale: ptBR })}</span>{" "}<time dateTime={dayKey(day)}>{dateLabel(day)}</time>{isToday(day) && <span className="ml-2">Hoje</span>}
+                    </h3>}
                     {slotMinutes.map(minutes => {
-                        const slotEntries = dayEntries(anchorDate).filter(entry => eventSlotMinutes(entry.scheduledAt) === minutes);
+                        const slotEntries = dayEntries(day).filter(entry => eventSlotMinutes(entry.scheduledAt) === minutes);
                         const time = format(new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60), "HH:mm");
-                        return <div key={minutes} data-drop-minutes={minutes} className="grid min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] border-b border-slate-100 last:border-0" onDragOver={event => event.preventDefault()} onDrop={event => handleDrop(event, anchorDate, minutes)}>
+                        return <div key={minutes} data-drop-minutes={minutes} className="grid min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] border-b border-slate-100 last:border-0" onDragOver={event => event.preventDefault()} onDrop={event => handleDrop(event, day, minutes)}>
                             <span className="p-2 pt-3 text-xs tabular-nums text-slate-500">{time}</span>
                             <div className="min-w-0 border-l border-slate-100 p-1.5">
                                 {slotEntries.length > 0 && <div className="space-y-1">{slotEntries.map(renderEvent)}</div>}
-                                {onEventCreate && <button type="button" aria-label={"Criar atendimento em " + dateLabel(anchorDate) + " às " + time} onClick={() => onEventCreate(new Date(getDropDateTime(anchorDate, minutes)))} className="flex min-h-11 w-full items-center justify-center rounded-md text-slate-400 hover:bg-amber-50 hover:text-slate-700"><Plus size={15} aria-hidden="true" /></button>}
+                                {onEventCreate && <button type="button" aria-label={"Criar atendimento em " + dateLabel(day) + " às " + time} onClick={() => onEventCreate(new Date(getDropDateTime(day, minutes)))} className="flex min-h-11 w-full items-center justify-center rounded-md text-slate-400 hover:bg-amber-50 hover:text-slate-700"><Plus size={15} aria-hidden="true" /></button>}
                             </div>
                         </div>;
                     })}
-                </section>
+                </section>)}
+                </div>
+                </div>
             )}
         </section>
     );

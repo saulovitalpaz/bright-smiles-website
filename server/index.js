@@ -52,7 +52,6 @@ const {
 const { PUBLIC_SETTINGS_KEYS, toPublicSettings } = require('./utils/publicSettings');
 const auditLogger = require('./middleware/auditLogger');
 const { hashPassword, verifyPassword } = require('./utils/passwords');
-const sanitizeBlogContent = require('./utils/sanitizeBlogContent');
 const {
     SIGNATURE_IMAGE_TYPES,
     isSupportedSignatureImage,
@@ -576,81 +575,6 @@ app.get('/auth/session', authenticateToken, async (req, res) => {
 // User asked for "Hardened Session Management".
 // Let's protect sensitive routes.
 
-// Posts API
-app.get('/posts', async (req, res) => {
-    try {
-        const posts = await prisma.post.findMany({
-            orderBy: { date: 'desc' }
-        });
-        res.json(posts.map((post) => ({ ...post, content: sanitizeBlogContent(post.content) })));
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/posts/:slug', async (req, res) => {
-    try {
-        const { slug } = req.params;
-        const post = await prisma.post.findUnique({
-            where: { slug }
-        });
-        if (!post) {
-            return res.status(404).json({ error: 'Post not found' });
-        }
-        res.json({ ...post, content: sanitizeBlogContent(post.content) });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/posts', authenticateToken, authorizeRole(['admin']), async (req, res) => {
-    try {
-        const post = await prisma.post.create({
-            data: { ...req.body, content: sanitizeBlogContent(req.body.content) }
-        });
-        res.json(post);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.put('/posts/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { id: _id, createdAt, updatedAt, ...data } = req.body;
-        const post = await prisma.post.update({
-            where: { id: parseInt(id) },
-            data: { ...data, content: sanitizeBlogContent(data.content) }
-        });
-        res.json(post);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.delete('/posts/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
-    try {
-        await prisma.post.delete({
-            where: { id: parseInt(req.params.id) }
-        });
-        res.json({ message: 'Post deleted' });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/posts/:id/view', async (req, res) => {
-    try {
-        // Increment views
-        const post = await prisma.post.update({
-            where: { id: parseInt(req.params.id) },
-            data: { views: { increment: 1 } }
-        });
-        res.json({ views: post.views });
-    } catch (error) {
-        res.status(200).send("OK"); // Fail silently
-    }
-});
 
 // ... Appointments ...
 

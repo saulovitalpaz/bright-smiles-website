@@ -27,7 +27,7 @@ const applicationSchema = z.object({
 }).strict();
 const legacySchema = z.record(z.string().max(100), z.object({ dose: text, product: text, notes: text }).strict());
 const facialSchema = z.union([
-    z.object({ version: z.literal(2), applications: z.array(applicationSchema).max(1000), legacyRegions: legacySchema.optional() }).strict(),
+    z.object({ version: z.literal(2), skinTone: z.enum(['light', 'light-brown']).optional(), applications: z.array(applicationSchema).max(1000), legacyRegions: legacySchema.optional() }).strict(),
     legacySchema,
 ]).nullable();
 class StockError extends Error { constructor(message, statusCode = 400) { super(message); this.statusCode = statusCode; } }

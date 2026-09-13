@@ -376,8 +376,6 @@
   }
 
   @media screen {
-    .admin-shell [data-card-slot="title"] { font-family: inherit; font-size: 1rem; line-height: 1.5; font-weight: 600; letter-spacing: normal; text-transform: none; }
-    .admin-shell [data-card-slot="description"] { font-size: .875rem; line-height: 1.5; }
     .admin-shell [data-card-slot="header"] { padding: 1rem; }
     .admin-shell [data-card-slot="content"],
     .admin-shell [data-card-slot="footer"] { padding: 0 1rem 1rem; }
@@ -405,11 +403,6 @@
 
     .admin-shell [data-card-slot="header"] + [data-card-slot="content"] {
       padding-top: 0;
-    }
-
-    .admin-shell [data-card-slot="title"] {
-      font-size: 1.0625rem;
-      line-height: 1.4;
     }
 
     .admin-shell :where(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
@@ -1027,6 +1020,24 @@
   .print-odontogram .odontogram-card :where(article, section) {
     border-color: #cbd5e1 !important;
     background: #fff !important;
+  }
+
+  [data-print-target="odontogram"] .print-odontogram {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  [data-print-target="odontogram"] .odontogram-card {
+    overflow: visible !important;
+  }
+
+  [data-print-target="odontogram"] .odontogram-card section > div {
+    display: block;
+  }
+
+  [data-print-target="odontogram"] .odontogram-card article {
+    margin-block: 3mm;
+    break-inside: avoid;
   }
 }
 

@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { buildSeedUsers } = require('./utils/seedUsers');
 require('dotenv').config();
 const prisma = new PrismaClient();
 
@@ -186,73 +187,15 @@ const treatments = [
     }
 ];
 
-const blogPosts = [
-    {
-        slug: "harmonizacao-facial-rejuvenescimento",
-        title: "Como a Harmonização Facial pode rejuvenescer seu sorriso",
-        excerpt: "Descubra como procedimentos como preenchimento labial e rinomodelação complementam os tratamentos odontológicos para um resultado natural.",
-        category: "Harmonização",
-        date: new Date("2026-01-08"),
-        readTime: "5 min",
-        image: "/images/botox/Botox capa.png",
-        images: [
-            "/images/botox/Botox capa.png",
-            "/images/botox/Botox capa.png",
-            "/images/preenchimento/hialuronico.png",
-            "/images/preenchimento/hialuronico.png"
-        ],
-        author: "Dra. Ana Karolina",
-        content: "A harmonização facial não é apenas sobre aplicar produtos, mas sobre entender a simetria e a beleza única de cada rosto. Quando combinamos procedimentos como toxina botulínica e preenchimento com ácido hialurônico, conseguimos suavizar linhas de expressão e realçar traços naturais, criando um sorriso muito mais harmônico e uma aparência descansada.",
-        references: [
-            {
-                title: "Hyaluronic acid filler injections for facial rejuvenation",
-                authors: "Pavicic T, Gauglitz GG",
-                journal: "Clinics in Dermatology",
-                year: "2016",
-                url: "https://pubmed.ncbi.nlm.nih.gov/26686017/"
-            }
-        ]
-    }
-];
 
-const users = [
-    {
-        username: "Suporte Admin",
-        password: "Support@NOEH2026!",
-        name: "Suporte Técnico",
-        role: "admin",
-        cro: "Saulo"
-    },
-    {
-        username: "Dra. Ana Karolina",
-        password: "Ana#NOEH2026!",
-        name: "Ana Karolina",
-        role: "admin",
-        cro: "CRO/MG 60.514"
-    },
-    {
-        username: "Dra. Clara Lima",
-        password: "Clara#NOEH2026!",
-        name: "Clara Lima",
-        role: "admin",
-        cro: "CRO/MG 60.369"
-    },
-    {
-        username: "Neli Vital",
-        password: "Natan2021",
-        name: "Neli Vital",
-        role: "manager", // Role manager for restricted access
-        cro: "Gerência"
-    }
-];
 
 async function main() {
+    const users = await buildSeedUsers(process.env);
     console.log('Seeding database...');
 
     // Clear existing data (optional, but good for reset)
     await prisma.treatmentResult.deleteMany({});
     await prisma.treatment.deleteMany({});
-    await prisma.post.deleteMany({});
     // Não deletamos usuários admin para evitar bloqueio, mas podemos garantir que eles existam
     // Se quiser resetar users também: await prisma.user.deleteMany({});
 
@@ -275,11 +218,6 @@ async function main() {
         }
     }
 
-    for (const post of blogPosts) {
-        await prisma.post.create({
-            data: post
-        });
-    }
 
     console.log('Cleaning up old zombie users...');
     // Remove old usernames that were replaced by professional names
@@ -374,7 +312,7 @@ NOEH - Núcleo Odontológico`
     for (const u of users) {
         await prisma.user.upsert({
             where: { username: u.username },
-            update: u, // Agora força a atualização dos dados (incluindo senha) se o username já existir
+            update: {},
             create: u
         });
     }
@@ -384,7 +322,7 @@ NOEH - Núcleo Odontológico`
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error('Seed failed. Check configuration and database availability.');
         process.exit(1);
     })
     .finally(async () => {

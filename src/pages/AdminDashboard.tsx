@@ -11,9 +11,9 @@ interface RecentTestimonial { name: string; comment?: string; content?: string; 
 interface RecentAppointment { id: number; patientName: string; procedure?: string; professional?: string; date: string; }
 
 interface DashboardStats {
-    recentStock?: Array<{ id: string; name: string; quantity: number; stockUnit: string; stockValue: number }>;
+    recentStock?: Array<{ id: string; name: string; quantity: number; stockUnit: string; reconstitutedAt?: string | null }>;
+    stockTotalValue?: number;
     users: number;
-    posts: number;
     appointments: number;
     leads: number;
     pendingLeadCount?: number;
@@ -92,13 +92,13 @@ const AdminDashboard = () => {
                 {stats && <>
                     {!isManager && <section aria-labelledby="stock-heading" className="admin-card overflow-hidden">
                         <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-5">
-                            <h2 id="stock-heading" className="font-serif text-xl font-bold text-slate-900">Estoque</h2>
+                            <div><h2 id="stock-heading" className="font-serif text-xl font-bold text-slate-900">Estoque</h2><p className="text-xl font-semibold tabular-nums text-slate-900">{(stats.stockTotalValue ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p><p className="text-xs text-slate-600">Valor total dos itens em estoque</p></div>
                             <Link to="/admin/settings/estoque" className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10">Ver estoque</Link>
                         </div>
                         {stats.recentStock?.length ? <ul className="divide-y divide-slate-200 border-t border-slate-200">{stats.recentStock.slice(0, 3).map(product => (
                             <li key={product.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2 text-sm sm:px-5">
                                 <span className="min-w-0 break-words font-medium text-slate-900">{product.name}</span>
-                                <span className="text-slate-600 tabular-nums">{product.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 6 })} {product.stockUnit === "ml" ? "ml" : "un."} restantes · {product.stockValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em estoque</span>
+                                <div className="text-slate-600 tabular-nums"><p>{product.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 6 })} {product.stockUnit === "ml" ? "ml" : "un."} restantes</p><p className="text-xs">Reconstituição: {product.reconstitutedAt ? product.reconstitutedAt.slice(0, 10).split("-").reverse().join("/") : "Não informada"}</p></div>
                             </li>
                         ))}</ul> : <p className="px-3 pb-3 text-sm text-slate-600 sm:px-5">Nenhum produto registrado.</p>}
                     </section>}

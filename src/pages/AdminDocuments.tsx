@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature";
+import { ClinicDocumentPrint } from "@/components/admin/ClinicDocumentPrint";
 import {
     FileText,
     Download,
@@ -24,7 +24,6 @@ import { fetchClient } from "@/lib/api";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import RichTextEditor from "@/components/admin/RichTextEditor";
-import { printDocumentClass } from "@/lib/print-layout";
 import { mediaUrl } from "@/lib/media";
 import { replaceDocumentTokens } from "@/lib/document-template";
 import { derivePatientAge } from "@/lib/patient-age";
@@ -66,6 +65,7 @@ const AdminDocuments = () => {
     const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
     const [documentContent, setDocumentContent] = useState("");
+    const [isManualDocument, setIsManualDocument] = useState(false);
 
     // History & Upload State
     const [history, setHistory] = useState<PatientDocumentRecord[]>([]);
@@ -164,6 +164,7 @@ const AdminDocuments = () => {
     };
 
     const applyTemplate = (template: DocumentTemplate) => {
+        setIsManualDocument(false);
         if (template.kind === "pdf") {
             setSelectedTemplate(template);
             setDocumentContent("");
@@ -190,6 +191,7 @@ const AdminDocuments = () => {
     };
 
     const handleSaveHistory = async () => {
+        if (isManualDocument) return;
         if (!patientData.id) return toast.error("Selecione um paciente.");
         if (selectedTemplate?.kind !== "pdf" && !documentContent.trim()) return toast.error("Gere ou escreva um documento.");
         if (selectedTemplate?.kind === "pdf" && !selectedTemplate.id) return toast.error("Selecione um modelo PDF.");
@@ -262,7 +264,7 @@ const AdminDocuments = () => {
         if (selectedTemplate?.kind === "pdf") {
             return toast.error("Modelos PDF devem ser emitidos e acessados pelo histórico.");
         }
-        if (!documentContent.trim()) {
+        if (!isManualDocument && !documentContent.trim()) {
             return toast.error("Escreva o conteúdo do documento antes de imprimir.");
         }
         if (!canIssueDocument) {
@@ -348,6 +350,15 @@ const AdminDocuments = () => {
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+                                <button
+                                    type="button"
+                                    aria-pressed={isManualDocument}
+                                    className={`flex min-h-11 w-full items-center gap-2 p-3 text-left text-sm text-slate-700 hover:bg-slate-50 ${isManualDocument ? "bg-primary/5" : ""}`}
+                                    onClick={() => { setIsManualDocument(true); setSelectedTemplate(null); setDocumentContent(""); }}
+                                >
+                                    <FileText size={16} className="shrink-0 text-slate-400" />
+                                    Documento para preenchimento manual
+                                </button>
                                 {templates.map(t => (
                                     <div key={t.id} className={`flex items-center justify-between p-3 hover:bg-slate-50 ${selectedTemplate?.id === t.id ? 'bg-primary/5' : ''}`}>
                                         <button onClick={() => applyTemplate(t)} className="flex-1 text-left flex items-center gap-2">
@@ -432,14 +443,14 @@ const AdminDocuments = () => {
                                     <FileText size={18} />
                                 </div>
                                 <span className="font-serif font-black text-slate-800 uppercase tracking-tighter">
-                                    {selectedTemplate?.title || "Novo Documento"}
+                                    {isManualDocument ? "Documento para preenchimento manual" : selectedTemplate?.title || "Novo Documento"}
                                 </span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                <Button onClick={handleSaveHistory} variant="outline" className="flex-1 sm:flex-none gap-2 border-slate-200 text-slate-600">
+                                {!isManualDocument && <Button onClick={handleSaveHistory} variant="outline" className="flex-1 sm:flex-none gap-2 border-slate-200 text-slate-600">
                                     <Save size={18} /> <span className="sm:hidden">Salvar</span><span className="hidden sm:inline">Salvar no Histórico</span>
-                                </Button>
-                                <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
+                                </Button>}
+                                {!isManualDocument && <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
                                     <Switch
                                         id="include-document-signature"
                                         checked={includeProfessionalSignature}
@@ -449,14 +460,19 @@ const AdminDocuments = () => {
                                     <Label htmlFor="include-document-signature" className="cursor-pointer text-sm text-muted-foreground">
                                         Inserir assinatura
                                     </Label>
-                                </div>
+                                </div>}
                                 <Button onClick={handlePrint} className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20">
                                     <Printer size={18} /> <span className="sm:hidden">Imprimir</span><span className="hidden sm:inline">Apenas Imprimir</span>
                                 </Button>
                             </div>
                         </div>
                         <div className="p-3 md:p-4 bg-white overflow-auto">
-                            {selectedTemplate?.kind === "pdf" ? (
+                            {isManualDocument ? (
+                                <div className="space-y-4 bg-slate-50 p-4 text-sm text-slate-600">
+                                    <p>Imprima uma folha com cabeçalho de paciente em branco, logo e identificação profissional. Nenhum dado do paciente selecionado nem imagem de assinatura será incluído.</p>
+                                    <Button variant="outline" onClick={() => setIsManualDocument(false)}>Voltar ao documento livre</Button>
+                                </div>
+                            ) : selectedTemplate?.kind === "pdf" ? (
                                 <div className="flex items-center justify-center bg-slate-50 p-8 text-center text-sm text-slate-500">
                                     Este modelo é um PDF. Selecione um paciente e salve no histórico para registrar a emissão.
                                 </div>
@@ -478,33 +494,13 @@ const AdminDocuments = () => {
 
             {/* Keep the printable document outside the editing grid so print pagination is independent of screen layout. */}
             {isPrintReady && (
-                <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} data-print-target="document">
-                    <div className="print-section mb-6 flex flex-col items-center border-b border-slate-100 pb-4 text-center">
-                        <img src="/images/logo-oficial.png" alt="Logo" className="mb-2 h-20 w-20 object-contain" />
-                        <h1 className="text-xl font-serif font-black uppercase tracking-widest text-slate-900">Núcleo Odontológico</h1>
-                        <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500">Especializado & Harmonização</p>
-                    </div>
-
-                    <div className="print-flow-content whitespace-pre-wrap px-4 text-justify font-serif text-base leading-[1.6] text-slate-800">
-                        <div dangerouslySetInnerHTML={{ __html: documentContent }} />
-                    </div>
-
-                    <div className="print-signature mt-20 grid grid-cols-2 gap-12 border-t border-slate-200 pt-8 text-center">
-                        <div>
-                            <div className="mx-auto mb-2 w-64 border-b border-slate-900"></div>
-                            <p className="text-[10px] font-bold uppercase">Assinatura do Paciente</p>
-                            <p className="mt-1 text-[9px] text-slate-500">{patientData.name} - {patientData.cpf}</p>
-                        </div>
-                        <ProfessionalSignature
-                            professional={currentUser}
-                            includeElectronic={includeProfessionalSignature}
-                        />
-                    </div>
-
-                    <p className="mt-12 text-center text-[10px] uppercase tracking-widest text-slate-400">
-                        Governador Valadares, {patientData.date}
-                    </p>
-                </div>
+                <ClinicDocumentPrint
+                    professional={currentUser}
+                    patient={patientData}
+                    content={documentContent}
+                    includeElectronic={includeProfessionalSignature}
+                    manual={isManualDocument}
+                />
             )}
 
         </AdminLayout >

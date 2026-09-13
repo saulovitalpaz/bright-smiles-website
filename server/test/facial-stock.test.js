@@ -3,6 +3,13 @@ const assert = require('node:assert/strict');
 const { Prisma } = require('@prisma/client');
 const { syncFacialStock, doseQuantity, validateFacialNotes, stockProductSchema } = require('../utils/facialStock');
 const D = Prisma.Decimal;
+test('validates and preserves saved skin tone without changing historical notes', () => {
+    for (const skinTone of ['light', 'light-brown']) {
+        const notes = { version: 2, skinTone, applications: [], legacyRegions: { frontal: { product: 'Anterior', dose: '2 U', notes: '' } } };
+        assert.deepEqual(validateFacialNotes(JSON.parse(JSON.stringify(notes))), notes);
+    }
+    for (const skinTone of ['invalid', null, 1, {}]) assert.throws(() => validateFacialNotes({ version: 2, skinTone, applications: [] }), /inválido/);
+});
 const product = (id = 'p1', overrides = {}) => ({ id, name: 'Produto de teste', procedureType: 'botulinum-toxin', stockUnit: 'ml', quantity: new D(10), concentration: new D(50), price: new D(100), active: true, version: 0, ...overrides });
 const application = (overrides = {}) => ({ id: 'a1', regionId: 'frontal', procedureType: 'botulinum-toxin', amount: 10, unit: 'U', productId: 'p1', ...overrides });
 function store(initial = [product()]) {

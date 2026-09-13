@@ -12,7 +12,7 @@ const {
   patientSchema,
   prescriptionSchema,
 } = require('../utils/validationSchemas');
-const sanitizeBlogContent = require('../utils/sanitizeBlogContent');
+const sanitizeRichContent = require('../utils/sanitizeRichContent');
 
 const schemaSource = fs.readFileSync(
   path.join(__dirname, '..', 'prisma', 'schema.prisma'),
@@ -168,7 +168,7 @@ test('limits signed attachments to private supported file metadata', () => {
 });
 
 test('rich sanitizer keeps approved formatting and removes active content', () => {
-  const html = sanitizeBlogContent(
+  const html = sanitizeRichContent(
     '<p style="font-family: Georgia; font-size: 14px; color: #123456; background-color: rgb(250, 250, 250); line-height: 1.5; text-align: center" onclick="unsafe()">safe <u>text</u> <font color="#123456">colored</font> <font color="javascript:alert(1)">bad color</font> <a href="https://example.test">link</a> <a href="javascript:alert(1)">bad</a><script>alert(1)</script></p>',
   );
 

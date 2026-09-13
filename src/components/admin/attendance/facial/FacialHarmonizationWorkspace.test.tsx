@@ -26,8 +26,9 @@ describe("FacialHarmonizationWorkspace direct annotation", () => {
     expect(fireEvent.keyDown(map, { key: "ArrowDown" })).toBe(true);
     expect(onChange).not.toHaveBeenCalled();
   });
-  it("changes skin tone without changing marks or clinical data", () => {
-    const { container, onChange } = setup({ version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] });
+  it("saves skin tone and restores it on reopening without changing marks", () => {
+    const value = { version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] };
+    const { container, onChange, unmount } = setup(value);
     const marker = container.querySelector('.injectable-mark');
     fireEvent.click(screen.getByRole('button', { name: 'Representação negra de pele castanha clara' }));
     expect(screen.getByRole('button', { name: 'Representação negra de pele castanha clara' })).toHaveAttribute('aria-pressed', 'true');
@@ -35,7 +36,14 @@ describe("FacialHarmonizationWorkspace direct annotation", () => {
     expect(container.querySelector('image')).not.toHaveAttribute('filter');
     expect(container.querySelector('.injectable-mark')).toBe(marker);
     expect(marker).not.toHaveAttribute('filter');
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenLastCalledWith({ ...value, skinTone: "light-brown" });
+    const saved = JSON.parse(JSON.stringify(onChange.mock.lastCall![0]));
+    unmount();
+    const reopened = setup(saved);
+    expect(reopened.container.querySelector('image')).toHaveAttribute('href', '/facial-chart-front-black.png');
+    expect(reopened.container.querySelector('.injectable-mark')).toBeInTheDocument();
+    reopened.rerender(<FacialHarmonizationWorkspace value={{ version: 2, applications: [] }} onChange={reopened.onChange} />);
+    expect(reopened.container.querySelector('image')).toHaveAttribute('href', '/facial-chart-front.png');
   });
   it("changes only the background when patient sex changes and preserves the marker", () => {
     const value = { version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] };
@@ -114,6 +122,7 @@ describe("FacialHarmonizationWorkspace direct annotation", () => {
     fireEvent.click(screen.getByRole("button", { name: /Consultar aplicação/ }));
     expect(screen.getByLabelText("Quantidade")).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: "Confirmar quantidade" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Representação negra de pele castanha clara" }));
     expect(onChange).not.toHaveBeenCalled();
   });
   it("supports keyboard placement and updates when a different record arrives", () => {

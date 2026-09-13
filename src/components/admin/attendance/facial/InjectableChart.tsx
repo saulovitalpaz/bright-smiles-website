@@ -43,7 +43,7 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [labels, setLabels] = useState(true);
-  const [skinTone, setSkinTone] = useState<"light" | "light-brown">("light");
+  const skinTone = document.skinTone ?? "light";
   const [selectedProduct, setSelectedProduct] = useState<StockProduct | null>(null);
   const [showProductPicker, setShowProductPicker] = useState(false);
   const pointer = useRef<Position | null>(null);
@@ -110,8 +110,8 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
         </div>}
         <p className="injectable-instruction">{readOnly ? "Deslize sobre o rosto para rolar a página ou selecione uma marcação para consultar." : mode === "select" ? "Marcação inativa. Deslize sobre o rosto para rolar a página ou selecione uma marcação para editar." : mode === "arrow" ? "Arraste do ponto de entrada até o fim do trajeto. Também é possível tocar no início e no fim." : "Toque no local da aplicação direta com agulha."}</p>
         <fieldset className="injectable-skin-tones"><legend>Tom de pele do mapa</legend>
-          <button type="button" aria-label="Representação de pele clara" aria-pressed={skinTone === "light"} onClick={() => setSkinTone("light")}><span style={{ background: "#f6d7ba" }} aria-hidden="true" /></button>
-          <button type="button" aria-label="Representação negra de pele castanha clara" aria-pressed={skinTone === "light-brown"} onClick={() => setSkinTone("light-brown")}><span style={{ background: "#c99576" }} aria-hidden="true" /></button>
+          <button type="button" disabled={readOnly} aria-label="Representação de pele clara" aria-pressed={skinTone === "light"} onClick={() => commit({ ...document, skinTone: "light" })}><span style={{ background: "#f6d7ba" }} aria-hidden="true" /></button>
+          <button type="button" disabled={readOnly} aria-label="Representação negra de pele castanha clara" aria-pressed={skinTone === "light-brown"} onClick={() => commit({ ...document, skinTone: "light-brown" })}><span style={{ background: "#c99576" }} aria-hidden="true" /></button>
         </fieldset>
         <label className="injectable-label-toggle"><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} />Mostrar quantidades</label>
         <details className="injectable-history"><summary>Registros ({document.applications.length})</summary>

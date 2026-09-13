@@ -1,0 +1,86 @@
+/* Screen-only interface roles; document content keeps its own typography. */
+@media screen {
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"], body:has(.admin-shell) [data-radix-popper-content-wrapper]) {
+    font-family: var(--font-sans);
+    font-size: .875rem;
+    line-height: 1.5;
+  }
+
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"], body:has(.admin-shell) [data-radix-popper-content-wrapper])
+  :is(h1, h2, h3, h4, h5, h6, p, label, legend, button, input, textarea, select, a, .font-serif, .font-mono):not(:where(.print-only, .print-only *, .prose, .prose *, [contenteditable="true"], [contenteditable="true"] *, .admin-brand, .admin-brand *, svg *)) {
+    font-family: var(--font-sans);
+  }
+
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"])
+  :is(h2, h3, h4, h5, h6, [data-card-slot="title"]):not(:where(.print-only *, .prose *, [contenteditable="true"] *, .admin-brand *)) {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  :is(.admin-shell, .admin-login) h1:not(:where(.print-only *, .prose *, [contenteditable="true"] *)) {
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"], body:has(.admin-shell) [data-radix-popper-content-wrapper])
+  :is(.font-bold, .font-black, .font-extrabold):not(:where(.print-only *, .prose *, [contenteditable="true"] *, .admin-brand *, svg *)) {
+    font-weight: 600;
+  }
+
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"], body:has(.admin-shell) [data-radix-popper-content-wrapper])
+  :is(.text-\[8px\], .text-\[9px\], .text-\[10px\], .text-\[11px\], .text-xs, small):not(:where(h1, h2, h3, h4, h5, h6, .print-only *, .prose *, [contenteditable="true"] *, .admin-brand *, .odontogram-grid *, svg *)) {
+    font-size: .75rem;
+    line-height: 1.5;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"], body:has(.admin-shell) [data-radix-popper-content-wrapper])
+  :is(label, legend, button, a, [role="tab"], [role="option"], [role="menuitem"], th):not(:where(.print-only *, .prose *, [contenteditable="true"] *, svg *)) {
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"])
+  :is(input, textarea, select):not(:where(.print-only *, .prose *, [contenteditable="true"] *)) {
+    font-size: .875rem;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .admin-shell [data-card-slot="description"] {
+    font-size: .875rem;
+    line-height: 1.5;
+  }
+
+  .admin-shell :is(.injectable-heading p, .injectable-procedure small, .injectable-popover label span, .facial-stock-results span) {
+    font-size: .75rem;
+    line-height: 1.5;
+    letter-spacing: normal;
+  }
+
+  .admin-shell :is(.admin-sidebar nav, .admin-quick-nav) :is(a, button) span {
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+  }
+
+  .admin-shell nav.admin-quick-nav[aria-label] a { font-size: .75rem; }
+
+  @media (max-width: 639px) {
+    :is(.admin-shell, .admin-login, body:has(.admin-shell) [role="dialog"], body:has(.admin-shell) [role="alertdialog"])
+    :is(input, textarea, select):not(:where(.print-only *, .prose *, [contenteditable="true"] *)) {
+      font-size: 1rem;
+    }
+  }
+}

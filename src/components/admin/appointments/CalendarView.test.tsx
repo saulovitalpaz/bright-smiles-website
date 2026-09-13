@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CalendarEntry } from "@/lib/calendar";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -14,11 +14,13 @@ const entry = (id: number, hour: number, minute = 0): CalendarEntry => ({
     patientId: id, leadId: null, isReturn: false,
 });
 
-function mount(entries = [entry(1, 14, 15)], onEventDrop = vi.fn()) {
+afterEach(() => { vi.unstubAllGlobals(); delete (navigator as Navigator & { standalone?: boolean }).standalone; });
+
+function mount(entries = [entry(1, 14, 15)], onEventDrop = vi.fn(), initialDate = new Date(2026, 8, 10)) {
     const onEventOpen = vi.fn();
     const onEventCreate = vi.fn();
     function Calendar() {
-        const [date, setDate] = useState(new Date(2026, 8, 10));
+        const [date, setDate] = useState(initialDate);
         return <CalendarView entries={entries} anchorDate={date} onAnchorDateChange={setDate} onEventOpen={onEventOpen} onEventDrop={onEventDrop} onEventCreate={onEventCreate} />;
     }
     const result = render(<Calendar />);
@@ -26,6 +28,52 @@ function mount(entries = [entry(1, 14, 15)], onEventDrop = vi.fn()) {
 }
 
 describe("compact calendar", () => {
+    it("shows three browser day columns across the year boundary with the selected day centered", async () => {
+        const previous = { ...entry(1, 9), scheduledAt: new Date(2026, 11, 31, 9).toISOString() };
+        const following = { ...entry(2, 11), scheduledAt: new Date(2027, 0, 2, 11).toISOString() };
+        mount([previous, following], vi.fn(), new Date(2027, 0, 1));
+        await userEvent.click(screen.getByRole("button", { name: "Dia" }));
+        const days = screen.getAllByRole("region", { name: /^Horários de/ });
+        expect(days.map(day => day.getAttribute("aria-label"))).toEqual(["Horários de 31/12/2026", "Horários de 01/01/2027", "Horários de 02/01/2027"]);
+        expect(days[1]).toHaveAttribute("data-selected", "true");
+        expect(within(days[0]).getByRole("button", { name: /Abrir agendamento/ })).toHaveTextContent(previous.patientName);
+        expect(within(days[2]).getByRole("button", { name: /Abrir agendamento/ })).toHaveTextContent(following.patientName);
+        await userEvent.click(screen.getByRole("button", { name: "Próximo" }));
+        expect(screen.getAllByRole("region", { name: /^Horários de/ })[1]).toHaveAttribute("aria-label", "Horários de 02/01/2027");
+        await userEvent.click(screen.getByRole("button", { name: "Anterior" }));
+        expect(screen.getAllByRole("region", { name: /^Horários de/ })[1]).toHaveAttribute("aria-label", "Horários de 01/01/2027");
+    });
+
+    it.each(["display-mode", "ios"])("keeps one detailed day in installed PWA detected by %s", async detection => {
+        if (detection === "ios") Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
+        else vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+        mount();
+        await userEvent.click(screen.getByRole("button", { name: "Dia" }));
+        expect(screen.getAllByRole("region", { name: /^Horários de/ })).toHaveLength(1);
+        await userEvent.click(screen.getByRole("button", { name: "Semana" }));
+        expect(screen.getByRole("region", { name: "Agendamentos da semana" })).toBeInTheDocument();
+        expect(screen.getAllByRole("region", { name: /^Agendamentos de/ })).toHaveLength(7);
+    });
+
+    it("labels today in the center and keeps neighboring create and drop targets on their own dates", async () => {
+        const today = new Date();
+        const { onEventCreate, onEventDrop } = mount([entry(1, 9)], vi.fn(), today);
+        await userEvent.click(screen.getByRole("button", { name: "Dia" }));
+        const days = screen.getAllByRole("region", { name: /^Horários de/ });
+        expect(within(days[1]).getByText("Hoje")).toBeInTheDocument();
+        const previous = new Date(today);
+        previous.setDate(previous.getDate() - 1);
+        previous.setHours(8, 0, 0, 0);
+        await userEvent.click(within(days[0]).getAllByRole("button", { name: /Criar atendimento/ })[0]);
+        expect(onEventCreate).toHaveBeenCalledWith(previous);
+        const next = new Date(today);
+        next.setDate(next.getDate() + 1);
+        next.setHours(8, 0, 0, 0);
+        fireEvent.drop(days[2].querySelector('[data-drop-minutes="480"]')!, { dataTransfer: { getData: (key: string) => key === "text/calendar-entry-id" ? "1" : "appointment" } });
+        expect(onEventDrop).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), next.toISOString());
+        expect(screen.getByRole("region", { name: "Agenda diária: dia anterior, selecionado e seguinte" })).toHaveClass("overflow-x-auto", "max-w-full");
+    });
+
     it("shows weekly appointments chronologically without empty hourly slots", async () => {
         const { container, onEventOpen } = mount([entry(2, 18), entry(1, 9, 15)]);
         const week = screen.getByRole("region", { name: "Agendamentos da semana" });

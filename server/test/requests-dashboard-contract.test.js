@@ -91,7 +91,7 @@ test('lead mutations refresh both dashboard and lead query caches', () => {
     assert.match(source, /queryClient\.invalidateQueries\(\{\s*queryKey:\s*\['leads'\]\s*\}\)/);
 });
 
-test('dashboard stock is limited to recent products and denied to managers', async () => {
+test('dashboard totals all stock but shows only recent quantities and reconstitution, denied to managers', async () => {
     const { createDashboardStatsHandler } = require('../routes/dashboard');
     const queries = [];
     const empty = { count: async () => 0, findMany: async () => [] };
@@ -99,18 +99,22 @@ test('dashboard stock is limited to recent products and denied to managers', asy
         user: empty, post: empty, appointment: empty, lead: empty, testimonial: empty,
         stockProduct: { findMany: async (query) => {
             queries.push(query);
-            return [{ id: 'fake-stock', name: 'Produto fictício', quantity: '2.500000', price: '50.00', stockUnit: 'ml' }];
+            return Array.from({ length: 4 }, (_, index) => ({ id: `fake-stock-${index}`, name: 'Produto fictício', quantity: '2.500000', price: '50.00', stockUnit: 'ml', reconstitutedAt: '2026-09-13' }));
         } }
     };
     let payload;
     const res = { json: value => { payload = value; }, status: () => res };
     const handler = createDashboardStatsHandler(prisma, () => []);
     await handler({ user: { role: 'admin' } }, res);
-    assert.equal(queries[0].take, 3);
+    assert.equal(queries[0].take, undefined);
     assert.deepEqual(queries[0].orderBy, [{ createdAt: 'desc' }, { id: 'desc' }]);
     assert.equal(payload.recentStock[0].quantity, 2.5);
-    assert.equal(payload.recentStock[0].stockValue, 125);
+    assert.equal(payload.recentStock.length, 3);
+    assert.equal(payload.stockTotalValue, 500);
+    assert.equal(payload.recentStock[0].reconstitutedAt, '2026-09-13');
+    assert.equal(payload.recentStock[0].stockValue, undefined);
     await handler({ user: { role: 'manager' } }, res);
     assert.equal(payload.recentStock, undefined);
+    assert.equal(payload.stockTotalValue, undefined);
     assert.equal(queries.length, 1);
 });

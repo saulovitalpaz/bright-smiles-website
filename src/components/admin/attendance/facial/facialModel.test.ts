@@ -7,6 +7,12 @@ import {
 } from "./facialModel";
 
 describe("facial harmonization document", () => {
+  it("round-trips the selected skin tone while preserving clinical notes", () => {
+    const notes = { version: 2, skinTone: "light-brown", applications: [], legacyRegions: { frontal: { product: "Anterior", dose: "2 U", notes: "Histórico" } } };
+    expect(normalizeFacialNotes(JSON.parse(JSON.stringify(notes)))).toEqual(notes);
+    expect(normalizeFacialNotes({ version: 2, applications: [] })).toEqual({ version: 2, applications: [] });
+    expect(normalizeFacialNotes({ version: 2, applications: [], skinTone: "invalid" })).not.toHaveProperty("skinTone");
+  });
   it("keeps bilateral anatomy as stable selectable ids", () => {
     expect(FACIAL_REGIONS.map((region) => region.id)).toEqual(
       expect.arrayContaining([
