@@ -37,6 +37,10 @@ const statsResponse = {
     regions: {
         MG: 12,
     },
+    nearbyRegions: [
+        { city: "Governador Valadares", state: "MG", latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 2 },
+        { city: "Ipatinga", state: "MG", latitude: -19.47, longitude: -42.54, distanceKm: 93, count: 8 },
+    ],
     topPaths: {
         "/": 5,
         "/blog": 4,
@@ -79,7 +83,13 @@ describe("AdminAnalytics", () => {
         expect(screen.getByText("Clareamento dental")).toBeInTheDocument();
         expect(screen.getByText("/blog")).toBeInTheDocument();
         expect(screen.getByText("mobile")).toBeInTheDocument();
-        expect(screen.getByText("MG")).toBeInTheDocument();
+        expect(screen.getByText("Governador Valadares, MG")).toBeInTheDocument();
+        expect(screen.getByText(/até 200 km da clínica/i)).toBeInTheDocument();
+        const nearbyCard = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
+        expect(nearbyCard).not.toBeNull();
+        expect(nearbyCard!.textContent!.indexOf("Governador Valadares")).toBeLessThan(nearbyCard!.textContent!.indexOf("Ipatinga"));
+        expect(nearbyCard).toHaveTextContent("20%");
+        expect(nearbyCard).toHaveTextContent("80%");
     });
 
     it("keeps metrics visible when the posts request fails", async () => {

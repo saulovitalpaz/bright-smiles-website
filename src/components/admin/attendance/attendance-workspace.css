@@ -43,7 +43,9 @@
   .attendance-workspace .rich-text-editor { min-height: 0; height: auto; }
   .attendance-workspace .rich-text-editor [contenteditable] { min-height: 120px; height: auto; }
   .attendance-patient { box-shadow: none; }
-  .attendance-patient [data-card-slot="title"] { font-size: .875rem; color: #475569; }
+  .attendance-patient [data-card-slot="title"] { font-size: 1rem; color: #475569; }
+  .attendance-detail-page label { font-size: .875rem; font-weight: 500; text-transform: none; letter-spacing: normal; color: #475569; }
+  .attendance-detail-page :where(input, button[role="combobox"]) { font-size: .875rem; font-weight: 500; }
   .attendance-timeline { min-width: 0; border-left: 2px solid #e2e8f0; padding-left: .75rem; margin-left: .25rem; }
   .attendance-timeline-dot { position: absolute; left: -1.0625rem; top: .5rem; width: .5rem; height: .5rem; background: #a16207; border-radius: 100%; }
   .attendance-workspace :where(a, button, summary):focus-visible { outline: 2px solid #a16207; outline-offset: 2px; }

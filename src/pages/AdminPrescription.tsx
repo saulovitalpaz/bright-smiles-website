@@ -70,7 +70,7 @@ const AdminPrescription = () => {
     const [prescriptionContent, setPrescriptionContent] = useState("");
     const [showConsentDialog, setShowConsentDialog] = useState(false);
     const [patientConsent, setPatientConsent] = useState(false);
-    const [includeOdontogram, setIncludeOdontogram] = useState(false);
+    const includeOdontogram = false;
     const [printTarget, setPrintTarget] = useState<PrintTarget | null>(null);
 
     const editorRef = useRef<HTMLDivElement>(null);
@@ -287,6 +287,7 @@ const AdminPrescription = () => {
                                     <Search size={14} /> Buscar Paciente
                                 </Label>
                                 <PatientPicker
+                                    selectedPatient={patientData.id ? { id: patientData.id, name: patientData.name, cpf: patientData.cpf } : null}
                                     onSelect={(p) => {
                                         setPatientData({
                                             id: p.id,
@@ -360,6 +361,9 @@ const AdminPrescription = () => {
                                 <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
                                     <Printer size={16} /> Imprimir
                                 </Button>
+                                <Button onClick={handlePrintOdontogram} size="sm" variant="ghost" className="gap-2">
+                                    <Printer size={16} /> Imprimir odontograma
+                                </Button>
                                 <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
                                     <Switch
                                         id="include-professional-signature"
@@ -414,44 +418,6 @@ const AdminPrescription = () => {
                         </div>
                     </Card>
 
-                    {/* Optional Odontogram Toggle */}
-                    <Card className="admin-card overflow-hidden">
-                        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3">
-                                <Switch
-                                    id="include-odontogram"
-                                    checked={includeOdontogram}
-                                    onCheckedChange={setIncludeOdontogram}
-                                />
-                                <Label htmlFor="include-odontogram" className="text-sm font-bold text-slate-700 cursor-pointer">
-                                    Incluir Odontograma na Receita
-                                </Label>
-                            </div>
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                <span className="text-[10px] uppercase tracking-wider text-slate-400">
-                                    {includeOdontogram ? 'Visível na impressão' : 'Opcional'}
-                                </span>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="min-h-11 w-full gap-2 sm:w-auto"
-                                    onClick={handlePrintOdontogram}
-                                >
-                                    <Printer size={16} /> Imprimir odontograma
-                                </Button>
-                            </div>
-                        </div>
-                        {includeOdontogram && (
-                            <CardContent className="p-4">
-                                <Odontogram
-                                    data={patientData.odontogram || {}}
-                                    onChange={(newData) => setPatientData(prev => ({ ...prev, odontogram: newData }))}
-                                    birthDate={patientData.birthDate}
-                                />
-                            </CardContent>
-                        )}
-                    </Card>
                 </div>
 <AttendanceSection className="attendance-secondary" title="Histórico de prescrições" summary={prescriptionHistory.length + " receitas disponíveis"}>
 

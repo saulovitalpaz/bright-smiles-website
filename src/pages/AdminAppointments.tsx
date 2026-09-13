@@ -134,8 +134,6 @@ const AdminAppointments = () => {
     };
 
     const formatScheduledAt = (record: AppointmentRecord) => formatDate(record.scheduledAt || record.date);
-    const formatClinicalDate = (record: AppointmentRecord) => formatDate(record.date);
-    const formatCreatedAt = (record: AppointmentRecord) => (record.createdAt ? formatDate(record.createdAt) : null);
 
     return (
         <AdminLayout title="Consultas">
@@ -171,7 +169,7 @@ const AdminAppointments = () => {
                                 onChange={(event) => { setSearchTerm(event.target.value); setVisibleCount(25); }}
                             />
                         </div>
-                        <AttendanceSection title="Filtrar por data" summary={dateFilter ? dateFilter.split("-").reverse().join("/") : "Todas as datas"} defaultOpen>
+                        <AttendanceSection title="Filtrar por data" summary={dateFilter ? dateFilter.split("-").reverse().join("/") : "Todas as datas"}>
                             <label htmlFor="appointments-date-filter" className="sr-only">Filtrar por data</label>
                             <Input
                                 id="appointments-date-filter"
@@ -215,10 +213,6 @@ const AdminAppointments = () => {
                                     </Link>
 
                                     <div className="flex min-w-0 flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-                                        <details className="mr-auto min-w-0 text-xs text-slate-600">
-                                            <summary className="flex min-h-11 cursor-pointer items-center rounded px-1 font-medium">Mais informações</summary>
-                                            <div className="attendance-reveal space-y-1 pb-2"><p>CPF: {record.cpf || record.patient?.cpf || "Não informado"}</p><p>Data clínica {formatClinicalDate(record)}</p>{record.createdAt && <p>Criado em {formatCreatedAt(record)}</p>}</div>
-                                        </details>
                                         {currentUser.role !== "manager" && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>

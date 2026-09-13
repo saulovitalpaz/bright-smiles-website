@@ -51,7 +51,6 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
   const editor = useRef<HTMLDivElement>(null);
   const keyboardPosition = useRef<Position>({ x: .5, y: .3 });
   const helpId = React.useId();
-  const skinFilterId = `${React.useId().replace(/:/g, "")}-skin-tone`;
   const markingActive = !readOnly && mode !== "select" && !editing;
 
   useEffect(() => {
@@ -111,8 +110,8 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
         </div>}
         <p className="injectable-instruction">{readOnly ? "Deslize sobre o rosto para rolar a página ou selecione uma marcação para consultar." : mode === "select" ? "Marcação inativa. Deslize sobre o rosto para rolar a página ou selecione uma marcação para editar." : mode === "arrow" ? "Arraste do ponto de entrada até o fim do trajeto. Também é possível tocar no início e no fim." : "Toque no local da aplicação direta com agulha."}</p>
         <fieldset className="injectable-skin-tones"><legend>Tom de pele do mapa</legend>
-          <button type="button" aria-pressed={skinTone === "light"} onClick={() => setSkinTone("light")}><span style={{ background: "#f6d7ba" }} aria-hidden="true" />Claro</button>
-          <button type="button" aria-pressed={skinTone === "light-brown"} onClick={() => setSkinTone("light-brown")}><span style={{ background: "#c99576" }} aria-hidden="true" />Moreno claro</button>
+          <button type="button" aria-label="Representação de pele clara" aria-pressed={skinTone === "light"} onClick={() => setSkinTone("light")}><span style={{ background: "#f6d7ba" }} aria-hidden="true" /></button>
+          <button type="button" aria-label="Representação negra de pele castanha clara" aria-pressed={skinTone === "light-brown"} onClick={() => setSkinTone("light-brown")}><span style={{ background: "#c99576" }} aria-hidden="true" /></button>
         </fieldset>
         <label className="injectable-label-toggle"><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} />Mostrar quantidades</label>
         <details className="injectable-history"><summary>Registros ({document.applications.length})</summary>
@@ -132,12 +131,7 @@ export default function InjectableChart({ value, onChange, onSave, onViewSummary
             onPointerCancel={() => { pointer.current = null; setPreview(null); }}
             onPointerUp={e => { if (!pointer.current) return; const origin = pointer.current; pointer.current = null; const end = positionAt(e); if (mode === "arrow" && Math.hypot(origin.x - end.x, origin.y - end.y) > .015) create(start ?? origin, end); else place(end); }}
             onKeyDown={e => { if (e.target !== e.currentTarget || !markingActive) return; if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) { e.preventDefault(); const p = keyboardPosition.current; keyboardPosition.current = { x: Math.max(0, Math.min(1, p.x + (e.key === "ArrowLeft" ? -.01 : e.key === "ArrowRight" ? .01 : 0))), y: Math.max(0, Math.min(1, p.y + (e.key === "ArrowUp" ? -.01 : e.key === "ArrowDown" ? .01 : 0))) }; setPreview(keyboardPosition.current); } if (e.key === "Enter" || e.key === " ") { e.preventDefault(); place(keyboardPosition.current); } }}>
-            <defs><filter id={skinFilterId} colorInterpolationFilters="sRGB"><feComponentTransfer>
-              <feFuncR type="gamma" amplitude="1" exponent="4" offset="0" />
-              <feFuncG type="gamma" amplitude="1" exponent="2.5" offset="0" />
-              <feFuncB type="gamma" amplitude="1" exponent="1.7" offset="0" />
-            </feComponentTransfer></filter></defs>
-            <image href={sex === "male" ? "/facial-chart-front-male.png" : "/facial-chart-front.png"} width="750" height="1000" preserveAspectRatio="none" filter={skinTone === "light-brown" ? `url(#${skinFilterId})` : undefined} />
+            <image href={`/facial-chart-front${sex === "male" ? "-male" : ""}${skinTone === "light-brown" ? "-black" : ""}.png`} width="750" height="1000" preserveAspectRatio="none" />
             {applications.filter(a => a.coordinates).map(a => {
               const x = a.coordinates!.x * 750, y = a.coordinates!.y * 1000;
               const color = procedures.find(p => p.value === a.procedureType)?.color ?? "#8b45e5";

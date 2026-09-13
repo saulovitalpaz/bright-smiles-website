@@ -71,7 +71,7 @@ export default function AdminStock() {
   };
   const visible = products.filter(p => `${p.name} ${p.batch || ""}`.toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")) && (!filter || p.procedureType === filter));
   return <AdminLayout title="Estoque">
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 [&_table]:min-w-[640px] [&_td:first-child]:max-w-64 [&_td:first-child]:break-words">
       <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-widest text-muted-foreground">Configurações / Estoque</p><h1 className="mt-2 text-3xl font-semibold">Produtos e insumos</h1><p className="mt-2 max-w-xl text-sm text-muted-foreground">Cadastre os produtos utilizados no facegram. As doses vinculadas são descontadas quando o atendimento é salvo.</p></div><Button onClick={() => openProduct(null)} className="min-h-11 gap-2"><Plus size={18} />Novo produto</Button></header>
       <div className="grid gap-3 sm:grid-cols-3">{[{ label: "Produtos ativos", value: products.filter(p => p.active).length }, { label: "Sem saldo", value: products.filter(p => p.active && p.quantity === 0).length }, { label: "Valor em estoque", value: money(products.reduce((sum, p) => sum + p.quantity * p.price, 0)) }].map(card => <div key={card.label} className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">{card.label}</p><p className="mt-2 text-2xl font-semibold">{card.value}</p></div>)}</div>
       {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}

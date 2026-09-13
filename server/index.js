@@ -684,6 +684,8 @@ app.get('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
     }
 });
 
+const { syncPatientWeight, PatientWeightError } = require('./utils/appointmentPatientWeight');
+
 app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     const result = appointmentSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ error: result.error.issues[0].message });
@@ -715,6 +717,7 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
     try {
         const appointment = await prisma.$transaction(async (tx) => {
             const appointment = await tx.appointment.create({ data: payload });
+            if (req.body.patientWeight !== undefined) await syncPatientWeight(tx, appointment, req.body.patientWeight, encrypt);
             const returnAppointment = await syncReturnAppointment(tx, appointment, {
                 returnDate: payload.returnDate
             });
@@ -726,6 +729,7 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
         res.json(appointment);
     } catch (error) {
         if (error instanceof StockError) return res.status(error.statusCode).json({ error: String(error.message) });
+        if (error instanceof PatientWeightError) return res.status(error.statusCode).json({ error: error.message });
         res.status(500).json({ error: 'Unable to create appointment.' });
     }
 });
@@ -745,6 +749,10 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
         parentAppointmentId,
         returnAppointment,
         stockUsages,
+        birthDate,
+        patientWeight,
+        sex,
+        phone,
         ...data
     } = req.body || {};
     const hasReturnDate = Object.prototype.hasOwnProperty.call(data, 'returnDate');
@@ -826,6 +834,7 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
             const linkedReturn = hasReturnDate
                 ? await syncReturnAppointment(tx, appointment, { returnDate })
                 : appointment.returnAppointment;
+            if (patientWeight !== undefined) await syncPatientWeight(tx, appointment, patientWeight, encrypt);
             await syncAppointmentFinance(tx, appointment);
             await syncFacialStock(tx, appointment, req.user.id);
             return { ...appointment, returnAppointment: linkedReturn };
@@ -833,6 +842,7 @@ app.put('/appointments/:id', authenticateToken, authorizeRole(['admin', 'dentist
         res.json(appointment);
     } catch (error) {
         if (error instanceof StockError) return res.status(error.statusCode).json({ error: String(error.message) });
+        if (error instanceof PatientWeightError) return res.status(error.statusCode).json({ error: error.message });
         if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid appointment or return date.' });
         if (error.code === 'P2025') return res.status(404).json({ error: 'Appointment not found' });
         res.status(500).json({ error: 'Unable to update appointment.' });

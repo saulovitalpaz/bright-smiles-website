@@ -234,7 +234,6 @@ const AdminPatients = () => {
                                         return <article key={patient.id} className="min-w-0 py-3 first:pt-0 last:pb-0">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0"><h3 className="break-words text-sm font-semibold text-slate-900">{patient.name}</h3><p className="text-xs text-slate-500">CPF: {patient.cpf || "—"}</p></div>
-                                                {patient.consent && <Badge variant="secondary" className="shrink-0 text-[10px]">Consentimento</Badge>}
                                             </div>
                                             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"><p>Telefone: {patient.phone || "—"}</p><p>{formatAgeSummary(patient.birthDate)}</p><p className="w-full break-words">Último atendimento: {appointment ? `${formatDate(appointment.date)}${appointment.procedure ? ` · ${appointment.procedure}` : ""}` : "—"}</p></div>
                                             <div className="mt-2 flex items-center justify-end gap-2"><Button variant="outline" className="min-h-11" onClick={() => beginEdit(patient)} aria-label={`Editar ${patient.name}`}><Pencil size={14} className="mr-2" /> Editar</Button><Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-500 hover:text-red-700" onClick={() => deletePatient(patient)} aria-label={`Excluir ${patient.name}`}><Trash2 size={14} /></Button></div>

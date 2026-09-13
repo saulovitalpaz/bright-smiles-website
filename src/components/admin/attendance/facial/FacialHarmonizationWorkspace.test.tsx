@@ -29,9 +29,10 @@ describe("FacialHarmonizationWorkspace direct annotation", () => {
   it("changes skin tone without changing marks or clinical data", () => {
     const { container, onChange } = setup({ version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] });
     const marker = container.querySelector('.injectable-mark');
-    fireEvent.click(screen.getByRole('button', { name: 'Moreno claro' }));
-    expect(screen.getByRole('button', { name: 'Moreno claro' })).toHaveAttribute('aria-pressed', 'true');
-    expect(container.querySelector('image')?.getAttribute('filter')).toContain('skin-tone');
+    fireEvent.click(screen.getByRole('button', { name: 'Representação negra de pele castanha clara' }));
+    expect(screen.getByRole('button', { name: 'Representação negra de pele castanha clara' })).toHaveAttribute('aria-pressed', 'true');
+    expect(container.querySelector('image')).toHaveAttribute('href', '/facial-chart-front-black.png');
+    expect(container.querySelector('image')).not.toHaveAttribute('filter');
     expect(container.querySelector('.injectable-mark')).toBe(marker);
     expect(marker).not.toHaveAttribute('filter');
     expect(onChange).not.toHaveBeenCalled();

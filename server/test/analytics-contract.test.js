@@ -135,9 +135,11 @@ test('stats aggregates only pageviews, excludes story events from sources and om
                     type: 'pageview',
                     path: '/',
                     source: 'Direto',
-                    location: 'Sao Paulo, SP - Brazil',
-                    city: 'Sao Paulo',
-                    state: 'SP',
+                    location: 'Governador Valadares, MG - Brazil',
+                    city: 'Governador Valadares',
+                    state: 'MG',
+                    latitude: -18.85,
+                    longitude: -41.95,
                     ip: '203.0.113.10',
                     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 },
@@ -145,9 +147,11 @@ test('stats aggregates only pageviews, excludes story events from sources and om
                     type: 'pageview',
                     path: '/blog',
                     source: 'Ads',
-                    location: 'Campinas, SP - Brazil',
-                    city: 'Campinas',
-                    state: 'SP',
+                    location: 'Ipatinga, MG - Brazil',
+                    city: 'Ipatinga',
+                    state: 'MG',
+                    latitude: -19.47,
+                    longitude: -42.54,
                     ip: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
                     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'
                 },
@@ -183,12 +187,16 @@ test('stats aggregates only pageviews, excludes story events from sources and om
             Ads: 1
         },
         locations: {
-            'Sao Paulo': 1,
-            Campinas: 1
+            'Governador Valadares': 1,
+            Ipatinga: 1
         },
         regions: {
-            SP: 2
+            MG: 2
         },
+        nearbyRegions: [
+            { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 },
+            { city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, distanceKm: 93, count: 1 }
+        ],
         topPaths: {
             '/': 1,
             '/blog': 1
@@ -200,6 +208,47 @@ test('stats aggregates only pageviews, excludes story events from sources and om
     });
     assert.ok(!('recentEvents' in res.body));
     assert.ok(!('events' in res.body));
+});
+
+test('stats ranks only public page paths and nearby IP-derived locations within 200 km', async () => {
+    const prisma = {
+        analyticsEvent: {
+            findMany: async () => ([
+                { type: 'pageview', path: '/admin?source=menu', source: 'Direto', city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, ip: 'visitor-admin', userAgent: 'Mozilla/5.0' },
+                { type: 'pageview', path: '/tratamentos', source: 'Google', city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, ip: 'visitor-near', userAgent: 'Mozilla/5.0' },
+                { type: 'pageview', path: '/', source: 'Direto', city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, ip: 'visitor-home', userAgent: 'Mozilla/5.0' },
+                { type: 'pageview', path: '/blog', source: 'Ads', city: 'Belo Horizonte', state: 'MG', latitude: -19.92, longitude: -43.94, ip: 'visitor-far', userAgent: 'Mozilla/5.0' }
+            ])
+        },
+        lead: { count: async () => 0 }
+    };
+    const handlers = createAnalyticsHandlers({ prisma, secret: 'stats-secret' });
+    const res = createResponse();
+
+    await handlers.stats({}, res);
+
+    assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 1, '/blog': 1 });
+    assert.ok(!('/admin' in res.body.topPaths));
+    assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares', 'Ipatinga']);
+    assert.deepEqual(res.body.regions, { MG: 2 });
+    assert.deepEqual(res.body.nearbyRegions, [
+        { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 },
+        { city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, distanceKm: 93, count: 1 }
+    ]);
+});
+
+test('nearby regions preserve distinct IP location estimates in the same city', async () => {
+    const events = [
+        { city: 'Governador Valadares', latitude: -18.90, longitude: -41.95 },
+        { city: 'Governador Valadares', latitude: -18.85, longitude: -41.95 },
+        { city: 'Governador Valadares', latitude: null, longitude: null },
+    ].map(location => ({ ...location, type: 'pageview', path: '/', state: 'MG' }));
+    const handlers = createAnalyticsHandlers({ prisma: { analyticsEvent: { findMany: async () => events }, lead: { count: async () => 0 } }, secret: 'stats-secret' });
+    const res = createResponse();
+    await handlers.stats({}, res);
+    assert.equal(res.body.nearbyRegions.length, 2);
+    assert.deepEqual(res.body.nearbyRegions.map(region => region.latitude), [-18.85, -18.90]);
+    assert.deepEqual(res.body.locations, { 'Governador Valadares': 2 });
 });
 
 test('memory rate limiter prunes expired buckets before growing indefinitely', () => {

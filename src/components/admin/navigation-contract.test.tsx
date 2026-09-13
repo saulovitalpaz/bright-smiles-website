@@ -67,7 +67,8 @@ describe("admin navigation source contract", () => {
         expect(cssSource).toContain(".print-page-odontogram");
     });
 
-    it("offers a standalone odontogram print action in the odontogram card", () => {
+    it("keeps standalone odontogram printing without an inclusion card", () => {
+        expect(prescriptionSource).not.toContain("Incluir Odontograma na Receita");
         expect(prescriptionSource).toContain("Imprimir odontograma");
         expect(prescriptionSource).toContain("handlePrintOdontogram");
         expect(prescriptionSource).toContain("normalizeOdontogram(patientData.odontogram)");

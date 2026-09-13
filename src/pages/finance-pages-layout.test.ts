@@ -42,4 +42,17 @@ describe("finance page layout contracts", () => {
     expect(clinicFinance).not.toContain("printDocumentClass");
     expect(clinicFinance).not.toContain("printMode");
   });
+
+  it("centralizes monthly invoice actions and keeps delete beside the date on mobile", () => {
+    expect(clinicFinance).not.toContain("<FinanceInvoiceAction transaction={t}");
+    expect(clinicFinance).not.toContain('<CardTitle className="text-base font-semibold">Notas fiscais</CardTitle>');
+    expect(clinicFinance).toContain("Notas fiscais do mês");
+    expect(clinicFinance).toContain("Exportar entradas para NF-e (.csv)");
+    expect(clinicFinance).toMatch(/toLocaleDateString\("pt-BR"\)[\s\S]{0,500}aria-label={`Excluir/);
+  });
+
+  it("uses the same card title scale across finance cards", () => {
+    expect(clinicFinance).not.toContain('CardTitle className="font-serif text-xl"');
+    expect(clinicFinance).toContain('CardTitle className="text-lg font-semibold tracking-tight text-slate-900"');
+  });
 });

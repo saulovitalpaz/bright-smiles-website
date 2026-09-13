@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Save, Trash2, Calendar, CalendarCheck, User, Clock, Stethoscope, Activity } from "lucide-react";
+import { Save, Trash2, Calendar, CalendarCheck, Clock, Stethoscope, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
@@ -147,15 +147,6 @@ interface LeadResponse {
     message?: string;
 }
 
-type AttendanceFlowStep = "summary" | "regions" | "records" | "evolution";
-
-const ATTENDANCE_FLOW_STEPS: Array<{ id: AttendanceFlowStep; label: string }> = [
-    { id: "summary", label: "Resumo" },
-    { id: "regions", label: "Regiões clínicas" },
-    { id: "records", label: "Registros" },
-    { id: "evolution", label: "Evolução" },
-];
-
 export const normalizeAppointmentResponse = (fetched: AppointmentResponse): AppointmentData => {
     const patient = fetched.patient || {};
 
@@ -207,8 +198,8 @@ const AdminAttendanceDetail = () => {
     const [data, setData] = useState<AppointmentData>({ ...DEFAULT_APPOINTMENT });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [newWeight, setNewWeight] = useState("");
     const [activeTab, setActiveTab] = useState<"current" | "evolution">("current");
-    const [flowStep, setFlowStep] = useState<AttendanceFlowStep>("summary");
 
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional", role: 'admin' };
@@ -304,6 +295,7 @@ const AdminAttendanceDetail = () => {
             if (res.ok) {
                 const fetched = await res.json();
                 setData(normalizeAppointmentResponse(fetched));
+                setNewWeight("");
             } else {
                 toast.error("Atendimento não encontrado.");
                 navigate('/admin/consultas');
@@ -363,6 +355,7 @@ const AdminAttendanceDetail = () => {
             // keep it out of both POST and PUT appointment payloads.
             const {
                 phone: _phone,
+                birthDate: _birthDate,
                 sex: _sex,
                 patientWeight: _patientWeight,
                 weight: _historicalWeight,
@@ -374,11 +367,13 @@ const AdminAttendanceDetail = () => {
             const res = await fetchClient(url, {
                 method: method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payloadForRequest)
+                body: JSON.stringify({ ...payloadForRequest, ...(newWeight.trim() ? { patientWeight: newWeight.trim() } : {}) })
             });
 
             if (res.ok) {
                 const saved = await res.json();
+                const savedWeight = newWeight.trim() ? String(Number(newWeight.replace(',', '.'))) : data.patientWeight;
+                setNewWeight("");
 
                 if (isNew && leadId) {
                     await fetchClient(`/leads/${leadId}`, {
@@ -392,7 +387,7 @@ const AdminAttendanceDetail = () => {
                 if (isNew) {
                     navigate(`/admin/consultas/${saved.id}`, { replace: true });
                 } else {
-                    setData(previous => normalizeAppointmentResponse({ ...saved, patient: saved.patient ?? { id: previous.patientId, birthDate: previous.birthDate, sex: previous.sex, weight: previous.patientWeight } }));
+                    setData(previous => normalizeAppointmentResponse({ ...saved, patient: saved.patient ?? { id: previous.patientId, birthDate: previous.birthDate, sex: previous.sex, weight: savedWeight } }));
                 }
             } else {
                 const error = await res.json().catch(() => null);
@@ -429,19 +424,6 @@ const AdminAttendanceDetail = () => {
         setData(prev => ({ ...prev, [field]: value }));
     };
 
-    const navigateFlow = (step: AttendanceFlowStep) => {
-        setFlowStep(step);
-        if (step === "evolution") {
-            setActiveTab("evolution");
-            return;
-        }
-
-        setActiveTab("current");
-        window.requestAnimationFrame(() => {
-            document.getElementById(`attendance-step-${step}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-    };
-
     if (isLoading) {
         return (
             <AdminLayout title="Carregando Detalhes...">
@@ -453,59 +435,10 @@ const AdminAttendanceDetail = () => {
     return (
         <AdminLayout title={id === 'new' ? "Registrar Novo Atendimento" : `Evolução Clínica #${id}`}>
             <AttendanceWorkspace active="consultas">
-            <div className="attendance-actionbar justify-between">
-                <Button variant="outline" onClick={() => navigate(-1)} className="gap-2 shrink-0 border-slate-200">
-                    <ChevronLeft size={16} /> Voltar à Lista
-                </Button>
-
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    {id !== 'new' && !readOnly && (
-                        <Button
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                            onClick={handleDelete}
-                        >
-                            <Trash2 size={16} className="mr-2" /> Excluir
-                        </Button>
-                    )}
-                    {!readOnly && (
-                        <Button
-                            className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 w-full md:w-auto"
-                            onClick={handleSave}
-                            disabled={isSaving}
-                        >
-                            <Save size={16} className="mr-2" />
-                            {isSaving ? "Salvando..." : (id === 'new' ? "Registrar Atendimento" : "Salvar Alterações")}
-                        </Button>
-                    )}
-                </div>
-            </div>
-
-            <nav aria-label="Etapas do atendimento" className="attendance-flow-nav no-print">
-                <span className="attendance-flow-label">Fluxo do atendimento</span>
-                <div className="attendance-flow-steps">
-                    {ATTENDANCE_FLOW_STEPS.map((step, index) => (
-                        <React.Fragment key={step.id}>
-                            {index > 0 && <span className="attendance-flow-divider" aria-hidden="true">›</span>}
-                            <button
-                                type="button"
-                                aria-current={flowStep === step.id ? "step" : undefined}
-                                className="attendance-flow-step"
-                                onClick={() => navigateFlow(step.id)}
-                            >
-                                <span className="attendance-flow-index" aria-hidden="true">{index + 1}</span>
-                                <span>{step.label}</span>
-                            </button>
-                        </React.Fragment>
-                    ))}
-                </div>
-            </nav>
-
             <div className="attendance-detail-page space-y-3 pb-12">
                 <Tabs value={activeTab} onValueChange={(value) => {
                     const nextTab = value as "current" | "evolution";
                     setActiveTab(nextTab);
-                    if (nextTab === "evolution") setFlowStep("evolution");
                 }} className="w-full">
                     <div className="flex justify-center mb-3">
                         <TabsList className="grid min-h-12 w-full max-w-md grid-cols-2 bg-slate-100 p-1">
@@ -523,10 +456,7 @@ const AdminAttendanceDetail = () => {
                         <Card id="attendance-step-summary" className="attendance-editor-card scroll-mt-24 border-slate-200 shadow-sm overflow-visible">
                             <CardContent className="p-3 sm:p-4">
                                 <div className="grid items-start grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
-                                    <div className="space-y-1.5 lg:col-span-2">
-                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                            <User size={12} /> Paciente e CPF
-                                        </Label>
+                                    <AttendanceSection className="lg:col-span-2" title="Paciente e CPF" summary={data.patientName || "Selecione o paciente"} defaultOpen={id === 'new'}>
                                         {!readOnly && (
                                             <div className="space-y-2">
                                                 <PatientPicker
@@ -547,6 +477,7 @@ const AdminAttendanceDetail = () => {
                                                         updateField('sex', p.sex ?? null);
                                                         updateField('patientWeight', p.weight ?? null);
                                                         updateField('patientId', p.id);
+                                                        setNewWeight("");
                                                     }}
                                                 />
                                                 {id !== 'new' && data.patientId && (
@@ -562,6 +493,7 @@ const AdminAttendanceDetail = () => {
                                             </div>
                                         )}
                                         <p className="mt-2 text-sm text-slate-600">Peso cadastral: {data.patientWeight ? `${data.patientWeight.replace('.', ',')} kg` : 'Não informado'}</p>
+                                        {!readOnly && <div className="space-y-1.5"><Label htmlFor="attendance-patient-weight">Peso do paciente (kg)</Label><Input id="attendance-patient-weight" inputMode="decimal" value={newWeight} onChange={event => setNewWeight(event.target.value)} placeholder="Novo peso" /><p className="text-xs text-slate-500">Um novo valor na última consulta atualiza o cadastro ao salvar.</p></div>}
                                         {data.weight && <p className="text-xs text-slate-500">Peso registrado neste atendimento: {data.weight} (histórico)</p>}
                                         {id === 'new' ? (
                                             <>
@@ -586,7 +518,7 @@ const AdminAttendanceDetail = () => {
                                                 <span className="text-sm font-mono text-slate-500">{data.cpf}</span>
                                             </div>
                                         )}
-                                    </div>
+                                    </AttendanceSection>
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -804,9 +736,10 @@ const AdminAttendanceDetail = () => {
 
                         {/* Bottom Save Reminder */}
                         {!readOnly && (
-                            <div className="flex justify-end pt-4">
+                            <div className="flex flex-wrap items-center justify-end gap-3 pt-4">
+                                {id !== 'new' && <Button variant="outline" className="min-h-11 text-red-600 border-red-200" onClick={handleDelete} disabled={isSaving}><Trash2 size={16} className="mr-2" />Excluir</Button>}
                                 <Button
-                                    className="bg-primary hover:bg-primary/90 h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/20 text-lg"
+                                    className="bg-primary hover:bg-primary/90 min-h-11 px-5 rounded-xl font-semibold text-sm"
                                     onClick={handleSave}
                                     disabled={isSaving}
                                 >

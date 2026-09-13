@@ -82,6 +82,8 @@ describe("AdminAppointments", () => {
         expect(screen.queryByText("Carlos Lima")).not.toBeInTheDocument();
 
         await user.clear(screen.getByLabelText("Pesquisar paciente ou CPF"));
+        expect(screen.getByRole("button", { name: /Filtrar por data/ })).toHaveAttribute("aria-expanded", "false");
+        await user.click(screen.getByRole("button", { name: /Filtrar por data/ }));
         await user.type(screen.getByLabelText("Filtrar por data"), "2026-08-20");
 
         expect(screen.getByText("Consulta de avaliação")).toBeInTheDocument();
@@ -105,6 +107,7 @@ describe("AdminAppointments", () => {
 
         await screen.findByText("Marina Alves");
         await user.type(screen.getByLabelText("Pesquisar paciente ou CPF"), "Paciente inexistente");
+        await user.click(screen.getByRole("button", { name: /Filtrar por data/ }));
         await user.type(screen.getByLabelText("Filtrar por data"), "2026-08-22");
 
         await waitFor(() => {

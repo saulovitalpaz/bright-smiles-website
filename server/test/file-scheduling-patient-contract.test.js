@@ -374,9 +374,8 @@ test('request, dashboard, and attendance screens distinguish scheduledAt from cr
     assert.match(attendance, /scheduledAt/);
     assert.match(attendance, /createdAt/);
     assert.match(appointments, /Agendado para/);
-    assert.match(appointments, /Data clínica/);
-    assert.match(appointments, /Criado em/);
-    assert.match(appointments, /record\.createdAt/);
+    assert.doesNotMatch(appointments, /Mais informações/);
+    assert.match(attendance, /Criado em/);
     assert.doesNotMatch(appointments, /Criado em \{formatDate\(record\.date\)\}/);
 });
 

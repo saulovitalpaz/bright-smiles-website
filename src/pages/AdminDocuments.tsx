@@ -287,6 +287,7 @@ const AdminDocuments = () => {
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-black uppercase text-slate-400">Buscar</Label>
                                 <PatientPicker
+                                    selectedPatient={patientData.id ? { id: patientData.id, name: patientData.name, cpf: patientData.cpf } : null}
                                     onSelect={(p) => setPatientData(prev => ({ ...prev, id: p.id, name: p.name, cpf: p.cpf, birthDate: p.birthDate || null }))}
                                 />
                             </div>
@@ -306,7 +307,7 @@ const AdminDocuments = () => {
                                     <DialogTrigger asChild>
                                          <Button size="sm" variant="outline" className="min-h-11 min-w-11 shrink-0 p-0" aria-label="Criar novo modelo"><Plus size={14} /></Button>
                                     </DialogTrigger>
-                                    <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                                    <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-2xl max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto [&_form]:min-w-0 [&_.rich-text-editor]:min-w-0 [&_[contenteditable]]:break-words [&_[contenteditable]]:[overflow-wrap:anywhere]">
                                         <DialogHeader>
                                             <DialogTitle>Criar Novo Modelo</DialogTitle>
                                         <DialogDescription>Use tags como #NOME, #CPF, #DATA, #NASCIMENTO, #IDADE e #FAIXA_ETARIA no texto, ou envie um PDF para emitir sem tags.</DialogDescription>

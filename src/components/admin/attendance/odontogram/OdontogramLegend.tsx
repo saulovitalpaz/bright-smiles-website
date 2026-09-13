@@ -11,9 +11,9 @@ function LegendGroup({ title, definitions, expanded }: { title: string; definiti
       </h4>
       <div className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-2">
         {definitions.map((definition) => (
-          <div className="flex max-w-full items-center gap-1.5 text-[11px] leading-5 text-slate-300" key={definition.id}>
+          <div title={definition.label} className="flex max-w-full items-center gap-1.5 text-xs leading-5 text-slate-300" key={definition.id}>
             <OdontogramStateSwatch definition={definition} />
-            <span>{definition.label}<span className={expanded ? "ml-1 text-slate-400" : "hidden print:inline"}> — {definition.description}</span></span>
+            <span className={expanded ? "" : "sr-only print:not-sr-only"}>{definition.label}</span>
           </div>
         ))}
       </div>

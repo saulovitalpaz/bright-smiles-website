@@ -11,6 +11,8 @@ const MAX_USER_AGENT_LENGTH = 512;
 const DEFAULT_PRUNE_BATCH_SIZE = 64;
 const DEFAULT_RATE_LIMIT_ENTRIES = 4096;
 const DEFAULT_GEO_CACHE_ENTRIES = 4096;
+const CLINIC_COORDINATES = { latitude: -18.85, longitude: -41.95 };
+const NEARBY_RADIUS_KM = 200;
 
 const BOT_PATTERN = /(bot|crawler|spider|slurp|bingpreview|mediapartners-google|facebookexternalhit|whatsapp|telegrambot|preview|headless|uptime|monitor)/i;
 const TABLET_PATTERN = /(ipad|tablet|kindle|playbook|silk|sm-t|tab)/i;
@@ -283,6 +285,22 @@ const incrementCount = (bucket, key) => {
     bucket[key] = (bucket[key] || 0) + 1;
 };
 
+const normalizeTrackedPath = (path) => clampText(path, MAX_PATH_LENGTH, '/').split(/[?#]/, 1)[0] || '/';
+const isPublicSitePath = (path) => path.startsWith('/') && !/^\/admin(?:\/|$)/i.test(path);
+
+const distanceInKm = (from, to) => {
+    if (to?.latitude == null || to?.longitude == null) return null;
+    const latitude = Number(to?.latitude);
+    const longitude = Number(to?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+    const radians = (degrees) => degrees * Math.PI / 180;
+    const latitudeDelta = radians(latitude - from.latitude);
+    const longitudeDelta = radians(longitude - from.longitude);
+    const a = Math.sin(latitudeDelta / 2) ** 2
+        + Math.cos(radians(from.latitude)) * Math.cos(radians(latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 const parseLegacyLocation = (location) => {
     if (typeof location !== 'string') return { city: null, state: null };
 
@@ -351,7 +369,7 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                     prisma.lead.count()
                 ]);
 
-                const pageviews = events.filter((event) => event.type === 'pageview');
+                const pageviews = events.filter((event) => event.type === 'pageview' && isPublicSitePath(normalizeTrackedPath(event.path)));
                 const uniqueVisitors = new Set(
                     pageviews
                         .map((event) => normalizeStoredFingerprint(secret, event.ip))
@@ -363,6 +381,7 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                 const regions = {};
                 const topPaths = {};
                 const devices = {};
+                const nearbyLocations = new Map();
 
                 for (const event of pageviews) {
                     const legacyLocation = parseLegacyLocation(event.location);
@@ -370,11 +389,37 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                     const state = clampText(event.state, 120, '') || legacyLocation.state;
 
                     incrementCount(sources, clampText(event.source, MAX_SOURCE_LENGTH, 'Direto'));
-                    incrementCount(locations, city);
-                    incrementCount(regions, state);
-                    incrementCount(topPaths, clampText(event.path, MAX_PATH_LENGTH, '/'));
+                    const distance = distanceInKm(CLINIC_COORDINATES, event);
+                    if (city && distance !== null && distance <= NEARBY_RADIUS_KM) {
+                        const locationKey = JSON.stringify([city, state, event.latitude, event.longitude]);
+                        const current = nearbyLocations.get(locationKey) || {
+                            city,
+                            count: 0,
+                            distance,
+                            state,
+                            latitude: Number(event.latitude),
+                            longitude: Number(event.longitude)
+                        };
+                        current.count += 1;
+                        nearbyLocations.set(locationKey, current);
+                        incrementCount(regions, state);
+                    }
+                    const path = normalizeTrackedPath(event.path);
+                    if (isPublicSitePath(path)) incrementCount(topPaths, path);
                     incrementCount(devices, detectDevice(event.userAgent));
                 }
+
+                const nearbyRegions = [...nearbyLocations.entries()]
+                    .sort(([, left], [, right]) => left.distance - right.distance || right.count - left.count)
+                    .map(([, metric]) => ({
+                        city: metric.city,
+                        state: metric.state,
+                        latitude: metric.latitude,
+                        longitude: metric.longitude,
+                        distanceKm: Math.round(metric.distance),
+                        count: metric.count
+                    }));
+                nearbyRegions.forEach(({ city, count }) => { locations[city] = (locations[city] || 0) + count; });
 
                 return res.json({
                     totalVisits: pageviews.length,
@@ -384,6 +429,7 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                     sources,
                     locations,
                     regions,
+                    nearbyRegions,
                     topPaths,
                     devices
                 });

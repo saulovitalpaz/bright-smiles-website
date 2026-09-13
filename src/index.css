@@ -376,6 +376,8 @@
   }
 
   @media screen {
+    .admin-shell [data-card-slot="title"] { font-family: inherit; font-size: 1rem; line-height: 1.5; font-weight: 600; letter-spacing: normal; text-transform: none; }
+    .admin-shell [data-card-slot="description"] { font-size: .875rem; line-height: 1.5; }
     .admin-shell [data-card-slot="header"] { padding: 1rem; }
     .admin-shell [data-card-slot="content"],
     .admin-shell [data-card-slot="footer"] { padding: 0 1rem 1rem; }
