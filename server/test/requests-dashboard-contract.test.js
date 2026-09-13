@@ -90,3 +90,27 @@ test('lead mutations refresh both dashboard and lead query caches', () => {
     assert.match(source, /useQueryClient/);
     assert.match(source, /queryClient\.invalidateQueries\(\{\s*queryKey:\s*\['leads'\]\s*\}\)/);
 });
+
+test('dashboard stock is limited to recent products and denied to managers', async () => {
+    const { createDashboardStatsHandler } = require('../routes/dashboard');
+    const queries = [];
+    const empty = { count: async () => 0, findMany: async () => [] };
+    const prisma = {
+        user: empty, post: empty, appointment: empty, lead: empty, testimonial: empty,
+        stockProduct: { findMany: async (query) => {
+            queries.push(query);
+            return [{ id: 'fake-stock', name: 'Produto fictício', quantity: '2.500000', price: '50.00', stockUnit: 'ml' }];
+        } }
+    };
+    let payload;
+    const res = { json: value => { payload = value; }, status: () => res };
+    const handler = createDashboardStatsHandler(prisma, () => []);
+    await handler({ user: { role: 'admin' } }, res);
+    assert.equal(queries[0].take, 3);
+    assert.deepEqual(queries[0].orderBy, [{ createdAt: 'desc' }, { id: 'desc' }]);
+    assert.equal(payload.recentStock[0].quantity, 2.5);
+    assert.equal(payload.recentStock[0].stockValue, 125);
+    await handler({ user: { role: 'manager' } }, res);
+    assert.equal(payload.recentStock, undefined);
+    assert.equal(queries.length, 1);
+});

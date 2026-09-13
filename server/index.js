@@ -40,6 +40,7 @@ const {
 } = require('./utils/schedule');
 const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
 const { registerStockRoutes } = require('./routes/stock');
+const { registerTeamPhotoRoutes } = require('./routes/teamPhotos');
 const { syncFacialStock, validateFacialNotes, StockError } = require('./utils/facialStock');
 const {
     parseFinancePeriod,
@@ -466,6 +467,8 @@ app.get('/staff', authenticateToken, authorizeRole(['admin', 'dentist']), async 
     }
 });
 
+registerTeamPhotoRoutes(app, { prisma, authenticateToken, authorizeRole, uploadAsset, deleteAsset });
+
 app.get('/users', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     try {
         const users = await prisma.user.findMany({ select: SAFE_USER_SELECT });
@@ -694,7 +697,7 @@ app.post('/appointments', authenticateToken, authorizeRole(['admin', 'dentist'])
             return res.status(400).json({ error: 'Invalid appointment date' });
         }
         payload.returnDate = normalizeReturnDate(payload.returnDate);
-        payload.scheduledAt = normalizeScheduledAt(payload.scheduledAt);
+        payload.scheduledAt = normalizeScheduledAt(payload.scheduledAt) || new Date();
         if (payload.price === '' || payload.price === null || payload.price === undefined) {
             payload.price = null;
         } else {

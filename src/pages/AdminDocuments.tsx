@@ -424,7 +424,7 @@ const AdminDocuments = () => {
 
                 {/* Main Editor */}
                 <div className="attendance-primary min-w-0">
-                    <Card className="admin-card flex min-h-[420px] min-w-0 flex-col no-print sm:min-h-[600px] lg:min-h-[800px]">
+                    <Card className="admin-card flex min-w-0 flex-col no-print">
                         <div className="p-3 md:p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
@@ -454,16 +454,16 @@ const AdminDocuments = () => {
                                 </Button>
                             </div>
                         </div>
-                        <div className="flex-1 p-4 md:p-8 bg-white overflow-auto">
+                        <div className="p-3 md:p-4 bg-white overflow-auto">
                             {selectedTemplate?.kind === "pdf" ? (
-                                <div className="flex min-h-[420px] flex-1 items-center justify-center bg-slate-50 p-8 text-center text-sm text-slate-500">
+                                <div className="flex items-center justify-center bg-slate-50 p-8 text-center text-sm text-slate-500">
                                     Este modelo é um PDF. Selecione um paciente e salve no histórico para registrar a emissão.
                                 </div>
                             ) : (
                                 <RichTextEditor
                                     content={documentContent}
                                     onChange={setDocumentContent}
-                                    className="h-full min-h-[420px] rounded-none border-none shadow-none"
+                                    className="rounded-none border-none shadow-none"
                                     placeholder="Selecione um modelo ou comece a digitar..."
                                 />
                             )}

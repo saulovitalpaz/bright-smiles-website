@@ -13,6 +13,9 @@ const Hero = () => {
       <div className="absolute inset-0 z-0">
         <img
           src={heroImage}
+          width={1920}
+          height={1080}
+          fetchPriority="high"
           alt="Núcleo Odontológico Especializado - Ambiente moderno e acolhedor"
           className="w-full h-full object-cover object-center"
         />
@@ -42,8 +45,9 @@ const Hero = () => {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 md:gap-4">
-            <div onClick={() => setOpen(true)}>
+            <div>
               <Button
+                onClick={() => setOpen(true)}
                 size="lg"
                 className="w-full sm:w-auto gap-2 text-sm px-5 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 h-auto"
               >
@@ -52,15 +56,14 @@ const Hero = () => {
               </Button>
             </div>
             <LeadCaptureDialog open={open} onOpenChange={setOpen} />
-            <Link to="/tratamentos">
               <Button
+                asChild
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto text-sm px-5 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 h-auto"
               >
-                Conhecer Tratamentos
+                <Link to="/tratamentos">Conhecer Tratamentos</Link>
               </Button>
-            </Link>
           </div>
         </div>
       </div>

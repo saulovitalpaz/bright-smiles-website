@@ -40,15 +40,17 @@ const Header = () => {
             <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 flex items-center justify-center overflow-hidden">
               <img
                 src={logoUrl}
+                width={96}
+                height={96}
                 alt={`Logo ${clinicName}`}
                 className="w-full h-full object-contain transition-transform group-hover:scale-105 drop-shadow-md"
                 onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}
               />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-serif font-bold text-foreground leading-tight">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl font-serif font-bold text-foreground leading-tight">
                 {clinicName}
-              </h1>
+              </p>
               <p className="text-[10px] sm:text-xs md:text-sm text-foreground font-medium tracking-wider uppercase opacity-80">
                 {clinicSlogan}
               </p>
@@ -101,7 +103,9 @@ const Header = () => {
           <button
             className="lg:hidden p-2 text-foreground"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
+            aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-navigation"
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -109,7 +113,7 @@ const Header = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="lg:hidden py-4 sm:py-6 border-t border-border bg-background animate-in slide-in-from-top-4 duration-300">
+          <div id="mobile-navigation" className="lg:hidden py-4 sm:py-6 border-t border-border bg-background animate-in slide-in-from-top-4 duration-300">
             <nav className="flex flex-col gap-4 sm:gap-5">
               {navItems.map((item) => (
                 item.href.startsWith('/') ? (

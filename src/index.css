@@ -372,6 +372,13 @@
 
   .admin-shell [data-admin-card] {
     @apply admin-card;
+    align-self: start;
+  }
+
+  @media screen {
+    .admin-shell [data-card-slot="header"] { padding: 1rem; }
+    .admin-shell [data-card-slot="content"],
+    .admin-shell [data-card-slot="footer"] { padding: 0 1rem 1rem; }
   }
 
   .admin-shell :where(.admin-card, [data-admin-card]) > * {
@@ -1019,4 +1026,12 @@
     border-color: #cbd5e1 !important;
     background: #fff !important;
   }
+}
+
+/* Public homepage: consistent anchors, readable headings and keyboard navigation. */
+.homepage section[id], .homepage main[id] { scroll-margin-top: 7rem; }
+.homepage :is(h1, h2, h3) { text-wrap: balance; }
+.homepage :is(a, button):focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .homepage *, .homepage *::before, .homepage *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

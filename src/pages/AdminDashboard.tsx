@@ -11,6 +11,7 @@ interface RecentTestimonial { name: string; comment?: string; content?: string; 
 interface RecentAppointment { id: number; patientName: string; procedure?: string; professional?: string; date: string; }
 
 interface DashboardStats {
+    recentStock?: Array<{ id: string; name: string; quantity: number; stockUnit: string; stockValue: number }>;
     users: number;
     posts: number;
     appointments: number;
@@ -89,17 +90,18 @@ const AdminDashboard = () => {
                     </div>
                 )}
                 {stats && <>
-                    <section aria-label="Resumo do painel" className="admin-card grid grid-cols-2 divide-x divide-slate-200">
-                        {!isManager ? (
-                            <Link to="/admin/solicitacoes" className="flex min-h-20 min-w-0 items-center justify-between gap-2 rounded-l-xl p-3 transition-colors hover:bg-slate-50 sm:p-4">
-                                <div><p className="text-xs font-medium text-slate-600">Solicitações pendentes</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{stats.pendingLeadCount ?? 0}</p></div>
-                                <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-slate-500" />
-                            </Link>
-                        ) : (
-                            <div className="min-w-0 p-3 sm:p-4"><p className="text-xs text-slate-600">Painel gerencial</p><p className="mt-1 break-words font-semibold text-slate-900">Olá, {currentUser.name?.split(" ")[0] || "profissional"}</p></div>
-                        )}
-                        <div className="min-w-0 p-3 sm:p-4"><p className="text-xs font-medium text-slate-600">Consultas registradas</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{stats.appointments}</p></div>
-                    </section>
+                    {!isManager && <section aria-labelledby="stock-heading" className="admin-card overflow-hidden">
+                        <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-5">
+                            <h2 id="stock-heading" className="font-serif text-xl font-bold text-slate-900">Estoque</h2>
+                            <Link to="/admin/settings/estoque" className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10">Ver estoque</Link>
+                        </div>
+                        {stats.recentStock?.length ? <ul className="divide-y divide-slate-200 border-t border-slate-200">{stats.recentStock.slice(0, 3).map(product => (
+                            <li key={product.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2 text-sm sm:px-5">
+                                <span className="min-w-0 break-words font-medium text-slate-900">{product.name}</span>
+                                <span className="text-slate-600 tabular-nums">{product.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 6 })} {product.stockUnit === "ml" ? "ml" : "un."} restantes · {product.stockValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em estoque</span>
+                            </li>
+                        ))}</ul> : <p className="px-3 pb-3 text-sm text-slate-600 sm:px-5">Nenhum produto registrado.</p>}
+                    </section>}
                     <div className="grid items-start gap-4 md:gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
                         <section aria-labelledby="upcoming-heading" className="admin-card overflow-hidden">
                             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-3 py-3 sm:px-5">
@@ -140,7 +142,7 @@ const AdminDashboard = () => {
                         </section>
                         <div className="min-w-0 space-y-4">
                             <section aria-labelledby="recent-heading" className="admin-card overflow-hidden">
-                                <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-4 sm:px-5"><Users size={18} aria-hidden="true" className="text-primary" /><h2 id="recent-heading" className="font-serif text-xl font-bold text-slate-900">Histórico recente</h2></div>
+                                <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 sm:px-5"><Users size={18} aria-hidden="true" className="text-primary" /><h2 id="recent-heading" className="font-serif text-xl font-bold text-slate-900">Histórico recente</h2>{!isManager && <Link to="/admin/consultas" className="ml-auto inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10">Ver consultas</Link>}</div>
                                 {recent.length ? <ul className="divide-y divide-slate-200">{recent.map(app => (
                                     <li key={app.id} className="px-3 py-3 sm:px-5">
                                         <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words text-sm font-semibold text-slate-900">{app.patientName}</p><time dateTime={app.date} className="shrink-0 text-xs tabular-nums text-slate-600">{formatDate(app.date)}</time></div>
@@ -148,6 +150,11 @@ const AdminDashboard = () => {
                                     </li>
                                 ))}</ul> : <p className="px-4 py-8 text-center text-sm text-slate-600">Nenhum registro recente.</p>}
                             </section>
+                            {!isManager && <Link to="/admin/solicitacoes" className="admin-card flex items-center justify-between gap-3 p-3 sm:px-5">
+                                <span className="text-sm font-medium text-slate-600">Solicitações pendentes</span>
+                                <span className="ml-auto text-xl font-semibold tabular-nums text-slate-900">{stats.pendingLeadCount ?? 0}</span>
+                                <ChevronRight size={16} aria-hidden="true" className="text-slate-500" />
+                            </Link>}
                             <section aria-labelledby="feedback-heading" className="admin-card p-3 sm:p-5">
                                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="feedback-heading" className="flex items-center gap-2 text-sm font-semibold text-slate-700"><MessageSquare size={16} aria-hidden="true" /> Último comentário</h2><Link to="/admin/comentarios" className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10">Ver comentários</Link></div>
                                 {feedback ? <div className="mt-1"><p className="break-words text-sm font-semibold text-slate-900">{feedback.name}</p><p className="mt-1 line-clamp-3 break-words text-sm leading-relaxed text-slate-600">{feedback.comment || feedback.content}</p></div> : <p className="text-sm text-slate-600">Nenhum feedback recente.</p>}

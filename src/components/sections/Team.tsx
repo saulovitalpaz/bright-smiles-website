@@ -1,151 +1,62 @@
-import { Award, Instagram, Phone, Maximize2, X } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Instagram, Phone, Maximize2 } from "lucide-react";
 import { useState } from "react";
-
-const team = [
-  {
-    name: "Dra. Ana Karolina Vital da Paz",
-    cro: "CRO/MG 60.514",
-    specialty: "Prótese, Implante & Harmonização",
-    description: "Especialista em Prótese e Implantes pela São Leopoldo Mandic. Possui cursos de aperfeiçoamento em Harmonização Facial, Botox e Preenchimento Hialurônico. Atua também como Clínica Geral.",
-    phone: "5533991219695",
-    instagram: "https://www.instagram.com/anav_paz",
-    image: "/images/profissionais/Ana Karolina.jpg"
-  },
-  {
-    name: "Dra. Clara Lima de Souza",
-    cro: "CRO/MG 60.369",
-    specialty: "Clínico e Cirúrgico Geral",
-    description: "Foco integral em atendimento clínico e cirúrgico geral, priorizando a saúde bucal e o bem-estar dos pacientes com técnicas modernas e seguras.",
-    phone: null,
-    instagram: "https://www.instagram.com/claraslima",
-    image: "/images/profissionais/Clara Lima.jpg",
-    objectPosition: "top"
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { fetchClient } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
+import { team } from "@/lib/team";
 
 const Team = () => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+  const [selected, setSelected] = useState<{ src: string; name: string } | null>(null);
+  const { data: photos } = useQuery<Record<string, string>>({
+    queryKey: ['team-photos'],
+    queryFn: async () => {
+      const response = await fetchClient('/team/photos');
+      if (!response.ok) throw new Error('Não foi possível carregar as fotos da equipe.');
+      return response.json();
+    },
+    refetchOnMount: 'always',
+    refetchInterval: 60000,
+  });
   return (
-    <section id="equipe" className="section-padding relative overflow-hidden bg-background">
-      {/* Background Image with Transparency - Mobile-optimized */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none bg-cover bg-no-repeat opacity-15 bg-top md:bg-[center_20%] bg-scroll md:bg-fixed"
-        style={{
-          backgroundImage: 'url("/images/profissionais/Ana Karolina e Clara.jpg")',
-        }}
-        aria-hidden="true"
-      />
-
-      {/* Subtle Gradient Overlay for Mobile readability */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-b from-background/50 via-transparent to-background/50 pointer-events-none md:hidden" />
-
-      <div className="container mx-auto px-3 sm:px-4 relative z-10">
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 md:mb-12">
-          <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
-            Nossa Equipe
-          </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-foreground mt-2 mb-3 sm:mb-4">
-            Especialistas dedicadas ao seu sorriso
-          </h2>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Conheça as profissionais do Núcleo Odontológico Especializado,
-            comprometidas com a excelência técnica e o cuidado personalizado.
-          </p>
+    <section id="equipe" aria-labelledby="team-heading" className="section-padding bg-background">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-foreground/70">Nossa equipe</p>
+          <h2 id="team-heading" className="mt-3 mb-4 text-balance font-serif text-3xl font-bold text-foreground md:text-4xl">Especialistas dedicadas ao seu sorriso</h2>
+          <p className="text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">Conheça as profissionais do Núcleo Odontológico Especializado, comprometidas com a excelência técnica e o cuidado personalizado.</p>
         </div>
-
-        {/* Team Grid */}
-        <div className="flex overflow-x-auto pb-6 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8 max-w-5xl mx-auto snap-x snap-mandatory no-scrollbar">
-          {team.map((member, index) => (
-            <Card key={index} className="overflow-hidden group hover:border-primary/20 transition-all bg-card/95 backdrop-blur-md shadow-lg border-border/50 min-w-[280px] sm:min-w-0 snap-center h-full">
-              <div
-                className="aspect-[4/5] bg-muted relative overflow-hidden cursor-pointer"
-                onClick={() => setSelectedImage(member.image)}
-              >
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${member.objectPosition ? `object-${member.objectPosition}` : 'object-top'}`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-70" />
-
-                {/* Zoom Icon Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/20">
-                  <Maximize2 className="w-10 h-10 text-foreground drop-shadow-lg" />
+        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-8 lg:gap-14">
+          {team.map(member => {
+            const src = mediaUrl(photos?.[member.key]) || member.image;
+            return <article key={member.key} className="min-w-0">
+              <button type="button" className="group relative block aspect-[4/5] w-full overflow-hidden rounded-[2rem] bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary" aria-label={'Ampliar foto de ' + member.name} onClick={() => setSelected({ src, name: member.name })}>
+                <img src={src} alt={member.name} width={400} height={500} loading="lazy" decoding="async" className="h-full w-full object-contain object-bottom" onError={event => { if (event.currentTarget.getAttribute('src') !== member.image) event.currentTarget.src = member.image; }} />
+                <span className="absolute bottom-3 right-3 rounded-full bg-background/90 p-3 text-foreground shadow-sm transition-colors group-hover:bg-background"><Maximize2 size={18} aria-hidden="true" /></span>
+              </button>
+              <div className="pt-5">
+                <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">{member.cro}</p>
+                <h3 className="text-balance font-serif text-xl font-semibold text-foreground lg:text-2xl">{member.name}</h3>
+                <p className="mt-2 text-sm font-semibold text-foreground/80">{member.specialty}</p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{member.description}</p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {member.phone && <Button asChild className="min-h-11 gap-2"><a href={'https://wa.me/' + member.phone} target="_blank" rel="noopener noreferrer" aria-label={'WhatsApp de ' + member.name}><Phone size={16} aria-hidden="true" />WhatsApp</a></Button>}
+                  <Button asChild variant="outline" className="min-h-11 gap-2"><a href={member.instagram} target="_blank" rel="noopener noreferrer" aria-label={'Instagram de ' + member.name}><Instagram size={16} aria-hidden="true" />Instagram</a></Button>
                 </div>
               </div>
-
-              <CardContent className="p-5 lg:p-6 flex flex-col h-auto">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="min-w-0">
-                    <h3 className="font-serif text-lg lg:text-xl font-semibold text-foreground truncate">
-                      {member.name}
-                    </h3>
-                    <p className="text-sm text-primary font-medium">{member.specialty}</p>
-                  </div>
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 flex-shrink-0">
-                    <Award className="w-3 h-3 text-primary" />
-                    <span className="text-[10px] font-bold text-primary whitespace-nowrap">{member.cro}</span>
-                  </div>
-                </div>
-                <p className="text-muted-foreground text-sm leading-relaxed mb-5 line-clamp-4 flex-grow">
-                  {member.description}
-                </p>
-
-                <div className="flex gap-2 mt-auto">
-                  {member.phone && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-9"
-                      onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${member.phone}`, '_blank'); }}
-                    >
-                      <Phone className="w-4 h-4" />
-                      WhatsApp
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 flex-1 font-semibold text-xs sm:text-sm h-9"
-                    onClick={(e) => { e.stopPropagation(); window.open(member.instagram, '_blank'); }}
-                  >
-                    <Instagram className="w-4 h-4" />
-                    Instagram
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            </article>;
+          })}
         </div>
       </div>
-
-      {/* Lightbox / Zoom Modal */}
-      {selectedImage && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 p-4 animate-in fade-in duration-300"
-          onClick={() => setSelectedImage(null)}
-        >
-          <button
-            className="absolute top-6 right-6 text-foreground hover:text-primary transition-colors p-2"
-            onClick={() => setSelectedImage(null)}
-          >
-            <X className="w-8 h-8" />
-          </button>
-          <div className="max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl border border-primary/20 shadow-2xl">
-            <img
-              src={selectedImage}
-              alt="Professional Zoom"
-              className="w-full h-full object-contain"
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={Boolean(selected)} onOpenChange={open => { if (!open) setSelected(null); }}>
+        <DialogContent className="max-w-3xl rounded-3xl p-5 sm:rounded-3xl">
+          <DialogTitle>{selected?.name}</DialogTitle>
+          <DialogDescription>Foto da profissional</DialogDescription>
+          {selected && <img src={selected.src} alt={selected.name} width={600} height={750} className="max-h-[70dvh] w-full rounded-2xl object-contain" />}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };
-
 export default Team;

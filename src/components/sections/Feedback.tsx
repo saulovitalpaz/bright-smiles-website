@@ -79,6 +79,8 @@ const Feedback = () => {
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
                                                     key={star}
+                                                    aria-label={`${star} ${star === 1 ? 'estrela' : 'estrelas'}`}
+                                                    aria-pressed={rating === star}
                                                     type="button"
                                                     onMouseEnter={() => setHoverRating(star)}
                                                     onMouseLeave={() => setHoverRating(0)}
@@ -108,6 +110,8 @@ const Feedback = () => {
                                                 return (
                                                     <button
                                                         key={emoji.value}
+                                                        aria-label={emoji.label}
+                                                        aria-pressed={isActive}
                                                         type="button"
                                                         onClick={() => setEmojiRating(emoji.value)}
                                                         className={`flex flex-col items-center gap-1 sm:gap-2 group transition-all ${isActive ? "scale-110" : "opacity-40 hover:opacity-100"
@@ -135,7 +139,9 @@ const Feedback = () => {
                                         <div className="grid gap-2">
                                             <Input
                                                 name="subject"
-                                                placeholder="Seu Nome (Opcional)"
+                                                aria-label="Seu nome"
+                                                autoComplete="name"
+                                                placeholder="Seu nome"
                                                 className="bg-background/50 border-primary/10 focus-visible:ring-primary h-10 sm:h-11 md:h-12 text-sm sm:text-base"
                                                 required
                                             />
@@ -143,6 +149,7 @@ const Feedback = () => {
                                         <div className="grid gap-2">
                                             <Textarea
                                                 name="comment"
+                                                aria-label="Seu comentário"
                                                 placeholder="Escreva seu comentário aqui..."
                                                 className="min-h-[100px] sm:min-h-[120px] md:min-h-[140px] bg-background/50 border-primary/10 focus-visible:ring-primary resize-none text-sm sm:text-base"
                                                 required

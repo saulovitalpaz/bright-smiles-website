@@ -55,6 +55,7 @@ const TestimonialsCarousel = () => {
                 <div className="relative max-w-6xl mx-auto px-2 sm:px-0">
                     <button
                         onClick={() => scroll('left')}
+                        aria-label="Depoimentos anteriores"
                         className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-600 hover:text-primary transition-colors"
                     >
                         <ChevronLeft size={18} className="sm:hidden" />
@@ -110,6 +111,7 @@ const TestimonialsCarousel = () => {
 
                     <button
                         onClick={() => scroll('right')}
+                        aria-label="Próximos depoimentos"
                         className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-600 hover:text-primary transition-colors"
                     >
                         <ChevronRight size={18} className="sm:hidden" />

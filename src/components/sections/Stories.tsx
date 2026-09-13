@@ -181,6 +181,9 @@ const Stories = () => {
                                         <img
                                             src={mediaUrl(story.url) || story.url}
                                             alt={story.title}
+                                            width={80}
+                                            height={80}
+                                            loading="lazy"
                                             className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-100"
                                         />
                                     )}
@@ -234,12 +237,14 @@ const Stories = () => {
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setIsPaused(!isPaused); }}
+                                        aria-label={isPaused ? 'Reproduzir story' : 'Pausar story'}
                                         className="p-2 hover:bg-white/10 rounded-full transition-colors"
                                     >
                                         {isPaused ? <Play size={20} fill="currentColor" /> : <Pause size={20} fill="currentColor" />}
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setSelectedStoryIndex(null); }}
+                                        aria-label="Fechar story"
                                         className="p-2 hover:bg-white/10 rounded-full transition-colors"
                                     >
                                         <X size={24} />

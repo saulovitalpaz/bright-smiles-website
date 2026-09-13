@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Users, UserPlus, Shield, Activity, Key, Trash2 } from 'lucide-react';
+import TeamPhotoEditor from '@/components/admin/TeamPhotoEditor';
 
 type TeamUser = {
     id: number;
@@ -21,6 +22,10 @@ type TeamUser = {
 };
 
 const AdminUsers = () => {
+    const [canManageUsers] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('admin_user') || '{}').role === 'admin'; }
+        catch { return false; }
+    });
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [isCreating, setIsCreating] = useState(false);
@@ -34,6 +39,7 @@ const AdminUsers = () => {
 
     const { data: users = [], isLoading } = useQuery<TeamUser[]>({
         queryKey: ['users'],
+        enabled: canManageUsers,
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/users`, { withCredentials: true });
             return res.data;
@@ -63,7 +69,7 @@ const AdminUsers = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.username || formData.password.length < 8) {
-            toast({ title: 'Aviso', description: 'Preencha os campos obrigatórios.', variant: 'warning' });
+            toast({ title: 'Aviso', description: 'Preencha os campos obrigatórios.', variant: 'destructive' });
             return;
         }
         createMutation.mutate(formData);
@@ -81,8 +87,9 @@ const AdminUsers = () => {
     return (
         <AdminLayout title="Gerenciar Equipe">
             <div className="space-y-6 max-w-6xl mx-auto">
+                <TeamPhotoEditor />
                 
-                <div className="admin-card flex min-w-0 flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center">
+                {canManageUsers && <div className="admin-card flex min-w-0 flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center">
                     <div className="flex min-w-0 items-center gap-3">
                         <div className="p-3 bg-primary/10 rounded-lg text-primary">
                             <Users size={24} />
@@ -92,12 +99,12 @@ const AdminUsers = () => {
                             <p className="text-sm text-slate-500">Gerencie acessos ao sistema e cadastre profissionais.</p>
                         </div>
                     </div>
-                    <Button onClick={() => setIsCreating(!isCreating)} className="w-full gap-2 bg-primary hover:bg-primary/90 sm:w-auto">
+                    {canManageUsers && <Button onClick={() => setIsCreating(!isCreating)} className="w-full gap-2 bg-primary hover:bg-primary/90 sm:w-auto">
                         {isCreating ? 'Cancelar' : <><UserPlus size={18} /> Novo Usuário</>}
-                    </Button>
-                </div>
+                    </Button>}
+                </div>}
 
-                {isCreating && (
+                {canManageUsers && isCreating && (
                     <Card className="border-primary/20 shadow-md animate-in fade-in slide-in-from-top-4">
                         <CardHeader className="bg-primary/5 border-b border-primary/10">
                             <CardTitle className="text-lg text-primary">Cadastrar Novo Usuário</CardTitle>
@@ -174,7 +181,7 @@ const AdminUsers = () => {
                     </Card>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {canManageUsers && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {isLoading ? (
                         <p className="text-slate-500">Carregando usuários...</p>
                     ) : (
@@ -216,7 +223,7 @@ const AdminUsers = () => {
                             </Card>
                         ))
                     )}
-                </div>
+                </div>}
             </div>
         </AdminLayout>
     );

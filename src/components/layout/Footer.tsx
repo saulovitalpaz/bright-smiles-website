@@ -30,6 +30,9 @@ const Footer = () => {
               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center overflow-hidden">
                 <img
                   src={logoUrl}
+                  width={64}
+                  height={64}
+                  loading="lazy"
                   alt={`Logo ${clinicName}`}
                   className="w-full h-full object-contain drop-shadow-md"
                   onError={(e) => (e.target as HTMLImageElement).src = "/images/logo-oficial.png"}

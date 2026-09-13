@@ -17,6 +17,25 @@ function setup(value: unknown = { version: 2, applications: [] }, readOnly = fal
   return { ...result, onChange, mark, confirm, map };
 }
 describe("FacialHarmonizationWorkspace direct annotation", () => {
+  it("allows page gestures and arrow keys when marking is inactive", () => {
+    const { map, mark, onChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Selecionar marcações" }));
+    expect((map as unknown as SVGSVGElement).style.touchAction).toBe("auto");
+    mark(300, 350, 300, 550);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fireEvent.keyDown(map, { key: "ArrowDown" })).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+  it("changes skin tone without changing marks or clinical data", () => {
+    const { container, onChange } = setup({ version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] });
+    const marker = container.querySelector('.injectable-mark');
+    fireEvent.click(screen.getByRole('button', { name: 'Moreno claro' }));
+    expect(screen.getByRole('button', { name: 'Moreno claro' })).toHaveAttribute('aria-pressed', 'true');
+    expect(container.querySelector('image')?.getAttribute('filter')).toContain('skin-tone');
+    expect(container.querySelector('.injectable-mark')).toBe(marker);
+    expect(marker).not.toHaveAttribute('filter');
+    expect(onChange).not.toHaveBeenCalled();
+  });
   it("changes only the background when patient sex changes and preserves the marker", () => {
     const value = { version: 2, applications: [{ id: "existing", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: .2, unit: "ml" }] };
     const onChange = vi.fn();
@@ -89,6 +108,7 @@ describe("FacialHarmonizationWorkspace direct annotation", () => {
   });
   it("never modifies read-only records", () => {
     const { mark, map, onChange } = setup({ version: 2, applications: [{ id: "old", regionId: "frontal", procedureType: "filler", coordinates: { x: .5, y: .3 }, amount: 1, unit: "ml" }] }, true);
+    expect((map as unknown as SVGSVGElement).style.touchAction).toBe("auto");
     mark(300, 300); fireEvent.keyDown(map, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: /Consultar aplicação/ }));
     expect(screen.getByLabelText("Quantidade")).toHaveAttribute("readonly");

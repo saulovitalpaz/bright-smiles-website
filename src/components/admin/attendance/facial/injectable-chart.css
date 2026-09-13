@@ -26,7 +26,13 @@
 .injectable-history p { padding: 8px 0; overflow-wrap: anywhere; }
 .injectable-stage { position: relative; border: 1px solid hsl(var(--border)); border-radius: 14px; background: white; display: flex; justify-content: center; align-items: center; padding: 12px 24px 30px; min-width: 0; }
 .injectable-face { position: relative; width: min(100%, 470px); aspect-ratio: 3 / 4; }
-.injectable-svg { display: block; width: 100%; height: 100%; touch-action: none; border-radius: 10px; }
+.injectable-svg { display: block; width: 100%; height: 100%; border-radius: 10px; }
+.injectable-skin-tones { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.injectable-skin-tones legend { margin-bottom: 8px; font-size: 12px; color: #475569; }
+.injectable-skin-tones button { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 12px; }
+.injectable-skin-tones button[aria-pressed="true"] { border-color: #7134b4; background: #f8f3fd; color: #59249a; }
+.injectable-skin-tones button:focus-visible { outline: 2px solid #7134b4; outline-offset: 2px; }
+.injectable-skin-tones span { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #0002; }
 .injectable-svg--point,.injectable-svg--arrow { cursor: crosshair; }
 .injectable-svg--select { cursor: default; }
 .injectable-stage-tools { position: absolute; z-index: 2; right: 14px; top: 14px; display: grid; gap: 10px; }

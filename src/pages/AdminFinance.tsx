@@ -42,6 +42,8 @@ type FinanceStats = {
     closingBalance: number;
 };
 
+const visibleDescription = (description: string | null) => /^Atendimento #\d+:/i.test(description || "") ? "" : description;
+
 const EMPTY_STATS: FinanceStats = { income: 0, pendingIncome: 0, expense: 0, monthlyBalance: 0, openingBalance: 0, closingBalance: 0 };
 
 const AdminFinance = () => {
@@ -114,7 +116,7 @@ const AdminFinance = () => {
     const missingInvoices = transactions.filter(needsInvoiceDocument);
     const displayedTransactions = transactions.filter((transaction) =>
         (!transactionTypeFilter || transaction.type === transactionTypeFilter) && (!missingInvoicesOnly || needsInvoiceDocument(transaction)),
-    );
+    ).map(transaction => ({ ...transaction, description: visibleDescription(transaction.description) }));
     const activeFilterLabel = missingInvoicesOnly ? "Receitas sem nota anexada" : transactionTypeFilter === "income" ? "Receitas" : transactionTypeFilter === "expense" ? "Despesas" : null;
     const selectedPeriodStats = {
         income: stats.income,
@@ -280,9 +282,9 @@ const AdminFinance = () => {
                     </details>}
                 </section>
 
-                <div className="order-2 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
+                <div className="order-2 grid items-start min-w-0 grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
                     <div className="no-print order-2 min-w-0 space-y-6 lg:order-1">
-                        <Card className="border-slate-200 shadow-sm"><CardHeader><CardTitle className="font-serif text-xl">Nova Transação</CardTitle><CardDescription>Registre entradas ou saídas manuais.</CardDescription></CardHeader><CardContent><form onSubmit={handleAddTransaction} className="space-y-4">
+                        <Card className="border-slate-200 shadow-sm"><CardHeader><CardTitle className="font-serif text-xl">Nova Transação</CardTitle><CardDescription>Registre entradas ou saídas manuais.</CardDescription></CardHeader><CardContent><form onSubmit={handleAddTransaction} className="space-y-3">
                             <div className="space-y-2"><Label>Tipo</Label><div className="flex gap-2"><Button type="button" variant={newType === "income" ? "default" : "outline"} className="flex-1" onClick={() => setNewType("income")}>Receita</Button><Button type="button" variant={newType === "expense" ? "destructive" : "outline"} className="flex-1" onClick={() => setNewType("expense")}>Despesa</Button></div></div>
                             {newType === "income" && <div className="space-y-2"><Label>Vincular paciente (opcional)</Label><PatientPicker onSelect={(patient) => { setSelectedPatientId(patient.id); if (!newDesc) setNewDesc(`Pagamento - ${patient.name}`); }} /></div>}
                             <div className="space-y-2"><Label htmlFor="transaction-date">Data da transação</Label><Input id="transaction-date" type="date" value={newDate} onChange={(event) => setNewDate(event.target.value)} required /></div>

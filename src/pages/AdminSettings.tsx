@@ -239,7 +239,7 @@ const AdminSettings = () => {
 
     return (
         <AdminLayout title="Configurações do Site">
-            <div className="mx-auto w-full min-w-0 max-w-4xl space-y-6">
+            <div className="mx-auto w-full min-w-0 max-w-4xl space-y-4">
                 {errorMessage && (
                     <div
                         role="alert"
@@ -260,7 +260,7 @@ const AdminSettings = () => {
                             Estes dados identificam o profissional nos documentos clínicos.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="min-w-0 space-y-6">
+                    <CardContent className="min-w-0 space-y-4">
                         <div
                             className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2"
                             data-testid="professional-settings-fields"

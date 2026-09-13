@@ -6,6 +6,7 @@ import {
     FileText,
     Calendar,
     LogOut,
+    ExternalLink,
     ChevronRight,
     Stethoscope,
     DollarSign,
@@ -268,6 +269,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                     <Menu size={20} />
                 </Button>
                 <h1 className="min-w-0 flex-1 break-words py-2 font-serif text-lg font-bold leading-tight text-slate-900">{title}</h1>
+                <Button asChild variant="outline" size="icon" className="h-11 w-11 shrink-0"><Link to="/" target="_blank" rel="noopener noreferrer" aria-label="Ver homepage (nova aba)" title="Ver homepage (nova aba)"><ExternalLink size={18} aria-hidden="true" /></Link></Button>
                 <AdminPwaInstallAction compact />
                 <span title={currentUser.name} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-slate-700">{getInitials(currentUser.name || "Profissional")}</span>
             </div>
@@ -386,6 +388,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-3">
+                        <Button asChild variant="outline" className="min-h-11 gap-2"><Link to="/" target="_blank" rel="noopener noreferrer"><ExternalLink size={16} aria-hidden="true" />Ver homepage<span className="sr-only"> (nova aba)</span></Link></Button>
                         <AdminPwaInstallAction className="max-sm:w-full max-sm:justify-end" />
                         <div className="flex items-center gap-4 bg-white p-1.5 pr-4 rounded-full shadow-sm border border-slate-100">
                         <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs ring-2 ring-primary/20">

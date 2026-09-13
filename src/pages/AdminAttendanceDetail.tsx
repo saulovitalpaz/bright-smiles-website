@@ -221,7 +221,7 @@ const AdminAttendanceDetail = () => {
             const draft = {
                 ...DEFAULT_APPOINTMENT,
                 patientId: Number.isFinite(parsedPatientId) ? parsedPatientId : null,
-                scheduledAt: dateParam ? new Date(dateParam).toISOString() : null,
+                scheduledAt: dateParam ? new Date(dateParam).toISOString() : new Date().toISOString(),
                 professional: currentUser.name || "Profissional"
             };
             if (leadId) {
@@ -254,7 +254,7 @@ const AdminAttendanceDetail = () => {
                         patientName: lead.name || "",
                         cpf: lead.cpf || "",
                         phone: lead.phone || "",
-                        scheduledAt: lead.scheduledAt || null,
+                        scheduledAt: lead.scheduledAt || draft.scheduledAt,
                         procedure: lead.treatment || "",
                         notes: lead.message || "",
                     });
@@ -522,7 +522,7 @@ const AdminAttendanceDetail = () => {
                         {/* Basic Info Section */}
                         <Card id="attendance-step-summary" className="attendance-editor-card scroll-mt-24 border-slate-200 shadow-sm overflow-visible">
                             <CardContent className="p-3 sm:p-4">
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+                                <div className="grid items-start grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
                                     <div className="space-y-1.5 lg:col-span-2">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                                             <User size={12} /> Paciente e CPF
@@ -582,7 +582,7 @@ const AdminAttendanceDetail = () => {
                                             </>
                                         ) : (
                                             <div className="flex flex-col gap-1 mt-2">
-                                                <h3 className="text-xl font-bold font-serif text-slate-900">{data.patientName}</h3>
+                                                <h3 className="text-sm font-medium text-slate-700">{data.patientName}</h3>
                                                 <span className="text-sm font-mono text-slate-500">{data.cpf}</span>
                                             </div>
                                         )}

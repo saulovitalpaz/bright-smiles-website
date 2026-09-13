@@ -75,7 +75,7 @@ const RichTextEditor = ({ content, onChange, placeholder, className }: RichTextE
     );
 
     return (
-        <div className={`border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col ${className}`}>
+        <div className={`rich-text-editor border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col ${className}`}>
             <div className="min-h-14 p-2 border-b border-slate-100 bg-slate-50 flex items-center gap-1 overflow-x-auto no-scrollbar">
                 <ToolbarButton label="Negrito" onClick={() => handleFormat('bold')}><Bold size={16} /></ToolbarButton>
                 <ToolbarButton label="Itálico" onClick={() => handleFormat('italic')}><Italic size={16} /></ToolbarButton>

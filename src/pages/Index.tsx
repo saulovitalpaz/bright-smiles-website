@@ -12,9 +12,10 @@ import Footer from "@/components/layout/Footer";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="homepage min-h-screen bg-background">
+      <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:p-3 focus:text-foreground">Pular para o conteúdo</a>
       <Header />
-      <main>
+      <main id="conteudo" tabIndex={-1}>
         <Hero />
         <Services />
         <Stories />
