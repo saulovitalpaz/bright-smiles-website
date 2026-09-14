@@ -210,7 +210,10 @@ const AdminAttendanceDetail = () => {
         window.addEventListener("afterprint", clear);
         const controller = new AbortController();
         const frame = requestAnimationFrame(() => {
-            void printWhenReady(document, '[data-print-target="odontogram"]', () => window.print(), controller.signal);
+            void printWhenReady(document, '[data-print-target="odontogram"]', () => window.print(), controller.signal)
+                .then((printed) => {
+                    if (!printed && !controller.signal.aborted) clear();
+                });
         });
         return () => {
             controller.abort();

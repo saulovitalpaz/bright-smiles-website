@@ -61,12 +61,15 @@ describe("admin navigation source contract", () => {
     it("waits for the document print root before invoking browser print", () => {
         expect(prescriptionSource).toContain("requestAnimationFrame");
         expect(prescriptionSource).toContain("printWhenReady");
+        expect(prescriptionSource).toContain("if (!printed && !controller.signal.aborted)");
         expect(prescriptionSource).toContain('addEventListener("afterprint"');
         expect(documentsSource).toContain("requestAnimationFrame");
         expect(documentsSource).toContain("printWhenReady");
+        expect(documentsSource).toContain("if (!printed && !controller.signal.aborted)");
         expect(documentsSource).toContain('addEventListener("afterprint"');
         expect(attendanceSource).toContain("requestAnimationFrame");
         expect(attendanceSource).toContain("printWhenReady");
+        expect(attendanceSource).toContain("if (!printed && !controller.signal.aborted)");
         expect(attendanceSource).toContain('addEventListener("afterprint"');
     });
 

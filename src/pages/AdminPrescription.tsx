@@ -93,7 +93,10 @@ const AdminPrescription = () => {
         window.addEventListener("afterprint", clearPrintTarget);
         const controller = new AbortController();
         const frame = window.requestAnimationFrame(() => {
-            void printWhenReady(document, '[data-print-target="prescription"]', () => window.print(), controller.signal);
+            void printWhenReady(document, '[data-print-target="prescription"]', () => window.print(), controller.signal)
+                .then((printed) => {
+                    if (!printed && !controller.signal.aborted) clearPrintTarget();
+                });
         });
 
         return () => {
