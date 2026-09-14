@@ -30,7 +30,14 @@ Assert-NotContains "src/pages/AdminPrescription.tsx" "print-signature mt-auto" "
 
 Assert-Contains "src/pages/AdminDocuments.tsx" "includeProfessionalSignature" "Documents must expose signature inclusion state."
 Assert-Contains "src/pages/AdminDocuments.tsx" "hasCompleteProfessionalIdentity" "Document printing must require configured professional identity."
+Assert-Contains "src/pages/AdminDocuments.tsx" "waitForPrintImages" "Documents must wait for print images before opening the browser dialog."
 Assert-NotContains "src/pages/AdminDocuments.tsx" "A4 compacto" "Documents must not expose the obsolete compact selector."
+
+Assert-Contains "src/pages/AdminPrescription.tsx" "waitForPrintImages" "Prescriptions must wait for print images before opening the browser dialog."
+Assert-Contains "src/pages/AdminAttendanceDetail.tsx" "waitForPrintImages" "Odontograms must wait for print images before opening the browser dialog."
+Assert-Contains "src/components/admin/attendance/AttendanceOdontogramPrint.tsx" "logo-oficial.png" "Odontogram print must keep the clinic logo."
+Assert-Contains "src/components/PrescriptionGenerator.tsx" "logo-oficial.png" "Prescription PDF must keep the clinic logo."
+Assert-Contains "src/components/admin/FinanceReportPDF.tsx" "logo-oficial.png" "Finance PDF must keep the clinic logo."
 
 Assert-Contains "src/components/PrescriptionGenerator.tsx" "electronicSignatureLabel" "PDF must identify the electronic signer."
 Assert-Contains "src/lib/professional-signature.ts" "Assinado eletronicamente por:" "Printed documents must identify the electronic signer."
@@ -44,6 +51,7 @@ Assert-Contains "src/components/admin/attendance/Odontogram.tsx" "data-printable
 Assert-Contains "src/index.css" "\.print-flow-content" "Long document text must remain page-breakable."
 Assert-Contains "src/index.css" "\.print-odontogram \.odontogram-grid" "Printed odontogram must use a stable document grid."
 Assert-Contains "src/index.css" '(?s)\.print-document\s*\{[^}]*display:\s*block\s*!important' "Printable documents must use a fragmentable block flow."
+Assert-Contains "src/index.css" '(?s)\.print-only\.print-root\s*\{\s*display:\s*none\s*;\s*\}' "Temporary printable roots must stay hidden until print media is active."
 
 Assert-Contains "server/prisma/schema.prisma" "signatureUrl\s+String\?" "User profile must store the uploaded signature reference."
 Assert-Contains "server/index.js" "app\.patch\('/users/me', authenticateToken" "Professional profile updates must use the authenticated current user."

@@ -27,6 +27,7 @@ import RichTextEditor from "@/components/admin/RichTextEditor";
 import { mediaUrl } from "@/lib/media";
 import { replaceDocumentTokens } from "@/lib/document-template";
 import { derivePatientAge } from "@/lib/patient-age";
+import { waitForPrintImages } from "@/lib/print-layout";
 import { AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import {
     hasCompleteProfessionalIdentity,
@@ -89,9 +90,17 @@ const AdminDocuments = () => {
 
         const clearPrintReady = () => setIsPrintReady(false);
         window.addEventListener("afterprint", clearPrintReady);
-        const frame = window.requestAnimationFrame(() => window.print());
+        let cancelled = false;
+        const frame = window.requestAnimationFrame(() => {
+            void (async () => {
+                const printTarget = document.querySelector('[data-print-target="document"]');
+                if (printTarget) await waitForPrintImages(printTarget);
+                if (!cancelled) window.print();
+            })();
+        });
 
         return () => {
+            cancelled = true;
             window.cancelAnimationFrame(frame);
             window.removeEventListener("afterprint", clearPrintReady);
         };

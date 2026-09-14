@@ -25,6 +25,8 @@ describe("ClinicDocumentPrint", () => {
     expect(screen.getByText("Profissional de teste")).toBeInTheDocument();
     expect(screen.getByText("CRO TESTE")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Logo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Núcleo Odontológico" })).toBeInTheDocument();
+    expect(screen.queryByText("Assinatura do Paciente")).not.toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /assinatura/i })).not.toBeInTheDocument();
     expect(container.querySelector('[data-print-target="document"]')).toBeInTheDocument();
   });
@@ -46,6 +48,7 @@ describe("ClinicDocumentPrint", () => {
     rerender(<ClinicDocumentPrint {...props} />);
     expect(screen.getByText("Conteúdo selecionado")).toBeInTheDocument();
     expect(screen.getByText("Paciente fictício - CPF fictício")).toBeInTheDocument();
+    expect(screen.getByText("Assinatura do Paciente")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /assinatura de profissional/i })).toBeInTheDocument();
     expect(screen.queryByText(/Nascimento:/)).not.toBeInTheDocument();
   });

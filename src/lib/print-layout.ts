@@ -11,3 +11,17 @@ export const printModeDescriptions: Record<PrintMode, string> = {
 };
 
 export const printDocumentClass = (mode: PrintMode) => `print-document print-${mode}`;
+
+export function waitForPrintImages(root: ParentNode): Promise<void> {
+  const pendingImages = Array.from(root.querySelectorAll("img")).filter((image) => !image.complete);
+  return Promise.all(pendingImages.map((image) => new Promise<void>((resolve) => {
+    const settle = () => {
+      image.removeEventListener("load", settle);
+      image.removeEventListener("error", settle);
+      resolve();
+    };
+    image.addEventListener("load", settle, { once: true });
+    image.addEventListener("error", settle, { once: true });
+    if (image.complete) settle();
+  }))).then(() => undefined);
+}

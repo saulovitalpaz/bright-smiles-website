@@ -167,6 +167,10 @@
   display: block;
 }
 
+.print-only.print-root {
+  display: none;
+}
+
 @media print {
   .print-odontogram .occlusal-tooth--arch {
     width: 7mm;

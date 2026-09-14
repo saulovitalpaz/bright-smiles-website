@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
-import { printDocumentClass } from "@/lib/print-layout";
+import { printDocumentClass, waitForPrintImages } from "@/lib/print-layout";
 import {
     hasCompleteProfessionalIdentity,
     hasUsableProfessionalSignature,
@@ -91,9 +91,17 @@ const AdminPrescription = () => {
 
         const clearPrintTarget = () => setPrintTarget(null);
         window.addEventListener("afterprint", clearPrintTarget);
-        const frame = window.requestAnimationFrame(() => window.print());
+        let cancelled = false;
+        const frame = window.requestAnimationFrame(() => {
+            void (async () => {
+                const printTarget = document.querySelector('[data-print-target="prescription"]');
+                if (printTarget) await waitForPrintImages(printTarget);
+                if (!cancelled) window.print();
+            })();
+        });
 
         return () => {
+            cancelled = true;
             window.cancelAnimationFrame(frame);
             window.removeEventListener("afterprint", clearPrintTarget);
         };

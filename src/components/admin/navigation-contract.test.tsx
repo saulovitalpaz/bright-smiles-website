@@ -60,13 +60,18 @@ describe("admin navigation source contract", () => {
 
     it("waits for the document print root before invoking browser print", () => {
         expect(prescriptionSource).toContain("requestAnimationFrame");
+        expect(prescriptionSource).toContain("waitForPrintImages");
         expect(prescriptionSource).toContain('addEventListener("afterprint"');
         expect(documentsSource).toContain("requestAnimationFrame");
+        expect(documentsSource).toContain("waitForPrintImages");
         expect(documentsSource).toContain('addEventListener("afterprint"');
+        expect(attendanceSource).toContain("requestAnimationFrame");
+        expect(attendanceSource).toContain("waitForPrintImages");
+        expect(attendanceSource).toContain('addEventListener("afterprint"');
     });
 
     it("keeps the print flow fragmentable and page-break controlled", () => {
-        expect(cssSource).toMatch(/\.print-root\s*\{[\s\S]*display:\s*none/);
+        expect(cssSource).toMatch(/\.print-only\.print-root\s*\{\s*display:\s*none\s*;\s*\}/);
         expect(cssSource).toMatch(/\.print-document\s*\{[\s\S]*display:\s*block\s*!important/);
         expect(cssSource).toContain(".print-page-odontogram");
     });

@@ -4,7 +4,7 @@
 
 **Goal:** Preservar logo/cabeçalho na impressão de documentos e remover a assinatura do paciente do modelo manual.
 
-**Architecture:** O componente `ClinicDocumentPrint` continuará sendo o único responsável pela apresentação impressa. Um helper pequeno no módulo compartilhado de layout aguardará imagens ainda não carregadas no alvo de impressão antes de `window.print()`, mantendo o shell administrativo separado do documento.
+**Architecture:** Os componentes de documentos imprimíveis continuarão responsáveis pela apresentação impressa. Um helper pequeno no módulo compartilhado de layout aguardará imagens ainda não carregadas no alvo de impressão antes de `window.print()` em Termos e Documentos, Prescrição e Odontograma, mantendo o shell administrativo separado dos documentos.
 
 **Tech Stack:** React 18, TypeScript, Vite, Vitest, Testing Library, CSS de impressão compartilhado.
 
@@ -77,6 +77,12 @@ Expected: PASS em todos os testes do componente.
 - Modify: `src/lib/print-layout.ts`
 - Create: `src/lib/print-layout.test.ts`
 - Modify: `src/pages/AdminDocuments.tsx`
+- Modify: `src/pages/AdminPrescription.tsx`
+- Modify: `src/pages/AdminAttendanceDetail.tsx`
+- Modify: `src/pages/AdminAttendanceFlow.test.tsx`
+- Modify: `src/components/admin/navigation-contract.test.tsx`
+- Modify: `src/index.css`
+- Modify: `scripts/verify-document-print.ps1`
 
 **Interfaces:**
 - Consumes: um `ParentNode` contendo o alvo explícito de impressão.
@@ -166,14 +172,14 @@ React.useEffect(() => {
 
 - [ ] **Step 4: Rodar os testes focados**
 
-Run: `npm test -- src/lib/print-layout.test.ts src/components/admin/ClinicDocumentPrint.test.tsx`
+Run: `npm test -- src/lib/print-layout.test.ts src/components/admin/ClinicDocumentPrint.test.tsx src/components/admin/navigation-contract.test.tsx src/pages/AdminAttendanceFlow.test.tsx`
 
 Expected: PASS sem erros ou avisos.
 
 ### Task 3: Verificação completa e entrega
 
 **Files:**
-- Modify: files from Tasks 1-2 only, plus generated documentation commits.
+- Modify: files from Tasks 1-2 only, plus `src/index.css`, `scripts/verify-document-print.ps1` and generated documentation commits.
 
 **Interfaces:**
 - Consumes: implementação e testes das Tasks 1-2.
@@ -205,7 +211,7 @@ Expected: `git diff --check` sem saída; a busca não deve encontrar novos segre
 
 - [ ] **Step 4: Revisar o diff e criar o commit de implementação**
 
-Run: `git status --short; git diff --stat; git diff -- src/components/admin/ClinicDocumentPrint.tsx src/components/admin/ClinicDocumentPrint.test.tsx src/lib/print-layout.ts src/lib/print-layout.test.ts src/pages/AdminDocuments.tsx`
+Run: `git status --short; git diff --stat; git diff -- src/components/admin/ClinicDocumentPrint.tsx src/components/admin/ClinicDocumentPrint.test.tsx src/components/admin/navigation-contract.test.tsx src/index.css src/lib/print-layout.ts src/lib/print-layout.test.ts src/pages/AdminDocuments.tsx src/pages/AdminPrescription.tsx src/pages/AdminAttendanceDetail.tsx src/pages/AdminAttendanceFlow.test.tsx scripts/verify-document-print.ps1`
 
 Confirmar que apenas os arquivos esperados foram modificados e criar:
 

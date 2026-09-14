@@ -6,7 +6,7 @@ Garantir que a impressão de documentos mantenha o logo e o cabeçalho clínico 
 
 ## Contexto e causa
 
-O componente `ClinicDocumentPrint` já contém o logo e o cabeçalho dentro do alvo explícito de impressão, mas `AdminDocuments` chama `window.print()` no primeiro `requestAnimationFrame` depois de montar esse alvo. Nesse momento, o logo ainda pode estar carregando e ser omitido pela prévia/impressão do navegador.
+Os componentes de documentos imprimíveis já contêm o logo e o cabeçalho dentro de alvos explícitos de impressão, mas `AdminDocuments`, `AdminPrescription` e `AdminAttendanceDetail` chamam `window.print()` no primeiro `requestAnimationFrame` depois de montar esses alvos. Nesse momento, o logo ainda pode estar carregando e ser omitido pela prévia/impressão do navegador.
 
 O modo manual usa o mesmo bloco de assinaturas dos documentos normais. Ele esconde apenas o nome e o CPF do paciente, mantendo o traço e o rótulo `Assinatura do Paciente`.
 
@@ -14,7 +14,7 @@ O modo manual usa o mesmo bloco de assinaturas dos documentos normais. Ele escon
 
 ### Fluxo de impressão
 
-O fluxo de `AdminDocuments` continuará montando `ClinicDocumentPrint` fora da área interativa. Antes de iniciar `window.print()`, aguardará o carregamento dos recursos visuais necessários no alvo de impressão. O cabeçalho continuará sendo conteúdo sem a classe `no-print`, enquanto o shell administrativo seguirá excluído pelo CSS de impressão.
+Os fluxos de `AdminDocuments`, `AdminPrescription` e `AdminAttendanceDetail` continuarão montando seus alvos de impressão fora da área interativa. Antes de iniciar `window.print()`, cada fluxo aguardará o carregamento das imagens no alvo. Os cabeçalhos continuarão sendo conteúdo sem a classe `no-print`, enquanto o shell administrativo seguirá excluído pelo CSS de impressão.
 
 ### Modelo manual
 
@@ -31,4 +31,4 @@ Os testes de componente validarão a ausência estrutural do campo de assinatura
 
 ## Limites
 
-Esta mudança não altera o armazenamento de documentos, endpoints, permissões, assinatura profissional configurável ou o conteúdo dos modelos existentes.
+Esta mudança não altera o armazenamento de documentos, endpoints, permissões, assinatura profissional configurável, PDFs React-PDF ou o conteúdo dos modelos existentes.

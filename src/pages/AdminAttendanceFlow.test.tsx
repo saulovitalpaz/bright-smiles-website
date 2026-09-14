@@ -36,7 +36,16 @@ it("mounts the isolated odontogram print root before printing and clears it afte
   });
   const { container } = mount();
   fireEvent.click(await screen.findByRole("button", { name: "Imprimir odontograma" }));
-  await waitFor(() => expect(print).toHaveBeenCalledOnce());
+  const logo = await waitFor(() => {
+    const image = container.querySelector('[data-print-target="odontogram"] img');
+    expect(image).not.toBeNull();
+    return image as HTMLImageElement;
+  });
+  Object.defineProperty(logo, "complete", { configurable: true, value: false });
+  await waitFor(() => {
+    logo.dispatchEvent(new Event("load"));
+    expect(print).toHaveBeenCalledOnce();
+  });
   expect(container.querySelector('.print-root')).toHaveTextContent("Profissional Teste");
   fireEvent(window, new Event("afterprint"));
   expect(container.querySelector('.print-root')).toBeNull();

@@ -25,12 +25,12 @@ export function ClinicDocumentPrint({ professional, patient, content, includeEle
           <div className="min-h-[100mm]" />
         ) : <div dangerouslySetInnerHTML={{ __html: content }} />}
       </div>
-      <div className="print-signature mt-20 grid grid-cols-2 gap-12 border-t border-slate-200 pt-8 text-center">
-        <div>
+      <div className={`print-signature mt-20 ${manual ? "text-center" : "grid grid-cols-2 gap-12"} border-t border-slate-200 pt-8`}>
+        {!manual && <div className="text-center">
           <div className="mx-auto mb-2 w-64 border-b border-slate-900" />
           <p className="text-[10px] font-bold uppercase">Assinatura do Paciente</p>
-          {!manual && <p className="mt-1 text-[9px] text-slate-500">{patient.name} - {patient.cpf}</p>}
-        </div>
+          <p className="mt-1 text-[9px] text-slate-500">{patient.name} - {patient.cpf}</p>
+        </div>}
         <ProfessionalSignature professional={professional} includeElectronic={!manual && includeElectronic} />
       </div>
       <p className="mt-12 text-center text-[10px] uppercase tracking-widest text-slate-400">
