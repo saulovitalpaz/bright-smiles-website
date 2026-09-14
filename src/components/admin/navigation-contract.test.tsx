@@ -60,13 +60,13 @@ describe("admin navigation source contract", () => {
 
     it("waits for the document print root before invoking browser print", () => {
         expect(prescriptionSource).toContain("requestAnimationFrame");
-        expect(prescriptionSource).toContain("waitForPrintImages");
+        expect(prescriptionSource).toContain("printWhenReady");
         expect(prescriptionSource).toContain('addEventListener("afterprint"');
         expect(documentsSource).toContain("requestAnimationFrame");
-        expect(documentsSource).toContain("waitForPrintImages");
+        expect(documentsSource).toContain("printWhenReady");
         expect(documentsSource).toContain('addEventListener("afterprint"');
         expect(attendanceSource).toContain("requestAnimationFrame");
-        expect(attendanceSource).toContain("waitForPrintImages");
+        expect(attendanceSource).toContain("printWhenReady");
         expect(attendanceSource).toContain('addEventListener("afterprint"');
     });
 

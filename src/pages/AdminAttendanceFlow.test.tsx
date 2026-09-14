@@ -34,6 +34,11 @@ it("mounts the isolated odontogram print root before printing and clears it afte
   const print = vi.spyOn(window, "print").mockImplementation(() => {
     expect(document.querySelector('[data-print-target="odontogram"]')).not.toBeNull();
   });
+  let runFrame: FrameRequestCallback | undefined;
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+    runFrame = callback;
+    return 1;
+  });
   const { container } = mount();
   fireEvent.click(await screen.findByRole("button", { name: "Imprimir odontograma" }));
   const logo = await waitFor(() => {
@@ -42,10 +47,12 @@ it("mounts the isolated odontogram print root before printing and clears it afte
     return image as HTMLImageElement;
   });
   Object.defineProperty(logo, "complete", { configurable: true, value: false });
-  await waitFor(() => {
-    logo.dispatchEvent(new Event("load"));
-    expect(print).toHaveBeenCalledOnce();
-  });
+  expect(runFrame).toBeDefined();
+  runFrame!(0);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(print).not.toHaveBeenCalled();
+  logo.dispatchEvent(new Event("load"));
+  await waitFor(() => expect(print).toHaveBeenCalledOnce());
   expect(container.querySelector('.print-root')).toHaveTextContent("Profissional Teste");
   fireEvent(window, new Event("afterprint"));
   expect(container.querySelector('.print-root')).toBeNull();

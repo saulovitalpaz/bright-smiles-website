@@ -22,7 +22,7 @@ import { normalizeOdontogram, OdontogramData } from "@/components/admin/attendan
 import { normalizeFacialNotes, FacialNotesDocument } from "@/components/admin/attendance/facial/facialModel";
 import { AttendanceOdontogramPrint } from "@/components/admin/attendance/AttendanceOdontogramPrint";
 import { hasCompleteProfessionalIdentity, readStoredProfessionalIdentity } from "@/lib/professional-signature";
-import { waitForPrintImages } from "@/lib/print-layout";
+import { printWhenReady } from "@/lib/print-layout";
 
 // Interfaces
 interface AppointmentData {
@@ -208,16 +208,12 @@ const AdminAttendanceDetail = () => {
         if (!printReady) return;
         const clear = () => setPrintReady(false);
         window.addEventListener("afterprint", clear);
-        let cancelled = false;
+        const controller = new AbortController();
         const frame = requestAnimationFrame(() => {
-            void (async () => {
-                const printTarget = document.querySelector('[data-print-target="odontogram"]');
-                if (printTarget) await waitForPrintImages(printTarget);
-                if (!cancelled) window.print();
-            })();
+            void printWhenReady(document, '[data-print-target="odontogram"]', () => window.print(), controller.signal);
         });
         return () => {
-            cancelled = true;
+            controller.abort();
             cancelAnimationFrame(frame);
             window.removeEventListener("afterprint", clear);
         };
