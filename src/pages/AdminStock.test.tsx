@@ -7,6 +7,7 @@ vi.mock("@/components/admin/AdminLayout", () => ({ default: ({ children }: { chi
 vi.mock("@/lib/api", () => ({ adminApi: { post: vi.fn(), put: vi.fn(), get: vi.fn() } }));
 vi.mock("@/lib/stock", async original => ({ ...await original<typeof import("@/lib/stock")>(), loadStockProducts: vi.fn() }));
 const product = { id: "p1", name: "Toxina teste", procedureType: "botulinum-toxin" as const, stockUnit: "ml" as const, quantity: 2, concentration: 50, price: 100, active: true, version: 3 };
+const inactiveProduct = { ...product, id: "p2", name: "Produto inativo", active: false };
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(loadStockProducts).mockResolvedValue([product]); });
 describe("AdminStock", () => {
   it("creates a product with class, concentration, price and initial quantity", async () => {
@@ -19,7 +20,7 @@ describe("AdminStock", () => {
   });
   it("retains stock adjustment values when saving fails", async () => {
     vi.mocked(adminApi.post).mockRejectedValue(new Error());
-    render(<AdminStock />); await screen.findByText("Toxina teste"); fireEvent.click(screen.getByRole("button", { name: "Ajustar" }));
+    render(<AdminStock />); await screen.findByText("Toxina teste"); fireEvent.click(screen.getByRole("button", { name: "Ajustar Toxina teste" }));
     fireEvent.change(screen.getByLabelText(/Quantidade de entrada/), { target: { value: "-1" } });
     fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Descarte" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar ajuste" })); await screen.findByRole("alert");
@@ -29,5 +30,36 @@ describe("AdminStock", () => {
   it("exposes load failure and recovery", async () => {
     vi.mocked(loadStockProducts).mockRejectedValueOnce(new Error()).mockResolvedValue([product]);
     render(<AdminStock />); await screen.findByRole("alert"); fireEvent.click(screen.getByRole("button", { name: "Atualizar" })); await screen.findByText("Toxina teste");
+  });
+
+  it("keeps inactive products collapsed until requested", async () => {
+    vi.mocked(loadStockProducts).mockResolvedValue([product, inactiveProduct]);
+    render(<AdminStock />);
+    await screen.findByText("Toxina teste");
+    expect(screen.getByRole("button", { name: /Produtos inativos/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: "Editar Produto inativo" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Produtos inativos/ }));
+    expect(screen.getByRole("button", { name: /Produtos inativos/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Produto inativo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar Produto inativo" })).toBeInTheDocument();
+  });
+
+  it("uses compact accessible icon actions for active products", async () => {
+    render(<AdminStock />);
+    await screen.findByText("Toxina teste");
+    expect(screen.getByRole("button", { name: "Editar Toxina teste" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajustar Toxina teste" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Histórico Toxina teste" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ajustar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Histórico" })).not.toBeInTheDocument();
+  });
+
+  it("excludes inactive products from the stock value card", async () => {
+    vi.mocked(loadStockProducts).mockResolvedValue([{ ...product, quantity: 2 }, { ...inactiveProduct, quantity: 10, price: 999 }]);
+    render(<AdminStock />);
+    await screen.findByText("Toxina teste");
+    expect(screen.getByText(/200,00/)).toBeInTheDocument();
+    expect(screen.queryByText(/10\.190,00/)).not.toBeInTheDocument();
   });
 });

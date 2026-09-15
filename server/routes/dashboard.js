@@ -47,6 +47,7 @@ function createDashboardStatsHandler(prisma, buildUpcomingSchedule) {
 
             const stock = ['admin', 'dentist'].includes(req.user?.role)
                 ? await prisma.stockProduct.findMany({
+                    where: { active: true },
                     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                     select: { id: true, name: true, quantity: true, stockUnit: true, price: true, reconstitutedAt: true }
                 }) : undefined;
