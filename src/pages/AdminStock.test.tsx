@@ -62,4 +62,13 @@ describe("AdminStock", () => {
     expect(screen.getByText(/200,00/)).toBeInTheDocument();
     expect(screen.queryByText(/10\.190,00/)).not.toBeInTheDocument();
   });
+
+  it("turns product rows into stacked mobile cards without a horizontal minimum", async () => {
+    render(<AdminStock />);
+    await screen.findByText("Toxina teste");
+    const row = screen.getByRole("row", { name: /Toxina teste/ });
+    expect(row).toHaveClass("md:table-row");
+    expect(screen.getByText("Saldo", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByRole("table")).not.toHaveClass("min-w-[640px]");
+  });
 });
