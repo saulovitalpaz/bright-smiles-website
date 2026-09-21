@@ -187,15 +187,13 @@ test('stats aggregates only pageviews, excludes story events from sources and om
             Ads: 1
         },
         locations: {
-            'Governador Valadares': 1,
-            Ipatinga: 1
+            'Governador Valadares': 1
         },
         regions: {
-            MG: 2
+            MG: 1
         },
         nearbyRegions: [
-            { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 },
-            { city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, distanceKm: 93, count: 1 }
+            { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 }
         ],
         topPaths: {
             '/': 1,
@@ -210,7 +208,7 @@ test('stats aggregates only pageviews, excludes story events from sources and om
     assert.ok(!('events' in res.body));
 });
 
-test('stats ranks only public page paths and nearby IP-derived locations within 200 km', async () => {
+test('stats ranks only public page paths and nearby IP-derived locations within 15 km', async () => {
     const prisma = {
         analyticsEvent: {
             findMany: async () => ([
@@ -229,11 +227,10 @@ test('stats ranks only public page paths and nearby IP-derived locations within 
 
     assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 1, '/tratamento/clareamento': 1 });
     assert.ok(!('/admin' in res.body.topPaths));
-    assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares', 'Ipatinga']);
-    assert.deepEqual(res.body.regions, { MG: 2 });
+    assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares']);
+    assert.deepEqual(res.body.regions, { MG: 1 });
     assert.deepEqual(res.body.nearbyRegions, [
-        { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 },
-        { city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, distanceKm: 93, count: 1 }
+        { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 }
     ]);
 });
 

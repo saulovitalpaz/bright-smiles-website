@@ -3,7 +3,7 @@ import { Toaster as ToasterSonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { createBrowserRouter, createRoutesFromElements, Outlet, Route, RouterProvider, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TreatmentList from "./pages/TreatmentList";
@@ -41,18 +41,23 @@ const AdminPwaRouteBoundary = ({ children }: { children: ReactNode }) => {
   return isAdminRoute ? <AdminPwaProvider>{children}</AdminPwaProvider> : <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <ToasterSonner />
-      <BrowserRouter>
-        <PageTracker />
-        <AdminPwaRouteBoundary>
-          <AuthProvider>
-            <PageLoadBoundary>
-            <Suspense fallback={<div role="status" className="flex min-h-[50dvh] items-center justify-center p-6 text-sm text-slate-600">Carregando página…</div>}>
-            <Routes>
+const AppRouteBoundary = () => (
+  <>
+    <PageTracker />
+    <AdminPwaRouteBoundary>
+      <AuthProvider>
+        <PageLoadBoundary>
+          <Suspense fallback={<div role="status" className="flex min-h-[50dvh] items-center justify-center p-6 text-sm text-slate-600">Carregando página…</div>}>
+            <Outlet />
+          </Suspense>
+        </PageLoadBoundary>
+      </AuthProvider>
+    </AdminPwaRouteBoundary>
+  </>
+);
+
+const router = createBrowserRouter(createRoutesFromElements(
+  <Route element={<AppRouteBoundary />}>
             <Route path="/" element={<Index />} />
             <Route path="/tratamentos" element={<TreatmentList />} />
             <Route path="/tratamentos/:slug" element={<TreatmentDetail />} />
@@ -81,12 +86,15 @@ const App = () => (
             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
-            </Routes>
-            </Suspense>
-            </PageLoadBoundary>
-          </AuthProvider>
-        </AdminPwaRouteBoundary>
-      </BrowserRouter>
+  </Route>,
+));
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <ToasterSonner />
+      <RouterProvider router={router} />
     </TooltipProvider>
   </QueryClientProvider>
 );

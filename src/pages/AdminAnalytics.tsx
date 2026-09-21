@@ -259,7 +259,7 @@ const AdminAnalytics = () => {
                         <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
                             <MapPin size={20} className="text-orange-500" /> Regiões Aproximadas
                         </CardTitle>
-                        <CardDescription>Estimativas por IP, da mais próxima à mais distante, em até 200 km da clínica</CardDescription>
+                        <CardDescription>Estimativas por IP, da mais próxima à mais distante, em até 15 km da clínica</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {renderNearbyRegions()}

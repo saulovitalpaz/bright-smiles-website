@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AttendanceSection, AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import { API_URL, fetchClient } from "@/lib/api";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Save, Trash2, Calendar, CalendarCheck, Clock, Stethoscope, Activity } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import PhotoGallery from "@/components/admin/attendance/PhotoGallery";
 import Odontogram from "@/components/admin/attendance/Odontogram";
@@ -23,6 +23,17 @@ import { normalizeFacialNotes, FacialNotesDocument } from "@/components/admin/at
 import { AttendanceOdontogramPrint } from "@/components/admin/attendance/AttendanceOdontogramPrint";
 import { hasCompleteProfessionalIdentity, readStoredProfessionalIdentity } from "@/lib/professional-signature";
 import { printWhenReady } from "@/lib/print-layout";
+import { useClinicalAutosave } from "@/hooks/useClinicalAutosave";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Interfaces
 interface AppointmentData {
@@ -226,6 +237,53 @@ const AdminAttendanceDetail = () => {
     const userStr = localStorage.getItem("admin_user");
     const currentUser = userStr ? JSON.parse(userStr) : { name: "Profissional", role: 'admin' };
     const readOnly = currentUser.role === 'manager';
+    const appointmentId = id && /^\d+$/.test(id) ? Number(id) : NaN;
+    const clinicalSnapshot = useMemo(() => ({
+        dentalNotes: data.dentalNotes,
+        facialNotes: data.facialNotes,
+    }), [data.dentalNotes, data.facialNotes]);
+    const saveClinicalSnapshot = async (snapshot: typeof clinicalSnapshot) => {
+        const response = await fetchClient(`/appointments/${appointmentId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(snapshot),
+        });
+        if (!response.ok) throw new Error("Clinical autosave failed");
+    };
+    const clinicalAutosave = useClinicalAutosave({
+        enabled: !isLoading && !readOnly && Number.isInteger(appointmentId) && appointmentId > 0,
+        snapshot: clinicalSnapshot,
+        save: saveClinicalSnapshot,
+    });
+    const {
+        pending: clinicalSavePending,
+        status: clinicalSaveStatus,
+        flush: flushClinicalChanges,
+        confirm: confirmClinicalSnapshot,
+    } = clinicalAutosave;
+    const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+    const allowNavigationRef = useRef(false);
+    const navigationBlocker = useBlocker(() => clinicalSavePending && !allowNavigationRef.current);
+    const { state: navigationBlockerState, proceed: proceedNavigation, reset: resetNavigation } = navigationBlocker;
+
+    useEffect(() => {
+        if (!clinicalSavePending) return;
+
+        const preventBrowserExit = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", preventBrowserExit);
+        return () => window.removeEventListener("beforeunload", preventBrowserExit);
+    }, [clinicalSavePending]);
+
+    useEffect(() => {
+        if (navigationBlockerState !== "blocked") return;
+        void flushClinicalChanges().then((saved) => {
+            if (saved) proceedNavigation?.();
+            else setShowNavigationWarning(true);
+        });
+    }, [flushClinicalChanges, navigationBlockerState, proceedNavigation]);
 
     useEffect(() => {
         if (id === 'new') {
@@ -342,6 +400,8 @@ const AdminAttendanceDetail = () => {
             const url = isNew ? `${API_URL}/appointments` : `${API_URL}/appointments/${id}`;
             const method = isNew ? "POST" : "PUT";
 
+            if (!isNew) await flushClinicalChanges();
+
             // If new and patient doesn't exist, create it via endpoint
             let finalPatientId = data.patientId;
             if (isNew && !finalPatientId) {
@@ -409,7 +469,20 @@ const AdminAttendanceDetail = () => {
                 if (isNew) {
                     navigate(`/admin/consultas/${saved.id}`, { replace: true });
                 } else {
-                    setData(previous => normalizeAppointmentResponse({ ...saved, patient: saved.patient ?? { id: previous.patientId, birthDate: previous.birthDate, sex: previous.sex, weight: savedWeight } }));
+                    const normalizedSaved = normalizeAppointmentResponse({
+                        ...saved,
+                        patient: saved.patient ?? {
+                            id: data.patientId,
+                            birthDate: data.birthDate,
+                            sex: data.sex,
+                            weight: savedWeight,
+                        },
+                    });
+                    confirmClinicalSnapshot({
+                        dentalNotes: normalizedSaved.dentalNotes,
+                        facialNotes: normalizedSaved.facialNotes,
+                    });
+                    setData(normalizedSaved);
                 }
             } else {
                 const error = await res.json().catch(() => null);
@@ -425,18 +498,23 @@ const AdminAttendanceDetail = () => {
 
     const handleDelete = async () => {
         if (confirm("Tem certeza que deseja excluir esta consulta definitivamente?")) {
+            setIsSaving(true);
             try {
+                if (clinicalSavePending) await flushClinicalChanges();
                 const res = await fetchClient(`/appointments/${id}`, {
                     method: 'DELETE',
                 });
                 if (res.ok) {
                     toast.success("Consulta apagada!");
+                    allowNavigationRef.current = true;
                     navigate('/admin/consultas');
                 } else {
                     toast.error("Falha ao apagar.");
                 }
             } catch (err) {
                 toast.error("Erro de rede.");
+            } finally {
+                setIsSaving(false);
             }
         }
     };
@@ -719,11 +797,19 @@ const AdminAttendanceDetail = () => {
                         </div>
 
                         {/* Specific Regions - Odontogram */}
+                        {!readOnly && id !== "new" && clinicalSaveStatus !== "idle" && (
+                            <p className={`text-right text-xs font-medium ${clinicalSaveStatus === "error" ? "text-red-600" : "text-slate-500"}`} role={clinicalSaveStatus === "error" ? "alert" : "status"} aria-live="polite">
+                                {clinicalSaveStatus === "saving" && "Salvando…"}
+                                {clinicalSaveStatus === "pending" && "Alterações pendentes"}
+                                {clinicalSaveStatus === "saved" && "Salvo automaticamente"}
+                                {clinicalSaveStatus === "error" && "Falha ao salvar automaticamente"}
+                            </p>
+                        )}
                         {(data.appointmentType === 'odontologia' || data.appointmentType === 'ambos') && (
                             <Odontogram
                                 data={data.dentalNotes}
                                 onChange={(notes) => updateField('dentalNotes', notes)}
-                                readOnly={readOnly}
+                                readOnly={readOnly || isSaving}
                                 birthDate={data.birthDate}
                                 onPrint={() => {
                                     if (!hasCompleteProfessionalIdentity(professional)) return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
@@ -738,7 +824,7 @@ const AdminAttendanceDetail = () => {
                                 value={data.facialNotes}
                                 sex={data.sex}
                                 onChange={(notes) => updateField('facialNotes', notes)}
-                                readOnly={readOnly}
+                                readOnly={readOnly || isSaving}
                                 onSave={handleSave}
                             />
                         )}
@@ -786,6 +872,32 @@ const AdminAttendanceDetail = () => {
             </div>
             </AttendanceWorkspace>
             {printReady && <AttendanceOdontogramPrint data={data.dentalNotes} patientName={data.patientName} cpf={data.cpf} birthDate={data.birthDate} professional={professional} />}
+            <AlertDialog open={showNavigationWarning} onOpenChange={(open) => { if (!open) setShowNavigationWarning(false); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Alterações clínicas não salvas</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            O autosave falhou. Permaneça nesta consulta para tentar novamente ou descarte as alterações e saia.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => {
+                            setShowNavigationWarning(false);
+                            if (navigationBlockerState === "blocked") resetNavigation?.();
+                        }}>Permanecer</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => {
+                                setShowNavigationWarning(false);
+                                allowNavigationRef.current = true;
+                                if (navigationBlockerState === "blocked") proceedNavigation?.();
+                            }}
+                        >
+                            Descartar e sair
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AdminLayout>
     );
 };

@@ -77,7 +77,7 @@ describe("AdminAnalytics", () => {
         expect(screen.getByText("/tratamentos")).toBeInTheDocument();
         expect(screen.getByText("mobile")).toBeInTheDocument();
         expect(screen.getByText("Governador Valadares, MG")).toBeInTheDocument();
-        expect(screen.getByText(/até 200 km da clínica/i)).toBeInTheDocument();
+        expect(screen.getByText(/até 15 km da clínica/i)).toBeInTheDocument();
         const nearbyCard = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
         expect(nearbyCard).not.toBeNull();
         expect(nearbyCard!.textContent!.indexOf("Governador Valadares")).toBeLessThan(nearbyCard!.textContent!.indexOf("Ipatinga"));

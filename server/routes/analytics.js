@@ -12,7 +12,7 @@ const DEFAULT_PRUNE_BATCH_SIZE = 64;
 const DEFAULT_RATE_LIMIT_ENTRIES = 4096;
 const DEFAULT_GEO_CACHE_ENTRIES = 4096;
 const CLINIC_COORDINATES = { latitude: -18.85, longitude: -41.95 };
-const NEARBY_RADIUS_KM = 200;
+const NEARBY_RADIUS_KM = 15;
 
 const BOT_PATTERN = /(bot|crawler|spider|slurp|bingpreview|mediapartners-google|facebookexternalhit|whatsapp|telegrambot|preview|headless|uptime|monitor)/i;
 const TABLET_PATTERN = /(ipad|tablet|kindle|playbook|silk|sm-t|tab)/i;
