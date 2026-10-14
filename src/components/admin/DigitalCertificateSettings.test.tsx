@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DigitalCertificateSettings from './DigitalCertificateSettings';
-import { digitalRequest } from '@/lib/digital-prescriptions';
+import { digitalRequest, DigitalRequestError } from '@/lib/digital-prescriptions';
 const active = { available: true, certificate: { subjectName: 'Profissional', cpfMasked: '***.***.***-00', issuer: 'Emissor', validFrom: '2020-01-01', validUntil: '2099-01-01', fingerprint: 'public-fingerprint', checkedAt: '2026-10-13T12:00:00Z', ready: true, status: 'ACTIVE' } };
 vi.mock('@/lib/digital-prescriptions', async () => ({ ...(await vi.importActual<typeof import('@/lib/digital-prescriptions')>('@/lib/digital-prescriptions')), digitalRequest: vi.fn() }));
 describe('certificate error focus', () => {
@@ -41,7 +41,7 @@ describe('certificate error focus', () => {
     render(<DigitalCertificateSettings />);
     await screen.findByText('Cadastre um certificado válido para emitir.');
     await userEvent.upload(screen.getByLabelText('Arquivo do certificado (.pfx ou .p12)'), new File(['test'], 'certificate.pfx'));
-    await userEvent.type(screen.getByLabelText('CPF do titular do certificado'), '00000000000');
+    expect(screen.queryByLabelText('CPF do titular do certificado')).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Senha do certificado'), 'example-cert-password');
     await userEvent.type(screen.getByLabelText('Senha de acesso ao sistema'), 'example-account-password');
     await userEvent.click(screen.getByRole('button', { name: 'Verificar e ativar certificado' }));
@@ -49,7 +49,9 @@ describe('certificate error focus', () => {
     expect(vi.mocked(digitalRequest).mock.calls[1][1]?.method).toBe('POST');
     await userEvent.click(screen.getByRole('button', { name: 'Substituir certificado' }));
     expect(screen.getByLabelText('Senha do certificado')).toHaveValue('');
-    expect(screen.getByLabelText('CPF do titular do certificado')).toHaveValue('');
+    expect(screen.getByLabelText('Arquivo do certificado (.pfx ou .p12)')).toHaveValue('');
+    const body = vi.mocked(digitalRequest).mock.calls[1][1]?.body as FormData;
+    expect(body.has('cpf')).toBe(false);
   });
   it('refreshes suspension on window focus and offers replacement without moving focus', async () => {
     vi.mocked(digitalRequest).mockResolvedValueOnce(active).mockResolvedValueOnce({ ...active, certificate: { ...active.certificate, status: 'SUSPENDED', ready: false } });
@@ -98,5 +100,49 @@ describe('certificate error focus', () => {
     expect(screen.queryByText(/Certificado revogado/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Substituir certificado' }));
     expect(screen.getByLabelText('Senha do certificado')).toBeInTheDocument();
+  });
+
+  it('retains the selected file and explicit error across focus refresh but clears both passwords', async () => {
+    const initial = { available: true, certificate: null, professional: { name: 'Profissional', cro: 'CRO fixture', username: 'fixture' } };
+    vi.mocked(digitalRequest).mockResolvedValueOnce(initial).mockRejectedValueOnce(new DigitalRequestError('Certificado ou senha inválidos. Confira o arquivo A1 e sua senha.')).mockResolvedValue(initial);
+    render(<DigitalCertificateSettings />);
+    await screen.findByText('Cadastre um certificado válido para emitir.');
+    const input = screen.getByLabelText('Arquivo do certificado (.pfx ou .p12)') as HTMLInputElement;
+    const certificate = new File(['fixture'], 'certificate.pfx');
+    await userEvent.upload(input, certificate);
+    await userEvent.type(screen.getByLabelText('Senha do certificado'), 'synthetic-cert');
+    await userEvent.type(screen.getByLabelText('Senha de acesso ao sistema'), 'synthetic-account');
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar e ativar certificado' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Certificado ou senha inválidos.');
+    expect(input.files?.[0]).toBe(certificate);
+    expect(screen.getByLabelText('Senha do certificado')).toHaveValue('');
+    expect(screen.getByLabelText('Senha de acesso ao sistema')).toHaveValue('');
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    expect(screen.getByRole('alert')).toHaveTextContent('Certificado ou senha inválidos.');
+    expect(screen.getByLabelText('Usuário conectado')).toHaveValue('fixture');
+    await userEvent.click(screen.getByRole('button', { name: 'Limpar campos' }));
+    expect(input.files).toHaveLength(0);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('requests saving edited professional identity before certificate upload', async () => {
+    vi.mocked(digitalRequest).mockResolvedValueOnce({ available: true, certificate: null, professional: { name: 'Old name', cro: 'CRO fixture', username: 'fixture' } });
+    render(<DigitalCertificateSettings professionalDraft={{ name: 'New name', cro: 'CRO fixture' }} />);
+    await screen.findByText('Cadastre um certificado válido para emitir.');
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar e ativar certificado' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Salve os dados profissionais acima antes de cadastrar o certificado.');
+    expect(digitalRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers lookup recovery when focus refresh fails after an explicit form error', async () => {
+    vi.mocked(digitalRequest).mockResolvedValueOnce({ available: true, certificate: null }).mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ available: true, certificate: null });
+    render(<DigitalCertificateSettings />);
+    await screen.findByText('Cadastre um certificado válido para emitir.');
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar e ativar certificado' }));
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    expect(screen.getByRole('alert')).toHaveTextContent('Preencha os campos obrigatórios.');
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar consultar novamente' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Verificar e ativar certificado' })).toBeEnabled());
+    expect(screen.getByRole('alert')).toHaveTextContent('Preencha os campos obrigatórios.');
   });
 });

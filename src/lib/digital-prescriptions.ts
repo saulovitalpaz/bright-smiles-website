@@ -2,13 +2,20 @@ import { fetchClient } from './api';
 
 export type DigitalDocument = { id: string; hash: string; signatureStatus: 'VALID'; signedAt: string; verificationUrl: string; token: string; fileUrl: string };
 export type DigitalIssue = { prescription: { id: number; date: string; content: string; patientId: number }; document: DigitalDocument };
-export type CertificateStatus = { available: boolean; certificate: null | { subjectName: string; cpfMasked: string; issuer: string; validFrom: string; validUntil: string; fingerprint: string; checkedAt: string; ready: boolean; status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'REVOKED' | 'VERIFICATION_UNAVAILABLE'; suspendedAt?: string | null }; message?: string };
+export type CertificateStatus = { available: boolean; professional?: { name: string; cro: string; username: string }; certificate: null | { subjectName: string; cpfMasked: string; issuer: string; validFrom: string; validUntil: string; fingerprint: string; checkedAt: string; ready: boolean; status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'REVOKED' | 'VERIFICATION_UNAVAILABLE'; suspendedAt?: string | null }; message?: string };
 
 export class ReauthenticationRequired extends Error {}
 export class DigitalRequestError extends Error {}
 const codeMessages: Record<string, string> = {
   ACCESS_PASSWORD_INVALID: 'Senha de acesso inválida. Confira a senha de acesso ao sistema e tente novamente.',
   PATIENT_CHANGED: 'Os dados do paciente mudaram. Atualize o cadastro e revise a receita.',
+  CERTIFICATE_PASSWORD_REQUIRED: 'Informe a senha do arquivo do certificado.',
+  CERTIFICATE_PASSWORD_INVALID: 'A senha do certificado excede o limite permitido.',
+  CERTIFICATE_FILE_INVALID: 'O arquivo não está no formato esperado. Selecione um certificado A1 .pfx ou .p12 válido de até 1 MiB.',
+  CERTIFICATE_IDENTITY_MISSING: 'O arquivo não contém uma identidade e-CPF válida. Selecione o certificado pessoal A1 do profissional.',
+  CERTIFICATE_PROFILE_MISMATCH: 'O nome do titular do certificado não corresponde ao nome profissional salvo. Confira os dados profissionais acima e use o certificado dessa pessoa.',
+  PROFESSIONAL_CRO_REQUIRED: 'Preencha e salve o CRO nos dados profissionais acima antes de cadastrar o certificado.',
+  PROFESSIONAL_CHANGED: 'Os dados profissionais mudaram durante a verificação. Confira os dados salvos e tente novamente.',
   INVALID_CPF: 'Informe um CPF válido.',
   CPF_MISMATCH: 'O CPF informado não corresponde ao titular do certificado.',
   CERTIFICATE_EXPIRED: 'O certificado está vencido ou ainda não está vigente.',

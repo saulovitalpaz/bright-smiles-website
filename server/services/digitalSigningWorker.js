@@ -1,6 +1,8 @@
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const WORKER_ERRORS = {
+    CERTIFICATE_FILE_INVALID: 'O arquivo do certificado é inválido.',
+    INVALID_CPF: 'Informe um CPF válido.',
     INVALID_CERTIFICATE: 'Certificado ou senha do certificado inválidos.',
     CPF_MISMATCH: 'O CPF informado não corresponde ao certificado.',
     CERTIFICATE_EXPIRED: 'O certificado está fora do período de validade.',

@@ -67,6 +67,14 @@ test('CPF check digits and PKCS12 DER envelope reject invalid input', () => {
     assert.equal(validPkcs12(Buffer.from([0x30, 3, 2, 1, 3, 0])), false);
 });
 
+test('PKCS12 preflight accepts BER indefinite envelopes but rejects missing terminators', () => {
+    const { validPkcs12 } = require('../utils/certificateVault');
+    assert.equal(validPkcs12(Buffer.from([0x30, 0x80, 2, 1, 3, 0, 0])), true);
+    assert.equal(validPkcs12(Buffer.from([0x30, 0x80, 2, 1, 3])), false);
+    assert.equal(validPkcs12(Buffer.from([0x30, 0x80, 2, 1, 2, 0, 0])), false);
+    assert.equal(validPkcs12(Buffer.from([0x30, 0x80, 2, 1, 3, 0, 1])), false);
+});
+
 test('worker environment excludes application credentials and vault keys', () => {
     const { workerEnvironment } = require('../services/digitalSigningWorker');
     const env = workerEnvironment({ PATH: 'fixture', DATABASE_URL: 'private', DIGITAL_CERTIFICATE_KEY: 'private', SIGNING_TRUST_ROOTS_PATH: 'roots' });
@@ -266,7 +274,7 @@ async function lifecycleApi(run, options = {}) {
     };
     const worker = async input => {
         if (input.operation === 'capabilities') { capabilities++; return { available: true }; }
-        if (input.operation === 'inspect') { inspections++; if (options.duringInspect) saved = { ...saved, ...options.duringInspect }; if (options.inspectError) throw Object.assign(new Error('Fixture validation failure'), { status: 422, code: options.inspectError }); return { status: 'VALID', certificate: { ...lifecycleMetadata, ...options.inspected } }; }
+        if (input.operation === 'inspect') { inspections++; if (options.inspectProfileChange) user.name = 'Changed profile'; if (options.duringInspect) saved = { ...saved, ...options.duringInspect }; if (options.inspectError) throw Object.assign(new Error('Fixture validation failure'), { status: 422, code: options.inspectError }); return { status: 'VALID', certificate: { ...lifecycleMetadata, ...options.inspected } }; }
         signs++; if (options.duringSign) saved = { ...saved, ...options.duringSign }; if (options.changedProfile) user.cro = "Changed fixture";
         return { pdfBase64: pdf.toString('base64'), hash: crypto.createHash('sha256').update(pdf).digest('hex'), certificate: lifecycleMetadata, validation: { status: 'VALID' } };
     };
@@ -338,7 +346,12 @@ test('valid certificate replacement automatically activates and clears suspensio
     await lifecycleApi(async ({ request, password, saved }) => {
         const response = await request('/digital-signatures/certificate', true, 'POST', certificateUpload(password));
         assert.equal(response.status, 200); assert.equal(saved().status, 'ACTIVE'); assert.equal(saved().suspendedAt, null);
-        assert.equal(saved().fingerprint, lifecycleMetadata.fingerprint); assert.equal((await response.json()).certificate.status, 'ACTIVE');
+        assert.equal(saved().fingerprint, lifecycleMetadata.fingerprint);
+        const result = await response.json();
+        assert.equal(result.certificate.status, 'ACTIVE');
+        assert.equal(result.professional.name, 'Fixture');
+        assert.equal(result.professional.cro, 'Fixture');
+        assert.equal(Object.hasOwn(result.professional, 'password'), false);
     }, { saved: { status: 'SUSPENDED', suspendedAt: new Date() } });
 });
 test('failed certificate replacement preserves previously valid credentials', async () => {
@@ -346,6 +359,34 @@ test('failed certificate replacement preserves previously valid credentials', as
         assert.equal((await request('/digital-signatures/certificate', true, 'POST', certificateUpload(password))).status, 422);
         assert.equal(saved().status, 'ACTIVE'); assert.equal(saved().sealedCredentials, 'encrypted-fixture');
     }, { inspectError: 'INVALID_CERTIFICATE' });
+});
+
+test('certificate upload extracts CPF in the worker when no manual assertion is supplied', async () => {
+    await lifecycleApi(async ({ request, password, counts }) => {
+        const form = certificateUpload(password);
+        form.delete('cpf');
+        const response = await request('/digital-signatures/certificate', true, 'POST', form);
+        assert.equal(response.status, 200);
+        assert.equal(counts().inspections, 1);
+    });
+});
+
+test('certificate upload explains profile mismatch without replacing credentials', async () => {
+    await lifecycleApi(async ({ request, password, saved }) => {
+        const response = await request('/digital-signatures/certificate', true, 'POST', certificateUpload(password));
+        assert.equal(response.status, 422);
+        assert.equal((await response.json()).code, 'CERTIFICATE_PROFILE_MISMATCH');
+        assert.equal(saved().sealedCredentials, 'encrypted-fixture');
+    }, { inspected: { subjectName: 'Another professional' } });
+});
+
+test('profile changes during upload prevent activation against stale identity', async () => {
+    await lifecycleApi(async ({ request, password, saved }) => {
+        const response = await request('/digital-signatures/certificate', true, 'POST', certificateUpload(password));
+        assert.equal(response.status, 409);
+        assert.equal((await response.json()).code, 'PROFESSIONAL_CHANGED');
+        assert.equal(saved().sealedCredentials, 'encrypted-fixture');
+    }, { inspectProfileChange: true });
 });
 
 function savedCertificateFixture(vault) {
@@ -428,4 +469,26 @@ test('certificate reverify records known expiry without consulting worker', asyn
         assert.equal(response.status, 422); assert.equal((await response.json()).code, 'CERTIFICATE_EXPIRED');
         assert.equal(saved().status, 'EXPIRED'); assert.equal(counts().capabilities, 0);
     }, { saved: { metadata: { ...lifecycleMetadata, validUntil: '2000-01-01T00:00:00Z' } }, rejectDecrypt: true });
+});
+
+
+test('certificate upload identifies invalid fields before inspection without changing saved credentials', async () => {
+    await lifecycleApi(async ({ request, password, saved, counts }) => {
+        const cases = [
+            ['cpf', '12345678900', 'INVALID_CPF'],
+            ['password', '', 'CERTIFICATE_PASSWORD_REQUIRED'],
+            ['password', 'x'.repeat(1025), 'CERTIFICATE_PASSWORD_INVALID'],
+            ['certificate', new Blob([Buffer.from([0x30, 3, 2, 1, 3])]), 'CERTIFICATE_FILE_INVALID', 'fixture.txt'],
+            ['certificate', new Blob([Buffer.from('%PDF-1.7')]), 'CERTIFICATE_FILE_INVALID', 'fixture.pfx'],
+        ];
+        for (const [field, value, code, filename] of cases) {
+            const form = certificateUpload(password);
+            if (filename) form.set(field, value, filename); else form.set(field, value);
+            const response = await request('/digital-signatures/certificate', true, 'POST', form);
+            assert.equal(response.status, 400);
+            assert.equal((await response.json()).code, code);
+            assert.equal(counts().inspections, 0);
+            assert.equal(saved().sealedCredentials, 'encrypted-fixture');
+        }
+    });
 });

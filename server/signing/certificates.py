@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from asn1crypto import core, keys, pem, x509 as asn1_x509
+from asn1crypto import core, keys, pem, pkcs12 as asn1_pkcs12, x509 as asn1_x509
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -136,13 +136,22 @@ async def inspect_credential(request, session):
         raise SigningError('INVALID_CERTIFICATE', 'Informe a senha do certificado.')
     raw = decode_payload(request.get('pfxBase64'), MAX_CERTIFICATE_BYTES)
     try:
+        envelope = asn1_pkcs12.Pfx.load(raw, strict=True)
+        if envelope['version'].native != 'v3':
+            raise ValueError('Unsupported PFX version')
+        # Canonicalize BER wrappers in memory; encrypted octets and their MAC
+        # remain unchanged. Strict loading rejects trailing or truncated data.
+        raw = envelope.dump(force=True)
+    except (ValueError, TypeError, KeyError, RecursionError):
+        raise SigningError('CERTIFICATE_FILE_INVALID', 'O arquivo do certificado é inválido.') from None
+    try:
         key, certificate, chain = pkcs12.load_key_and_certificates(raw, password.encode('utf-8'))
     except (ValueError, TypeError):
         raise SigningError('INVALID_CERTIFICATE', 'Certificado ou senha inválidos. Confira o arquivo A1 e sua senha.') from None
     if key is None or certificate is None:
         raise SigningError('INVALID_CERTIFICATE', 'O arquivo não contém certificado e chave privada para assinatura.')
-    cpf = normalize_cpf(request.get('cpf'))
-    if certificate_cpf(certificate) != cpf:
+    cpf = certificate_cpf(certificate)
+    if 'cpf' in request and normalize_cpf(request['cpf']) != cpf:
         raise SigningError('CPF_MISMATCH', 'O CPF informado não corresponde ao titular do certificado.')
     now = datetime.now(timezone.utc)
     if not certificate.not_valid_before_utc <= now <= certificate.not_valid_after_utc:

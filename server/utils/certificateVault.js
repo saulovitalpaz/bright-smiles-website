@@ -38,6 +38,9 @@ function validCpf(value) {
 
 function validPkcs12(bytes) {
     if (!Buffer.isBuffer(bytes) || bytes.length < 5 || bytes.length > 1024 * 1024 || bytes[0] !== 0x30) return false;
+    // PKCS#12 permits BER. This is only preflight; the isolated worker parses
+    // the full structure strictly and verifies the key, identity and trust.
+    if (bytes[1] === 0x80) return bytes.length >= 7 && bytes[2] === 2 && bytes[3] === 1 && bytes[4] === 3 && bytes[bytes.length - 2] === 0 && bytes[bytes.length - 1] === 0;
     let offset = 2;
     let length = bytes[1];
     if (length & 0x80) {

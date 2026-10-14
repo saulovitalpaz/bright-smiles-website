@@ -4,6 +4,8 @@ import importlib
 import io
 import os
 import secrets
+import shutil
+import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -111,6 +113,63 @@ class SigningTests(unittest.TestCase):
         with self.assertRaises(self.engine.SigningError) as wrong_cpf:
             self.run_operation({'operation': 'inspect', **credential, 'cpf': make_cpf()})
         self.assertEqual(wrong_cpf.exception.code, 'CPF_MISMATCH')
+
+    def test_cpf_is_extracted_when_not_supplied_but_explicit_empty_cpf_is_rejected(self):
+        credential, _ = self.credential()
+        credential.pop('cpf')
+        result = self.run_operation({'operation': 'inspect', **credential})
+        self.assertEqual(result['status'], 'VALID')
+        self.assertNotIn(self.cpf, str(result))
+        with self.assertRaises(self.engine.SigningError) as error:
+            self.run_operation({'operation': 'inspect', **credential, 'cpf': ''})
+        self.assertEqual(error.exception.code, 'INVALID_CPF')
+
+    def test_ber_certificate_and_trailing_data_are_handled_strictly(self):
+        credential, _ = self.credential()
+        raw = base64.b64decode(credential['pfxBase64'])
+        header_size = 2 + (raw[1] & 0x7f) if raw[1] & 0x80 else 2
+        ber = b'\x30\x80' + raw[header_size:] + b'\x00\x00'
+        credential['pfxBase64'] = base64.b64encode(ber).decode()
+        self.assertEqual(self.run_operation({'operation': 'inspect', **credential})['status'], 'VALID')
+        for malformed in (ber[:-2], ber + b'\x00\x00', raw + b'\x00\x00'):
+            with self.subTest(length=len(malformed)):
+                with self.assertRaises(self.engine.SigningError) as error:
+                    self.run_operation({'operation': 'inspect', **credential, 'pfxBase64': base64.b64encode(malformed).decode()})
+                self.assertEqual(error.exception.code, 'CERTIFICATE_FILE_INVALID')
+
+    def test_legacy_rc2_ber_pfx_is_accepted_without_weakening_certificate_trust(self):
+        openssl = shutil.which('openssl')
+        if not openssl and os.name == 'nt':
+            candidate = Path('C:/Program Files/Git/mingw64/bin/openssl.exe')
+            openssl = str(candidate) if candidate.is_file() else None
+        if not openssl:
+            self.skipTest('OpenSSL CLI required for legacy export fixture')
+        credential, certificate = self.credential()
+        key, _, _ = pkcs12.load_key_and_certificates(base64.b64decode(credential['pfxBase64']), self.password.encode())
+        key_path = self.directory / 'synthetic-key.pem'
+        cert_path = self.directory / 'synthetic-cert.pem'
+        pfx_path = self.directory / 'synthetic-legacy.pfx'
+        key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.BestAvailableEncryption(self.password.encode())))
+        cert_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+        export_environment = {**os.environ, 'SIGNING_FIXTURE_PASSWORD': self.password}
+        modules = Path(openssl).resolve().parent.parent / 'lib' / 'ossl-modules'
+        if os.name == 'nt' and modules.is_dir():
+            export_environment['OPENSSL_MODULES'] = str(modules)
+        subprocess.run([
+            openssl, 'pkcs12', '-export', '-legacy', '-macalg', 'sha1',
+            '-certpbe', 'PBE-SHA1-RC2-40', '-keypbe', 'PBE-SHA1-3DES',
+            '-inkey', str(key_path), '-in', str(cert_path), '-certfile', str(self.root_path),
+            '-out', str(pfx_path), '-passin', 'env:SIGNING_FIXTURE_PASSWORD', '-passout', 'env:SIGNING_FIXTURE_PASSWORD',
+        ], env=export_environment, capture_output=True, check=True, timeout=15)
+        raw = pfx_path.read_bytes()
+        header_size = 2 + (raw[1] & 0x7f) if raw[1] & 0x80 else 2
+        credential['pfxBase64'] = base64.b64encode(b'\x30\x80' + raw[header_size:] + b'\x00\x00').decode()
+        result = self.run_operation({'operation': 'inspect', **credential})
+        self.assertEqual(result['status'], 'VALID')
+        self.write_crl(certificate.serial_number)
+        with self.assertRaises(self.engine.SigningError) as error:
+            self.run_operation({'operation': 'inspect', **credential})
+        self.assertEqual(error.exception.code, 'CERTIFICATE_REVOKED')
 
     def test_cpf_position_does_not_depend_on_rg_issuer_suffix(self):
         credential, _ = self.credential(rg_tail='SSP MG')

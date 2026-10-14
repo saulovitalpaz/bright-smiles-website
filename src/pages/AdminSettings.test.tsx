@@ -96,6 +96,22 @@ describe("AdminSettings professional settings", () => {
         ).toBeInTheDocument();
     });
 
+    it('salva os dados profissionais junto aos campos sem salvar configurações globais', async () => {
+        cacheAdminUser({ name: 'Profissional de teste', cro: 'CRO fixture', signatureUrl: '', username: 'fixture' });
+        axiosPatchMock.mockResolvedValueOnce(response({ name: 'Profissional atualizado', cro: 'CRO fixture', signatureUrl: null, username: 'fixture' }));
+        const onUpdated = vi.fn();
+        window.addEventListener('digital-certificate-updated', onUpdated);
+        try {
+            await renderLoadedSettings();
+            await userEvent.clear(screen.getByLabelText('Nome profissional'));
+            await userEvent.type(screen.getByLabelText('Nome profissional'), 'Profissional atualizado');
+            await userEvent.click(screen.getByRole('button', { name: 'Salvar dados profissionais' }));
+            await waitFor(() => expect(axiosPatchMock).toHaveBeenCalledWith(`${API_URL}/users/me`, { name: 'Profissional atualizado', cro: 'CRO fixture', signatureUrl: null }, { withCredentials: true }));
+            expect(axiosPostMock).not.toHaveBeenCalled();
+            expect(onUpdated).toHaveBeenCalled();
+        } finally { window.removeEventListener('digital-certificate-updated', onUpdated); }
+    });
+
     it("preenche a identidade profissional a partir de admin_user", async () => {
         cacheAdminUser({
             cro: "CRO-MG 12345",

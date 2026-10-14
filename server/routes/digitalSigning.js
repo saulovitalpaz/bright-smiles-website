@@ -12,6 +12,7 @@ const normalizeCpf = value => String(value || '').replace(/\D/g, '');
 const fail = (status, message, code) => Object.assign(new Error(message), { status, code });
 const certificateFields = ['subjectName', 'cpfMasked', 'issuer', 'validFrom', 'validUntil', 'fingerprint', 'checkedAt', 'ready'];
 const publicCertificate = value => Object.fromEntries(certificateFields.map(name => [name, value?.[name] ?? null]));
+const professionalSummary = user => ({ name: user.name || '', cro: user.cro || '', username: user.username || '' });
 const certificateStatus = saved => {
     if (['SUSPENDED', 'REVOKED', 'EXPIRED'].includes(saved.status)) return saved.status;
     if (!(Date.parse(saved.metadata?.validUntil) > Date.now())) return 'EXPIRED';
@@ -60,7 +61,7 @@ function registerDigitalSigningRoutes(app, dependencies) {
     };
     const clinical = async (req, res, next) => {
         try {
-            const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, name: true, cro: true, password: true } });
+            const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, username: true, name: true, cro: true, password: true } });
             if (!user || !['admin', 'dentist'].includes(user.role)) return res.sendStatus(403);
             req.signingUser = user; next();
         } catch { res.sendStatus(503); }
@@ -79,9 +80,9 @@ function registerDigitalSigningRoutes(app, dependencies) {
             await prisma.digitalCertificate.updateMany({ where: { userId, fingerprint: certificate.fingerprint, sealedCredentials: certificate.sealedCredentials, status: { in: ['ACTIVE', 'VERIFICATION_UNAVAILABLE'] } }, data: { status: 'EXPIRED', lastVerificationCode: 'CERTIFICATE_EXPIRED' } });
         }
     };
-    const certificateResponse = async userId => {
+    const certificateResponse = async user => {
         const available = await availability();
-        const saved = await prisma.digitalCertificate.findUnique({ where: { userId }, select: { metadata: true, status: true, suspendedAt: true, lastVerificationCode: true } });
+        const saved = await prisma.digitalCertificate.findUnique({ where: { userId: user.id }, select: { metadata: true, status: true, suspendedAt: true, lastVerificationCode: true } });
         const certificate = saved ? publicCertificate(saved.metadata) : null;
         if (certificate) {
             certificate.status = certificateStatus(saved);
@@ -89,29 +90,39 @@ function registerDigitalSigningRoutes(app, dependencies) {
             certificate.lastVerificationCode = saved.lastVerificationCode;
             certificate.ready = available && certificate.ready === true && certificate.status === 'ACTIVE';
         }
-        return { available, certificate, ...(!available ? { message: 'Serviço de assinatura indisponível.' } : {}) };
+        return { available, certificate, professional: professionalSummary(user), ...(!available ? { message: 'Serviço de assinatura indisponível.' } : {}) };
     };
 
-    app.get('/digital-signatures/certificate', ...privateMiddleware, route(async (req, res) => res.json(await certificateResponse(req.signingUser.id))));
+    app.get('/digital-signatures/certificate', ...privateMiddleware, route(async (req, res) => res.json(await certificateResponse(req.signingUser))));
     app.post('/digital-signatures/certificate', ...privateMiddleware, mutationLimit, multipart(1024 * 1024, 'certificate'), route(async (req, res) => {
         await reauthenticate(req); await requireAvailable();
-        const cpf = String(req.body.cpf || '').replace(/[.\-\s]/g, '');
-        if (!validCpf(cpf) || typeof req.body.password !== 'string' || !req.body.password || req.body.password.length > 1024 || !/\.(pfx|p12)$/i.test(req.file?.originalname || '') || !validPkcs12(req.file?.buffer)) throw fail(400, 'Certificado, CPF ou senha inválidos.');
-        if (!req.signingUser.cro) throw fail(422, 'Preencha seu CRO no perfil.');
-        const credentials = { pfxBase64: req.file.buffer.toString('base64'), password: req.body.password, cpf };
+        const cpf = req.body.cpf === undefined ? undefined : String(req.body.cpf || '').replace(/[.\-\s]/g, '');
+        if (cpf !== undefined && !validCpf(cpf)) throw fail(400, 'Informe um CPF válido.', 'INVALID_CPF');
+        if (typeof req.body.password !== 'string' || !req.body.password) throw fail(400, 'Informe a senha do arquivo do certificado.', 'CERTIFICATE_PASSWORD_REQUIRED');
+        if (req.body.password.length > 1024) throw fail(400, 'A senha do certificado excede o limite permitido.', 'CERTIFICATE_PASSWORD_INVALID');
+        if (!/\.(pfx|p12)$/i.test(req.file?.originalname || '') || !validPkcs12(req.file?.buffer)) throw fail(400, 'O arquivo do certificado é inválido.', 'CERTIFICATE_FILE_INVALID');
+        if (!req.signingUser.cro?.trim()) throw fail(422, 'Preencha seu CRO no perfil.', 'PROFESSIONAL_CRO_REQUIRED');
+        const credentials = { pfxBase64: req.file.buffer.toString('base64'), password: req.body.password, ...(cpf !== undefined ? { cpf } : {}) };
         const inspected = await worker({ operation: 'inspect', ...credentials });
-        if (inspected.status !== 'VALID' || !inspected.certificate?.ready || !certificateMatches(inspected.certificate, req.signingUser)) throw fail(422, 'O certificado deve pertencer ao profissional cadastrado.');
+        if (inspected.status !== 'VALID' || !inspected.certificate?.ready) throw fail(422, 'O certificado não passou na verificação.', 'INVALID_CERTIFICATE');
+        if (!certificateMatches(inspected.certificate, req.signingUser)) throw fail(422, 'O certificado deve pertencer ao profissional cadastrado.', 'CERTIFICATE_PROFILE_MISMATCH');
         const metadata = publicCertificate(inspected.certificate);
         if (!/^[a-f0-9]{64}$/.test(metadata.fingerprint || '')) throw fail(422, 'A identidade do certificado não pôde ser confirmada.');
         const data = { sealedCredentials: vault.seal(req.signingUser.id, credentials), metadata, fingerprint: metadata.fingerprint, status: 'ACTIVE', suspendedAt: null, lastVerificationCode: null };
-        await prisma.digitalCertificate.upsert({ where: { userId: req.signingUser.id }, create: { userId: req.signingUser.id, ...data }, update: data });
-        res.json({ available: true, certificate: { ...metadata, status: 'ACTIVE', suspendedAt: null, lastVerificationCode: null } });
+        await prisma.$transaction(async tx => {
+            const userId = req.signingUser.id;
+            await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+            const current = await tx.user.findUnique({ where: { id: userId }, select: { name: true, cro: true, role: true } });
+            if (!current || current.name !== req.signingUser.name || current.cro !== req.signingUser.cro || !['admin', 'dentist'].includes(current.role)) throw fail(409, 'O perfil mudou. Revise seus dados e tente novamente.', 'PROFESSIONAL_CHANGED');
+            await tx.digitalCertificate.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+        });
+        res.json({ available: true, professional: professionalSummary(req.signingUser), certificate: { ...metadata, status: 'ACTIVE', suspendedAt: null, lastVerificationCode: null } });
     }));
     app.post('/digital-signatures/certificate/suspend', ...privateMiddleware, mutationLimit, route(async (req, res) => {
         await reauthenticate(req);
         const result = await prisma.digitalCertificate.updateMany({ where: { userId: req.signingUser.id }, data: { status: 'SUSPENDED', suspendedAt: new Date() } });
         if (result.count !== 1) throw fail(404, 'Certificado não encontrado.');
-        res.json(await certificateResponse(req.signingUser.id));
+        res.json(await certificateResponse(req.signingUser));
     }));
     app.post('/digital-signatures/certificate/verify', ...privateMiddleware, mutationLimit, route(async (req, res) => {
         const userId = req.signingUser.id;
@@ -141,7 +152,7 @@ function registerDigitalSigningRoutes(app, dependencies) {
             const verified = await tx.digitalCertificate.updateMany({ where, data: { metadata: publicCertificate(inspected.certificate), status: 'ACTIVE', lastVerificationCode: null } });
             if (verified.count !== 1) throw fail(422, 'O certificado mudou durante a verificação.', 'CERTIFICATE_CHANGED');
         });
-        res.json(await certificateResponse(userId));
+        res.json(await certificateResponse(req.signingUser));
     }));
     app.delete('/digital-signatures/certificate', ...privateMiddleware, mutationLimit, route(async (req, res) => {
         await reauthenticate(req);

@@ -131,7 +131,7 @@ const AdminSettings = () => {
         }
     };
 
-    const saveSettings = async () => {
+    const saveSettings = async (professionalOnly = false) => {
         if (!professionalProfile.name.trim() || !professionalProfile.cro.trim()) {
             setErrorMessage("Informe o nome profissional e o CRO antes de salvar.");
             toast.error("Nome profissional e CRO são obrigatórios");
@@ -140,7 +140,7 @@ const AdminSettings = () => {
         setIsSaving(true);
         setErrorMessage("");
         try {
-            const settingsRequests = Object.entries(settings)
+            const settingsRequests = professionalOnly ? [] : Object.entries(settings)
                 .filter(([key]) => EDITABLE_SETTING_KEYS.includes(key as typeof EDITABLE_SETTING_KEYS[number]))
                 .map(([key, value]) =>
                 axios.post(`${API_URL}/settings`, { key, value }, { withCredentials: true })
@@ -154,10 +154,11 @@ const AdminSettings = () => {
                 { withCredentials: true },
             ).then((response) => {
                 localStorage.setItem("admin_user", JSON.stringify(response.data));
+                window.dispatchEvent(new Event('digital-certificate-updated'));
             });
 
             await Promise.all([profileRequest, ...settingsRequests]);
-            toast.success("Configurações salvas!");
+            toast.success(professionalOnly ? "Dados profissionais salvos!" : "Configurações salvas!");
         } catch (error) {
             setErrorMessage("Não foi possível salvar as configurações. Tente novamente.");
             toast.error("Erro ao salvar configurações");
@@ -259,7 +260,7 @@ const AdminSettings = () => {
                     <CardHeader>
                         <CardTitle>Identidade e Assinatura Profissional</CardTitle>
                         <CardDescription>
-                            Estes dados identificam o profissional nos documentos clínicos.
+                            Estes dados identificam o profissional nos documentos clínicos. Para cadastrar um certificado A1, salve o nome completo do titular e seu CRO.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="min-w-0 space-y-4">
@@ -341,10 +342,13 @@ const AdminSettings = () => {
                                 </div>
                             </div>
                         </div>
+                        <Button type="button" className="min-h-11" onClick={() => void saveSettings(true)} disabled={isSaving || isSignatureUploading}>
+                            {isSaving ? "Salvando dados profissionais..." : "Salvar dados profissionais"}
+                        </Button>
                     </CardContent>
                 </Card>
 
-                <DigitalCertificateSettings />
+                <DigitalCertificateSettings professionalDraft={professionalProfile} />
                 <ValidatePrescriptionPdf />
                 <Card>
                     <CardHeader>
@@ -500,7 +504,7 @@ const AdminSettings = () => {
                         variant="default"
                         size="lg"
                         className="w-full gap-2 px-8 sm:w-auto"
-                        onClick={saveSettings}
+                        onClick={() => void saveSettings()}
                         disabled={isSaving || isLogoUploading || isSignatureUploading}
                     >
                         {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}

@@ -2,9 +2,21 @@
 
 ## O que foi implementado
 
-Configurações profissionais aceitam arquivo A1 `.pfx`/`.p12`, CPF, senha do certificado e confirmação da senha de acesso ao sistema. O backend confere os dados, a identidade do certificado, a política A1, a validade, a cadeia ICP-Brasil e evidência atual de revogação antes de cadastrar.
+Configurações profissionais aceitam arquivo A1 `.pfx`/`.p12`, senha do certificado e confirmação da senha de acesso ao sistema. O CPF é extraído da extensão assinada do certificado e validado no servidor, sem digitação nem novo campo no cadastro do usuário. Clientes anteriores que enviam CPF continuam suportados, com conferência obrigatória de igualdade. O backend confere os dados, a identidade do certificado, a política A1, a validade, a cadeia ICP-Brasil e evidência atual de revogação antes de cadastrar.
 
-O arquivo, CPF e senha ficam juntos em um envelope AES-256-GCM vinculado ao usuário, com chave exclusiva da funcionalidade. A chave não foi criada no código nem reutiliza a chave de pacientes. Não há persistência de certificado/senha no navegador ou em bucket público. Os buffers de upload são limpos após a operação; strings gerenciadas por JavaScript/Python dependem de coleta de lixo e não têm garantia de apagamento imediato da memória.
+O arquivo e a senha ficam juntos em um envelope AES-256-GCM vinculado ao usuário, com chave exclusiva da funcionalidade. Cadastros anteriores também podem conter a afirmação de CPF, que continua sendo conferida. A chave não foi criada no código nem reutiliza a chave de pacientes. Não há persistência de certificado/senha no armazenamento do navegador ou em bucket público. Após uma tentativa, as duas senhas são limpas; em caso de erro, somente a seleção local do arquivo é preservada para repetir o envio. Limpar campos, concluir o cadastro ou sair da tela remove essa seleção. Os buffers de upload são limpos após a operação; strings gerenciadas por JavaScript/Python dependem de coleta de lixo e não têm garantia de apagamento imediato da memória.
+
+## Correção do cadastro em 14/10/2026
+
+A rejeição `Certificado, CPF ou senha inválidos` ocorria antes da abertura criptográfica. O filtro inicial aceitava somente comprimento ASN.1 definido e rejeitava PFX BER com comprimento indefinido, permitido pela [RFC 7292, seção 4](https://www.rfc-editor.org/rfc/rfc7292.html#section-4). A incompatibilidade foi reproduzida com certificado sintético; a inspeção estrutural do arquivo informado pelo usuário confirmou esse mesmo formato. Nenhum certificado, CPF ou segredo real foi copiado para testes ou repositório.
+
+O filtro aceita agora o envelope BER delimitado. O processo isolado faz parsing PKCS#12 estrito, rejeita truncamento e bytes excedentes e normaliza os invólucros ASN.1 em memória antes de abrir a chave. Os octetos cifrados e o MAC permanecem preservados. O certificado original não é alterado. O reconhecimento do envelope não substitui senha, chave privada, identidade e-CPF, política A1, cadeia, validade ou revogação.
+
+O formulário mostra o usuário conectado e explica as duas senhas. O nome completo e CRO podem ser salvos pelo botão junto aos dados profissionais. Alterações ainda não salvas impedem o envio; o servidor repete a conferência do perfil dentro de transação antes de ativar o certificado. Divergência de nome informa como corrigir o perfil e não permite usar certificado de outro titular. A resposta de cadastro mantém o resumo profissional para substituições imediatas.
+
+Erros explícitos permanecem visíveis após atualizar o estado em segundo plano. Uma falha de rede mantém a opção de consultar novamente, sem apagar o erro de envio. Não houve migração de banco nem mudança de chave/formato do cofre.
+
+Verificação: suítes frontend/backend, motor Python, integração HTTP multipart com BER sintético sem CPF digitado, recuperação do cofre e assinatura/validação de PDF; fixture legado BER/RC2/SHA-1 com rejeição de revogação preservada; inspeção estrutural do arquivo fornecido, sem senha; interface desktop/celular com API simulada. Esses testes não equivalem à ativação do certificado real em produção, que exige o envio pelo titular no formulário autenticado.
 
 Na página de prescrição do espaço de consultas, “Incluir assinatura” inicia desligado. Quando ligado, salvar/baixar/imprimir emite um PDF canônico no servidor, assina e valida seu resultado e guarda os bytes finais no bucket privado. Quando desligado, segue o PDF comum e histórico clínico existentes, sem documento/token de validação online.
 

@@ -24,3 +24,16 @@ describe('safe signing feedback', () => {
     expect(window.location.pathname).toBe(initialPath);
   });
 });
+
+
+it.each([
+  ['INVALID_CPF', 'Informe um CPF válido.'],
+  ['CERTIFICATE_PASSWORD_REQUIRED', 'Informe a senha do arquivo do certificado.'],
+  ['CERTIFICATE_PASSWORD_INVALID', 'A senha do certificado excede o limite permitido.'],
+  ['CERTIFICATE_FILE_INVALID', 'O arquivo não está no formato esperado. Selecione um certificado A1 .pfx ou .p12 válido de até 1 MiB.'],
+])('explains certificate upload rejection %s without exposing server diagnostics', async (code, message) => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ code, error: 'private diagnostic' }) }));
+  try {
+    await expect(digitalRequest('/digital-signatures/certificate')).rejects.toThrow(message);
+  } finally { vi.unstubAllGlobals(); }
+});

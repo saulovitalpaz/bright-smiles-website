@@ -5,6 +5,10 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const { createDigitalSigningWorker } = require('../services/digitalSigningWorker');
+const express = require('express');
+const { registerDigitalSigningRoutes } = require('../routes/digitalSigning');
+const { createCertificateVault, validPkcs12 } = require('../utils/certificateVault');
+const { hashPassword } = require('../utils/passwords');
 
 const executable = process.env.SIGNING_TEST_PYTHON;
 test('isolated worker signs a transient synthetic identity and rejects PDF tampering', { skip: !executable || !fs.existsSync(executable) }, async () => {
@@ -52,6 +56,44 @@ test('isolated worker signs a transient synthetic identity and rejects PDF tampe
         await assert.rejects(worker({ operation: 'inspect', ...fixture.credential, password: crypto.randomBytes(16).toString('hex') }), error => error.status === 422 && !error.message.includes(fixture.credential.password));
         assert.ok(!fixtureStderr.includes(fixture.credential.password));
         assert.ok(!fixtureStderr.includes(fixture.credential.cpf));
+
+        // Reproduce the real upload format through multipart, reauthentication,
+        // the isolated worker and the encrypted vault, without a manual CPF.
+        const der = Buffer.from(fixture.credential.pfxBase64, 'base64');
+        const headerSize = der[1] & 0x80 ? 2 + (der[1] & 0x7f) : 2;
+        const ber = Buffer.concat([Buffer.from([0x30, 0x80]), der.subarray(headerSize), Buffer.from([0, 0])]);
+        assert.equal(validPkcs12(ber), true);
+        const accountPassword = crypto.randomBytes(20).toString('hex');
+        const user = { id: 1, role: 'dentist', name: 'Profissional de teste', cro: 'CRO fixture', password: await hashPassword(accountPassword) };
+        const vault = createCertificateVault({ DIGITAL_CERTIFICATE_KEY: crypto.randomBytes(32).toString('base64') });
+        let saved;
+        const prisma = {
+            user: { findUnique: async () => user },
+            digitalCertificate: { upsert: async ({ create }) => { saved = create; return saved; } },
+            $queryRaw: async () => [user],
+            $transaction: async run => run(prisma),
+        };
+        const app = express(); app.use(express.json());
+        registerDigitalSigningRoutes(app, { prisma, vault, worker, storage: { isPrivateDocumentStorageConfigured: () => true }, authenticateToken: (req, _res, next) => { req.user = { id: user.id }; next(); } });
+        const server = app.listen(0, '127.0.0.1');
+        await new Promise(resolve => server.once('listening', resolve));
+        try {
+            const body = new FormData();
+            body.set('certificate', new Blob([ber]), 'synthetic-ber.pfx');
+            body.set('password', fixture.credential.password);
+            body.set('accountPassword', accountPassword);
+            const response = await fetch(`http://127.0.0.1:${server.address().port}/digital-signatures/certificate`, { method: 'POST', body });
+            assert.equal(response.status, 200);
+            const value = await response.json();
+            assert.equal(value.certificate.status, 'ACTIVE');
+            assert.ok(!JSON.stringify(value).includes(fixture.credential.cpf));
+            assert.ok(!JSON.stringify(value).includes(fixture.credential.password));
+            const restored = vault.open(user.id, saved.sealedCredentials);
+            assert.equal(Object.hasOwn(restored, 'cpf'), false);
+            assert.equal((await worker({ operation: 'inspect', ...restored })).status, 'VALID');
+            const signed = await worker({ operation: 'sign', ...restored, document: { patientName: 'Transient fixture', patientCpf: fixture.credential.cpf, professionalName: user.name, professionalCro: user.cro, content: 'Synthetic BER signing smoke test.', date: new Date().toISOString(), verificationUrl: 'https://example.invalid/validar-receita#token=synthetic' } });
+            assert.equal(signed.validation.status, 'VALID');
+        } finally { ber.fill(0); der.fill(0); await new Promise(resolve => server.close(resolve)); }
     } finally {
         generator.stdin.end('\n');
         await new Promise(resolve => generator.once('close', resolve));
