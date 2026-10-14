@@ -19,6 +19,9 @@ model User {
   updatedAt DateTime @updatedAt
   issuedPatientDocuments PatientDocument[] @relation("PatientDocumentIssuer")
   uploadedDocumentAttachments PatientDocumentAttachment[] @relation("PatientDocumentAttachmentUploader")
+  digitalCertificate DigitalCertificate?
+  digitalPrescriptions DigitalPrescription[]
+  digitalIssueOperations DigitalIssueOperation[]
 }
 
 model Post {
@@ -196,11 +199,56 @@ model Prescription {
   updatedAt DateTime @updatedAt
   patient   Patient  @relation(fields: [patientId], references: [id])
   odontogramSnapshot Json?
+  digitalDocument DigitalPrescription?
   odontogramSourceAppointmentId Int?
   odontogramSourceAppointment Appointment? @relation("PrescriptionOdontogramSource", fields: [odontogramSourceAppointmentId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([odontogramSourceAppointmentId])
+}
+
+model DigitalCertificate {
+  userId Int @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sealedCredentials String
+  metadata Json
+  fingerprint String?
+  status String @default("ACTIVE")
+  suspendedAt DateTime?
+  lastVerificationCode String?
+  updatedAt DateTime @updatedAt
+}
+
+model DigitalIssueOperation {
+  id String @id @default(uuid())
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  requestId String
+  inputHash String
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  document DigitalPrescription?
+  @@unique([userId, requestId])
+}
+
+model DigitalPrescription {
+  id String @id @default(uuid())
+  prescriptionId Int @unique
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Restrict)
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  operationId String @unique
+  operation DigitalIssueOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  storageKey String
+  hash String
+  tokenDigest String @unique
+  sealedToken String
+  signedAt DateTime
+  professionalName String
+  professionalCro String
+  signatureStatus String
+  validation Json
+  @@index([userId, signedAt])
 }
 
 model Lead {

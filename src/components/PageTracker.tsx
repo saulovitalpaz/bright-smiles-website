@@ -6,6 +6,7 @@ const PageTracker = () => {
     const location = useLocation();
 
     useEffect(() => {
+        if (location.pathname === '/validar-receita') return;
         const searchParams = new URLSearchParams(window.location.search);
         const source = searchParams.get("utm_source") ||
             searchParams.get("source") ||

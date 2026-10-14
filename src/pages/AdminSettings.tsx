@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import DigitalCertificateSettings from '@/components/admin/DigitalCertificateSettings';
+import ValidatePrescriptionPdf from '@/components/admin/ValidatePrescriptionPdf';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -342,6 +344,8 @@ const AdminSettings = () => {
                     </CardContent>
                 </Card>
 
+                <DigitalCertificateSettings />
+                <ValidatePrescriptionPdf />
                 <Card>
                     <CardHeader>
                         <CardTitle>Categorias financeiras</CardTitle>

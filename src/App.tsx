@@ -26,6 +26,7 @@ const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
 const AdminPrescription = lazy(() => import("./pages/AdminPrescription"));
 const AdminDocuments = lazy(() => import("./pages/AdminDocuments"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
+const ValidatePrescription = lazy(() => import('./pages/ValidatePrescription'));
 const AdminStock = lazy(() => import("./pages/AdminStock"));
 const AdminPersonalFinance = lazy(() => import("./pages/AdminPersonalFinance"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
@@ -59,6 +60,7 @@ const AppRouteBoundary = () => (
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<AppRouteBoundary />}>
             <Route path="/" element={<Index />} />
+            <Route path="/validar-receita" element={<ValidatePrescription />} />
             <Route path="/tratamentos" element={<TreatmentList />} />
             <Route path="/tratamentos/:slug" element={<TreatmentDetail />} />
             <Route path="/admin" element={<AdminLogin />} />

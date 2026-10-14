@@ -60,6 +60,23 @@ async function uploadPatientDocument({ patientId, body }) {
     return uploadPrivateDocument({ scope: 'patient-documents', resourceId: patientId, body, mimeType: 'application/pdf' });
 }
 
+async function uploadDigitalPrescription({ userId, body }) {
+    return uploadPrivateDocument({ scope: 'digital-prescriptions', resourceId: userId, body, mimeType: 'application/pdf' });
+}
+
+async function readDigitalPrescription(key) {
+    if (!/^digital-prescriptions\/\d+\/[a-f0-9-]+\.pdf$/.test(key || '')) throw new Error('Invalid private document key.');
+    const result = await requireStorage().send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+    if (result.ContentLength > 12 * 1024 * 1024) throw new Error('Document exceeds size limit.');
+    const chunks = []; let size = 0;
+    for await (const chunk of result.Body) {
+        size += chunk.length;
+        if (size > 12 * 1024 * 1024) { result.Body.destroy(); throw new Error('Document exceeds size limit.'); }
+        chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+}
+
 async function uploadDocumentTemplate({ body }) {
     return uploadPrivateDocument({ scope: 'document-templates', resourceId: 'source', body, mimeType: 'application/pdf' });
 }
@@ -87,6 +104,9 @@ async function createPatientDocumentUrl(key) {
 }
 
 module.exports = {
+    isPrivateDocumentStorageConfigured: () => Boolean(client),
+    uploadDigitalPrescription,
+    readDigitalPrescription,
     uploadPatientDocument,
     uploadDocumentTemplate,
     uploadPatientDocumentAttachment,

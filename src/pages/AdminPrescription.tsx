@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { useDigitalPrescription } from '@/hooks/useDigitalPrescription';
+import { certificateReady, digitalRequest, downloadSignedPdf, signedPdfBlob, type CertificateStatus, type DigitalDocument } from '@/lib/digital-prescriptions';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AttendanceSection, AttendanceWorkspace } from "@/components/admin/attendance/AttendanceWorkspace";
 import { API_URL, fetchClient } from "@/lib/api";
 import Odontogram from "@/components/admin/attendance/Odontogram";
@@ -31,7 +34,6 @@ import RichTextEditor from "@/components/admin/RichTextEditor";
 import { printDocumentClass, printWhenReady } from "@/lib/print-layout";
 import {
     hasCompleteProfessionalIdentity,
-    hasUsableProfessionalSignature,
     readStoredProfessionalIdentity,
 } from "@/lib/professional-signature";
 
@@ -78,10 +80,54 @@ const AdminPrescription = () => {
 
     const currentUser = readStoredProfessionalIdentity();
     const canIssueDocument = hasCompleteProfessionalIdentity(currentUser);
-    const canInsertSignature = hasUsableProfessionalSignature(currentUser);
-    const [includeProfessionalSignature, setIncludeProfessionalSignature] = useState(
-        () => canInsertSignature,
-    );
+    const [includeProfessionalSignature, setIncludeProfessionalSignature] = useState(false);
+    const digital = useDigitalPrescription(patientData.id, prescriptionContent, JSON.stringify([patientData.name, patientData.cpf, patientData.address]), { name: patientData.name, cpf: patientData.cpf });
+    const [certificate, setCertificate] = useState<CertificateStatus | null>(null);
+    const [signedPrintUrl, setSignedPrintUrl] = useState<string | null>(null);
+    const [accountPassword, setAccountPassword] = useState('');
+    const [passwordVisible, setPasswordVisible] = useState(false);
+    const digitalErrorRef = useRef<HTMLParagraphElement>(null);
+    useEffect(() => { if (digital.error) digitalErrorRef.current?.focus(); }, [digital.error]);
+    useEffect(() => { setAccountPassword(''); setPasswordVisible(false); }, [includeProfessionalSignature, patientData.id, prescriptionContent]);
+    const [digitalHistory, setDigitalHistory] = useState<DigitalDocument[]>([]);
+    useEffect(() => {
+        let active = true;
+        const refreshCertificate = () => {
+            digitalRequest<CertificateStatus>('/digital-signatures/certificate')
+                .then(status => { if (active) setCertificate(status); })
+                .catch(() => { if (active) setCertificate(null); });
+        };
+        refreshCertificate();
+        window.addEventListener('focus', refreshCertificate);
+        window.addEventListener('digital-certificate-updated', refreshCertificate);
+        return () => {
+            active = false;
+            window.removeEventListener('focus', refreshCertificate);
+            window.removeEventListener('digital-certificate-updated', refreshCertificate);
+        };
+    }, []);
+    useEffect(() => {
+        setDigitalHistory([]);
+        if (!patientData.id) return;
+        let active = true;
+        digitalRequest<DigitalDocument[]>(`/prescriptions/digital-documents/patient/${patientData.id}`).then(items => { if (active) setDigitalHistory(items); }).catch(() => {});
+        return () => { active = false; };
+    }, [patientData.id]);
+    useEffect(() => () => { if (signedPrintUrl) URL.revokeObjectURL(signedPrintUrl); }, [signedPrintUrl]);
+    const handleDigitalAction = async (action: 'save' | 'download' | 'print') => {
+        if (!patientConsent) { setShowConsentDialog(true); return; }
+        if (!canIssueDocument) { toast.error('Configure o nome profissional e o CRO.'); return; }
+        if (!prescriptionContent.trim()) { toast.error('Escreva o conteúdo da receita.'); return; }
+        if (!certificateReady(certificate)) { toast.error('Cadastre um certificado válido nas configurações.'); return; }
+        try {
+            const issued = await digital.issue(accountPassword);
+            setDigitalHistory(previous => [issued.document, ...previous.filter(item => item.id !== issued.document.id)]);
+            if (action === 'download') await downloadSignedPdf(issued.document.id);
+            else if (action === 'print') setSignedPrintUrl(URL.createObjectURL(await signedPdfBlob(issued.document.id)));
+            else toast.success('Receita assinada, validada e registrada.');
+        } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível emitir.'); }
+        finally { setAccountPassword(''); setPasswordVisible(false); }
+    };
 
     const normalizedOdontogram = normalizeOdontogram(patientData.odontogram);
     const isPrescriptionPrint = printTarget === "prescription";
@@ -201,6 +247,7 @@ const AdminPrescription = () => {
     };
 
     const handleSave = async () => {
+        if (includeProfessionalSignature) { await handleDigitalAction('save'); return; }
         if (!patientData.name || !patientData.cpf) return toast.error("Preencha nome e CPF");
 
         try {
@@ -261,6 +308,7 @@ const AdminPrescription = () => {
     };
 
     const handlePrint = () => {
+        if (includeProfessionalSignature) { void handleDigitalAction('print'); return; }
         if (!prescriptionContent) {
             return toast.error("Escreva o conteúdo da receita antes de imprimir.");
         }
@@ -353,21 +401,21 @@ const AdminPrescription = () => {
                         <div className="attendance-editor-toolbar no-print">
                             <p className="text-xs font-bold uppercase text-slate-500">Prescrição Clínica</p>
                             <div className="attendance-editor-actions">
-                                <Button onClick={handleSave} variant="outline" size="sm" className="gap-2 border-slate-200 text-slate-600">
+                                <Button disabled={digital.pending} onClick={handleSave} variant="outline" size="sm" className="min-h-11 gap-2 border-slate-200 text-slate-600">
                                     <Save size={16} /> Salvar receita
                                 </Button>
-                                <Button onClick={handlePrint} size="sm" variant="ghost" className="gap-2">
+                                <Button disabled={digital.pending} onClick={handlePrint} size="sm" variant="ghost" className="min-h-11 gap-2">
                                     <Printer size={16} /> Imprimir
                                 </Button>
-                                <div className="no-print inline-flex min-h-10 items-center gap-2 rounded-lg border bg-background px-3">
+                                <div className="no-print inline-flex min-h-11 items-center gap-2 rounded-lg border bg-background px-3">
                                     <Switch
                                         id="include-professional-signature"
                                         checked={includeProfessionalSignature}
                                         onCheckedChange={setIncludeProfessionalSignature}
-                                        disabled={!canInsertSignature}
+                                        disabled={digital.pending}
                                     />
-                                    <Label htmlFor="include-professional-signature" className="cursor-pointer text-sm text-muted-foreground">
-                                        Inserir assinatura
+                                    <Label htmlFor="include-professional-signature" className="inline-flex min-h-11 cursor-pointer items-center text-sm text-muted-foreground">
+                                        Incluir assinatura
                                     </Label>
                                 </div>
                                 {(patientData.name && prescriptionContent) && (
@@ -380,6 +428,8 @@ const AdminPrescription = () => {
                                             <Button size="sm" onClick={() => setShowConsentDialog(true)} className="gap-2 bg-amber-500 text-white hover:bg-amber-600">
                                                 <QrCode size={16} /> Assinar Termo LGPD
                                             </Button>
+                                        ) : includeProfessionalSignature ? (
+                                            <Button className="min-h-11" disabled={digital.pending} onClick={() => void handleDigitalAction('download')}>Baixar PDF assinado</Button>
                                         ) : (
                                             <Button asChild size="sm" className="gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
                                                 <DownloadPrescriptionButton
@@ -392,7 +442,7 @@ const AdminPrescription = () => {
                                                     }}
                                                     content={prescriptionContent}
                                                     mode="clinic"
-                                                    includeElectronicSignature={includeProfessionalSignature}
+                                                    includeElectronicSignature={false}
                                                     includeOdontogram={includeOdontogram}
                                                     odontogram={patientData.odontogram || {}}
                                                 />
@@ -403,6 +453,14 @@ const AdminPrescription = () => {
                             </div>
                         </div>
 
+                        <div className="px-4 py-3 space-y-2 text-sm">
+                            <p className="font-medium">Receita simples</p><p className="text-muted-foreground">Sem assinatura: PDF local. Com assinatura: PDF validado, registro online e token de verificação. Este fluxo não emite receitas controladas.</p>
+                            {includeProfessionalSignature && !certificateReady(certificate) && <p role="status">{certificate && !certificate.available ? 'Assinatura digital indisponível neste ambiente. ' : 'Certificado digital não está pronto. '}<Link className="inline-flex min-h-11 items-center underline" to="/admin/settings">Configurar certificado A1</Link></p>}
+                            <p role="status" aria-live="polite">{digital.pending ? 'Emitindo e validando assinatura…' : digital.result ? 'Assinatura válida. O mesmo PDF será usado para baixar e imprimir.' : ''}</p>
+                            {digital.result && <div className="space-y-2 rounded-lg border p-3"><Label htmlFor="issued-token">Token de verificação</Label><Input id="issued-token" readOnly value={digital.result.document.token} /><Link className="inline-flex min-h-11 items-center underline" to={`/validar-receita#token=${encodeURIComponent(digital.result.document.token)}`}>Consultar autenticidade</Link><p className="text-muted-foreground">Desmarcar a assinatura mantém os documentos já emitidos no histórico.</p></div>}
+                            {digital.error && <div><p id="digital-issue-error" ref={digitalErrorRef} tabIndex={-1} role="alert" className="rounded-md text-destructive focus-visible:outline focus-visible:outline-2">{digital.error}</p>{patientData.id && <Link className="inline-flex min-h-11 items-center underline" to={`/admin/pacientes?edit=${patientData.id}`}>Atualizar cadastro e revisar dados do paciente</Link>}</div>}
+                            {digital.reauthRequired && <div className="space-y-2"><Label htmlFor="sign-account-password">Confirme sua senha de acesso ao sistema</Label><Input id="sign-account-password" name="accountPassword" aria-describedby={digital.error ? "digital-issue-error" : undefined} aria-invalid={digital.reauthRequired} type={passwordVisible ? 'text' : 'password'} autoComplete="current-password" value={accountPassword} onChange={e => setAccountPassword(e.target.value)} /><Button variant="outline" className="min-h-11" aria-pressed={passwordVisible} onClick={() => setPasswordVisible(!passwordVisible)}>{passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}</Button><p>Tente novamente a ação após preencher.</p></div>}
+                        </div>
                         <div className="min-w-0 flex-1">
                             <RichTextEditor
                                 content={prescriptionContent}
@@ -414,7 +472,11 @@ const AdminPrescription = () => {
                     </Card>
 
                 </div>
-<AttendanceSection className="attendance-secondary" title="Histórico de prescrições" summary={prescriptionHistory.length + " receitas disponíveis"}>
+<div className="attendance-secondary space-y-3">
+<AttendanceSection title="Documentos digitais emitidos" summary={`${digitalHistory.length} documentos`}>
+    <div className="space-y-3">{digitalHistory.map(item => <div className="rounded-lg border p-3 text-sm" key={item.id}><p>{item.signatureStatus === 'VALID' ? 'Assinada na emissão' : 'Assinatura não confirmada'} · {new Date(item.signedAt).toLocaleDateString('pt-BR')}</p><Button className="min-h-11" variant="outline" onClick={() => void downloadSignedPdf(item.id).catch(() => toast.error('Não foi possível baixar o documento.'))}>Baixar PDF assinado</Button></div>)}</div>
+</AttendanceSection>
+<AttendanceSection title="Histórico de prescrições" summary={prescriptionHistory.length + " receitas disponíveis"}>
 
                         <CardContent className="p-0">
                             <div className="divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
@@ -446,6 +508,7 @@ const AdminPrescription = () => {
                             </div>
                         </CardContent>
              </AttendanceSection>
+             </div>
              </div>
 
              </AttendanceWorkspace>
@@ -500,7 +563,7 @@ const AdminPrescription = () => {
                                     </div>
                                     <ProfessionalSignature
                                         professional={currentUser}
-                                        includeElectronic={includeProfessionalSignature}
+                                        includeElectronic={false}
                                         className="w-64"
                                     />
                                 </div>
@@ -514,6 +577,7 @@ const AdminPrescription = () => {
                 </div>
             )}
 
+            <Dialog open={!!signedPrintUrl} onOpenChange={open => { if (!open) setSignedPrintUrl(null); }}><DialogContent className="max-w-4xl"><DialogTitle>PDF assinado</DialogTitle><DialogDescription>Imprima o documento original pelo visualizador de PDF.</DialogDescription>{signedPrintUrl && <iframe title="Receita digital assinada" src={signedPrintUrl} className="h-[70vh] w-full" />}</DialogContent></Dialog>
             {/* Consent Dialog */}
             {patientData.cpf && (
                 <ConsentDialog

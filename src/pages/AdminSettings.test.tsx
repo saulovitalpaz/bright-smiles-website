@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { API_URL } from "@/lib/api";
 import AdminSettings from "./AdminSettings";
+vi.mock('@/lib/digital-prescriptions', async () => ({ ...(await vi.importActual<typeof import('@/lib/digital-prescriptions')>('@/lib/digital-prescriptions')), digitalRequest: vi.fn().mockResolvedValue({ available: false, certificate: null }) }));
 
 vi.mock("@/components/admin/AdminLayout", () => ({
     default: ({ children, title }: { children: ReactNode; title: string }) => (

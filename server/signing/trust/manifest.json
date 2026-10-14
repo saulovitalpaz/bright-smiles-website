@@ -1,0 +1,32 @@
+{
+  "source": "https://acraiz.icpbrasil.gov.br/credenciadas/CertificadosAC-ICP-Brasil/ACcompactado.zip",
+  "archiveSha512": "4585a99955607525e475cf22138302fe8ddce6ca8f0926cd1f01809f007d4bcddff5c1070369d29b1de99c0d2eb058ce0deb856bae0189469ba37e09a59d7985",
+  "retrievedAt": "2026-10-14T00:37:15.247075+00:00",
+  "authorities": 180,
+  "roots": [
+    {
+      "version": 4,
+      "sha256": "f0c15afd258fb674e7a96e1a50ff873149364b9ec70d4d93c7a9f1eb6060d020"
+    },
+    {
+      "version": 5,
+      "sha256": "caa53fc6091c6951887c976e378f6ef89aa6377c55d97b6475422b71ed7e9b17"
+    },
+    {
+      "version": 6,
+      "sha256": "3bdb9b509352f1d3d71c2bf64d9a38a4e6cebda27809d77f7ac476cbde6e314a"
+    },
+    {
+      "version": 7,
+      "sha256": "5657e70580eb678983f3ed7dfce091d84cae6549389a47fccda8d0e4dc2cf576"
+    },
+    {
+      "version": 12,
+      "sha256": "d8478e37ce19c690cf657381e68fe600e4e1a042536830f06847e03e554c4b01"
+    },
+    {
+      "version": 13,
+      "sha256": "2b07d0bc02c4a6e0478ed22d0d99e8f97e1827b269097696a7feb6aad30c3ac8"
+    }
+  ]
+}

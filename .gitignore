@@ -8,6 +8,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.tools/
+*.pfx
+*.p12
+server/signing/private/
+__pycache__/
+*.pyc
 .worktrees/
 dist
 dist-ssr

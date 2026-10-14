@@ -40,6 +40,7 @@ const {
 } = require('./utils/schedule');
 const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appointmentFinance');
 const { registerStockRoutes } = require('./routes/stock');
+const { registerDigitalSigningRoutes } = require('./routes/digitalSigning');
 const { registerTeamPhotoRoutes } = require('./routes/teamPhotos');
 const { syncFacialStock, validateFacialNotes, StockError } = require('./utils/facialStock');
 const {
@@ -225,6 +226,7 @@ const authorizeRole = (roles) => {
 };
 
 registerStockRoutes(app, prisma, authenticateToken, authorizeRole);
+registerDigitalSigningRoutes(app, { prisma, authenticateToken, decrypt });
 
 app.post('/upload', authenticateToken, authorizeRole(['admin', 'dentist']), upload.single('file'), async (req, res) => {
     try {
@@ -1284,6 +1286,8 @@ app.get('/prescriptions/patient/:patientId', authenticateToken, authorizeRole(['
 
 app.delete('/prescriptions/:id', authenticateToken, authorizeRole(['admin', 'dentist']), async (req, res) => {
     try {
+        const signed = await prisma.digitalPrescription.findUnique({ where: { prescriptionId: parseInt(req.params.id) }, select: { id: true } });
+        if (signed) return res.status(409).json({ error: 'Receitas assinadas devem ser preservadas.' });
         await prisma.prescription.delete({
             where: { id: parseInt(req.params.id) }
         });
