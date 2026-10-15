@@ -2,16 +2,16 @@ import io
 from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urlsplit
 
-from reportlab.graphics import renderPDF
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from certificates import SigningError
@@ -59,20 +59,63 @@ def render_document(document, certificate):
     if not text:
         raise SigningError('INVALID_DOCUMENT', 'Preencha o conteúdo da receita.')
     output = io.BytesIO()
-    pdf = SimpleDocTemplate(output, pagesize=A4, rightMargin=20 * mm, leftMargin=20 * mm,
-                            topMargin=18 * mm, bottomMargin=18 * mm, title='Receituário odontológico', author='')
+    page_width, page_height = A4
+    margin = 40
+    width = page_width - 2 * margin
+    logo = ImageReader(str(Path(__file__).resolve().parent / 'assets' / 'logo-oficial.png'))
+
+    def page_branding(canvas, _doc):
+        canvas.saveState()
+        logo_width, logo_height = logo.getSize()
+        height = 60
+        image_width = height * logo_width / logo_height
+        canvas.drawImage(logo, (page_width - image_width) / 2, page_height - margin - height,
+                         width=image_width, height=height, mask='auto')
+        canvas.setFillColor(colors.HexColor('#0f172a'))
+        canvas.setFont('Helvetica-Bold', 20)
+        canvas.drawCentredString(page_width / 2, page_height - 132, 'NÚCLEO ODONTOLÓGICO')
+        canvas.setFillColor(colors.HexColor('#64748b'))
+        canvas.setFont('Helvetica', 8)
+        canvas.drawCentredString(page_width / 2, page_height - 148, 'ESPECIALIZADO & HARMONIZAÇÃO')
+        canvas.setStrokeColor(colors.HexColor('#e2e8f0'))
+        canvas.line(margin, page_height - 166, page_width - margin, page_height - 166)
+        canvas.setFont('Helvetica', 6.5)
+        canvas.setFillColor(colors.HexColor('#94a3b8'))
+        canvas.drawCentredString(page_width / 2, 30,
+                                'Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG')
+        canvas.drawRightString(page_width - margin, 18, str(_doc.page))
+        canvas.restoreState()
+
+    pdf = SimpleDocTemplate(output, pagesize=A4, rightMargin=margin, leftMargin=margin,
+                            topMargin=182, bottomMargin=50, title='Receituário odontológico', author='')
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='ClinicTitle', fontSize=16, leading=21, alignment=TA_CENTER,
-                              textColor=colors.HexColor('#0f172a'), spaceAfter=6 * mm))
-    styles.add(ParagraphStyle(name='ClinicBody', fontSize=11, leading=17, spaceAfter=5 * mm))
-    styles.add(ParagraphStyle(name='ClinicSmall', fontSize=8, leading=12, textColor=colors.HexColor('#475569')))
-    story = [Paragraph('NÚCLEO ODONTOLÓGICO', styles['ClinicTitle']),
-             Paragraph('Receituário odontológico', styles['Heading2']),
-             Paragraph('<b>Paciente:</b> ' + escape(document['patientName']), styles['ClinicBody']),
-             Paragraph('<b>CPF:</b> ' + escape(document['patientCpf']) + ' &nbsp; <b>Emissão:</b> ' + issued, styles['ClinicBody']),
-             Spacer(1, 4 * mm)]
-    for line in text.splitlines():
-        story.append(Paragraph(escape(line) or '&nbsp;', styles['ClinicBody']))
+    styles.add(ParagraphStyle(name='ClinicBody', fontName='Helvetica', fontSize=10, leading=15,
+                              textColor=colors.HexColor('#0f172a')))
+    styles.add(ParagraphStyle(name='ClinicValue', parent=styles['ClinicBody'], fontSize=11, leading=16))
+    styles.add(ParagraphStyle(name='ClinicLabel', fontSize=7, leading=11, textColor=colors.HexColor('#64748b')))
+    styles.add(ParagraphStyle(name='ClinicSmall', fontSize=7, leading=11, textColor=colors.HexColor('#64748b')))
+    patient = Table([
+        [Paragraph('PACIENTE', styles['ClinicLabel']), ''],
+        [Paragraph(escape(document['patientName']), styles['ClinicValue']), ''],
+        [Paragraph('CPF', styles['ClinicLabel']), Paragraph('DATA', styles['ClinicLabel'])],
+        [Paragraph(escape(document['patientCpf']), styles['ClinicValue']), Paragraph(issued, styles['ClinicValue'])],
+    ], colWidths=[width * 0.7, width * 0.3])
+    patient.setStyle(TableStyle([
+        ('SPAN', (0, 0), (-1, 0)), ('SPAN', (0, 1), (-1, 1)),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10), ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 8), ('BOTTOMPADDING', (0, -1), (-1, -1), 8),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    content = Table([[Paragraph(escape(line) or '&nbsp;', styles['ClinicBody'])]
+                     for line in text.splitlines()], colWidths=[width], splitInRow=1)
+    content.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0'), 1, [3, 2]),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12), ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story = [KeepTogether(patient), Spacer(1, 16), content]
     qr = QrCodeWidget(document['verificationUrl'])
     left, bottom, right, top = qr.getBounds()
     size = 25 * mm
@@ -84,9 +127,9 @@ def render_document(document, certificate):
                    Paragraph('Assinatura digital ICP-Brasil incorporada ao arquivo PDF.', styles['ClinicSmall']),
                    Paragraph('Consulte a autenticidade pelo QR Code ou código abaixo.', styles['ClinicSmall']),
                    Paragraph(escape(url.fragment[6:]), styles['ClinicSmall'])]
-    footer = Table([[description, drawing]], colWidths=[135 * mm, 28 * mm])
+    footer = Table([[description, drawing]], colWidths=[width - 85, 85])
     footer.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LINEABOVE', (0, 0), (-1, 0), 0.5, colors.HexColor('#cbd5e1')),
                                ('TOPPADDING', (0, 0), (-1, -1), 12)]))
     story.extend([Spacer(1, 10 * mm), KeepTogether(footer)])
-    pdf.build(story)
+    pdf.build(story, onFirstPage=page_branding, onLaterPages=page_branding)
     return output.getvalue()

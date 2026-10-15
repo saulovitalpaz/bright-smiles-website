@@ -1,0 +1,32 @@
+import io
+import unittest
+
+from pyhanko.pdf_utils.reader import PdfFileReader
+from pdf_document import render_document
+
+
+class PrescriptionLayoutTests(unittest.TestCase):
+    def document(self, content='Orientacao sintetica para teste.'):
+        return dict(patientName='Paciente ficticio', patientCpf='CPF de teste',
+                    professionalName='Profissional ficticio', professionalCro='CRO de teste',
+                    content=content, date='2026-10-15T12:00:00Z',
+                    verificationUrl='https://example.invalid/validar-receita#token=synthetic-layout-test')
+
+    def test_official_logo_is_embedded_on_every_page(self):
+        for content in ('Orientacao sintetica.', '\n'.join(['Linha de teste.'] * 180), 'Paragrafo longo. ' * 1800):
+            with self.subTest(long_document=len(content) > 100):
+                reader = PdfFileReader(io.BytesIO(render_document(self.document(content), {'subjectName': 'Certificado ficticio'})))
+                pages = reader.root['/Pages']
+                if len(content) > 100:
+                    self.assertGreater(pages['/Count'], 1)
+                else:
+                    self.assertEqual(pages['/Count'], 1)
+                for page in pages['/Kids']:
+                    resources = page.get_object()['/Resources']
+                    images = resources.get('/XObject', {})
+                    self.assertTrue(any(obj.get_object()['/Subtype'] == '/Image' for obj in images.values()),
+                                    'Official clinic logo missing from prescription page')
+
+
+if __name__ == '__main__':
+    unittest.main()
