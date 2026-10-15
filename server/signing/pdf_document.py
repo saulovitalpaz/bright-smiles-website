@@ -67,18 +67,20 @@ def render_document(document, certificate):
     def page_branding(canvas, _doc):
         canvas.saveState()
         logo_width, logo_height = logo.getSize()
-        height = 60
+        height = 40
         image_width = height * logo_width / logo_height
-        canvas.drawImage(logo, (page_width - image_width) / 2, page_height - margin - height,
+        heading = ('NÚCLEO ODONTOLÓGICO', 'ESPECIALIZADO & HARMONIZAÇÃO')
+        font_name, font_size = 'Helvetica', 10
+        text_width = max(canvas.stringWidth(line, font_name, font_size) for line in heading)
+        left = (page_width - image_width - 12 - text_width) / 2
+        canvas.drawImage(logo, left, page_height - margin - height,
                          width=image_width, height=height, mask='auto')
-        canvas.setFillColor(colors.HexColor('#0f172a'))
-        canvas.setFont('Helvetica-Bold', 20)
-        canvas.drawCentredString(page_width / 2, page_height - 132, 'NÚCLEO ODONTOLÓGICO')
-        canvas.setFillColor(colors.HexColor('#64748b'))
-        canvas.setFont('Helvetica', 8)
-        canvas.drawCentredString(page_width / 2, page_height - 148, 'ESPECIALIZADO & HARMONIZAÇÃO')
+        canvas.setFillColor(colors.HexColor('#334155'))
+        canvas.setFont(font_name, font_size)
+        canvas.drawString(left + image_width + 12, page_height - margin - 16, heading[0])
+        canvas.drawString(left + image_width + 12, page_height - margin - 30, heading[1])
         canvas.setStrokeColor(colors.HexColor('#e2e8f0'))
-        canvas.line(margin, page_height - 166, page_width - margin, page_height - 166)
+        canvas.line(margin, page_height - 94, page_width - margin, page_height - 94)
         canvas.setFont('Helvetica', 6.5)
         canvas.setFillColor(colors.HexColor('#94a3b8'))
         canvas.drawCentredString(page_width / 2, 30,
@@ -87,7 +89,7 @@ def render_document(document, certificate):
         canvas.restoreState()
 
     pdf = SimpleDocTemplate(output, pagesize=A4, rightMargin=margin, leftMargin=margin,
-                            topMargin=182, bottomMargin=50, title='Receituário odontológico', author='')
+                            topMargin=110, bottomMargin=50, title='Receituário odontológico', author='')
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='ClinicBody', fontName='Helvetica', fontSize=10, leading=15,
                               textColor=colors.HexColor('#0f172a')))

@@ -10,6 +10,7 @@ from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.pdf_utils.reader import PdfFileReader
 from pyhanko.sign.fields import MDPPerm, SigSeedSubFilter
 from pyhanko.sign.signers import PdfSignatureMetadata, PdfSigner
+from pyhanko.sign.signers.pdf_signer import DSSContentSettings, SigDSSPlacementPreference
 from pyhanko.sign.validation import async_validate_pdf_signature
 from pyhanko.sign.validation.status import SignatureCoverageLevel
 
@@ -132,6 +133,9 @@ async def handle(request):
             field_name='AssinaturaDigital', md_algorithm='sha256', subfilter=SigSeedSubFilter.PADES,
             certify=True, docmdp_permissions=MDPPerm.NO_CHANGES, validation_context=context,
             signer_key_usage={'non_repudiation'}, embed_validation_info=True,
+            # Keep validation evidence inside the certified revision.
+            dss_settings=DSSContentSettings(include_vri=False,
+                                            placement=SigDSSPlacementPreference.TOGETHER_WITH_SIGNATURE),
             reason='Prescrição odontológica',
         )
         try:

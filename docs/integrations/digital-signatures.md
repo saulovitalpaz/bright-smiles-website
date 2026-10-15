@@ -146,3 +146,9 @@ O teste de integração Python/Node é opcional na suíte geral quando `SIGNING_
 - Scanner de padrões de segredo e `git diff --check` aprovados.
 - Inspeção de interface no Edge em 1440 px e 390 px: configurações, opção inicialmente desligada, orientação quando falta certificado, página pública, foco e ausência de overflow aprovados. APIs foram interceptadas com respostas sintéticas; nenhum dado real foi consultado ou enviado.
 - Revisão de segurança conferiu autorização, armazenamento privado, cofre, revogação, bloqueios transacionais, recuperação e distinção do registro público de emissão. Preparação de produção e restauração estão descritas acima; a publicação exige confirmação dos deploys.
+
+### Compatibilidade da revisão certificada
+
+A emissão incorpora certificados e evidências de revogação (DSS) na mesma revisão da assinatura PAdES, com `include_vri=False` e `TOGETHER_WITH_SIGNATURE`. Não acrescenta uma revisão depois da certificação `NO_CHANGES`. O teste de regressão confere que o ByteRange termina no fim do arquivo, preserva certificados/CRLs no DSS e rejeita adulteração. Isso não substitui a validação de confiança do leitor nem fornece carimbo do tempo. PDFs já emitidos permanecem inalterados; a mudança se aplica às novas emissões.
+
+O cabeçalho usa o logo ao lado das duas linhas do nome da clínica, ambas em Helvetica 10 pt, com menos altura antes dos dados do paciente.

@@ -222,6 +222,14 @@ class SigningTests(unittest.TestCase):
         signed = self.run_operation({'operation': 'sign', **credential, 'document': document})
         self.assertEqual(signed['validation']['status'], 'VALID')
         original = base64.b64decode(signed['pdfBase64'])
+        reader = self.engine.read_pdf(original)
+        embedded = reader.embedded_signatures[0]
+        byte_range = embedded.sig_object['/ByteRange']
+        self.assertEqual(int(byte_range[2]) + int(byte_range[3]), len(original),
+                         'The issued PDF must have no revision appended after certification')
+        self.assertIn('/DSS', reader.root)
+        self.assertTrue(reader.root['/DSS']['/Certs'])
+        self.assertTrue(reader.root['/DSS']['/CRLs'])
         result = self.run_operation({'operation': 'validate', 'pdfBase64': signed['pdfBase64']})
         self.assertEqual(result['status'], 'VALID')
         tampered = original.replace(b'%PDF-1.', b'%PDF-2.', 1)
