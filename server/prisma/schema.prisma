@@ -22,6 +22,7 @@ model User {
   digitalCertificate DigitalCertificate?
   digitalPrescriptions DigitalPrescription[]
   digitalIssueOperations DigitalIssueOperation[]
+  birdIdSessions BirdIdSession[]
 }
 
 model Post {
@@ -225,6 +226,8 @@ model DigitalIssueOperation {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
   requestId String
   inputHash String
+  provider String @default("A1")
+  birdIdSession BirdIdSession?
   status String @default("PENDING")
   createdAt DateTime @default(now())
   document DigitalPrescription?
@@ -247,8 +250,32 @@ model DigitalPrescription {
   professionalName String
   professionalCro String
   signatureStatus String
+  provider String @default("A1")
   validation Json
   @@index([userId, signedAt])
+}
+
+model BirdIdSession {
+  id String @id @default(uuid())
+  operationId String @unique
+  operation DigitalIssueOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status String @default("AWAITING_AUTHORIZATION")
+  stateDigest String? @unique
+  sealedRequest String?
+  sealedOAuth String?
+  sealedTransaction String?
+  unsignedStorageKey String?
+  unsignedHash String?
+  expiresAt DateTime
+  leaseUntil DateTime?
+  leaseToken String?
+  errorCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, status])
+  @@index([expiresAt])
 }
 
 model Lead {

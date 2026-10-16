@@ -1,5 +1,10 @@
 import { fetchClient } from './api';
 
+export type SigningProvider = 'A1' | 'BIRD_ID';
+export type SigningProviderAvailability = { provider: SigningProvider; available: boolean; reason?: 'BIRD_ID_NOT_CONFIGURED' | 'BIRD_ID_CONTRACT_PENDING' };
+export type BirdIdStatus = 'AWAITING_AUTHORIZATION' | 'EXCHANGING_CODE' | 'AUTHORIZED' | 'SUBMITTING' | 'SIGNING' | 'VALIDATING' | 'COMPLETE' | 'CANCELLED' | 'EXPIRED' | 'FAILED' | 'RECONCILIATION_REQUIRED';
+export type BirdIdSessionView = { sessionId: string; status: BirdIdStatus; expiresAt: string; errorCode?: string; issue?: DigitalIssue };
+
 export type DigitalDocument = { id: string; hash: string; signatureStatus: 'VALID'; signedAt: string; verificationUrl: string; token: string; fileUrl: string };
 export type DigitalIssue = { prescription: { id: number; date: string; content: string; patientId: number }; document: DigitalDocument };
 export type CertificateStatus = { available: boolean; professional?: { name: string; cro: string; username: string }; certificate: null | { subjectName: string; cpfMasked: string; issuer: string; validFrom: string; validUntil: string; fingerprint: string; checkedAt: string; ready: boolean; status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'REVOKED' | 'VERIFICATION_UNAVAILABLE'; suspendedAt?: string | null }; message?: string };
@@ -7,6 +12,9 @@ export type CertificateStatus = { available: boolean; professional?: { name: str
 export class ReauthenticationRequired extends Error {}
 export class DigitalRequestError extends Error {}
 const codeMessages: Record<string, string> = {
+  INVALID_SIGNATURE_IMAGE: 'A imagem da assinatura é inválida. Atualize a imagem nas configurações.',
+  INVALID_DOCUMENT: 'Confira os dados da clínica e do paciente antes de emitir.',
+  BIRD_ID_CONTRACT_PENDING: 'Bird ID aguarda configuração e homologação com a Soluti.',
   ACCESS_PASSWORD_INVALID: 'Senha de acesso inválida. Confira a senha de acesso ao sistema e tente novamente.',
   PATIENT_CHANGED: 'Os dados do paciente mudaram. Atualize o cadastro e revise a receita.',
   CERTIFICATE_PASSWORD_REQUIRED: 'Informe a senha do arquivo do certificado.',

@@ -10,6 +10,9 @@ import { normalizeOdontogram, type OdontogramData } from "@/components/admin/att
 import { DownloadPrescriptionButton } from "@/components/PrescriptionGenerator";
 import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature";
 import { PrintPatientCard } from "@/components/admin/PrintPatientCard";
+import { ClinicPrintHeader } from '@/components/admin/ClinicPrintHeader';
+import { SigningProviderChoice } from '@/components/admin/SigningProviderChoice';
+import { useClinicPrintDetails } from '@/hooks/useClinicPrintDetails';
 import { ConsentDialog } from "@/components/ConsentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +57,7 @@ type StoredPrescription = {
 type PrintTarget = "prescription";
 
 const AdminPrescription = () => {
+    const clinic = useClinicPrintDetails();
     const [searchParams] = useSearchParams();
     const urlCpf = searchParams.get("cpf");
 
@@ -436,6 +440,9 @@ const AdminPrescription = () => {
                                                     data={{
                                                         name: patientData.name,
                                                         cpf: patientData.cpf,
+                                                        address: patientData.address,
+                                                        phone: patientData.phone,
+                                                        clinic,
                                                         professionalName: currentUser.name,
                                                         professionalCro: currentUser.cro,
                                                         signatureUrl: currentUser.signatureUrl,
@@ -450,6 +457,7 @@ const AdminPrescription = () => {
                                         )}
                                     </>
                                 )}
+                                {includeProfessionalSignature && <SigningProviderChoice />}
                             </div>
                         </div>
 
@@ -534,16 +542,7 @@ const AdminPrescription = () => {
                                 </div>
                             )}
 
-                            <div className="print-section mb-5 flex items-center gap-4 border-b border-slate-200 pb-4">
-                                <img src="/images/logo-oficial.png" alt="Logo" className="h-20 w-20 object-contain" />
-                                <div>
-                                    <h1 className="text-xl font-serif font-bold leading-tight text-slate-900">Núcleo de Odontologia<br />Especializada &amp; Harmonização</h1>
-                                </div>
-                                <div className="ml-auto text-right">
-                                    <p className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Prescrição emitida em</p>
-                                    <p className="text-xs font-bold text-slate-700">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                </div>
-                            </div>
+                            <ClinicPrintHeader clinic={clinic} />
 
                             <h2 className="print-section mb-3 text-sm font-bold uppercase tracking-wide">Receituário</h2>
                             <PrintPatientCard patient={patientData} compact />
@@ -557,9 +556,8 @@ const AdminPrescription = () => {
                                 <div className="flex items-end justify-between">
                                     <div className="space-y-0.5 text-[8px] text-slate-500">
                                         <p className="mb-1 text-[9px] font-black uppercase tracking-wider text-slate-800">Unidade de Atendimento</p>
-                                        <p className="font-semibold text-slate-600">Governador Valadares - MG</p>
-                                        <p>Rua Barão do Rio Branco, 461 - Sala 206 - Centro</p>
-                                        <p>CNPJ: 00.000.000/0001-00 | Razão Social: Karol Paz Me.</p>
+                                        <p>{clinic.address || 'Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG'}</p>
+                                        <p>{clinic.cnpj ? `CNPJ: ${clinic.cnpj}` : ''}</p>
                                     </div>
                                     <ProfessionalSignature
                                         professional={currentUser}

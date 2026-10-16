@@ -204,7 +204,28 @@ async function createFinancialAssetUrl(reference) {
     }), { expiresIn: 300 });
 }
 
+async function readProfessionalSignature(reference, userId) {
+    const parsed = parseAssetReference(reference);
+    if (!parsed || parsed.scope !== 'public' || !new RegExp(`^${Number(userId)}/[a-zA-Z0-9-]+\\.(png|jpg|jpeg|webp)$`).test(parsed.key)) {
+        throw new Error('Invalid professional signature reference.');
+    }
+    const result = await requireStorage().send(new GetObjectCommand({ Bucket: config.bucket, Key: getObjectKey(parsed.scope, parsed.key) }));
+    const limit = 2 * 1024 * 1024;
+    if (result.ContentLength > limit) { result.Body?.destroy(); throw new Error('Signature image exceeds size limit.'); }
+    const chunks = []; let size = 0;
+    for await (const chunk of result.Body) {
+        size += chunk.length;
+        if (size > limit) { result.Body.destroy(); throw new Error('Signature image exceeds size limit.'); }
+        chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    const { isSupportedSignatureImage } = require('./signatureImage');
+    if (!isSupportedSignatureImage(buffer, result.ContentType)) throw new Error('Invalid signature image.');
+    return buffer.toString('base64');
+}
+
 module.exports = {
+    readProfessionalSignature,
     uploadAsset,
     withAssetUploadCleanup,
     deleteAsset,

@@ -6,6 +6,7 @@ const { verifyPassword } = require('../utils/passwords');
 const { createCertificateVault, validCpf, validPkcs12 } = require('../utils/certificateVault');
 const { createDigitalSigningWorker } = require('../services/digitalSigningWorker');
 const defaultStorage = require('../utils/patientDocumentStorage');
+const { normalizeProvider, providerAvailability } = require('../services/signingProviders');
 
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const normalizeCpf = value => String(value || '').replace(/\D/g, '');
@@ -61,7 +62,7 @@ function registerDigitalSigningRoutes(app, dependencies) {
     };
     const clinical = async (req, res, next) => {
         try {
-            const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, username: true, name: true, cro: true, password: true } });
+            const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, role: true, username: true, name: true, cro: true, password: true, signatureUrl: true } });
             if (!user || !['admin', 'dentist'].includes(user.role)) return res.sendStatus(403);
             req.signingUser = user; next();
         } catch { res.sendStatus(503); }
@@ -94,6 +95,13 @@ function registerDigitalSigningRoutes(app, dependencies) {
     };
 
     app.get('/digital-signatures/certificate', ...privateMiddleware, route(async (req, res) => res.json(await certificateResponse(req.signingUser))));
+    const clinicDetails = async () => {
+        const rows = await prisma.setting.findMany({ where: { key: { in: ['clinic_name', 'clinic_slogan', 'clinic_address', 'clinic_phone', 'clinic_cnpj', 'contact_whatsapp'] } } });
+        const settings = Object.fromEntries(rows.map(row => [row.key, row.value]));
+        return { name: settings.clinic_name, slogan: settings.clinic_slogan, address: settings.clinic_address, phone: settings.clinic_phone || settings.contact_whatsapp, cnpj: settings.clinic_cnpj };
+    };
+    app.get('/digital-signatures/clinic', ...privateMiddleware, route(async (_req, res) => res.json(await clinicDetails())));
+    app.get('/digital-signatures/providers', ...privateMiddleware, route(async (_req, res) => res.json(providerAvailability(env, await availability()))));
     app.post('/digital-signatures/certificate', ...privateMiddleware, mutationLimit, multipart(1024 * 1024, 'certificate'), route(async (req, res) => {
         await reauthenticate(req); await requireAvailable();
         const cpf = req.body.cpf === undefined ? undefined : String(req.body.cpf || '').replace(/[.\-\s]/g, '');
@@ -218,6 +226,7 @@ function registerDigitalSigningRoutes(app, dependencies) {
         return `${url.href}#token=${token}`;
     };
     app.post('/prescriptions/digital-issue', ...privateMiddleware, signingLimit, route(async (req, res) => {
+        if (normalizeProvider(req.body?.provider) !== 'A1') throw fail(503, 'Bird ID aguarda configuração e homologação.', 'BIRD_ID_CONTRACT_PENDING');
         const { patientId, content, prescriptionType, requestId, expectedPatient } = req.body || {};
         if (!Number.isSafeInteger(patientId) || patientId <= 0 || typeof content !== 'string' || content.length > 100000 || !content.trim() || prescriptionType !== 'SIMPLE' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId || '')) throw fail(400, 'Dados da receita inválidos. Apenas receitas simples são aceitas.');
         if (expectedPatient !== undefined && (!expectedPatient || typeof expectedPatient.name !== 'string' || !expectedPatient.name.trim() || expectedPatient.name.length > 300 || typeof expectedPatient.cpf !== 'string' || expectedPatient.cpf.length > 32)) throw fail(400, 'Dados de conferência do paciente inválidos.');
@@ -239,14 +248,14 @@ function registerDigitalSigningRoutes(app, dependencies) {
         try {
             const existing = await prisma.digitalIssueOperation.findUnique({ where: { userId_requestId: { userId, requestId } }, include: { document: { include: { prescription: true } } } });
             if (existing) {
-                if (existing.inputHash !== inputHash) throw fail(409, 'Identificador já usado para outra receita.');
+                if ((existing.provider && existing.provider !== 'A1') || existing.inputHash !== inputHash) throw fail(409, 'Identificador já usado para outra receita.');
                 if (existing.status === 'COMPLETE' && existing.document) return res.json(issueResponse(existing.document, existing.document.prescription));
                 if (existing.status !== 'FAILED' || existing.document) throw fail(409, 'Assinatura em andamento ou aguardando confirmação. Confira o histórico.', 'SIGNING_PENDING');
                 const reclaimed = await prisma.digitalIssueOperation.updateMany({ where: { id: existing.id, status: 'FAILED', document: { is: null } }, data: { status: 'PENDING' } });
                 if (reclaimed.count !== 1) throw fail(409, 'Assinatura em andamento.', 'SIGNING_PENDING');
                 operation = existing;
             }
-            const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { name: true, cpf: true, consent: true } });
+            const patient = await prisma.patient.findUnique({ where: { id: patientId }, select: { name: true, cpf: true, consent: true, address: true, phone: true } });
             if (!patient?.consent) throw fail(422, 'Paciente não encontrado ou sem consentimento registrado.');
             if (patientSnapshot && (patientSnapshot.name !== patient.name.trim() || patientSnapshot.cpf !== normalizeCpf(decrypt(patient.cpf)))) throw fail(409, 'Os dados do paciente mudaram. Atualize o cadastro e revise a receita.', 'PATIENT_CHANGED');
             const certificate = await prisma.digitalCertificate.findUnique({ where: { userId } });
@@ -258,6 +267,7 @@ function registerDigitalSigningRoutes(app, dependencies) {
             const verifyWithWorker = async input => {
                 try { return await worker(input); }
                 catch (error) {
+                    if (['INVALID_SIGNATURE_IMAGE', 'INVALID_DOCUMENT'].includes(error.code)) throw error;
                     const status = error.code === 'CERTIFICATE_EXPIRED' ? 'EXPIRED' : error.code === 'CERTIFICATE_REVOKED' ? 'REVOKED' : 'VERIFICATION_UNAVAILABLE';
                     await prisma.digitalCertificate.updateMany({ where: certificateWhere, data: { status, lastVerificationCode: error.code || 'VERIFICATION_UNAVAILABLE' } });
                     throw error;
@@ -271,7 +281,11 @@ function registerDigitalSigningRoutes(app, dependencies) {
             try { if (!operation) operation = await prisma.digitalIssueOperation.create({ data: { userId, requestId, inputHash } }); }
             catch (error) { if (error.code === 'P2002') throw fail(409, 'Assinatura em andamento.', 'SIGNING_PENDING'); throw error; }
             const token = crypto.randomBytes(32).toString('base64url'); const date = new Date();
-            const signed = await verifyWithWorker({ operation: 'sign', ...credentials, document: { patientName: patient.name, patientCpf: decrypt(patient.cpf), professionalName: req.signingUser.name, professionalCro: req.signingUser.cro, content: plainContent, date: date.toISOString(), verificationUrl: verificationUrl(token) } });
+            const clinic = await clinicDetails();
+            const signatureImageBase64 = req.signingUser.signatureUrl
+                ? await (dependencies.readProfessionalSignature || require('../utils/assetStorage').readProfessionalSignature)(req.signingUser.signatureUrl, userId)
+                : undefined;
+            const signed = await verifyWithWorker({ operation: 'sign', ...credentials, document: { patientName: patient.name, patientCpf: decrypt(patient.cpf), patientAddress: patient.address ? decrypt(patient.address) : '', patientPhone: patient.phone ? decrypt(patient.phone) : '', clinic, signatureImageBase64, professionalName: req.signingUser.name, professionalCro: req.signingUser.cro, content: plainContent, date: date.toISOString(), verificationUrl: verificationUrl(token) } });
             const pdf = Buffer.from(signed.pdfBase64 || '', 'base64');
             if (signed.validation?.status !== 'VALID' || !pdf.subarray(0, 5).equals(Buffer.from('%PDF-')) || pdf.length > 10 * 1024 * 1024 || digest(pdf) !== signed.hash) throw fail(422, 'A assinatura não passou na validação criptográfica.');
             if (signed.certificate?.fingerprint !== certificate.fingerprint) throw fail(422, 'A assinatura não corresponde ao certificado cadastrado.', 'CERTIFICATE_CHANGED');

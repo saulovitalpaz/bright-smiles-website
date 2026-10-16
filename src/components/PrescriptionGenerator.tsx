@@ -29,6 +29,7 @@ import {
 } from "@/lib/prescription-document";
 import { mediaUrl } from "@/lib/media";
 import type { PrintMode } from "@/lib/print-layout";
+import type { ClinicPrintDetails } from './admin/ClinicPrintHeader';
 
 const pdfTokens = {
   clinic: { pagePadding: 40, sectionGap: 16, tableCellPadding: 6, bodySize: 10 },
@@ -288,6 +289,9 @@ export interface PrescriptionDocumentProps {
   data: {
     name: string;
     cpf: string;
+    address?: string;
+    phone?: string;
+    clinic?: ClinicPrintDetails;
     professionalName?: string;
     professionalCro?: string;
     signatureUrl?: string | null;
@@ -331,10 +335,15 @@ export function PrescriptionDocument({
       ) : null}
       <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
         <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: 10 }} wrap={false}>
-          <Image src={window.location.origin + '/images/logo-oficial.png'} style={{ width: 66, height: 64, objectFit: 'contain', marginRight: 18 }} />
-          <View>
-            <Text style={styles.logoText}>Núcleo de Odontologia</Text>
-            <Text style={styles.logoText}>Especializada & Harmonização</Text>
+          <Image src={window.location.origin + '/images/logo-oficial.png'} style={{ width: 60, height: 60, objectFit: 'contain', marginRight: 12 }} />
+          <View style={{ flex: 1, textAlign: 'center', paddingRight: 12 }}>
+            <Text style={{ ...styles.logoText, fontSize: 14 }}>{data.clinic?.name || 'Núcleo Odontológico'}</Text>
+            <Text style={{ fontSize: 9, marginTop: 3 }}>{data.clinic?.slogan || 'Especializado & Harmonização'}</Text>
+          </View>
+          <View style={{ width: 160, textAlign: 'right', fontSize: 7, lineHeight: 1.4 }}>
+            <Text>{data.clinic?.address || 'Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG'}</Text>
+            <Text>Telefone: {data.clinic?.phone || 'Não informado'}</Text>
+            <Text>CNPJ: {data.clinic?.cnpj || 'Não informado'}</Text>
           </View>
         </View>
 
@@ -346,6 +355,8 @@ export function PrescriptionDocument({
               <Text><Text style={{ color: '#64748b' }}>CPF: </Text>{data.cpf}</Text>
               <Text><Text style={{ color: '#64748b' }}>Data: </Text>{new Date().toLocaleDateString("pt-BR")}</Text>
             </View>
+            <Text>Telefone: {data.phone || 'Não informado'}</Text>
+            <Text>Endereço: {data.address || 'Não informado'}</Text>
           </View>
         </View>
 
@@ -367,7 +378,7 @@ export function PrescriptionDocument({
             </Text>
           ) : null}
           <Text style={styles.address}>
-            Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG
+            {data.clinic?.address || 'Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG'}
           </Text>
         </View>
       </Page>

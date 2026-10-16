@@ -976,7 +976,7 @@ app.get('/settings', authenticateToken, authorizeRole(['admin', 'manager']), asy
 
 app.post('/settings', authenticateToken, authorizeRole(['admin']), async (req, res) => {
     const { key, value } = req.body;
-    if (!PUBLIC_SETTINGS_KEYS.has(key)) {
+    if (!PUBLIC_SETTINGS_KEYS.has(key) && !['clinic_address', 'clinic_phone', 'clinic_cnpj'].includes(key)) {
         return res.status(400).json({ error: 'Invalid public setting key.' });
     }
     try {

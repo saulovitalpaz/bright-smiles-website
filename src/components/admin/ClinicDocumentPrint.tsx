@@ -2,24 +2,22 @@ import { ProfessionalSignature } from "@/components/admin/ProfessionalSignature"
 import { printDocumentClass } from "@/lib/print-layout";
 import type { ProfessionalIdentity } from "@/lib/professional-signature";
 import { PrintPatientCard } from "./PrintPatientCard";
+import { ClinicPrintHeader, type ClinicPrintDetails } from "./ClinicPrintHeader";
 
 interface ClinicDocumentPrintProps {
   professional: ProfessionalIdentity;
-  patient: { name: string; cpf: string; date: string };
+  patient: { name: string; cpf: string; date: string; address?: string; phone?: string };
+  clinic?: ClinicPrintDetails;
   content: string;
   includeElectronic?: boolean;
   manual?: boolean;
 }
 
-export function ClinicDocumentPrint({ professional, patient, content, includeElectronic = false, manual = false }: ClinicDocumentPrintProps) {
+export function ClinicDocumentPrint({ professional, patient, clinic, content, includeElectronic = false, manual = false }: ClinicDocumentPrintProps) {
   return (
     <div className={`hidden print-only print-root ${printDocumentClass("clinic")} text-slate-900`} data-print-target="document">
-      <div className="print-section mb-6 flex flex-col items-center border-b border-slate-100 pb-4 text-center">
-        <img src="/images/logo-oficial.png" alt="Logo" className="mb-2 h-20 w-20 object-contain" />
-        <h1 className="text-xl font-serif font-black uppercase tracking-widest text-slate-900">Núcleo Odontológico</h1>
-        <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500">Especializado & Harmonização</p>
-      </div>
-      {manual && <PrintPatientCard patient={patient} blank />}
+      <ClinicPrintHeader clinic={clinic} />
+      <PrintPatientCard patient={patient} blank={manual} compact={!manual} />
       <div className="print-flow-content whitespace-pre-wrap px-4 text-justify font-serif text-base leading-[1.6] text-slate-800">
         {manual ? (
           <div className="min-h-[100mm]" />

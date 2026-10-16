@@ -98,7 +98,7 @@ test('public branding uses an allowlisted unauthenticated settings route', () =>
     }
 });
 
-test('settings writes are admin-only and share the public settings allowlist', () => {
+test('settings writes are admin-only and clinic document fields remain private', () => {
     const server = fs.readFileSync(path.join(repoRoot, 'server/index.js'), 'utf8');
     const settingsPage = fs.readFileSync(path.join(repoRoot, 'src/pages/AdminSettings.tsx'), 'utf8');
     const settingsWrite = server.match(/app\.post\('\/settings',[\s\S]*?\n\}\);/)?.[0];
@@ -112,6 +112,9 @@ test('settings writes are admin-only and share the public settings allowlist', (
     ]);
     assert.deepEqual(toPublicSettings([
         { key: 'site_logo', value: 'bucket://public/logo.png' },
+        { key: 'clinic_address', value: 'private-clinic-address' },
+        { key: 'clinic_phone', value: 'private-clinic-phone' },
+        { key: 'clinic_cnpj', value: 'private-clinic-cnpj' },
         { key: 'private_note', value: 'do-not-return' }
     ]), { site_logo: 'bucket://public/logo.png' });
     assert.ok(settingsWrite);
@@ -125,5 +128,5 @@ test('settings writes are admin-only and share the public settings allowlist', (
         .match(/const EDITABLE_SETTING_KEYS = \[([\s\S]*?)\] as const;/)?.[1]
         .match(/"([^"]+)"/g)
         ?.map((key) => key.slice(1, -1));
-    assert.deepEqual(editableKeys?.sort(), [...PUBLIC_SETTINGS_KEYS].sort());
+    assert.deepEqual(editableKeys?.sort(), [...PUBLIC_SETTINGS_KEYS, 'clinic_address', 'clinic_phone', 'clinic_cnpj'].sort());
 });

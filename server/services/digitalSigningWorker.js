@@ -1,6 +1,8 @@
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const WORKER_ERRORS = {
+    INVALID_SIGNATURE_IMAGE: 'A imagem da assinatura é inválida. Atualize a imagem nas configurações.',
+    INVALID_DOCUMENT: 'Confira os dados da clínica e do paciente antes de emitir.',
     CERTIFICATE_FILE_INVALID: 'O arquivo do certificado é inválido.',
     INVALID_CPF: 'Informe um CPF válido.',
     INVALID_CERTIFICATE: 'Certificado ou senha do certificado inválidos.',

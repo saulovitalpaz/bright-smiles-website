@@ -5,9 +5,9 @@ export function PrintPatientCard({ patient, blank = false, compact = false }: { 
     <p><span className="text-slate-500">Paciente: </span><strong data-patient-value>{blank ? null : patient.name || "________________________________"}</strong></p>
     <div className="flex flex-wrap gap-x-6">
       <p><span className="text-slate-500">CPF: </span><span data-patient-value>{blank ? null : patient.cpf || "___.___.___-__"}</span></p>
-      {patient.phone && <p><span className="text-slate-500">Telefone: </span><span data-patient-value>{blank ? null : patient.phone}</span></p>}
+      <p><span className="text-slate-500">Telefone: </span><span data-patient-value>{blank ? null : patient.phone || 'Não informado'}</span></p>
     </div>
-    {patient.address && <p><span className="text-slate-500">Endereço: </span><span data-patient-value>{blank ? null : patient.address}</span></p>}
+    <p><span className="text-slate-500">Endereço: </span><span data-patient-value>{blank ? null : patient.address || 'Não informado'}</span></p>
   </div>;
 
   return <div className="print-patient-block mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">

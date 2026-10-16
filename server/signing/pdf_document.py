@@ -1,4 +1,5 @@
 import io
+import base64
 from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
@@ -12,7 +13,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from certificates import SigningError
 
@@ -63,6 +64,12 @@ def render_document(document, certificate):
     margin = 40
     width = page_width - 2 * margin
     logo = ImageReader(str(Path(__file__).resolve().parent / 'assets' / 'logo-oficial.png'))
+    clinic = document.get('clinic') or {}
+    if not isinstance(clinic, dict) or any(not isinstance(value, str) or len(value) > 1024 for value in clinic.values()):
+        raise SigningError('INVALID_DOCUMENT', 'Identificação da clínica inválida.')
+    for field in ('patientAddress', 'patientPhone'):
+        if not isinstance(document.get(field, ''), str) or len(document.get(field, '')) > 2048:
+            raise SigningError('INVALID_DOCUMENT', 'Identificação do paciente inválida.')
 
     def page_branding(canvas, _doc):
         canvas.saveState()
@@ -73,15 +80,25 @@ def render_document(document, certificate):
         canvas.drawImage(logo, left, page_height - 36 - height,
                          width=image_width, height=height, mask='auto')
         canvas.setFillColor(colors.HexColor('#0f172a'))
-        canvas.setFont('Times-Bold', 17)
-        canvas.drawString(left + image_width + 18, page_height - 58, 'Núcleo de Odontologia')
-        canvas.drawString(left + image_width + 18, page_height - 80, 'Especializada & Harmonização')
+        title_style = ParagraphStyle('HeaderName', fontName='Times-Bold', fontSize=14, leading=16, alignment=1)
+        name = Paragraph(escape(clinic.get('name') or 'Núcleo Odontológico'), title_style)
+        name_width = width - image_width - 184
+        _, name_height = name.wrap(name_width, 64)
+        name.drawOn(canvas, left + image_width + 12, page_height - 48 - name_height)
+        slogan = Paragraph(escape(clinic.get('slogan') or 'Especializado & Harmonização'), ParagraphStyle('Slogan', fontSize=8, leading=10, alignment=1))
+        _, slogan_height = slogan.wrap(name_width, 32)
+        slogan.drawOn(canvas, left + image_width + 12, page_height - 52 - name_height - slogan_height)
+        details = Paragraph('<br/>'.join(escape(value) for value in [
+            clinic.get('address') or 'Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG',
+            'Telefone: ' + (clinic.get('phone') or 'Não informado'),
+            'CNPJ: ' + (clinic.get('cnpj') or 'Não informado'),
+        ]), ParagraphStyle('HeaderDetails', fontSize=7, leading=10, alignment=2))
+        _, details_height = details.wrap(160, 70)
+        details.drawOn(canvas, page_width - margin - 160, page_height - 40 - details_height)
         canvas.setStrokeColor(colors.HexColor('#e2e8f0'))
         canvas.line(margin, page_height - 110, page_width - margin, page_height - 110)
         canvas.setFont('Helvetica', 6.5)
         canvas.setFillColor(colors.HexColor('#94a3b8'))
-        canvas.drawCentredString(page_width / 2, 30,
-                                'Rua Barão do Rio Branco, 461 - Sala 206 - Centro, Governador Valadares - MG')
         canvas.drawRightString(page_width - margin, 18, str(_doc.page))
         canvas.restoreState()
 
@@ -99,9 +116,12 @@ def render_document(document, certificate):
         [Paragraph('<font color="#64748b">Paciente:</font> <b>' + escape(document['patientName']) + '</b>', styles['ClinicBody']), ''],
         [Paragraph('<font color="#64748b">CPF:</font> ' + escape(document['patientCpf']), styles['ClinicBody']),
          Paragraph('<font color="#64748b">Data:</font> ' + issued, styles['ClinicBody'])],
+        [Paragraph('Telefone: ' + escape(document.get('patientPhone') or 'Não informado'), styles['ClinicBody']), ''],
+        [Paragraph('Endereço: ' + escape(document.get('patientAddress') or 'Não informado'), styles['ClinicBody']), ''],
     ], colWidths=[width * 0.7, width * 0.3])
     patient.setStyle(TableStyle([
         ('SPAN', (0, 0), (-1, 0)),
+        ('SPAN', (0, 2), (-1, 2)), ('SPAN', (0, 3), (-1, 3)),
         ('LINEBELOW', (0, -1), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
         ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 1), ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
@@ -128,6 +148,26 @@ def render_document(document, certificate):
                    Paragraph('<link href="' + escape(document['verificationUrl'], quote=True) + '" color="#1d4ed8">'
                              + escape(document['verificationUrl']) + '</link>', styles['ClinicSmall']),
                    Paragraph('Token: ' + escape(url.fragment[6:]), styles['ClinicSmall'])]
+    if document.get('signatureImageBase64'):
+        try:
+            encoded = document['signatureImageBase64']
+            if not isinstance(encoded, str) or len(encoded) > 2800000:
+                raise ValueError('Size limit')
+            raw = base64.b64decode(encoded, validate=True)
+            from PIL import Image as PillowImage
+            with PillowImage.open(io.BytesIO(raw)) as source:
+                if source.format not in ('PNG', 'JPEG', 'WEBP') or source.width * source.height > 16000000:
+                    raise ValueError('Invalid image')
+                source.load()
+                normalized = io.BytesIO()
+                source.convert('RGBA').save(normalized, format='PNG')
+            normalized.seek(0)
+            image = Image(normalized, width=140, height=45, kind='proportional')
+            image.hAlign = 'LEFT'
+            description.insert(0, image)
+            description.insert(3, Paragraph('Imagem ilustrativa; autenticidade conferida pela assinatura digital do PDF.', styles['ClinicSmall']))
+        except Exception:
+            raise SigningError('INVALID_SIGNATURE_IMAGE', 'A imagem da assinatura é inválida.') from None
     footer = Table([[description, drawing]], colWidths=[width - size - 12, size + 12])
     footer.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LINEABOVE', (0, 0), (-1, 0), 0.5, colors.HexColor('#cbd5e1')),
                                ('TOPPADDING', (0, 0), (-1, -1), 12)]))

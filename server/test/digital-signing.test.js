@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 
 async function withApi(prisma, run, extra = {}) {
+    prisma.setting ||= { findMany: async () => [] };
     const { registerDigitalSigningRoutes } = require('../routes/digitalSigning');
     const app = express(); app.use(express.json());
     const authenticateToken = (req, res, next) => { if (!req.headers['x-user']) return res.sendStatus(401); req.user = { id: 1, role: 'admin', iat: extra.loginIat ?? Math.floor(Date.now() / 1000) }; next(); };
@@ -24,6 +25,26 @@ test('all digital private routes deny anonymous requests', async () => {
 test('stale admin claim cannot bypass current database role', async () => {
     await withApi({ user: { findUnique: async () => ({ id: 1, role: 'manager' }) } }, async request => {
         assert.equal((await request('/digital-signatures/certificate', true)).status, 403);
+    });
+});
+
+test('clinic details and providers require current clinical authorization', async () => {
+    for (const path of ['/digital-signatures/clinic', '/digital-signatures/providers']) {
+        await withApi({ user: { findUnique: async () => ({ id: 1, role: 'manager' }) } }, async request => {
+            assert.equal((await request(path)).status, 401);
+            assert.equal((await request(path, true)).status, 403);
+        });
+    }
+    await withApi({ user: { findUnique: async () => ({ id: 1, role: 'dentist' }) }, setting: { findMany: async ({ where }) => {
+        assert.ok(!where.key.in.includes('secret'));
+        return [{ key: 'clinic_address', value: 'Endereço fictício' }, { key: 'clinic_cnpj', value: 'CNPJ fictício' }];
+    } } }, async request => {
+        const response = await request('/digital-signatures/clinic', true);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        assert.deepEqual(await response.json(), { address: 'Endereço fictício', cnpj: 'CNPJ fictício' });
+        const bird = await request('/prescriptions/digital-issue', true, 'POST', { provider: 'BIRD_ID' });
+        assert.equal(bird.status, 503);
+        assert.equal((await bird.json()).code, 'BIRD_ID_CONTRACT_PENDING');
     });
 });
 

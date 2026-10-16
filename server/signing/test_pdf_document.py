@@ -1,4 +1,5 @@
 import io
+import base64
 import unittest
 
 from pyhanko.pdf_utils.reader import PdfFileReader
@@ -6,6 +7,26 @@ from pdf_document import render_document
 
 
 class PrescriptionLayoutTests(unittest.TestCase):
+    def test_signature_illustration_is_embedded_before_cryptographic_signing(self):
+        from PIL import Image
+        image = io.BytesIO()
+        Image.new('RGB', (180, 60), 'white').save(image, format='PNG')
+        document = self.document()
+        document.update(patientAddress='Endereco sintetico', patientPhone='Telefone sintetico',
+                        clinic={'name': 'Clinica sintetica', 'address': 'Local sintetico', 'phone': 'Contato sintetico', 'cnpj': 'CNPJ sintetico'},
+                        signatureImageBase64=base64.b64encode(image.getvalue()).decode())
+        reader = PdfFileReader(io.BytesIO(render_document(document, {'subjectName': 'Certificado ficticio'})))
+        page = reader.root['/Pages']['/Kids'][0].get_object()
+        images = page['/Resources'].get('/XObject', {})
+        self.assertGreaterEqual(sum(obj.get_object()['/Subtype'] == '/Image' for obj in images.values()), 2)
+
+    def test_invalid_signature_bytes_fail_closed(self):
+        from certificates import SigningError
+        document = self.document()
+        document['signatureImageBase64'] = base64.b64encode(b'not an image').decode()
+        with self.assertRaises(SigningError):
+            render_document(document, {'subjectName': 'Certificado ficticio'})
+
     def document(self, content='Orientacao sintetica para teste.'):
         return dict(patientName='Paciente ficticio', patientCpf='CPF de teste',
                     professionalName='Profissional ficticio', professionalCro='CRO de teste',

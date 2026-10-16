@@ -11,6 +11,15 @@ const props = {
 };
 
 describe("ClinicDocumentPrint", () => {
+  it('prints complete patient contact details in a compact block and clinic identification on the right', () => {
+    const { container } = render(<ClinicDocumentPrint {...props}
+      patient={{ ...props.patient, address: 'Endereço fictício', phone: 'Telefone fictício' }}
+      clinic={{ address: 'Local fictício', phone: 'Contato fictício', cnpj: 'Cadastro fictício' }} />);
+    expect(screen.getByText('Endereço fictício')).toBeInTheDocument();
+    expect(screen.getByText('Telefone fictício')).toBeInTheDocument();
+    expect(screen.getByText('CNPJ: Cadastro fictício')).toBeInTheDocument();
+    expect(container.querySelector('.print-patient-block table')).toBeNull();
+  });
   it("prints blank patient fields without selected content or electronic signature in manual mode", () => {
     const { container } = render(<ClinicDocumentPrint {...props} manual />);
     expect(screen.getByText("Paciente")).toBeInTheDocument();

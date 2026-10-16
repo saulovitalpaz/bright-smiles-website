@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import DigitalCertificateSettings from '@/components/admin/DigitalCertificateSettings';
+import { SigningProviderChoice } from '@/components/admin/SigningProviderChoice';
 import ValidatePrescriptionPdf from '@/components/admin/ValidatePrescriptionPdf';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,9 @@ const EDITABLE_SETTING_KEYS = [
     "site_logo",
     "clinic_name",
     "clinic_slogan",
+    "clinic_address",
+    "clinic_phone",
+    "clinic_cnpj",
     "contact_whatsapp",
     "contact_instagram"
 ] as const;
@@ -349,6 +353,7 @@ const AdminSettings = () => {
                 </Card>
 
                 <DigitalCertificateSettings professionalDraft={professionalProfile} />
+                <SigningProviderChoice />
                 <ValidatePrescriptionPdf />
                 <Card>
                     <CardHeader>
@@ -465,6 +470,12 @@ const AdminSettings = () => {
                                 onChange={(e) => handleUpdate("clinic_slogan", e.target.value)}
                             />
                         </div>
+                        {([['clinic_address', 'Endereço da clínica'], ['clinic_phone', 'Telefone da clínica'], ['clinic_cnpj', 'CNPJ']] as const).map(([key, label]) => (
+                            <div key={key} className="space-y-2">
+                                <Label htmlFor={key}>{label}</Label>
+                                <Input id={key} value={settings[key] || ''} onChange={e => handleUpdate(key, e.target.value)} />
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
 

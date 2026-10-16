@@ -8,7 +8,7 @@
 
 **Tech Stack:** React/TypeScript, Express/Node, Prisma/PostgreSQL, S3 privado, pyHanko/ReportLab e API Bird ID/CESS.
 
-**Status:** planejamento iniciado; nenhuma rota, dependência, migração ou credencial Bird ID ativada. Base dos upgrades: commit cf8931d, enviado a origin/main. Data de elaboração: 15/10/2026.
+**Status:** execução parcial autorizada em 16/10/2026: contratos, cofre, schema/migração ainda não aplicada, store local e indicação de indisponibilidade na interface implementados. OAuth/CESS, emissão remota e homologação continuam pendentes do contrato técnico previsto abaixo. Evidências e limites em `docs/integrations/bird-id-acceptance.md`. Base do plano: commit cf8931d. Data de elaboração: 15/10/2026.
 
 ## Global Constraints
 

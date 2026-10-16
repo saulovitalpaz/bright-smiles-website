@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ClinicDocumentPrint } from "@/components/admin/ClinicDocumentPrint";
+import { useClinicPrintDetails } from '@/hooks/useClinicPrintDetails';
 import {
     FileText,
     Download,
@@ -54,10 +55,13 @@ type PatientDocumentRecord = {
 };
 
 const AdminDocuments = () => {
+    const clinic = useClinicPrintDetails();
     const [patientData, setPatientData] = useState({
         id: null as number | null,
         name: "",
         cpf: "",
+        address: "",
+        phone: "",
         birthDate: null as string | null,
         procedure: "",
         date: new Date().toLocaleDateString('pt-BR')
@@ -298,7 +302,7 @@ const AdminDocuments = () => {
                                 <Label className="text-[10px] font-black uppercase text-slate-400">Buscar</Label>
                                 <PatientPicker
                                     selectedPatient={patientData.id ? { id: patientData.id, name: patientData.name, cpf: patientData.cpf } : null}
-                                    onSelect={(p) => setPatientData(prev => ({ ...prev, id: p.id, name: p.name, cpf: p.cpf, birthDate: p.birthDate || null }))}
+                                    onSelect={(p) => setPatientData(prev => ({ ...prev, id: p.id, name: p.name, cpf: p.cpf, address: p.address || '', phone: p.phone || '', birthDate: p.birthDate || null }))}
                                 />
                             </div>
                             <Label className="text-[10px] font-black uppercase text-slate-400">Campos Dinâmicos</Label>
@@ -503,6 +507,7 @@ const AdminDocuments = () => {
             {/* Keep the printable document outside the editing grid so print pagination is independent of screen layout. */}
             {isPrintReady && (
                 <ClinicDocumentPrint
+                    clinic={clinic}
                     professional={currentUser}
                     patient={patientData}
                     content={documentContent}
