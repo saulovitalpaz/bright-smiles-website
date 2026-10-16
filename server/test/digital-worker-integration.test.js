@@ -51,6 +51,28 @@ test('isolated worker signs a transient synthetic identity and rejects PDF tampe
         const pdf = Buffer.from(result.pdfBase64, 'base64');
         assert.equal(crypto.createHash('sha256').update(pdf).digest('hex'), result.hash);
         assert.equal((await worker({ operation: 'validate', pdfBase64: result.pdfBase64 })).status, 'VALID');
+        // Exercise the public retrieval path with the actual signed bytes.
+        const accessToken = crypto.randomBytes(32).toString('base64url');
+        const accessDigest = crypto.createHash('sha256').update(accessToken).digest('hex');
+        const publicApp = express(); publicApp.use(express.json());
+        registerDigitalSigningRoutes(publicApp, {
+            prisma: { digitalPrescription: { findUnique: async ({ where }) => where.tokenDigest === accessDigest ? { signatureStatus: 'VALID', hash: result.hash, storageKey: 'synthetic-private-object' } : null } },
+            authenticateToken: (_req, res) => res.sendStatus(401),
+            storage: { readDigitalPrescription: async key => { assert.equal(key, 'synthetic-private-object'); return pdf; } },
+        });
+        const publicServer = publicApp.listen(0, '127.0.0.1');
+        await new Promise(resolve => publicServer.once('listening', resolve));
+        try {
+            const endpoint = 'http://127.0.0.1:' + publicServer.address().port + '/prescription-validation';
+            const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: accessToken }) };
+            const lookup = await fetch(endpoint + '/token', options);
+            assert.equal((await lookup.json()).fileAvailable, true);
+            const download = await fetch(endpoint + '/file', options);
+            assert.equal(download.status, 200);
+            const retrieved = Buffer.from(await download.arrayBuffer());
+            assert.deepEqual(retrieved, pdf);
+            assert.equal((await worker({ operation: 'validate', pdfBase64: retrieved.toString('base64') })).status, 'VALID');
+        } finally { await new Promise(resolve => publicServer.close(resolve)); }
         pdf[7] = pdf[7] === 55 ? 54 : 55;
         assert.equal((await worker({ operation: 'validate', pdfBase64: pdf.toString('base64') })).status, 'INVALID');
         await assert.rejects(worker({ operation: 'inspect', ...fixture.credential, password: crypto.randomBytes(16).toString('hex') }), error => error.status === 422 && !error.message.includes(fixture.credential.password));

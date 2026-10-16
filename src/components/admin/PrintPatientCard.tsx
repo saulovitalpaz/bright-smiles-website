@@ -1,6 +1,15 @@
 type PrintPatient = { name: string; cpf: string; phone?: string; address?: string };
 
-export function PrintPatientCard({ patient, blank = false }: { patient: PrintPatient; blank?: boolean }) {
+export function PrintPatientCard({ patient, blank = false, compact = false }: { patient: PrintPatient; blank?: boolean; compact?: boolean }) {
+  if (compact) return <div className="print-patient-block mb-4 space-y-1 border-b border-slate-200 pb-2 text-[10px] leading-relaxed">
+    <p><span className="text-slate-500">Paciente: </span><strong data-patient-value>{blank ? null : patient.name || "________________________________"}</strong></p>
+    <div className="flex flex-wrap gap-x-6">
+      <p><span className="text-slate-500">CPF: </span><span data-patient-value>{blank ? null : patient.cpf || "___.___.___-__"}</span></p>
+      {patient.phone && <p><span className="text-slate-500">Telefone: </span><span data-patient-value>{blank ? null : patient.phone}</span></p>}
+    </div>
+    {patient.address && <p><span className="text-slate-500">Endereço: </span><span data-patient-value>{blank ? null : patient.address}</span></p>}
+  </div>;
+
   return <div className="print-patient-block mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">
     <div className="grid grid-cols-12 gap-x-4 gap-y-2">
       <div className="col-span-7">

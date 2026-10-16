@@ -164,7 +164,22 @@ function registerDigitalSigningRoutes(app, dependencies) {
         if (typeof req.body?.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(req.body.token)) return res.json({ status: 'INVALID' });
         const document = await prisma.digitalPrescription.findUnique({ where: { tokenDigest: digest(req.body.token) }, select: { signatureStatus: true, professionalName: true, professionalCro: true, signedAt: true, hash: true } });
         if (!document) return res.json({ status: 'INVALID' });
-        res.json({ status: document.signatureStatus, scope: 'ISSUANCE_RECORD', checkedAt: document.signedAt, signatureStatusAtIssuance: document.signatureStatus, professionalName: document.professionalName, professionalCro: document.professionalCro, signedAt: document.signedAt, hash: document.hash });
+        res.json({ fileAvailable: document.signatureStatus === 'VALID', status: document.signatureStatus, scope: 'ISSUANCE_RECORD', checkedAt: document.signedAt, signatureStatusAtIssuance: document.signatureStatus, professionalName: document.professionalName, professionalCro: document.professionalCro, signedAt: document.signedAt, hash: document.hash });
+    }));
+    // Public capability access: the high-entropy token is required in the POST body.
+    // Production origin checks apply; bucket keys and signed storage URLs stay server-side.
+    app.post('/prescription-validation/file', noStore, publicLimit, route(async (req, res) => {
+        if (typeof req.body?.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(req.body.token)) throw fail(404, 'Documento não encontrado.');
+        const document = await prisma.digitalPrescription.findUnique({ where: { tokenDigest: digest(req.body.token) }, select: { signatureStatus: true, storageKey: true, hash: true } });
+        if (!document || document.signatureStatus !== 'VALID') throw fail(404, 'Documento não encontrado.');
+        const pdf = await storage.readDigitalPrescription(document.storageKey);
+        if (digest(pdf) !== document.hash) throw fail(409, 'Integridade do documento inválida.');
+        res.type('application/pdf')
+            .set('Content-Disposition', 'inline; filename="receita-assinada.pdf"')
+            .set('X-Content-Type-Options', 'nosniff')
+            .set('Referrer-Policy', 'no-referrer')
+            .set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            .send(pdf);
     }));
     app.post('/prescription-validation/pdf', ...privateMiddleware, signingLimit, multipart(10 * 1024 * 1024, 'file'), route(async (req, res) => {
         if (!req.file?.buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) throw fail(400, 'Envie um PDF válido.');

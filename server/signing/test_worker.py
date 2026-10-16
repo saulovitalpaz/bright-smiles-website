@@ -223,6 +223,11 @@ class SigningTests(unittest.TestCase):
         self.assertEqual(signed['validation']['status'], 'VALID')
         original = base64.b64decode(signed['pdfBase64'])
         reader = self.engine.read_pdf(original)
+        links = [str(annotation.get_object()['/A']['/URI'])
+                 for page in reader.root['/Pages']['/Kids']
+                 for annotation in page.get_object().get('/Annots', [])
+                 if annotation.get_object().get('/Subtype') == '/Link']
+        self.assertIn(document['verificationUrl'], links)
         embedded = reader.embedded_signatures[0]
         byte_range = embedded.sig_object['/ByteRange']
         self.assertEqual(int(byte_range[2]) + int(byte_range[3]), len(original),

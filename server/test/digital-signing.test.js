@@ -33,7 +33,7 @@ test('public token validation returns only minimal allowlisted data', async () =
         const response = await request('/prescription-validation/token', false, 'POST', { token });
         assert.equal(response.status, 200);
         assert.equal(response.headers.get('cache-control'), 'no-store');
-        assert.deepEqual(Object.keys(await response.json()).sort(), ['checkedAt', 'hash', 'professionalCro', 'professionalName', 'scope', 'signatureStatusAtIssuance', 'signedAt', 'status']);
+        assert.deepEqual(Object.keys(await response.json()).sort(), ['checkedAt', 'fileAvailable', 'hash', 'professionalCro', 'professionalName', 'scope', 'signatureStatusAtIssuance', 'signedAt', 'status']);
         const invalid = await request('/prescription-validation/token', false, 'POST', { token: 'short' });
         assert.equal((await invalid.json()).status, 'INVALID');
     });
@@ -490,5 +490,57 @@ test('certificate upload identifies invalid fields before inspection without cha
             assert.equal(counts().inspections, 0);
             assert.equal(saved().sealedCredentials, 'encrypted-fixture');
         }
+    });
+});
+
+
+test('public PDF access requires a valid token and never trusts a document ID', async () => {
+    let lookups = 0; let reads = 0;
+    const prisma = { digitalPrescription: { findUnique: async () => { lookups++; return null; } } };
+    await withApi(prisma, async request => {
+        for (const body of [{}, { token: 'short' }, { id: 'known-document' }, { token: crypto.randomBytes(32).toString('base64url') }]) {
+            assert.equal((await request('/prescription-validation/file', false, 'POST', body)).status, 404);
+        }
+        assert.equal(lookups, 1); assert.equal(reads, 0);
+        assert.equal((await request('/prescription-validation/file')).status, 404);
+    }, { storage: { readDigitalPrescription: async () => { reads++; } } });
+});
+
+test('public PDF access returns the exact stored signed bytes with no public storage URL', async () => {
+    const token = crypto.randomBytes(32).toString('base64url');
+    const pdf = Buffer.from('%PDF-1.7\nSynthetic signed document');
+    const hash = crypto.createHash('sha256').update(pdf).digest('hex');
+    const prisma = { digitalPrescription: { findUnique: async ({ where }) => {
+        assert.equal(where.tokenDigest, crypto.createHash('sha256').update(token).digest('hex'));
+        return { signatureStatus: 'VALID', hash, storageKey: 'private-fixture' };
+    } } };
+    await withApi(prisma, async request => {
+        const response = await request('/prescription-validation/file', false, 'POST', { token });
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('content-type'), 'application/pdf');
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+        assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+        assert.match(response.headers.get('content-disposition'), /^inline;/);
+        assert.deepEqual(Buffer.from(await response.arrayBuffer()), pdf);
+    }, { storage: { readDigitalPrescription: async key => { assert.equal(key, 'private-fixture'); return pdf; } } });
+});
+
+test('public PDF access blocks altered bytes, invalid issuance and unavailable storage', async () => {
+    for (const state of ['altered', 'invalid', 'unavailable']) {
+        let reads = 0;
+        await withApi({ digitalPrescription: { findUnique: async () => ({ signatureStatus: state === 'invalid' ? 'INVALID' : 'VALID', hash: 'a'.repeat(64), storageKey: 'private-fixture' }) } }, async request => {
+            const response = await request('/prescription-validation/file', false, 'POST', { token: crypto.randomBytes(32).toString('base64url') });
+            assert.equal(response.status, state === 'invalid' ? 404 : state === 'altered' ? 409 : 503);
+            assert.ok(!JSON.stringify(await response.json()).includes('private-fixture'));
+            assert.equal(reads, state === 'invalid' ? 0 : 1);
+        }, { storage: { readDigitalPrescription: async () => { reads++; if (state === 'unavailable') throw new Error('private-fixture'); return Buffer.from('%PDF-altered'); } } });
+    }
+});
+
+test('public PDF access shares the token brute-force limit', async () => {
+    await withApi({}, async request => {
+        for (let index = 0; index < 30; index++) await request('/prescription-validation/token', false, 'POST', {});
+        assert.equal((await request('/prescription-validation/file', false, 'POST', {})).status, 429);
     });
 });

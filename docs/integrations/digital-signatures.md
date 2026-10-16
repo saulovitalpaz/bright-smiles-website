@@ -103,7 +103,8 @@ Preparação de produção em 13/10/2026: chave independente do cofre configurad
 | `GET /prescriptions/digital-documents/patient/:patientId` | Documentos emitidos pelo usuário atual; não retorna chaves de storage/segredos. |
 | `GET /prescriptions/digital-documents/:id[/file]` | Emissor atual; download reconfere hash e entrega bytes finais armazenados. |
 | `POST /prescription-validation/pdf` | Conta clínica autenticada; PDF validado em memória e processo isolado. |
-| `POST /prescription-validation/token` | Exceção pública deliberada: retorna registro mínimo de emissão, sem paciente/conteúdo/PDF. |
+| `POST /prescription-validation/file` | Exceção pública deliberada: exige token válido no corpo, busca somente o PDF correspondente no bucket privado e confere SHA-256 antes de entregar os bytes. |
+| `POST /prescription-validation/token` | Exceção pública deliberada: retorna registro mínimo de emissão e disponibilidade de acesso ao arquivo, sem conteúdo clínico no JSON. |
 
 No ambiente de produção, operações POST/DELETE continuam sujeitas à verificação de origem já existente no servidor. Todos os endpoints digitais enviam `Cache-Control: no-store` e usam limites de tentativas. O cofre consulta apenas o usuário da sessão, nunca um ID de profissional enviado pelo cliente.
 
@@ -151,4 +152,21 @@ O teste de integração Python/Node é opcional na suíte geral quando `SIGNING_
 
 A emissão incorpora certificados e evidências de revogação (DSS) na mesma revisão da assinatura PAdES, com `include_vri=False` e `TOGETHER_WITH_SIGNATURE`. Não acrescenta uma revisão depois da certificação `NO_CHANGES`. O teste de regressão confere que o ByteRange termina no fim do arquivo, preserva certificados/CRLs no DSS e rejeita adulteração. Isso não substitui a validação de confiança do leitor nem fornece carimbo do tempo. PDFs já emitidos permanecem inalterados; a mudança se aplica às novas emissões.
 
-O cabeçalho usa o logo ao lado das duas linhas do nome da clínica, ambas em Helvetica 10 pt, com menos altura antes dos dados do paciente.
+O layout anterior usava logo ao lado de duas linhas em Helvetica 10 pt. Esse desenho foi substituído pela revisão de 15/10/2026 descrita abaixo.
+
+
+## Correção de acesso e layout em 15/10/2026
+
+O token passa a ser uma credencial de acesso ao documento, além da consulta de emissão. Qualquer portador do token consegue recuperar o PDF correspondente; a página informa isso antes da consulta. O bucket permanece privado: um bucket público permitiria contornar a página oficial. A rota POST de arquivo compartilha o limite de tentativas da consulta, valida o digest, rejeita emissão inválida e compara o hash dos bytes armazenados. Sem token válido não há acesso anônimo ao arquivo. A proteção global de Origin em produção continua aplicável; Origin não substitui a autorização por token e pode ser reproduzida por clientes não navegador.
+
+O navegador guarda o token validado apenas em memória e envia-o no corpo POST, sem cookies ou referrer. O PDF só é solicitado após o clique. Visualização e download usam um blob local; seu URL é revogado ao trocar o token ou desmontar a página. Nenhuma chave S3, URL assinada de storage ou token é incluído no endereço da API. Não há alteração de esquema, chaves do cofre ou arquivos históricos.
+
+O gerador inclui um link HTTPS clicável com o mesmo token do QR, ampliado para 32 mm com margem e correção M. O diagnóstico local do PDF fornecido confirmou assinatura CMS íntegra, cobertura de todo o arquivo e QR contendo o endereço oficial correto; faltava o link clicável. A frase de demonstração exibida por outro serviço não estava codificada no QR.
+
+O Adobe confirmou que o documento não havia sido alterado e indicou limitação de política inválida no certificado A1. A validação criptográfica de integridade não comprova aceitação pela AATL. A política do certificado é emitida pela AC e não pode ser alterada pelo gerador de PDF. O erro deve ser tratado com a certificadora/validação de políticas do Acrobat, sem remover verificações. [Explicação Adobe](https://community.adobe.com/questions-9/previously-valid-signing-certificate-shows-invalid-policy-constraint-in-dc-2019-1238567).
+
+Layout revisado conforme solicitação: logo maior no canto superior esquerdo, título “Núcleo de Odontologia Especializada & Harmonização”, “Receituário” antes da identificação, paciente/CPF/data em duas linhas e mais largura útil para a prescrição. PDF assinado, PDF comum e impressão seguem a mesma direção visual. Os documentos já assinados não são regravados: novos links/layout exigem nova emissão, enquanto o token existente permite abrir o original armazenado após a publicação da correção.
+
+Verificações adicionais: acesso por token válido/inválido, integridade dos bytes recuperados, indisponibilidade de storage, limite de tentativas compartilhado, erro recuperável no frontend, descarte de blob e leitura independente do QR no PDF renderizado (documento curto/longo, duas resoluções). Dependências opcionais para renderização: signing/requirements-qa.txt; executar test_pdf_visual.py explicitamente na homologação. A pesquisa de Bird ID está em [bird-id-research.md](bird-id-research.md); nenhuma integração com o fornecedor foi ativada.
+
+Verificação final desta revisão: 330 testes frontend; 220 backend (integração opcional executada separadamente); 16 Python incluindo renderização/leitura QR; integração Node/Python aprovada com download por token e revalidação do PDF recuperado; inspeção visual desktop 1440 px e celular 390 px com dados sintéticos; TypeScript, build e scanner de segredos aprovados. Revisão independente sem achados críticos/importantes. Sem publicação em produção nesta tarefa.

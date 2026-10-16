@@ -49,26 +49,26 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e2e8f0",
     paddingBottom: 16,
     alignItems: "center",
+    flexDirection: "row",
   },
   logoText: {
-    fontSize: 20,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    marginBottom: 4,
+    fontFamily: "Times-Bold",
+    fontSize: 17,
+    lineHeight: 1.3,
+    color: "#0f172a",
   },
-  subLogoText: {
-    fontSize: 8,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    color: "#64748b",
+  prescriptionTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    marginBottom: 10,
   },
   patientInfo: {
-    backgroundColor: "#f8fafc",
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 5,
-    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e2e8f0",
+    marginBottom: 14,
+    fontSize: 10,
+    lineHeight: 1.5,
   },
   label: {
     fontSize: 7,
@@ -86,11 +86,7 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
     marginTop: 10,
     marginBottom: 18,
-    padding: 12,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "#e2e8f0",
-    borderRadius: 6,
+    padding: 0,
   },
   odontogram: {
     marginBottom: 16,
@@ -334,23 +330,21 @@ export function PrescriptionDocument({
         </Page>
       ) : null}
       <Page size="A4" style={{ ...styles.page, padding: tokens.pagePadding }}>
-        <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: tokens.sectionGap }}>
-          <Image src={window.location.origin + '/images/logo-oficial.png'} style={{ height: 60, objectFit: 'contain', marginBottom: 12 }} />
-          <Text style={styles.logoText}>NÚCLEO ODONTOLÓGICO</Text>
-          <Text style={styles.subLogoText}>Especializado & Harmonização</Text>
+        <View style={{ ...styles.header, marginBottom: tokens.sectionGap, paddingBottom: 10 }} wrap={false}>
+          <Image src={window.location.origin + '/images/logo-oficial.png'} style={{ width: 66, height: 64, objectFit: 'contain', marginRight: 18 }} />
+          <View>
+            <Text style={styles.logoText}>Núcleo de Odontologia</Text>
+            <Text style={styles.logoText}>Especializada & Harmonização</Text>
+          </View>
         </View>
 
-        <View style={{ ...styles.patientInfo, padding: tokens.tableCellPadding, marginBottom: tokens.sectionGap }} wrap={false}>
-          <Text style={styles.label}>Paciente</Text>
-          <Text style={styles.value}>{data.name}</Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 7 }}>
-            <View>
-              <Text style={styles.label}>CPF</Text>
-              <Text style={styles.value}>{data.cpf}</Text>
-            </View>
-            <View>
-              <Text style={styles.label}>Data</Text>
-              <Text style={styles.value}>{new Date().toLocaleDateString("pt-BR")}</Text>
+        <View wrap={false}>
+          <Text style={styles.prescriptionTitle}>RECEITUÁRIO</Text>
+          <View style={{ ...styles.patientInfo, marginBottom: tokens.sectionGap }}>
+            <Text><Text style={{ color: '#64748b' }}>Paciente: </Text><Text style={{ fontWeight: 700 }}>{data.name}</Text></Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+              <Text><Text style={{ color: '#64748b' }}>CPF: </Text>{data.cpf}</Text>
+              <Text><Text style={{ color: '#64748b' }}>Data: </Text>{new Date().toLocaleDateString("pt-BR")}</Text>
             </View>
           </View>
         </View>

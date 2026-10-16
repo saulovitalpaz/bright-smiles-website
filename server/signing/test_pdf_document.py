@@ -12,6 +12,15 @@ class PrescriptionLayoutTests(unittest.TestCase):
                     content=content, date='2026-10-15T12:00:00Z',
                     verificationUrl='https://example.invalid/validar-receita#token=synthetic-layout-test')
 
+    def test_validation_link_is_clickable_and_contains_the_document_token(self):
+        document = self.document()
+        reader = PdfFileReader(io.BytesIO(render_document(document, {'subjectName': 'Certificado ficticio'})))
+        links = [str(annotation.get_object()['/A']['/URI'])
+                 for page in reader.root['/Pages']['/Kids']
+                 for annotation in page.get_object().get('/Annots', [])
+                 if annotation.get_object().get('/Subtype') == '/Link']
+        self.assertIn(document['verificationUrl'], links)
+
     def test_official_logo_is_embedded_on_every_page(self):
         for content in ('Orientacao sintetica.', '\n'.join(['Linha de teste.'] * 180), 'Paragrafo longo. ' * 1800):
             with self.subTest(long_document=len(content) > 100):

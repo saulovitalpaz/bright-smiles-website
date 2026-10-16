@@ -535,10 +535,9 @@ const AdminPrescription = () => {
                             )}
 
                             <div className="print-section mb-5 flex items-center gap-4 border-b border-slate-200 pb-4">
-                                <img src="/images/logo-oficial.png" alt="Logo" className="h-14 w-14 object-contain" />
+                                <img src="/images/logo-oficial.png" alt="Logo" className="h-20 w-20 object-contain" />
                                 <div>
-                                    <h1 className="text-lg font-serif font-black uppercase leading-tight tracking-wider text-slate-900">Núcleo Odontológico</h1>
-                                    <p className="text-[8px] font-medium uppercase tracking-[0.2em] text-slate-400">Especializado & Harmonização</p>
+                                    <h1 className="text-xl font-serif font-bold leading-tight text-slate-900">Núcleo de Odontologia<br />Especializada &amp; Harmonização</h1>
                                 </div>
                                 <div className="ml-auto text-right">
                                     <p className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Prescrição emitida em</p>
@@ -546,9 +545,10 @@ const AdminPrescription = () => {
                                 </div>
                             </div>
 
-                            <PrintPatientCard patient={patientData} />
+                            <h2 className="print-section mb-3 text-sm font-bold uppercase tracking-wide">Receituário</h2>
+                            <PrintPatientCard patient={patientData} compact />
 
-                            <div className="print-flow-content mb-6 rounded-xl border border-dotted border-slate-200 px-5 py-3 font-serif text-base leading-relaxed text-slate-800">
+                            <div className="print-flow-content mb-6 py-1 font-serif text-base leading-relaxed text-slate-800">
                                 <div dangerouslySetInnerHTML={{ __html: prescriptionContent || editorRef.current?.innerHTML || "" }}></div>
                             </div>
 
