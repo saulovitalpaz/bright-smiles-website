@@ -9,7 +9,7 @@
     border-radius: 0 20px 20px 0;
     box-shadow: 12px 0 36px -18px hsl(30 25% 20% / .24);
     padding-left: env(safe-area-inset-left);
-    width: min(84vw, 360px);
+    width: min(50vw, 360px);
     transform: translateX(-105%);
     visibility: hidden;
     transition: transform var(--navigation-exit) cubic-bezier(.22, 1, .36, 1);
@@ -58,6 +58,13 @@
   }
   .admin-brand p { font-family: var(--font-sans); font-size: 12px; line-height: 1.5; margin-top: 6px; color: hsl(var(--sidebar-foreground) / .8); }
   @media (max-width: 1023px) {
+    .admin-sidebar-branding {
+      align-items: center;
+      flex-direction: column;
+      gap: 12px;
+      padding: 56px 12px 20px;
+      text-align: center;
+    }
     .admin-brand h2 {
       font-size: 16px;
     }
