@@ -46,11 +46,6 @@
   .admin-logo-frame {
     width: 64px;
     height: 64px;
-    padding: 3px;
-    background: white;
-    border: 1px solid hsl(30 15% 88%);
-    border-radius: 16px;
-    overflow: hidden;
   }
   .admin-brand h2 {
     font-family: var(--font-serif);
@@ -96,9 +91,9 @@
     .admin-sidebar, .admin-sidebar[data-state] { visibility: visible; transform: none; width: var(--admin-sidebar-expanded); }
     .admin-sidebar[data-collapsed="true"] { width: var(--admin-sidebar-collapsed); }
     .admin-sidebar-branding { padding: 24px 20px; min-height: 200px; }
-    .admin-logo-frame { width: 88px; height: 88px; border-radius: 20px; }
+    .admin-logo-frame { width: 88px; height: 88px; }
     .admin-sidebar[data-collapsed="true"] .admin-sidebar-branding { padding: 20px 12px; min-height: 108px; }
-    .admin-sidebar[data-collapsed="true"] .admin-logo-frame { width: 44px; height: 44px; padding: 2px; border-radius: 12px; }
+    .admin-sidebar[data-collapsed="true"] .admin-logo-frame { width: 44px; height: 44px; }
     .admin-sidebar[data-collapsed="true"] .admin-collapse-toggle { top: 86px; }
     .admin-sidebar[data-collapsed="false"] .admin-brand { animation: admin-brand-reveal 240ms ease both; }
     .admin-sidebar[data-collapsed="false"] .admin-nav-item span { animation: admin-brand-reveal 240ms ease both; }
