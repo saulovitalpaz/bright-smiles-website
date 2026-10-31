@@ -9,7 +9,7 @@
     border-radius: 0 20px 20px 0;
     box-shadow: 12px 0 36px -18px hsl(30 25% 20% / .24);
     padding-left: env(safe-area-inset-left);
-    width: min(88vw, 336px);
+    width: min(90vw, 400px);
     transform: translateX(-105%);
     visibility: hidden;
     transition: transform var(--navigation-exit) cubic-bezier(.22, 1, .36, 1);
@@ -60,14 +60,9 @@
   @media (max-width: 1023px) {
     .admin-brand h2 {
       font-size: 16px;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3;
-      overflow: hidden;
     }
     @media (max-height: 500px) {
       .admin-sidebar-branding { padding-block: 16px; }
-      .admin-brand h2 { -webkit-line-clamp: 2; }
     }
   }
   .admin-nav-item, .admin-nav-subitem { color: hsl(var(--sidebar-foreground) / .85); transition: background-color 160ms ease, color 160ms ease; }
