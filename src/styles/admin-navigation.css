@@ -9,7 +9,7 @@
     border-radius: 0 20px 20px 0;
     box-shadow: 12px 0 36px -18px hsl(30 25% 20% / .24);
     padding-left: env(safe-area-inset-left);
-    width: min(90vw, 400px);
+    width: min(84vw, 360px);
     transform: translateX(-105%);
     visibility: hidden;
     transition: transform var(--navigation-exit) cubic-bezier(.22, 1, .36, 1);
