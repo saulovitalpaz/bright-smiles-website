@@ -33,3 +33,8 @@ As inconsistências encontradas incluíam títulos serifados misturados com sans
 - A homepage não é alcançada; portais deixam de corresponder aos seletores após sair do painel.
 
 Validação direcionada: testes `AdminLayout.test.tsx` (2 aprovados); TypeScript da aplicação aprovado. A validação visual depende da revisão integrada no navegador: testes DOM não medem fontes renderizadas.
+
+
+## Navegação revisada em 2026-10-31
+
+A marca do sidebar usa Playfair Display, peso 600, 18/23,4 px no desktop e 16/20,8 px no mobile. O slogan usa Inter 12/18 px. Nomes extensos ocupam até três linhas no mobile (duas em telas baixas), preservando o texto completo acessível. A navegação mantém Inter e controles de no mínimo 44 px. O estilo específico está em `src/styles/admin-navigation.css`; documentos e homepage não são alterados.
