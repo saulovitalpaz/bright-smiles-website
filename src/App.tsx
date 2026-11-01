@@ -32,6 +32,9 @@ const AdminPersonalFinance = lazy(() => import("./pages/AdminPersonalFinance"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminPatients = lazy(() => import("./pages/AdminPatients"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
+const AdminTreatmentPlans = lazy(() => import("./pages/AdminTreatmentPlans"));
+const AdminClinicalProcedures = lazy(() => import("./pages/AdminClinicalProcedures"));
+const AdminPatientHistory = lazy(() => import("./pages/AdminPatientHistory"));
 
 const queryClient = new QueryClient();
 
@@ -86,6 +89,9 @@ const router = createBrowserRouter(createRoutesFromElements(
             <Route path="/admin/settings/estoque" element={<RoleProtectedRoute><AdminStock /></RoleProtectedRoute>} />
             <Route path="/admin/users" element={<RoleProtectedRoute><AdminUsers /></RoleProtectedRoute>} />
             <Route path="/admin/pacientes" element={<RoleProtectedRoute><AdminPatients /></RoleProtectedRoute>} />
+            <Route path="/admin/pacientes/:id" element={<RoleProtectedRoute><AdminPatientHistory /></RoleProtectedRoute>} />
+            <Route path="/admin/planos-tratamento" element={<RoleProtectedRoute><AdminTreatmentPlans /></RoleProtectedRoute>} />
+            <Route path="/admin/settings/minha-tabela" element={<RoleProtectedRoute><AdminClinicalProcedures /></RoleProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
   </Route>,

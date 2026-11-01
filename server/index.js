@@ -42,6 +42,8 @@ const { syncAppointmentFinance, normalizePaymentStatus } = require('./utils/appo
 const { registerStockRoutes } = require('./routes/stock');
 const { registerDigitalSigningRoutes } = require('./routes/digitalSigning');
 const { registerTeamPhotoRoutes } = require('./routes/teamPhotos');
+const { registerTreatmentPlanRoutes } = require('./routes/treatmentPlans');
+const { registerClinicalConditionRoutes } = require('./routes/clinicalConditions');
 const { syncFacialStock, validateFacialNotes, StockError } = require('./utils/facialStock');
 const {
     parseFinancePeriod,
@@ -227,6 +229,8 @@ const authorizeRole = (roles) => {
 
 registerStockRoutes(app, prisma, authenticateToken, authorizeRole);
 registerDigitalSigningRoutes(app, { prisma, authenticateToken, decrypt });
+registerTreatmentPlanRoutes(app, { prisma, authenticateToken, authorizeRole });
+registerClinicalConditionRoutes(app, { prisma, authenticateToken, authorizeRole });
 
 app.post('/upload', authenticateToken, authorizeRole(['admin', 'dentist']), upload.single('file'), async (req, res) => {
     try {
@@ -1620,12 +1624,18 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
 
         const transactions = await prisma.financeTransaction.findMany({
             where,
-            include: { patient: { select: { name: true, cpf: true, phone: true, address: true } } },
+            include: {
+                patient: { select: { name: true, cpf: true, phone: true, address: true } },
+                treatmentPlanPayment: { select: { planId: true } },
+            },
             orderBy: { date: 'desc' }
         });
-        res.json(transactions.map((transaction) => transaction.patient
-            ? { ...transaction, patient: { ...transaction.patient, cpf: decrypt(transaction.patient.cpf) } }
-            : transaction));
+        res.json(transactions.map((transaction) => ({
+            ...transaction,
+            source: transaction.treatmentPlanPaymentId ? 'treatment_plan' : null,
+            treatmentPlanId: transaction.treatmentPlanPayment?.planId || null,
+            ...(transaction.patient ? { patient: { ...transaction.patient, cpf: decrypt(transaction.patient.cpf) } } : {}),
+        })));
     } catch (error) {
         res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Unable to load finance transactions.' });
     }
@@ -1659,6 +1669,7 @@ app.put('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), 
         const id = parseFinanceTransactionId(req.params.id);
         const existingTransaction = await prisma.financeTransaction.findUnique({ where: { id } });
         if (!existingTransaction) return res.status(404).json({ error: 'Finance transaction not found.' });
+        if (existingTransaction.treatmentPlanPaymentId) return res.status(409).json({ error: 'Recebimentos de planos devem ser corrigidos pelo histórico do plano.' });
 
         const data = await validateFinanceTransactionInput(req.body, existingTransaction);
         if (hasFinanceField(req.body, 'patientId')) {
@@ -1700,6 +1711,9 @@ app.put('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), 
 app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']), async (req, res) => {
     try {
         const id = parseFinanceTransactionId(req.params.id);
+        const existingTransaction = await prisma.financeTransaction.findUnique({ where: { id } });
+        if (!existingTransaction) return res.status(404).json({ error: 'Finance transaction not found.' });
+        if (existingTransaction.treatmentPlanPaymentId) return res.status(409).json({ error: 'Recebimentos vinculados a planos não podem ser excluídos pelo financeiro genérico.' });
         await prisma.financeTransaction.delete({
             where: { id }
         });

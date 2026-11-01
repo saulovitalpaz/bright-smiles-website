@@ -16,6 +16,10 @@ import {
 import { derivePatientAge } from "@/lib/patient-age";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
+import type { ClinicalProcedure } from "@/lib/treatmentPlans";
+import type { ClinicalConditionGroup } from "@/lib/clinicalConditions";
+import { fetchClient } from "@/lib/api";
+import type { ClinicalConditionType, ConditionTarget } from "./odontogram/odontogramModel";
 
 export type { ToothData, ToothFaceData } from "./odontogram/odontogramModel";
 
@@ -27,9 +31,25 @@ interface OdontogramProps {
   birthDate?: string | Date | null;
   dentition?: Dentition;
   onPrint?: () => void;
+  procedures?: ClinicalProcedure[];
+  onAddProcedure?: (procedure: ClinicalProcedure, toothNumber: number, conditionType: ClinicalConditionType, targets: ConditionTarget[]) => void;
 }
 
-const Odontogram = ({ data, onChange, readOnly = false, printable = false, birthDate = null, dentition, onPrint }: OdontogramProps): JSX.Element => {
+const Odontogram = ({ data, onChange, readOnly = false, printable = false, birthDate = null, dentition, onPrint, procedures = [], onAddProcedure }: OdontogramProps): JSX.Element => {
+  const [conditionGroups, setConditionGroups] = useState<ClinicalConditionGroup[]>([]);
+  useEffect(() => {
+    if (readOnly || printable) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetchClient('/clinical-conditions');
+        if (!response.ok) return;
+        const result = await response.json();
+        if (active && Array.isArray(result)) setConditionGroups(result);
+      } catch { /* Existing records remain readable when the catalog is unavailable. */ }
+    })();
+    return () => { active = false; };
+  }, [readOnly, printable]);
   const derivedDentition = derivePatientAge(birthDate).dentition;
   const requestedDentition = dentition ?? (derivedDentition === "legacy" ? "permanent" : derivedDentition);
   const layeredData = useMemo(() => {
@@ -56,7 +76,7 @@ const Odontogram = ({ data, onChange, readOnly = false, printable = false, birth
         const record = layeredData.teeth[String(number)];
         const legacyTooth = "version" in data ? { status: "Saudável" as const, notes: record?.notes ?? "" } : getTooth(data, number);
         const details = record?.conditions.map((condition) =>
-          `${getConditionDisplayName(condition.type)} (${getClinicalStageLabel(condition.stage)}): ${condition.targets.map((target) => getConditionTargetLabel(number, target)).join(", ")}`,
+          `${(condition.label || getConditionDisplayName(condition.type))} (${getClinicalStageLabel(condition.stage)}): ${condition.targets.map((target) => getConditionTargetLabel(number, target)).join(", ")}`,
         );
         const content = <>
           <span className="font-mono text-[10px] text-slate-500">{number}</span>
@@ -67,7 +87,7 @@ const Odontogram = ({ data, onChange, readOnly = false, printable = false, birth
               {record.conditions.map((condition, index) => (
                 <span key={condition.id} title={details?.[index]} className="break-words rounded border px-0.5 py-1 text-center text-[9px] leading-tight"
                   style={{ borderColor: getConditionVisual(condition).stroke, backgroundColor: getConditionVisual(condition).fill, color: "#0f172a" }}>
-                  {getConditionDisplayName(condition.type)}
+                  {(condition.label || getConditionDisplayName(condition.type))}
                 </span>
               ))}
             </span>
@@ -143,7 +163,8 @@ const Odontogram = ({ data, onChange, readOnly = false, printable = false, birth
                 }} />
               <div className="mt-5 border-t border-slate-700 pt-5">
                 <h3 className="mb-3 text-sm font-semibold text-white">Registro clínico em camadas</h3>
-                <ClinicalConditionEditor key={selectedTooth} initialCondition={editingCondition} toothNumber={selectedTooth}
+                <ClinicalConditionEditor key={selectedTooth} initialCondition={editingCondition} toothNumber={selectedTooth} conditionGroups={conditionGroups}
+                  procedures={procedures} onAddProcedure={onAddProcedure}
                   onCancel={() => setEditingCondition(null)}
                   onSave={(condition) => {
                     if (readOnly) return;

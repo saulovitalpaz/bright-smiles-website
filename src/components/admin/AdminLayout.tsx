@@ -101,6 +101,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 subItems: [
                     { label: "Consultas", href: "/admin/consultas" },
                     { label: "Pacientes", href: "/admin/pacientes" },
+                    { label: "Planos de tratamento", href: "/admin/planos-tratamento" },
                     { label: "Prescrição", href: "/admin/prescricao" },
                     { label: "Termos e Documentos", href: "/admin/documentos" },
                 ]
@@ -117,6 +118,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
                 subItems: [
                     { label: "Geral", href: "/admin/settings" },
                     { label: "Estoque", href: "/admin/settings/estoque" },
+                    { label: "Minha tabela", href: "/admin/settings/minha-tabela" },
                     { label: "Equipe", href: "/admin/users" },
                 ]
             },

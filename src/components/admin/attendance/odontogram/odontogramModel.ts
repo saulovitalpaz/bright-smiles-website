@@ -87,12 +87,12 @@ export const CLINICAL_CATALOG = {
   ortodontia: ["bracket", "banda", "contencao", "aparelho"],
 } as const;
 
-export type ClinicalCategory = keyof typeof CLINICAL_CATALOG | "legado";
-export type ClinicalConditionType = (typeof CLINICAL_CATALOG)[Exclude<ClinicalCategory, "legado">][number] | "legado_tratar" | "legado_tratado" | "legado_ausente" | "legado_ponte";
+export type ClinicalCategory = keyof typeof CLINICAL_CATALOG | "legado" | `custom_${string}`;
+export type ClinicalConditionType = (typeof CLINICAL_CATALOG)[keyof typeof CLINICAL_CATALOG][number] | `custom_${string}` | "legado_tratar" | "legado_tratado" | "legado_ausente" | "legado_ponte";
 export type ClinicalStage = "aAvaliar" | "planejado" | "emAndamento" | "concluido" | "monitorado" | "suspenso" | "removido";
 export type ConditionTarget = { kind: "tooth" } | { kind: "surface"; face: FaceKey; region: "entire" | "cervical" | "middle" | "incisalOcclusal" };
 export const MAX_CONDITION_TARGETS = 5;
-export interface ClinicalCondition { id: string; category: ClinicalCategory; type: ClinicalConditionType; targets: ConditionTarget[]; stage: ClinicalStage; notes?: string; }
+export interface ClinicalCondition { id: string; category: ClinicalCategory; type: ClinicalConditionType; targets: ConditionTarget[]; stage: ClinicalStage; notes?: string; label?: string; }
 export interface ToothRecord { notes: string; conditions: ClinicalCondition[]; }
 export interface OdontogramV2 { version: 2; dentition: "permanent"; teeth: Record<string, ToothRecord>; }
 export interface OdontogramV3 { version: 3; dentition: Dentition; teeth: Record<string, ToothRecord>; }

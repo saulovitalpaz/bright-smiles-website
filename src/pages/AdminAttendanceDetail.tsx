@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PatientPicker } from "@/components/admin/PatientPicker";
 import PhotoGallery from "@/components/admin/attendance/PhotoGallery";
-import Odontogram from "@/components/admin/attendance/Odontogram";
+import TreatmentPlanAttendanceSection from "@/components/admin/attendance/TreatmentPlanAttendanceSection";
 import FacialHarmonizationWorkspace from "@/components/admin/attendance/facial/FacialHarmonizationWorkspace";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -806,12 +806,15 @@ const AdminAttendanceDetail = () => {
                             </p>
                         )}
                         {(data.appointmentType === 'odontologia' || data.appointmentType === 'ambos') && (
-                            <Odontogram
+                            <TreatmentPlanAttendanceSection
                                 data={data.dentalNotes}
                                 onChange={(notes) => updateField('dentalNotes', notes)}
-                                readOnly={readOnly || isSaving}
+                                appointmentId={id || "new"}
+                                patientId={data.patientId}
+                                patientName={data.patientName}
                                 birthDate={data.birthDate}
-                                onPrint={() => {
+                                readOnly={readOnly || isSaving}
+                                onPrintOdontogram={() => {
                                     if (!hasCompleteProfessionalIdentity(professional)) return toast.error("Configure o nome profissional e o CRO antes de imprimir.");
                                     setPrintReady(true);
                                 }}

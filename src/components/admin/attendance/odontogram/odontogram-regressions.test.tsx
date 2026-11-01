@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import Odontogram from "../Odontogram";
 import { type OdontogramData } from "./odontogramModel";
 
@@ -43,4 +43,9 @@ describe("odontogram regressions", () => {
     const occlusal = within(tooth).getByRole("img", { name: /Vista oclusal/ });
     expect(occlusal).toHaveAccessibleName(/carie.*fratura/);
   });
+});
+
+vi.mock("@/lib/api", async () => {
+  const { CLINICAL_CATALOG } = await import("./odontogramModel");
+  return { fetchClient: vi.fn(async () => ({ ok: true, json: async () => Object.entries(CLINICAL_CATALOG).map(([key, types]) => ({ key, name: key, active: true, conditions: types.map(type => ({ key: type, name: type.replace(/_/g, " "), groupKey: key, active: true })) })) })) };
 });

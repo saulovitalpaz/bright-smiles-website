@@ -27,13 +27,13 @@ export function OcclusalTooth({ toothNumber, record }: OcclusalToothProps): JSX.
   });
   const affectedFaces = faceConditions
     .filter(({ last }) => last)
-    .map(({ face, matching }) => `${getFaceLabels(toothNumber)[face]}: ${matching.map((condition) => `${getConditionDisplayName(condition.type)} (${getClinicalStageLabel(condition.stage)})`).join(", ")}`);
+    .map(({ face, matching }) => `${getFaceLabels(toothNumber)[face]}: ${matching.map((condition) => `${(condition.label || getConditionDisplayName(condition.type))} (${getClinicalStageLabel(condition.stage)})`).join(", ")}`);
   const wholeCondition = getLatestWholeToothCondition(record);
   const wholeConditionVisual = wholeCondition ? getConditionVisual(wholeCondition) : null;
   const accessibleName = [
     `Vista oclusal do dente ${toothNumber}`,
     affectedFaces.length ? affectedFaces.join("; ") : "sem condições registradas",
-    wholeCondition ? `dente inteiro: ${getConditionDisplayName(wholeCondition.type)} (${getClinicalStageLabel(wholeCondition.stage)})` : null,
+    wholeCondition ? `dente inteiro: ${(wholeCondition.label || getConditionDisplayName(wholeCondition.type))} (${getClinicalStageLabel(wholeCondition.stage)})` : null,
   ].filter(Boolean).join(". ");
 
   return (

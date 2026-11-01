@@ -14,6 +14,8 @@ import {
 } from "./odontogramModel";
 import { OdontogramStateSwatch } from "./OdontogramStateSwatch";
 import { ToothSurfaceSelector } from "./ToothSurfaceSelector";
+import { money, type ClinicalProcedure } from "@/lib/treatmentPlans";
+import type { ClinicalConditionGroup } from "@/lib/clinicalConditions";
 
 type EditableCategory = ClinicalCategory;
 const CLINICAL_STAGE_OPTIONS = getClinicalStageOptions();
@@ -29,9 +31,12 @@ interface ClinicalConditionEditorProps {
   onSave: (condition: ClinicalCondition) => void;
   onCancel: () => void;
   initialCondition?: ClinicalCondition | null;
+  procedures?: ClinicalProcedure[];
+  conditionGroups?: ClinicalConditionGroup[];
+  onAddProcedure?: (procedure: ClinicalProcedure, toothNumber: number, conditionType: ClinicalConditionType, targets: ConditionTarget[]) => void;
 }
 
-export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initialCondition = null }: ClinicalConditionEditorProps): JSX.Element {
+export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initialCondition = null, procedures = [], conditionGroups, onAddProcedure }: ClinicalConditionEditorProps): JSX.Element {
   const [category, setCategory] = useState<EditableCategory | "">(initialCondition?.category ?? "");
   const [type, setType] = useState<ClinicalConditionType | "">(initialCondition?.type ?? "");
   const [stage, setStage] = useState<ClinicalStage | "">(initialCondition?.stage ?? "");
@@ -47,10 +52,15 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initial
     setTargetError("");
     setNotes(initialCondition?.notes ?? "");
   }, [initialCondition]);
-  const types = category === "legado"
+  const availableGroups = conditionGroups?.filter(group => group.active && group.conditions.some(condition => condition.active));
+  const availableConditions = conditionGroups?.flatMap(group => group.active ? group.conditions.filter(condition => condition.active) : []);
+  const configuredTypes = availableConditions?.filter(condition => condition.groupKey === category).map(condition => condition.key);
+  const types: readonly ClinicalConditionType[] = configuredTypes !== undefined
+    ? [...new Set([...configuredTypes, ...(initialCondition?.category === category ? [initialCondition.type] : [])])]
+    : category === "legado"
     ? LEGACY_TYPES
     : category
-      ? CLINICAL_CATALOG[category]
+      ? CLINICAL_CATALOG[category as keyof typeof CLINICAL_CATALOG] || []
       : [];
   const allowedTargets = type ? getAllowedTargets(type) : [];
   const allowsSurface = allowedTargets.includes("surface");
@@ -85,7 +95,8 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initial
     <form className="space-y-3" onSubmit={(event) => {
       event.preventDefault();
       if (!canSave || !category || !type || !stage) return;
-      onSave(createCondition({ id: initialCondition?.id, category, type, stage, targets, notes: notes.trim() || undefined }));
+      const label = availableConditions?.find(condition => condition.key === type)?.name || initialCondition?.label;
+      onSave(createCondition({ id: initialCondition?.id, category, type, stage, targets, notes: notes.trim() || undefined, ...(label ? { label } : {}) }));
       resetForm();
     }}>
       <label className="block text-sm">Categoria
@@ -94,15 +105,19 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initial
         }}>
           <option value="">Selecione</option>
           {initialCondition?.category === "legado" ? <option value="legado">Legado (migrado)</option> : null}
-          {Object.keys(CLINICAL_CATALOG).map((value) => <option key={value} value={value}>{value}</option>)}
+          {availableGroups ? <>
+            {availableGroups.map(group => <option key={group.key} value={group.key}>{group.name}</option>)}
+            {initialCondition && initialCondition.category !== "legado" && !availableGroups.some(group => group.key === initialCondition.category) ? <option value={initialCondition.category}>Grupo do registro anterior</option> : null}
+          </> : Object.keys(CLINICAL_CATALOG).map((value) => <option key={value} value={value}>{value}</option>)}
         </select>
       </label>
       <label className="block text-sm">Procedimento
         <select aria-label="Procedimento" className="mt-1 w-full rounded border border-slate-600 bg-slate-950 p-2 text-slate-100 disabled:opacity-60" disabled={!category} value={type} onChange={(event) => { setType(event.target.value as ClinicalConditionType); setTargets([]); setTargetError(""); }}>
           <option value="">Selecione</option>
-          {types.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
+          {types.map((value) => <option key={value} value={value}>{availableConditions?.find(condition => condition.key === value)?.name || (initialCondition?.type === value ? initialCondition.label : null) || value.replace(/_/g, " ")}</option>)}
         </select>
       </label>
+      {availableGroups?.length === 0 ? <p role="status" className="text-sm text-slate-300">Nenhuma condição habilitada. Configure os grupos e condições em Minha tabela.</p> : null}
       {type ? (
         <div className="space-y-3">
           {allowsSurface ? (
@@ -135,6 +150,17 @@ export function ClinicalConditionEditor({ toothNumber, onSave, onCancel, initial
           {targetError ? <p className="text-sm text-amber-300" role="alert">{targetError}</p> : null}
         </div>
       ) : null}
+      {type && targets.length > 0 && onAddProcedure ? (() => {
+        const suggestions = procedures.filter((procedure) => procedure.conditionTypes.includes(type as ClinicalConditionType));
+        if (!suggestions.length) return null;
+        return <section aria-label="Procedimentos relacionados ao plano" className="space-y-2 rounded-lg border border-teal-700/50 bg-teal-950/30 p-3">
+          <div><h3 className="text-sm font-semibold text-teal-100">Procedimentos da tabela</h3><p className="text-xs text-slate-400">Relacionados a esta condição. Adicionar aqui não altera o registro clínico.</p></div>
+          <div className="space-y-2">{suggestions.map((procedure) => <div key={procedure.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2">
+            <div className="min-w-0"><p className="break-words text-sm text-slate-100">{procedure.name}</p><p className="text-xs text-slate-400">{procedure.category} · {money(procedure.price)}{procedure.pricingUnit === "face" ? " por face" : procedure.pricingUnit === "tooth" ? " por dente" : " por procedimento"}</p></div>
+            <button type="button" className="min-h-11 shrink-0 rounded-md bg-teal-700 px-3 text-sm font-semibold text-white hover:bg-teal-600" onClick={() => onAddProcedure(procedure, toothNumber, type as ClinicalConditionType, targets)}>Adicionar ao plano</button>
+          </div>)}</div>
+        </section>;
+      })() : null}
       <fieldset className="space-y-2" aria-label="Situação">
         <legend className="text-sm">Situação</legend>
         <p className="text-xs text-slate-400">Selecione o estado clínico da ocorrência.</p>

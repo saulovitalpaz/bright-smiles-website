@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Trash2, RotateCcw, Save, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { derivePatientAge } from "@/lib/patient-age";
 
 interface Patient {
@@ -237,6 +237,7 @@ const AdminPatients = () => {
                                             </div>
                                             <Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-600" onClick={() => beginEdit(patient)} aria-label={`Editar ${patient.name}`}><Pencil size={16} /></Button>
                                             <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"><p>Telefone: {patient.phone || "—"}</p><p>{formatAgeSummary(patient.birthDate)}</p><p className="w-full break-words">Último atendimento: {appointment ? `${formatDate(appointment.date)}${appointment.procedure ? ` · ${appointment.procedure}` : ""}` : "—"}</p></div>
+                                            <div className="col-span-2"><Button asChild variant="outline" size="sm" className="min-h-10"><Link to={`/admin/pacientes/${patient.id}`}>Ver histórico e tratamentos</Link></Button></div>
                                             <Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-500 hover:text-red-700" onClick={() => deletePatient(patient)} aria-label={`Excluir ${patient.name}`}><Trash2 size={16} /></Button>
                                         </article>;
                                     })}

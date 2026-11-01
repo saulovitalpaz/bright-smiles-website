@@ -79,7 +79,7 @@ export function ClinicalConditionList({
   return (
     <ol aria-label={`Ocorrências clínicas do dente ${toothNumber}`} className="space-y-2">
       {conditions.map((condition, index) => {
-        const name = getConditionDisplayName(condition.type);
+        const name = (condition.label || getConditionDisplayName(condition.type));
         const stage = getClinicalStageLabel(condition.stage);
         const targets = formatConditionTargets(toothNumber, condition.targets);
         return (

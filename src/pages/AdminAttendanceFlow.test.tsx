@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -8,6 +8,11 @@ import AdminAttendanceDetail from "./AdminAttendanceDetail";
 vi.mock("@/components/admin/AdminLayout", () => ({ default: ({ children }: { children: ReactNode }) => <main><a href="/admin/consultas">Sair da consulta</a>{children}</main> }));
 vi.mock("@/components/admin/PatientPicker", () => ({ PatientPicker: () => <div>Seletor de paciente</div> }));
 vi.mock("@/components/admin/attendance/PhotoGallery", () => ({ default: () => null }));
+// This suite isolates consultation autosave; the plan composer has its own integration tests.
+vi.mock("@/components/admin/attendance/TreatmentPlanAttendanceSection", async () => {
+  const { default: Odontogram } = await import("@/components/admin/attendance/Odontogram");
+  return { default: ({ onPrintOdontogram, ...props }: ComponentProps<typeof Odontogram> & { onPrintOdontogram?: () => void }) => <Odontogram {...props} onPrint={onPrintOdontogram as () => void} /> };
+});
 vi.mock("@/components/admin/attendance/EvolutionTimeline", () => ({ default: () => null }));
 vi.mock("@/components/admin/attendance/facial/FacialHarmonizationWorkspace", () => ({ default: ({ onChange, readOnly }: { onChange?: (value: unknown) => void; readOnly?: boolean }) => !readOnly && onChange ? <button onClick={() => onChange({ version: 2, applications: [], legacyRegions: { frontal: { product: "Produto", dose: "1 ml", notes: "Aplicação" } } })}>Alterar facemap</button> : null }));
 vi.mock("@/components/admin/attendance/Odontogram", () => ({ default: ({ onChange, onPrint, readOnly }: { onChange?: (value: unknown) => void; onPrint?: () => void; readOnly?: boolean }) => <>{!readOnly && <button onClick={() => onChange?.({ version: 2, dentition: "permanent", teeth: { "11": { notes: "alterado", conditions: [] } } })}>Alterar odontograma</button>}{onPrint ? <button onClick={onPrint}>Imprimir odontograma</button> : <div>Mapa de impressão</div>}</> }));

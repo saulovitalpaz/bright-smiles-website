@@ -451,3 +451,8 @@ describe("Odontogram face-first workflow", () => {
     expect(screen.queryByRole("button", { name: /remover/i })).not.toBeInTheDocument();
   });
 });
+
+vi.mock("@/lib/api", async () => {
+  const { CLINICAL_CATALOG } = await import("./odontogram/odontogramModel");
+  return { fetchClient: vi.fn(async () => ({ ok: true, json: async () => Object.entries(CLINICAL_CATALOG).map(([key, types]) => ({ key, name: key, active: true, conditions: types.map(type => ({ key: type, name: type.replace(/_/g, " "), groupKey: key, active: true })) })) })) };
+});

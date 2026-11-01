@@ -55,7 +55,7 @@ export function AnatomicalTooth({
   const isMissing = conditionSymbol === "cross";
   const accessibleName = [
     `Dente ${toothNumber}, ${data.status}`,
-    wholeToothCondition ? `dente inteiro: ${getConditionDisplayName(wholeToothCondition.type)} (${getClinicalStageLabel(wholeToothCondition.stage)})` : null,
+    wholeToothCondition ? `dente inteiro: ${(wholeToothCondition.label || getConditionDisplayName(wholeToothCondition.type))} (${getClinicalStageLabel(wholeToothCondition.stage)})` : null,
   ].filter(Boolean).join(". ");
   const viewBoxHeight = anatomy.viewBox.split(/\s+/)[3];
   const orientationTransform =
