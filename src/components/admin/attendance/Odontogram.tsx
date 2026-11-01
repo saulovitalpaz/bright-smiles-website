@@ -28,6 +28,8 @@ interface OdontogramProps {
   onChange: (data: OdontogramData) => void;
   readOnly?: boolean;
   printable?: boolean;
+  compactReference?: boolean;
+  referenceTeeth?: number[];
   birthDate?: string | Date | null;
   dentition?: Dentition;
   onPrint?: () => void;
@@ -35,7 +37,7 @@ interface OdontogramProps {
   onAddProcedure?: (procedure: ClinicalProcedure, toothNumber: number, conditionType: ClinicalConditionType, targets: ConditionTarget[]) => void;
 }
 
-const Odontogram = ({ data, onChange, readOnly = false, printable = false, birthDate = null, dentition, onPrint, procedures = [], onAddProcedure }: OdontogramProps): JSX.Element => {
+const Odontogram = ({ data, onChange, readOnly = false, printable = false, compactReference = false, referenceTeeth = [], birthDate = null, dentition, onPrint, procedures = [], onAddProcedure }: OdontogramProps): JSX.Element => {
   const [conditionGroups, setConditionGroups] = useState<ClinicalConditionGroup[]>([]);
   useEffect(() => {
     if (readOnly || printable) return;
@@ -81,8 +83,8 @@ const Odontogram = ({ data, onChange, readOnly = false, printable = false, birth
         const content = <>
           <span className="font-mono text-[10px] text-slate-500">{number}</span>
           <AnatomicalTooth record={record} toothNumber={number} data={legacyTooth} />
-          <OcclusalTooth record={record} toothNumber={number} />
-          {record?.conditions.length ? (
+          {!compactReference ? <OcclusalTooth record={record} toothNumber={number} /> : <span className={`odontogram-plan-marker ${referenceTeeth.includes(number) ? "odontogram-plan-marker--selected" : ""}`} aria-label={referenceTeeth.includes(number) ? `Dente ${number} incluído no orçamento` : undefined} />}
+          {!compactReference && record?.conditions.length ? (
             <span className="flex w-full min-w-0 flex-col gap-1" aria-label={`Afecções do dente ${number}`}>
               {record.conditions.map((condition, index) => (
                 <span key={condition.id} title={details?.[index]} className="break-words rounded border px-0.5 py-1 text-center text-[9px] leading-tight"
@@ -125,7 +127,7 @@ const Odontogram = ({ data, onChange, readOnly = false, printable = false, birth
           <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Arcada Inferior</p>
         </div>
         <OdontogramLegend />
-        {readOnly && recorded.length > 0 ? (
+        {readOnly && !compactReference && recorded.length > 0 ? (
           <section aria-label="Resumo Clínico" className="mt-8 space-y-3">
             <h4 className="text-xs font-bold text-slate-400">Resumo Clínico</h4>
             <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">

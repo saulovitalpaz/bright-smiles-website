@@ -1,0 +1,40 @@
+@media print {
+  .treatment-plan-document { page: auto; font-family: var(--font-sans); font-size: 9pt; line-height: 1.35; font-variant-numeric: tabular-nums; }
+  .treatment-plan-document h2 { margin: 0 0 2mm; font: 700 13pt var(--font-sans); }
+  .treatment-plan-document h3 { margin: 0 0 2mm; font: 700 10pt var(--font-sans); }
+  .treatment-plan-identity { margin-bottom: 4mm; padding: 3mm; border: 1px solid #cbd5e1; border-radius: 2mm; }
+  .treatment-plan-identity p { margin: .4mm 0; }
+  .treatment-plan-document table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 4mm; }
+  .treatment-plan-document thead { display: table-header-group; }
+  .treatment-plan-document tr { break-inside: avoid; }
+  .treatment-plan-document :is(td, th) { padding: 1.2mm 2mm; text-align: left; vertical-align: top; border-bottom: 1px solid #cbd5e1; overflow-wrap: anywhere; }
+  .treatment-plan-document th { font-family: var(--font-sans); font-weight: 600; background: #f1f5f9; }
+  .treatment-plan-items th:first-child { width: 42%; }
+  .treatment-plan-items th:nth-child(2) { width: 26%; }
+  .treatment-plan-items :is(td, th):nth-child(n+3), .treatment-plan-payments :is(td, th):last-child { text-align: right; white-space: nowrap; }
+  .treatment-plan-items small { display: block; margin-top: 1mm; color: #475569; }
+  .treatment-plan-phase { break-after: avoid; }
+  .treatment-plan-phase th { background: #f8fafc; }
+  .treatment-plan-summary { margin: 2mm 0; }
+  .treatment-plan-summary dl { margin-left: auto; width: 75%; }
+  .treatment-plan-summary dl > div { display: flex; justify-content: space-between; gap: 4mm; padding: .5mm 0; }
+  .treatment-plan-summary dd { white-space: nowrap; }
+  .treatment-plan-balance { border-top: 1px solid #64748b; font-weight: 700; }
+  .treatment-plan-summary > p { margin-top: 2mm; font-size: 8pt; color: #475569; }
+  .treatment-plan-payments caption { text-align: left; font-weight: 700; margin-bottom: 2mm; }
+  .treatment-plan-note { margin: 2mm 0; overflow-wrap: anywhere; }
+  .treatment-plan-odontogram { margin: 3mm 0 4mm; }
+  .treatment-plan-odontogram > h3 { break-after: avoid; }
+  .treatment-plan-odontogram .print-odontogram { break-inside: avoid; }
+  .treatment-plan-odontogram .odontogram-card { overflow: visible !important; }
+  .treatment-plan-odontogram .odontogram-card article { break-inside: avoid; }
+  .treatment-plan-odontogram .anatomical-tooth--arch { height: 10mm !important; max-height: 10mm !important; }
+  .treatment-plan-odontogram .odontogram-card > div { padding: 2mm !important; }
+  .treatment-plan-odontogram .odontogram-card > div > div { gap: 1mm !important; }
+  .treatment-plan-odontogram .odontogram-card > div > div > p { display: none; }
+  .treatment-plan-odontogram > p { margin-top: 1mm; font-size: 7pt; color: #475569; }
+  .odontogram-plan-marker { display: block; height: .6mm; width: 3mm; }
+  .odontogram-plan-marker--selected { background: #334155; }
+  .treatment-plan-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; margin-top: 6mm; text-align: center; }
+  .treatment-plan-patient-signature { width: 80%; margin: 0 auto 2mm; border-top: 1px solid #94a3b8; }
+}
