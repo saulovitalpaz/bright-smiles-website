@@ -8,6 +8,8 @@ export interface ClinicalProcedure {
   name: string;
   category: string;
   pricingUnit: PricingUnit;
+  sector?: "odontologia" | "harmonizacao";
+  facialType?: string | null;
   price: number;
   conditionTypes: ClinicalConditionType[];
   active: boolean;
@@ -24,6 +26,7 @@ export interface TreatmentPlanItemDraft {
   quantity: number;
   unitPrice: number;
   toothNumber?: number | null;
+  facialRegion?: string | null;
   targets?: ConditionTarget[];
   notes?: string;
   quotedTotal?: number;

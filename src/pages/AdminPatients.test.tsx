@@ -18,6 +18,11 @@ beforeEach(() => {
 it("takes Edit and New directly to the patient form without submitting changes", async () => {
     render(<MemoryRouter><AdminPatients /></MemoryRouter>);
     const user = userEvent.setup();
+    const patientHistoryLink = await screen.findByRole("link", { name: "Ver histórico e tratamentos de Paciente fictício" });
+    expect(patientHistoryLink).toHaveAttribute("href", "/admin/pacientes/1");
+    expect(screen.queryByRole("button", { name: "Ver histórico e tratamentos" })).not.toBeInTheDocument();
+    const patientGrid = patientHistoryLink.closest("article")?.parentElement;
+    expect(patientGrid).toHaveClass("grid-cols-2", "sm:grid-cols-[repeat(auto-fill,minmax(15rem,18rem))]");
     await user.click(await screen.findByRole("button", { name: "Editar Paciente fictício" }));
     expect(screen.getByLabelText("Nome *")).toHaveValue("Paciente fictício");
     expect(screen.getByLabelText("Nome *")).toHaveFocus();

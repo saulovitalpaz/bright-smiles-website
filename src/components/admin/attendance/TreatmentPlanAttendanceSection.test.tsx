@@ -26,3 +26,22 @@ it('saves an editable quote with patient and source appointment IDs without post
   expect(calls.find(call => call.path === '/treatment-plans')?.body).toMatchObject({ patientId: 7, sourceAppointmentId: 12, items: [{ name: 'Procedimento teste', unitPrice: 100 }] });
   expect(calls.some(call => call.path.startsWith('/finance'))).toBe(false);
 });
+
+
+it('offers facial procedures and searchable regions in a harmonization consultation', async () => {
+  vi.mocked(fetchClient).mockImplementation(async path => ({ ok: true, json: async () => path === '/clinical-procedures' ? [{ id: 3, name: 'Toxina', category: 'Harmonização', pricingUnit: 'procedure', sector: 'harmonizacao', price: 300, active: true, conditionTypes: [] }] : [] }) as Response);
+  const user = userEvent.setup();
+  render(<TreatmentPlanAttendanceSection mode="harmonizacao" appointmentId="12" patientId={7} patientName="Fixture" data={{}} onChange={() => undefined} />);
+  await screen.findByRole('button', { name: 'Manual' });
+  await waitFor(() => expect(fetchClient).toHaveBeenCalledWith('/clinical-procedures'));
+  Element.prototype.scrollIntoView = vi.fn();
+  screen.getByLabelText('Procedimento da tabela').focus();
+  await user.keyboard('{Enter}');
+  await user.click(await screen.findByRole('option', { name: /Toxina/ }));
+  await user.type(screen.getByLabelText('Buscar região facial'), 'glabela');
+  await user.selectOptions(screen.getByLabelText('Região facial'), 'glabella');
+  await user.click(screen.getByRole('button', { name: /Adicionar item/ }));
+  expect(screen.getByLabelText('Procedimento 1')).toHaveValue('Toxina');
+  expect(screen.getByText('Glabela — Centro', { selector: 'p' })).toBeInTheDocument();
+  expect(screen.queryByText('Odontograma preservado')).not.toBeInTheDocument();
+});

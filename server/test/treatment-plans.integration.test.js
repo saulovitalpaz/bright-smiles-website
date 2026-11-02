@@ -18,6 +18,11 @@ async function api(prisma, userId, run) {
     const dependencies = { prisma, ...auth };
     registerTreatmentPlanRoutes(app, dependencies);
     registerClinicalConditionRoutes(app, dependencies);
+    const deleteFinance = source.slice(source.indexOf("app.delete('/finance/:id'"), source.indexOf("app.get('/finance/stats'"));
+    vm.runInNewContext(deleteFinance, { app, prisma, ...auth,
+        parseFinanceTransactionId: value => { const id = Number(value); if (!Number.isSafeInteger(id) || id <= 0) throw Object.assign(new Error('invalid'), { statusCode: 400 }); return id; },
+        isKnownPrismaError: (error, code) => error?.code === code,
+    });
     const server = app.listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     const request = async (path, method = 'GET', body, role = 'admin') => {
@@ -35,7 +40,7 @@ test('all new routes deny anonymous and manager requests before database access'
         for (const [path, method] of [
             ['/clinical-procedures','GET'], ['/clinical-procedures','POST'], ['/clinical-procedures/1','PUT'],
             ['/treatment-plans','GET'], ['/treatment-plans','POST'], ['/treatment-plans/1','GET'], ['/treatment-plans/1','PUT'],
-            ['/treatment-plans/1/authorization','POST'], ['/treatment-plans/1/payments','POST'], ['/treatment-plan-items/1/status','PATCH'], ['/patients/1/history','GET'],
+            ['/treatment-plans/1','DELETE'], ['/treatment-plans/1/authorization','POST'], ['/treatment-plans/1/payments','POST'], ['/treatment-plan-items/1/status','PATCH'], ['/patients/1/history','GET'],
             ['/clinical-conditions','GET'], ['/clinical-conditions','POST'], ['/clinical-conditions/carie','PUT'], ['/clinical-conditions/carie','DELETE'],
             ['/clinical-condition-groups','POST'], ['/clinical-condition-groups/achado','PUT'], ['/clinical-condition-groups/achado','DELETE'],
         ]) {
@@ -76,6 +81,16 @@ test('PostgreSQL: catalog, IDs, partial approval, clinical execution, cash recei
             const planId = created.body.id;
             const base = `/treatment-plans/${planId}`;
             assert.equal(created.body.patient.id, patient.id);
+            assert.equal(created.body.patientNumber, 1);
+            const otherPlan = await request('/treatment-plans', 'POST', { patientId: other.id, items: [item] });
+            assert.equal(otherPlan.status, 201);
+            assert.equal(otherPlan.body.patientNumber, 1);
+            const nextPlan = await request('/treatment-plans', 'POST', { patientId: patient.id, items: [item] });
+            assert.equal(nextPlan.body.patientNumber, 2);
+            assert.equal((await request(`/treatment-plans/${nextPlan.body.id}`, 'DELETE')).status, 204);
+            const afterDelete = await request('/treatment-plans', 'POST', { patientId: patient.id, items: [item] });
+            assert.equal(afterDelete.body.patientNumber, 3);
+            assert.equal((await request(`/treatment-plans/${afterDelete.body.id}`, 'DELETE')).status, 204);
             assert.equal(await prisma.financeTransaction.count({ where: { patientId: patient.id } }), 1, 'saving a quote creates no cash entry');
             const edited = await request(base, 'PUT', { items: payload.items, notes: 'Fixture note' }); assert.equal(edited.status, 200);
             const [first, second] = edited.body.items;
@@ -87,6 +102,7 @@ test('PostgreSQL: catalog, IDs, partial approval, clinical execution, cash recei
             assert.equal((await request(base, 'PUT', { items: payload.items })).status, 409);
             const payment = { amount: 30, method: 'pix', idempotencyKey: randomUUID() };
             assert.equal((await request(base + '/payments', 'POST', payment)).status, 201);
+            assert.equal((await request(base, 'DELETE')).status, 409);
             const repeated = await request(base + '/payments', 'POST', payment); assert.equal(repeated.status, 200); assert.equal(repeated.body.repeated, true);
             assert.equal((await request(base + '/payments', 'POST', { ...payment, amount: 31 })).status, 409);
             assert.equal((await request(base + '/payments', 'POST', { ...payment, amount: 51, idempotencyKey: randomUUID() })).status, 400);
@@ -107,6 +123,14 @@ test('PostgreSQL: catalog, IDs, partial approval, clinical execution, cash recei
             assert.equal((await request(base)).body.items[0].conditionType, condition.body.key);
             await assert.rejects(prisma.treatmentPlanPayment.create({ data: { planId: 2147483647, createdById: user.id, amount: 1, method: 'pix', idempotencyKey: randomUUID() } }), { code: 'P2003' });
             await assert.rejects(prisma.patient.delete({ where: { id: patient.id } }), { code: 'P2003' });
+            assert.equal((await request(`/finance/${linked[0].id}`, 'DELETE', undefined, null)).status, 401);
+            assert.equal((await request(`/finance/${linked[0].id}`, 'DELETE', undefined, 'manager')).status, 200);
+            const afterRemoval = await request(base);
+            assert.equal(afterRemoval.body.totals.received, 70 - Number(linked[0].amount));
+            assert.equal(afterRemoval.body.totals.balance, 110 + Number(linked[0].amount));
+            assert.equal(await prisma.treatmentPlanPayment.findUnique({ where: { id: linked[0].treatmentPlanPaymentId } }), null);
+            assert.equal((await request(`/finance/${linked[1].id}`, 'DELETE')).status, 200);
+            assert.equal((await request(base, 'DELETE')).status, 204);
         });
     } finally { await prisma.$disconnect(); }
 });

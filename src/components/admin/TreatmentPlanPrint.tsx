@@ -5,13 +5,15 @@ import type { OdontogramData } from './attendance/odontogram/odontogramModel';
 import { printDocumentClass } from '@/lib/print-layout';
 import type { ProfessionalIdentity } from '@/lib/professional-signature';
 import { conditionTargetsLabel, money, TREATMENT_PHASES, type TreatmentPlanItemDraft } from '@/lib/treatmentPlans';
+import { normalizeFacialNotes, FACIAL_REGIONS, regionLabel } from './attendance/facial/facialModel';
 import './TreatmentPlanPrint.css';
 
 export interface PrintableTreatmentPlan {
   id: number;
   patientId: number;
-  patient: { id: number; name: string; birthDate?: string | null };
-  sourceAppointment?: { id: number; date: string; procedure: string; dentalNotes?: OdontogramData } | null;
+  patientNumber?: number;
+  patient: { id: number; name: string; birthDate?: string | null; sex?: string | null };
+  sourceAppointment?: { id: number; date: string; procedure: string; dentalNotes?: OdontogramData; facialNotes?: unknown } | null;
   createdAt: string;
   validUntil: string;
   status: string;
@@ -28,7 +30,8 @@ const methods: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR');
 const isAuthorized = (item: TreatmentPlanItemDraft) => item.authorizedTotal !== null && item.authorizedTotal !== undefined;
 
-export function TreatmentPlanPrint({ plan, clinic, professional, includeOdontogram = false }: { plan: PrintableTreatmentPlan; clinic: ClinicPrintDetails; professional: ProfessionalIdentity; includeOdontogram?: boolean }) {
+export function TreatmentPlanPrint({ plan, clinic, professional, includeOdontogram = false, includeFacemap = false }: { plan: PrintableTreatmentPlan; clinic: ClinicPrintDetails; professional: ProfessionalIdentity; includeOdontogram?: boolean; includeFacemap?: boolean }) {
+  const facial = normalizeFacialNotes(plan.sourceAppointment?.facialNotes);
   const unapproved = plan.items.filter(item => !isAuthorized(item));
   const unapprovedTotal = unapproved.reduce((sum, item) => sum + (item.quotedTotal ?? item.unitPrice * item.quantity), 0);
   const approved = plan.items.filter(isAuthorized);
@@ -37,7 +40,7 @@ export function TreatmentPlanPrint({ plan, clinic, professional, includeOdontogr
   return <section className={`hidden print-only print-root ${printDocumentClass('clinic')} treatment-plan-document`} data-print-target="treatment-plan">
     <ClinicPrintHeader clinic={clinic} />
     <div className="print-patient-block treatment-plan-identity">
-      <h2>Plano de tratamento · Orçamento #{plan.id}</h2>
+      <h2>Plano de tratamento · Orçamento #{plan.patientNumber ?? plan.id}</h2>
       <p><strong>Paciente:</strong> {plan.patient.name}{plan.patient.birthDate ? ` · Nascimento: ${date(`${plan.patient.birthDate.slice(0, 10)}T12:00:00`)}` : ''}</p>
       <p><strong>Profissional:</strong> {professional.name || 'Equipe clínica'}{professional.cro ? ` · ${professional.cro}` : ''}</p>
       <p>Emitido em {date(plan.createdAt)} · Válido até {date(plan.validUntil)}</p>
@@ -45,6 +48,7 @@ export function TreatmentPlanPrint({ plan, clinic, professional, includeOdontogr
       {approved.length > 0 ? <p>Execução clínica: {completed} de {approved.length} procedimentos autorizados concluídos.</p> : null}
     </div>
     {includeOdontogram && plan.sourceAppointment?.dentalNotes ? <section className="print-section treatment-plan-odontogram"><h3>Referência dos dentes no orçamento</h3><div className="print-odontogram"><Odontogram data={plan.sourceAppointment.dentalNotes} onChange={() => undefined} readOnly printable compactReference referenceTeeth={plan.items.flatMap(item => item.toothNumber ? [item.toothNumber] : [])} birthDate={plan.patient.birthDate} /></div><p>Traço sob o dente: procedimento incluído neste orçamento. A situação e os valores constam na tabela abaixo.</p></section> : null}
+    {includeFacemap && plan.sourceAppointment?.facialNotes ? <section className="print-section treatment-plan-facemap"><h3>Referência facial do atendimento</h3><svg viewBox="0 0 750 1000" role="img" aria-label="Mapa ilustrativo das aplicações faciais"><image href={`/facial-chart-front${plan.patient.sex === "male" ? "-male" : ""}${facial.skinTone === "light-brown" ? "-black" : ""}.png`} width="750" height="1000" />{facial.applications.filter(a => a.coordinates).map(a => <g key={a.id}>{a.endCoordinates ? <line x1={a.coordinates!.x * 750} y1={a.coordinates!.y * 1000} x2={a.endCoordinates.x * 750} y2={a.endCoordinates.y * 1000} stroke="#111" strokeWidth="5" /> : null}<circle cx={a.coordinates!.x * 750} cy={a.coordinates!.y * 1000} r="10" fill="#111" /></g>)}</svg><p>Imagem ilustrativa das aplicações registradas no atendimento.</p></section> : null}
     <table className="treatment-plan-items">
       <thead><tr><th scope="col">Procedimento / região</th><th scope="col">Situação clínica</th><th scope="col">Orçado</th><th scope="col">Autorizado</th></tr></thead>
       {TREATMENT_PHASES.map(phase => {
@@ -53,7 +57,7 @@ export function TreatmentPlanPrint({ plan, clinic, professional, includeOdontogr
         return <tbody key={phase.value}>
           <tr className="treatment-plan-phase"><th colSpan={4} scope="rowgroup">{phase.label}</th></tr>
           {items.map((item, index) => <tr key={item.id ?? index}>
-            <td><strong>{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</strong><small>{conditionTargetsLabel(item.toothNumber, item.targets)}</small></td>
+            <td><strong>{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</strong><small>{item.facialRegion ? (FACIAL_REGIONS.find(region => region.id === item.facialRegion) ? regionLabel(FACIAL_REGIONS.find(region => region.id === item.facialRegion)!) : item.facialRegion) : conditionTargetsLabel(item.toothNumber, item.targets)}</small></td>
             <td>{isAuthorized(item) ? clinicalStatuses[item.clinicalStatus || 'authorized'] || 'Autorizado' : 'Não autorizado · proposto'}</td>
             <td>{money(item.quotedTotal ?? item.unitPrice * item.quantity)}</td>
             <td>{isAuthorized(item) ? money(item.authorizedTotal) : '—'}</td>

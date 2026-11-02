@@ -123,13 +123,13 @@ const AdminAnalytics = () => {
         emptyMessage: string,
         barClassName: string,
     ) => (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {items.length > 0 ? (
                 items.map((item) => (
                     <div key={item.name} className="flex items-center justify-between group">
                         <div className="flex-1">
                             <div className="mb-1 flex justify-between gap-3">
-                                <span className="break-all text-sm font-medium text-slate-700">{item.name}</span>
+                                <span className="break-words text-sm font-medium text-slate-700">{item.name}</span>
                                 <span className="text-sm font-bold text-slate-900">{item.percentage}%</span>
                             </div>
                             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -142,24 +142,24 @@ const AdminAnalytics = () => {
                     </div>
                 ))
             ) : (
-                <p className="py-8 text-center text-sm italic text-slate-500">{emptyMessage}</p>
+                <p className="py-6 text-center text-sm italic text-slate-500">{emptyMessage}</p>
             )}
         </div>
     );
 
     const renderNearbyRegions = () => (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {nearbyRegions.length > 0 ? nearbyRegions.map((item) => (
                 <div key={`${item.name}-${item.latitude}-${item.longitude}`} className="flex items-center justify-between">
                     <div className="flex-1">
                         <div className="mb-1 flex justify-between gap-3">
-                            <span className="break-words text-sm font-medium text-slate-700">{item.name}<span className="ml-2 text-xs font-normal text-slate-500">aprox. {item.distanceKm} km</span><span className="block text-xs font-normal text-slate-500">Localização estimada: {item.latitude}, {item.longitude}</span></span>
+                            <span className="break-words text-sm font-medium text-slate-700">{item.name}<span className="ml-2 text-xs font-normal text-slate-500">aprox. {item.distanceKm} km</span><span className="block text-xs font-normal leading-snug text-slate-500">Localização estimada: {item.latitude}, {item.longitude}</span></span>
                             <span className="text-sm font-bold text-slate-900">{item.percentage}%</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-orange-500 transition-all duration-1000" style={{ width: `${item.percentage}%` }} /></div>
                     </div>
                 </div>
-            )) : <p className="py-8 text-center text-sm italic text-slate-500">Capturando aproximações regionais...</p>}
+            )) : <p className="py-6 text-center text-sm italic text-slate-500">Capturando aproximações regionais...</p>}
         </div>
     );
 
@@ -202,7 +202,7 @@ const AdminAnalytics = () => {
                                 </div>
                             </div>
                             <h3 className="text-xs font-medium text-slate-600">{stat.label}</h3>
-                            <p className="admin-metric-value mt-1 text-slate-900">{stat.value}</p>
+                            <p className="admin-metric-value mt-1 text-xl text-slate-900">{stat.value}</p>
                         </CardContent>
                     </Card>
                 ))}
@@ -211,57 +211,57 @@ const AdminAnalytics = () => {
             <div className="mb-6 grid items-start grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
 
                 <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-                            <Globe size={20} className="text-blue-500" /> Origem do Tráfego
+                    <CardHeader className="space-y-1 p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
+                            <Globe size={18} className="text-blue-500" /> Origem do Tráfego
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 pt-2">
                         {renderRankedList(sources, "Dados de tráfego insuficientes.", "bg-blue-500")}
                     </CardContent>
                 </Card>
 
                 <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-                            <Globe size={20} className="text-emerald-500" /> Cidades Principais
+                    <CardHeader className="space-y-1 p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
+                            <Globe size={18} className="text-emerald-500" /> Cidades Principais
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 pt-2">
                         {renderRankedList(locations, "Aguardando dados geográficos.", "bg-emerald-500")}
                     </CardContent>
                 </Card>
 
                 <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-                            <Route size={20} className="text-violet-500" /> Páginas Mais Visitadas
+                    <CardHeader className="space-y-1 p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
+                            <Route size={18} className="text-violet-500" /> Páginas Mais Visitadas
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 pt-2">
                         {renderRankedList(topPaths, "Ainda não há páginas ranqueadas.", "bg-violet-500")}
                     </CardContent>
                 </Card>
 
                 <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-                            <Smartphone size={20} className="text-sky-500" /> Dispositivos
+                    <CardHeader className="space-y-1 p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
+                            <Smartphone size={18} className="text-sky-500" /> Dispositivos
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 pt-2">
                         {renderRankedList(devices, "Dispositivos ainda sem volume suficiente.", "bg-sky-500")}
                     </CardContent>
                 </Card>
 
                 <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-                            <MapPin size={20} className="text-orange-500" /> Regiões Aproximadas
+                    <CardHeader className="space-y-1 p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
+                            <MapPin size={18} className="text-orange-500" /> Regiões Aproximadas
                         </CardTitle>
-                        <CardDescription>Estimativas por IP, da mais próxima à mais distante, em até 15 km da clínica</CardDescription>
+                        <CardDescription className="text-xs leading-snug">Estimativas por IP, da mais próxima à mais distante, em até 5 km da clínica</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 pt-2">
                         {renderNearbyRegions()}
                     </CardContent>
                 </Card>

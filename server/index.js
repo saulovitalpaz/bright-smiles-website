@@ -1626,14 +1626,16 @@ app.get('/finance', authenticateToken, authorizeRole(['admin', 'manager']), asyn
             where,
             include: {
                 patient: { select: { name: true, cpf: true, phone: true, address: true } },
-                treatmentPlanPayment: { select: { planId: true } },
+                treatmentPlanPayment: { select: { planId: true, plan: { select: { patientNumber: true } } } },
             },
             orderBy: { date: 'desc' }
         });
         res.json(transactions.map((transaction) => ({
             ...transaction,
+            ...(transaction.treatmentPlanPayment?.plan ? { description: `Recebimento de plano de tratamento #${transaction.treatmentPlanPayment.plan.patientNumber}` } : {}),
             source: transaction.treatmentPlanPaymentId ? 'treatment_plan' : null,
             treatmentPlanId: transaction.treatmentPlanPayment?.planId || null,
+            treatmentPlanNumber: transaction.treatmentPlanPayment?.plan?.patientNumber || null,
             ...(transaction.patient ? { patient: { ...transaction.patient, cpf: decrypt(transaction.patient.cpf) } } : {}),
         })));
     } catch (error) {
@@ -1713,10 +1715,15 @@ app.delete('/finance/:id', authenticateToken, authorizeRole(['admin', 'manager']
         const id = parseFinanceTransactionId(req.params.id);
         const existingTransaction = await prisma.financeTransaction.findUnique({ where: { id } });
         if (!existingTransaction) return res.status(404).json({ error: 'Finance transaction not found.' });
-        if (existingTransaction.treatmentPlanPaymentId) return res.status(409).json({ error: 'Recebimentos vinculados a planos não podem ser excluídos pelo financeiro genérico.' });
-        await prisma.financeTransaction.delete({
-            where: { id }
-        });
+        if (existingTransaction.treatmentPlanPaymentId) {
+            await prisma.$transaction(async tx => {
+                const payment = await tx.treatmentPlanPayment.findUnique({ where: { id: existingTransaction.treatmentPlanPaymentId } });
+                if (!payment) throw Object.assign(new Error('Payment missing'), { statusCode: 409 });
+                await tx.$queryRaw`SELECT "id" FROM "TreatmentPlan" WHERE "id" = ${payment.planId} FOR UPDATE`;
+                await tx.financeTransaction.delete({ where: { id } });
+                await tx.treatmentPlanPayment.delete({ where: { id: payment.id } });
+            });
+        } else await prisma.financeTransaction.delete({ where: { id } });
         res.json({ message: 'Transaction deleted' });
     } catch (error) {
         if (error.statusCode === 400) return res.status(400).json({ error: 'Invalid finance transaction.' });

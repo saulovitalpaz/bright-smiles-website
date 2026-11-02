@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fetchClient } from "@/lib/api";
 import { conditionTargetsLabel, money, phaseForCategory, TREATMENT_PHASES, type ClinicalProcedure, type TreatmentPhase, type TreatmentPlanItemDraft } from "@/lib/treatmentPlans";
+import { FACIAL_REGIONS, regionLabel } from "./facial/facialModel";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 
 interface TreatmentPlanResponse {
   id: number;
   patientId: number;
+  patientNumber?: number;
   sourceAppointmentId?: number | null;
   validUntil: string;
   status: string;
@@ -31,15 +33,18 @@ interface TreatmentPlanAttendanceSectionProps {
   birthDate?: string | null;
   readOnly?: boolean;
   onPrintOdontogram?: () => void;
+  mode?: "odontologia" | "harmonizacao" | "ambos";
 }
 
 const validId = (value: string): number | null => /^\d+$/.test(value) && Number(value) > 0 ? Number(value) : null;
 
-export default function TreatmentPlanAttendanceSection({ data, onChange, appointmentId, patientId, patientName, birthDate, readOnly = false, onPrintOdontogram }: TreatmentPlanAttendanceSectionProps) {
+export default function TreatmentPlanAttendanceSection({ data, onChange, appointmentId, patientId, patientName, birthDate, readOnly = false, onPrintOdontogram, mode = "odontologia" }: TreatmentPlanAttendanceSectionProps) {
   const [procedures, setProcedures] = useState<ClinicalProcedure[]>([]);
   const [items, setItems] = useState<TreatmentPlanItemDraft[]>([]);
   const [savedPlan, setSavedPlan] = useState<TreatmentPlanResponse | null>(null);
   const [catalogId, setCatalogId] = useState("");
+  const [facialRegion, setFacialRegion] = useState("");
+  const [regionSearch, setRegionSearch] = useState("");
   const [procedureSearch, setProcedureSearch] = useState("");
   const [planNotes, setPlanNotes] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
@@ -76,12 +81,12 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
     return () => { active = false; };
   }, [persistedAppointmentId, patientId]);
 
-  const addProcedure = useCallback((procedure: ClinicalProcedure, toothNumber?: number, conditionType?: ClinicalConditionType, targets?: ConditionTarget[]) => {
+  const addProcedure = useCallback((procedure: ClinicalProcedure, toothNumber?: number, conditionType?: ClinicalConditionType, targets?: ConditionTarget[], selectedRegion?: string) => {
     if (loadingPlan) return toast.info("Aguarde enquanto carregamos o orçamento deste atendimento.");
     const surfaceCount = new Set(targets?.filter((target) => target.kind === "surface").map((target) => target.face) || []).size;
     const quantity = procedure.pricingUnit === "face" ? Math.max(1, surfaceCount) : 1;
     const sameItem = items.some((item) => item.procedureId === procedure.id && item.toothNumber === toothNumber
-      && item.conditionType === conditionType && JSON.stringify(item.targets || []) === JSON.stringify(targets || []));
+      && item.conditionType === conditionType && (item.facialRegion || "") === (selectedRegion || "") && JSON.stringify(item.targets || []) === JSON.stringify(targets || []));
     if (sameItem) return toast.info("Este procedimento já está no plano.");
     setItems((current) => [...current, {
       procedureId: procedure.id,
@@ -93,6 +98,7 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
       quantity,
       unitPrice: procedure.price,
       toothNumber: toothNumber || null,
+      facialRegion: selectedRegion || null,
       targets: targets || [],
     }]);
   }, [items, loadingPlan]);
@@ -101,7 +107,8 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
     if (loadingPlan) return;
     const procedure = procedures.find((item) => String(item.id) === catalogId);
     if (!procedure) return toast.error("Selecione um procedimento da tabela.");
-    addProcedure(procedure);
+    if (procedure.sector === "harmonizacao" && !facialRegion) return toast.error("Selecione a região facial.");
+    addProcedure(procedure, undefined, undefined, undefined, procedure.sector === "harmonizacao" ? facialRegion : undefined);
   };
 
   const addManualItem = () => setItems((current) => [...current, {
@@ -117,8 +124,8 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
   const removeItem = (index: number) => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
   const total = useMemo(() => items.reduce((sum, item) => sum + (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0), 0), [items]);
   const matchingProcedures = useMemo(() => procedures.filter((procedure) =>
-    `${procedure.name} ${procedure.category}`.toLocaleLowerCase("pt-BR").includes(procedureSearch.trim().toLocaleLowerCase("pt-BR")),
-  ), [procedures, procedureSearch]);
+    (mode === "ambos" || (procedure.sector || "odontologia") === mode) && `${procedure.name} ${procedure.category}`.toLocaleLowerCase("pt-BR").includes(procedureSearch.trim().toLocaleLowerCase("pt-BR")),
+  ), [procedures, procedureSearch, mode]);
 
   const savePlan = async () => {
     if (!persistedAppointmentId) return toast.error("Salve o atendimento antes de gerar o orçamento.");
@@ -140,6 +147,7 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
         quantity: Number(item.quantity),
         unitPrice: Number(item.unitPrice),
         toothNumber: item.toothNumber || null,
+        facialRegion: item.facialRegion || null,
         targets: item.targets || [],
         notes: item.notes || undefined,
       })),
@@ -169,16 +177,16 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
   };
 
   return <section className="space-y-4">
-    <Odontogram data={data} onChange={onChange} readOnly={readOnly} birthDate={birthDate} onPrint={onPrintOdontogram}
-      procedures={procedures} onAddProcedure={!readOnly && canEditSavedPlan ? addProcedure : undefined} />
+    {mode !== "harmonizacao" ? <Odontogram data={data} onChange={onChange} readOnly={readOnly} birthDate={birthDate} onPrint={onPrintOdontogram}
+      procedures={procedures} onAddProcedure={!readOnly && canEditSavedPlan ? addProcedure : undefined} /> : null}
     <div className="admin-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">Plano de tratamento</p>
           <h3 className="mt-1 text-lg font-bold text-foreground">Procedimentos e orçamento</h3>
-          <p className="mt-1 text-sm text-muted-foreground">As condições do odontograma sugerem itens da tabela. Ajuste valores, fases e quantidades antes de salvar.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Selecione procedimentos cadastrados e ajuste valores, fases e quantidades antes de salvar.</p>
         </div>
-        {savedPlan ? <div className="text-right text-xs text-muted-foreground">Orçamento #{savedPlan.id}<br />Válido até {new Date(savedPlan.validUntil).toLocaleDateString("pt-BR")}</div> : null}
+        {savedPlan ? <div className="text-right text-xs text-muted-foreground">Orçamento #{savedPlan.patientNumber ?? savedPlan.id}<br />Válido até {new Date(savedPlan.validUntil).toLocaleDateString("pt-BR")}</div> : null}
       </div>
 
       {loadingPlan ? <p className="mt-4 text-sm text-muted-foreground">Carregando orçamento deste atendimento…</p> : null}
@@ -189,6 +197,7 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
         {(!savedPlan || canEditSavedPlan) ? <>
           <div className="mt-4 space-y-2">
             <Input aria-label="Buscar procedimento na tabela" placeholder="Buscar procedimento na tabela…" value={procedureSearch} onChange={(event) => setProcedureSearch(event.target.value)} disabled={loadingPlan} />
+            {procedures.find(item => String(item.id) === catalogId)?.sector === "harmonizacao" ? <div className="space-y-2"><Input aria-label="Buscar região facial" placeholder="Buscar região facial…" value={regionSearch} onChange={event => setRegionSearch(event.target.value)} /><select aria-label="Região facial" className="min-h-11 w-full rounded-md border bg-background px-3 text-sm" value={facialRegion} onChange={event => setFacialRegion(event.target.value)}><option value="">Selecione a região facial…</option>{FACIAL_REGIONS.filter(region => regionLabel(region).toLocaleLowerCase("pt-BR").includes(regionSearch.toLocaleLowerCase("pt-BR")) || region.id === facialRegion).map(region => <option key={region.id} value={region.id}>{regionLabel(region)}</option>)}</select></div> : null}
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               <Select value={catalogId} onValueChange={setCatalogId} disabled={loadingPlan}><SelectTrigger aria-label="Procedimento da tabela"><SelectValue placeholder="Adicionar procedimento da tabela" /></SelectTrigger><SelectContent>{matchingProcedures.map((procedure) => <SelectItem key={procedure.id} value={String(procedure.id)}>{procedure.name} · {money(procedure.price)}{procedure.conditionTypes.length ? ` · ${procedure.conditionTypes.length} condições` : ""}</SelectItem>)}</SelectContent></Select>
               <Button type="button" variant="outline" className="min-h-11" disabled={loadingPlan} onClick={addSelectedProcedure}><Plus size={16} className="mr-2" />Adicionar item</Button>
@@ -202,7 +211,7 @@ export default function TreatmentPlanAttendanceSection({ data, onChange, appoint
               <div className="space-y-1 sm:col-span-2"><Label>Fase</Label><Select value={item.phase} onValueChange={(value) => updateItem(index, { phase: value as TreatmentPhase })} disabled={readOnly || loadingPlan || !canEditSavedPlan}><SelectTrigger aria-label={`Fase do procedimento ${index + 1}`}><SelectValue /></SelectTrigger><SelectContent>{TREATMENT_PHASES.map((phase) => <SelectItem key={phase.value} value={phase.value}>{phase.label}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-1 sm:col-span-2"><Label>Quantidade</Label><Input aria-label={`Quantidade do procedimento ${index + 1}`} type="number" min="1" max="999" value={item.quantity} onChange={(event) => updateItem(index, { quantity: Number(event.target.value) })} disabled={readOnly || loadingPlan || !canEditSavedPlan} /></div>
               <div className="space-y-1 sm:col-span-2"><Label>Valor unitário</Label><Input aria-label={`Valor unitário do procedimento ${index + 1}`} type="number" min="0" step="0.01" value={item.unitPrice} onChange={(event) => updateItem(index, { unitPrice: Number(event.target.value) })} disabled={readOnly || loadingPlan || !canEditSavedPlan} /></div>
-              <div className="sm:col-span-2 sm:text-right"><p className="text-xs text-muted-foreground">{conditionTargetsLabel(item.toothNumber, item.targets)}</p><p className="font-bold text-foreground">{money(item.unitPrice * item.quantity)}</p>{!readOnly && canEditSavedPlan ? <Button type="button" variant="ghost" size="icon" disabled={loadingPlan} aria-label={`Remover ${item.name}`} onClick={() => removeItem(index)}><Trash2 size={16} /></Button> : null}</div>
+              <div className="sm:col-span-2 sm:text-right"><p className="text-xs text-muted-foreground">{item.facialRegion ? regionLabel(FACIAL_REGIONS.find(region => region.id === item.facialRegion) || FACIAL_REGIONS[0]) : conditionTargetsLabel(item.toothNumber, item.targets)}</p><p className="font-bold text-foreground">{money(item.unitPrice * item.quantity)}</p>{!readOnly && canEditSavedPlan ? <Button type="button" variant="ghost" size="icon" disabled={loadingPlan} aria-label={`Remover ${item.name}`} onClick={() => removeItem(index)}><Trash2 size={16} /></Button> : null}</div>
             </article>)}
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">

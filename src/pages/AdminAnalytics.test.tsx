@@ -39,7 +39,7 @@ const statsResponse = {
     },
     nearbyRegions: [
         { city: "Governador Valadares", state: "MG", latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 2 },
-        { city: "Ipatinga", state: "MG", latitude: -19.47, longitude: -42.54, distanceKm: 93, count: 8 },
+        { city: "Perto", state: "MG", latitude: -18.8949, longitude: -41.95, distanceKm: 5, count: 8 },
     ],
     topPaths: {
         "/": 5,
@@ -77,10 +77,10 @@ describe("AdminAnalytics", () => {
         expect(screen.getByText("/tratamentos")).toBeInTheDocument();
         expect(screen.getByText("mobile")).toBeInTheDocument();
         expect(screen.getByText("Governador Valadares, MG")).toBeInTheDocument();
-        expect(screen.getByText(/até 15 km da clínica/i)).toBeInTheDocument();
+        expect(screen.getByText(/até 5 km da clínica/i)).toBeInTheDocument();
         const nearbyCard = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
         expect(nearbyCard).not.toBeNull();
-        expect(nearbyCard!.textContent!.indexOf("Governador Valadares")).toBeLessThan(nearbyCard!.textContent!.indexOf("Ipatinga"));
+        expect(nearbyCard!.textContent!.indexOf("Governador Valadares")).toBeLessThan(nearbyCard!.textContent!.indexOf("Perto"));
         expect(nearbyCard).toHaveTextContent("20%");
         expect(nearbyCard).toHaveTextContent("80%");
     });

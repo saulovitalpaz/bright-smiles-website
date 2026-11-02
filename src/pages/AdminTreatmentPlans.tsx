@@ -39,7 +39,8 @@ export default function AdminTreatmentPlans() {
   const [saving, setSaving] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [includeOdontogram, setIncludeOdontogram] = useState(true);
-  const [printSnapshot, setPrintSnapshot] = useState<{ plan: TreatmentPlan; clinic: ClinicPrintDetails; includeOdontogram: boolean } | null>(null);
+  const [includeFacemap, setIncludeFacemap] = useState(false);
+  const [printSnapshot, setPrintSnapshot] = useState<{ plan: TreatmentPlan; clinic: ClinicPrintDetails; includeOdontogram: boolean; includeFacemap: boolean } | null>(null);
 
   const preparePrint = async () => {
     if (!selectedId || printing || saving) return;
@@ -51,7 +52,7 @@ export default function AdminTreatmentPlans() {
       ]);
       if (!planResponse.ok || !clinicResponse.ok) throw new Error('Não foi possível atualizar os dados para impressão. Tente novamente.');
       const [plan, clinic] = await Promise.all([planResponse.json(), clinicResponse.json()]);
-      setPrintSnapshot({ plan, clinic, includeOdontogram });
+      setPrintSnapshot({ plan, clinic, includeOdontogram, includeFacemap });
     } catch (error) {
       setPrinting(false);
       toast.error(error instanceof Error ? error.message : 'Falha ao preparar impressão.');
@@ -176,6 +177,18 @@ export default function AdminTreatmentPlans() {
     finally { setSaving(false); }
   };
 
+  const deletePlan = async () => {
+    if (!selected || !window.confirm("Excluir este plano? Os recebimentos vinculados devem ser excluídos antes no fluxo de caixa.")) return;
+    setSaving(true);
+    try {
+      const response = await fetchClient(`/treatment-plans/${selected.id}`, { method: "DELETE" });
+      if (!response.ok) { const result = await response.json(); throw new Error(result.error); }
+      toast.success("Plano excluído.");
+      await loadPlans();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Falha ao excluir plano."); }
+    finally { setSaving(false); }
+  };
+
   const updateClinicalStatus = async (itemId: number, status: string) => {
     setSaving(true);
     try {
@@ -195,15 +208,17 @@ export default function AdminTreatmentPlans() {
       <div className="no-plan-print grid gap-4 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.6fr)]">
         <Card><CardHeader><CardTitle>Orçamentos</CardTitle></CardHeader><CardContent className="space-y-2">
           {loading ? <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="animate-spin motion-reduce:animate-none" size={16} />Carregando…</div> : plans.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum plano de tratamento foi gerado.</p> : plans.map((plan) => <button type="button" key={plan.id} onClick={() => setSelectedId(plan.id)} className={`w-full rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedId === plan.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"}`}>
-            <span className="flex items-start justify-between gap-2"><span className="font-semibold text-foreground">{plan.patient.name}</span><span className="text-xs text-muted-foreground">#{plan.id}</span></span><span className="mt-1 block text-xs text-muted-foreground">{new Date(plan.createdAt).toLocaleDateString("pt-BR")} · {statusLabels[plan.status] || plan.status}</span><span className="mt-2 block text-sm font-bold">{money(plan.totals.quoted)}</span><span className="mt-1 block text-xs text-muted-foreground">Saldo: {money(plan.totals.balance)}</span>
+            <span className="flex items-start justify-between gap-2"><span className="font-semibold text-foreground">{plan.patient.name}</span><span className="text-xs text-muted-foreground">#{plan.patientNumber ?? plan.id}</span></span><span className="mt-1 block text-xs text-muted-foreground">{new Date(plan.createdAt).toLocaleDateString("pt-BR")} · {statusLabels[plan.status] || plan.status}</span><span className="mt-2 block text-sm font-bold">{money(plan.totals.quoted)}</span><span className="mt-1 block text-xs text-muted-foreground">Saldo: {money(plan.totals.balance)}</span>
           </button>)}
         </CardContent></Card>
 
         <div className="space-y-4">{selected ? <>
-          <Card><CardHeader className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><CardTitle>{selected.patient.name}</CardTitle><p className="mt-1 text-sm text-muted-foreground">Orçamento #{selected.id} · emitido em {new Date(selected.createdAt).toLocaleDateString("pt-BR")} · válido até {new Date(selected.validUntil).toLocaleDateString("pt-BR")}</p><p className="mt-1 text-sm font-medium text-foreground">{statusLabels[selected.status] || selected.status}</p></div><Button variant="outline" className="no-plan-print min-h-11 shrink-0" onClick={() => void preparePrint()} disabled={printing || saving || loading}><Printer size={16} className="mr-2" />{printing ? "Preparando…" : "Imprimir"}</Button></CardHeader>
+          <Card><CardHeader className="flex flex-col items-start justify-between gap-3 sm:flex-row"><div><CardTitle>{selected.patient.name}</CardTitle><p className="mt-1 text-sm text-muted-foreground">Orçamento #{selected.patientNumber ?? selected.id} · emitido em {new Date(selected.createdAt).toLocaleDateString("pt-BR")} · válido até {new Date(selected.validUntil).toLocaleDateString("pt-BR")}</p><p className="mt-1 text-sm font-medium text-foreground">{statusLabels[selected.status] || selected.status}</p></div><Button variant="outline" className="no-plan-print min-h-11 shrink-0" onClick={() => void preparePrint()} disabled={printing || saving || loading}><Printer size={16} className="mr-2" />{printing ? "Preparando…" : "Imprimir"}</Button></CardHeader>
             <CardContent className="space-y-4">
+              <Button variant="outline" className="min-h-11 text-red-700" disabled={saving} onClick={() => void deletePlan()}>Excluir plano</Button>
               <div className="no-print rounded-lg border bg-muted/30 p-3">
                 <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={includeOdontogram} disabled={!selected.sourceAppointment || printing} onChange={event => setIncludeOdontogram(event.target.checked)} />Incluir odontograma na impressão</label>
+                <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={includeFacemap} disabled={!selected.sourceAppointment?.facialNotes || printing} onChange={event => setIncludeFacemap(event.target.checked)} />Incluir Facemap na impressão</label>
                 <p className="text-xs text-muted-foreground">{selected.sourceAppointment ? "Referência compacta antes dos procedimentos, com marcação dos dentes incluídos no orçamento." : "Este orçamento não possui uma consulta de origem com odontograma."}</p>
               </div>
               {groupedItems.map(({ phase, items: phaseItems }) => <section key={phase.value}><h3 className="mb-2 flex justify-between rounded bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800"><span>{phase.label}</span><span>{money(phaseItems.reduce((sum, item) => sum + (item.quotedTotal ?? item.unitPrice * item.quantity), 0))}</span></h3><div className="divide-y rounded-lg border">{phaseItems.map((item) => <div key={item.id} className="grid gap-2 p-3 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="font-medium text-foreground">{item.toothNumber ? `${item.toothNumber} · ` : ""}{item.name}</p><p className="text-xs text-muted-foreground">{conditionTargetsLabel(item.toothNumber, item.targets)}{item.quantity > 1 ? ` · ${item.quantity} ${item.pricingUnit === "face" ? "faces" : "unidades"}` : ""} · {clinicalStatusLabels[item.clinicalStatus || "proposed"] || "Proposto"}</p></div><div className="flex items-center justify-between gap-3 sm:justify-end"><span className="font-semibold">{money(item.authorizedTotal ?? item.quotedTotal ?? item.unitPrice * item.quantity)}</span>{item.authorizedTotal !== null && item.authorizedTotal !== undefined ? <Select value={item.clinicalStatus || "authorized"} onValueChange={(value) => void updateClinicalStatus(item.id!, value)}><SelectTrigger aria-label={`Execução de ${item.name}`} className="min-h-11 w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="authorized">Autorizado</SelectItem><SelectItem value="in_progress">Em andamento</SelectItem><SelectItem value="completed">Concluído</SelectItem></SelectContent></Select> : null}</div></div>)}</div></section>)}
@@ -224,6 +239,6 @@ export default function AdminTreatmentPlans() {
       </div>
 
     </div>
-    {printSnapshot ? <TreatmentPlanPrint plan={printSnapshot.plan} clinic={printSnapshot.clinic} professional={professional} includeOdontogram={printSnapshot.includeOdontogram} /> : null}
+    {printSnapshot ? <TreatmentPlanPrint plan={printSnapshot.plan} clinic={printSnapshot.clinic} professional={professional} includeOdontogram={printSnapshot.includeOdontogram} includeFacemap={printSnapshot.includeFacemap} /> : null}
   </AdminLayout>;
 }

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Pencil, Trash2, RotateCcw, Save, Loader2, Users } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, RotateCcw, Save, Loader2, Users, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import { derivePatientAge } from "@/lib/patient-age";
@@ -228,17 +228,25 @@ const AdminPatients = () => {
                             {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div> : patients.length === 0 ? (
                                 <div className="py-10 text-center text-sm text-slate-500">Nenhum paciente encontrado.</div>
                             ) : (
-                                <div className="divide-y divide-slate-200">
+                                <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,18rem))]">
                                     {patients.map((patient) => {
                                         const appointment = latestAppointments.get(patient.id);
-                                        return <article key={patient.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-3 first:pt-0 last:pb-0">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0"><h3 className="break-words text-sm font-semibold text-slate-900">{patient.name}</h3><p className="text-xs text-slate-500">CPF: {patient.cpf || "—"}</p></div>
+                                        return <article key={patient.id} data-admin-card className="group relative flex h-full min-w-0 flex-col justify-between gap-3 p-3 transition-colors hover:border-primary/40 hover:shadow-md focus-within:border-primary/50">
+                                            <Link to={`/admin/pacientes/${patient.id}`} aria-label={`Ver histórico e tratamentos de ${patient.name}`} className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset" />
+                                            <div className="pointer-events-none min-w-0">
+                                                <h3 className="break-words text-sm font-semibold text-slate-900">{patient.name}</h3>
+                                                <p className="break-words text-xs text-slate-500">CPF: {patient.cpf || "—"}</p>
+                                                <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs leading-snug text-slate-600">
+                                                    <p className="break-words">Telefone: {patient.phone || "—"}</p>
+                                                    <p>{formatAgeSummary(patient.birthDate)}</p>
+                                                    <p className="w-full break-words">Último atendimento: {appointment ? `${formatDate(appointment.date)}${appointment.procedure ? ` · ${appointment.procedure}` : ""}` : "—"}</p>
+                                                </div>
+                                                <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">Histórico e tratamentos <ArrowRight size={14} aria-hidden="true" /></span>
                                             </div>
-                                            <Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-600" onClick={() => beginEdit(patient)} aria-label={`Editar ${patient.name}`}><Pencil size={16} /></Button>
-                                            <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"><p>Telefone: {patient.phone || "—"}</p><p>{formatAgeSummary(patient.birthDate)}</p><p className="w-full break-words">Último atendimento: {appointment ? `${formatDate(appointment.date)}${appointment.procedure ? ` · ${appointment.procedure}` : ""}` : "—"}</p></div>
-                                            <div className="col-span-2"><Button asChild variant="outline" size="sm" className="min-h-10"><Link to={`/admin/pacientes/${patient.id}`}>Ver histórico e tratamentos</Link></Button></div>
-                                            <Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-500 hover:text-red-700" onClick={() => deletePatient(patient)} aria-label={`Excluir ${patient.name}`}><Trash2 size={16} /></Button>
+                                            <div className="relative z-10 flex justify-end gap-1">
+                                                <Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-600" onClick={() => beginEdit(patient)} aria-label={`Editar ${patient.name}`}><Pencil size={16} aria-hidden="true" /></Button>
+                                                <Button variant="ghost" className="h-11 w-11 shrink-0 p-0 text-slate-500 hover:text-red-700" onClick={() => deletePatient(patient)} aria-label={`Excluir ${patient.name}`}><Trash2 size={16} aria-hidden="true" /></Button>
+                                            </div>
                                         </article>;
                                     })}
                                 </div>

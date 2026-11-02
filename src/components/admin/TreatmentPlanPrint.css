@@ -38,3 +38,6 @@
   .treatment-plan-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; margin-top: 6mm; text-align: center; }
   .treatment-plan-patient-signature { width: 80%; margin: 0 auto 2mm; border-top: 1px solid #94a3b8; }
 }
+
+.treatment-plan-facemap svg { display: block; width: 32mm; height: auto; max-height: 45mm; margin: 0 auto; }
+.treatment-plan-facemap { break-inside: avoid; }

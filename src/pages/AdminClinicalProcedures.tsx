@@ -11,9 +11,10 @@ import { type ClinicalConditionType } from "@/components/admin/attendance/odonto
 import { Check, Loader2, Pencil, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import ClinicalConditionsSettings from "@/components/admin/ClinicalConditionsSettings";
+import { PROCEDURE_OPTIONS } from "@/components/admin/attendance/facial/facialModel";
 import type { ClinicalConditionGroup } from "@/lib/clinicalConditions";
 
-const emptyForm = { name: "", category: "Dentística", pricingUnit: "procedure" as PricingUnit, price: "", conditionTypes: [] as ClinicalConditionType[], active: true };
+const emptyForm = { sector: "odontologia" as "odontologia" | "harmonizacao", facialType: null as string | null, name: "", category: "Dentística", pricingUnit: "procedure" as PricingUnit, price: "", conditionTypes: [] as ClinicalConditionType[], active: true };
 
 export default function AdminClinicalProcedures() {
   const currentUser = JSON.parse(localStorage.getItem("admin_user") || "{}");
@@ -48,7 +49,7 @@ export default function AdminClinicalProcedures() {
   const reset = () => { setForm(emptyForm); setEditingId(null); };
   const edit = (procedure: ClinicalProcedure) => {
     setEditingId(procedure.id);
-    setForm({ name: procedure.name, category: procedure.category, pricingUnit: procedure.pricingUnit, price: String(procedure.price), conditionTypes: procedure.conditionTypes, active: procedure.active });
+    setForm({ sector: procedure.sector || "odontologia", facialType: procedure.facialType || null, name: procedure.name, category: procedure.category, pricingUnit: procedure.pricingUnit, price: String(procedure.price), conditionTypes: procedure.conditionTypes, active: procedure.active });
   };
   const toggleCondition = (condition: ClinicalConditionType) => setForm((current) => ({
     ...current,
@@ -78,7 +79,7 @@ export default function AdminClinicalProcedures() {
     try {
       const response = await fetchClient(`/clinical-procedures/${procedure.id}`, {
         method: "PUT",
-        body: JSON.stringify({ name: procedure.name, category: procedure.category, pricingUnit: procedure.pricingUnit, price: procedure.price, conditionTypes: procedure.conditionTypes, active: !procedure.active }),
+        body: JSON.stringify({ sector: procedure.sector || "odontologia", facialType: procedure.facialType || null, name: procedure.name, category: procedure.category, pricingUnit: procedure.pricingUnit, price: procedure.price, conditionTypes: procedure.conditionTypes, active: !procedure.active }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error || "Não foi possível alterar a disponibilidade.");
@@ -88,26 +89,31 @@ export default function AdminClinicalProcedures() {
   };
 
   return <AdminLayout title="Minha tabela de procedimentos">
-    <ClinicalConditionsSettings groups={groups} onChange={loadConditions} canManage={canManage} />
-    <div className="mx-auto grid max-w-6xl gap-5 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
-      <Card className="h-fit"><CardHeader><CardTitle>{editingId ? "Editar procedimento" : "Cadastrar procedimento"}</CardTitle><p className="text-sm text-muted-foreground">{canManage ? "Cadastre seus valores e associe condições para sugerir procedimentos no odontograma." : "Visualização da tabela de procedimentos e valores."}</p></CardHeader><CardContent>
-        {canManage ?
-        <form className="space-y-4" onSubmit={save}>
-          <div className="space-y-1"><Label htmlFor="procedure-name">Nome</Label><Input id="procedure-name" maxLength={160} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required placeholder="Ex.: Restauração em resina — MOD" /></div>
-          <div className="space-y-1"><Label htmlFor="procedure-category">Categoria</Label><Input id="procedure-category" maxLength={160} value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} required placeholder="Dentística, Endodontia…" /></div>
-          <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>Unidade de cobrança</Label><Select value={form.pricingUnit} onValueChange={(value) => setForm((current) => ({ ...current, pricingUnit: value as PricingUnit }))}><SelectTrigger aria-label="Unidade de cobrança"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="procedure">Por procedimento</SelectItem><SelectItem value="tooth">Por dente</SelectItem><SelectItem value="face">Por face</SelectItem></SelectContent></Select></div><div className="space-y-1"><Label htmlFor="procedure-price">Preço (R$)</Label><Input id="procedure-price" min="0" step="0.01" type="number" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))} required /></div></div>
-          <fieldset className="space-y-2"><legend className="text-sm font-medium">Condições relacionadas</legend><p className="text-xs text-muted-foreground">Estas associações controlam as sugestões exibidas ao selecionar a condição.</p><div className="grid max-h-64 grid-cols-1 gap-1 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">{conditionOptions.map((condition) => <label key={condition.key} className="flex min-h-10 items-center gap-2 rounded px-2 text-xs hover:bg-muted/50"><input className="h-4 w-4 accent-primary" type="checkbox" checked={form.conditionTypes.includes(condition.key)} onChange={() => toggleCondition(condition.key)} />{condition.name}</label>)}</div></fieldset>
-          <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={form.active} onChange={(event) => setForm((current) => ({ ...current, active: event.target.checked }))} />Disponível para novos planos</label>
-          <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90" disabled={saving}>{saving ? <Loader2 className="mr-2 animate-spin motion-reduce:animate-none" size={16} /> : <Plus className="mr-2" size={16} />}{editingId ? "Salvar alterações" : "Adicionar à tabela"}</Button>{editingId ? <Button type="button" variant="outline" className="min-h-11" onClick={reset}>Cancelar</Button> : null}</div>
-        </form>
-          : <p className="rounded-lg bg-muted/50 p-3 text-sm text-slate-600">Apenas administradores podem cadastrar ou editar procedimentos e preços.</p>}
-      </CardContent></Card>
-      <Card><CardHeader><CardTitle>Procedimentos cadastrados</CardTitle></CardHeader><CardContent className="space-y-3">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
+    <div className="grid gap-5 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
+      <Card className="order-1 xl:order-2"><CardHeader><CardTitle>Procedimentos cadastrados</CardTitle></CardHeader><CardContent className="space-y-3">
         {loading ? <p className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="animate-spin motion-reduce:animate-none" size={16} />Carregando tabela…</p> : procedures.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center"><p className="font-semibold text-slate-700">Sua tabela ainda está vazia</p><p className="mt-1 text-sm text-muted-foreground">Cadastre seus procedimentos e preços para habilitar sugestões no plano de tratamento.</p></div> : procedures.map((procedure) => <article key={procedure.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 ${procedure.active ? "border-border" : "border-slate-100 bg-muted/50 text-slate-400"}`}>
           <div className="min-w-0"><p className="font-semibold text-foreground">{procedure.name}</p><p className="text-xs text-muted-foreground">{procedure.category} · {procedure.pricingUnit === "face" ? "por face" : procedure.pricingUnit === "tooth" ? "por dente" : "por procedimento"} · {procedure.conditionTypes.length ? procedure.conditionTypes.map((condition) => groups.flatMap(group => group.conditions).find(item => item.key === condition)?.name || condition.replace(/_/g, " ")).join(", ") : "sem associação clínica"}</p><p className="mt-1 text-sm font-bold text-foreground">{money(procedure.price)}</p></div>
           <div className="flex items-center gap-2"><span className={`rounded-full px-2 py-1 text-xs ${procedure.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{procedure.active ? "Ativo" : "Inativo"}</span>{canManage ? <><Button type="button" variant="outline" size="icon" className="h-11 w-11" onClick={() => edit(procedure)} aria-label={`Editar ${procedure.name}`}><Pencil size={15} /></Button><Button type="button" variant="outline" size="icon" className="h-11 w-11" disabled={saving} title={procedure.active ? "Desativar" : "Reativar"} aria-label={procedure.active ? `Desativar ${procedure.name}` : `Reativar ${procedure.name}`} onClick={() => void toggleActive(procedure)}><span aria-hidden="true">{procedure.active ? <X size={15} /> : <Check size={15} />}</span></Button></> : null}</div>
         </article>)}
       </CardContent></Card>
+      <Card className="order-2 h-fit xl:order-1"><CardHeader><CardTitle>{editingId ? "Editar procedimento" : "Cadastrar procedimento"}</CardTitle><p className="text-sm text-muted-foreground">{canManage ? "Cadastre seus valores e associe condições para sugerir procedimentos no odontograma." : "Visualização da tabela de procedimentos e valores."}</p></CardHeader><CardContent>
+        {canManage ?
+        <form className="space-y-4" onSubmit={save}>
+          <div className="space-y-1"><Label htmlFor="procedure-sector">Setor</Label><select id="procedure-sector" className="flex h-11 w-full rounded-md border bg-background px-3 text-sm" value={form.sector} onChange={event => setForm(current => ({ ...current, sector: event.target.value as "odontologia" | "harmonizacao", facialType: null, conditionTypes: [] }))}><option value="odontologia">Odontologia</option><option value="harmonizacao">Harmonização facial</option></select></div>
+          {form.sector === "harmonizacao" ? <div className="space-y-1"><Label htmlFor="facial-type">Procedimento do Facemap</Label><select id="facial-type" className="flex h-11 w-full rounded-md border bg-background px-3 text-sm" value={form.facialType || ""} onChange={event => setForm(current => ({ ...current, facialType: event.target.value || null }))}><option value="">Selecione…</option>{PROCEDURE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div> : null}
+          <div className="space-y-1"><Label htmlFor="procedure-name">Nome</Label><Input id="procedure-name" maxLength={160} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required placeholder="Ex.: Restauração em resina — MOD" /></div>
+          <div className="space-y-1"><Label htmlFor="procedure-category">Categoria</Label><Input id="procedure-category" maxLength={160} value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} required placeholder="Dentística, Endodontia…" /></div>
+          <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>Unidade de cobrança</Label><Select value={form.pricingUnit} onValueChange={(value) => setForm((current) => ({ ...current, pricingUnit: value as PricingUnit }))}><SelectTrigger aria-label="Unidade de cobrança"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="procedure">Por procedimento</SelectItem><SelectItem value="tooth">Por dente</SelectItem><SelectItem value="face">Por face</SelectItem></SelectContent></Select></div><div className="space-y-1"><Label htmlFor="procedure-price">Preço (R$)</Label><Input id="procedure-price" min="0" step="0.01" type="number" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))} required /></div></div>
+          {form.sector === "odontologia" ? <fieldset className="space-y-2"><legend className="text-sm font-medium">Condições relacionadas</legend><p className="text-xs text-muted-foreground">Estas associações controlam as sugestões exibidas ao selecionar a condição.</p><div className="grid max-h-64 grid-cols-1 gap-1 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">{conditionOptions.map((condition) => <label key={condition.key} className="flex min-h-10 items-center gap-2 rounded px-2 text-xs hover:bg-muted/50"><input className="h-4 w-4 accent-primary" type="checkbox" checked={form.conditionTypes.includes(condition.key)} onChange={() => toggleCondition(condition.key)} />{condition.name}</label>)}</div></fieldset> : null}
+          <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={form.active} onChange={(event) => setForm((current) => ({ ...current, active: event.target.checked }))} />Disponível para novos planos</label>
+          <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90" disabled={saving}>{saving ? <Loader2 className="mr-2 animate-spin motion-reduce:animate-none" size={16} /> : <Plus className="mr-2" size={16} />}{editingId ? "Salvar alterações" : "Adicionar à tabela"}</Button>{editingId ? <Button type="button" variant="outline" className="min-h-11" onClick={reset}>Cancelar</Button> : null}</div>
+        </form>
+          : <p className="rounded-lg bg-muted/50 p-3 text-sm text-slate-600">Apenas administradores podem cadastrar ou editar procedimentos e preços.</p>}
+      </CardContent></Card>
+    </div>
+    <details className="rounded-xl border bg-card"><summary className="cursor-pointer p-4 font-semibold">Grupos e condições do odontograma</summary><ClinicalConditionsSettings groups={groups} onChange={loadConditions} canManage={canManage} /></details>
+    <details className="rounded-xl border bg-card"><summary className="cursor-pointer p-4 font-semibold">Procedimentos de harmonização facial</summary><div className="grid gap-2 p-4 pt-0 sm:grid-cols-2">{PROCEDURE_OPTIONS.map(option => <button key={option.value} type="button" disabled={!canManage} className="min-h-11 rounded-lg border p-3 text-left text-sm hover:bg-muted focus-visible:ring-2" onClick={() => { setEditingId(null); setForm({ ...emptyForm, sector: "harmonizacao", facialType: option.value, name: option.label, category: "Harmonização facial" }); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{option.label}</button>)}</div></details>
     </div>
   </AdminLayout>;
 }

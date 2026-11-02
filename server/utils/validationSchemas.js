@@ -191,6 +191,7 @@ const treatmentPlanItemInputSchema = z.object({
     quantity: z.number().int().min(1).max(999),
     unitPrice: treatmentPlanAmountSchema,
     toothNumber: z.number().int().refine(value => allClinicalTeeth.has(String(value))).optional().nullable(),
+    facialRegion: treatmentPlanTextSchema.optional().nullable(),
     targets: treatmentPlanTargetsSchema.optional(),
     notes: safeNote.optional(),
 }).strict();
@@ -201,6 +202,8 @@ const clinicalProcedureSchema = z.object({
     pricingUnit: treatmentPlanUnitSchema,
     price: treatmentPlanAmountSchema,
     conditionTypes: z.array(clinicalTypeSchema).max(50),
+    sector: z.enum(['odontologia', 'harmonizacao']).optional(),
+    facialType: z.enum(['botulinum-toxin', 'filler', 'biostimulator', 'bioremodeler', 'skinbooster', 'thread', 'other']).optional().nullable(),
     active: z.boolean().optional(),
 }).strict();
 const createTreatmentPlanSchema = z.object({

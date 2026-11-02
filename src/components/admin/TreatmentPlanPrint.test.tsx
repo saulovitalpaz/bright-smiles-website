@@ -26,3 +26,13 @@ it('optionally prints a compact anatomical reference before the cost table witho
   expect(container.querySelector('.treatment-plan-odontogram')).toBeNull();
   expect(container.querySelector('.treatment-plan-items')).not.toBeNull();
 });
+
+
+it('prints the optional compact facial map and the patient-specific number', () => {
+  const facialPlan: PrintableTreatmentPlan = { ...plan, patientNumber: 2, sourceAppointment: { ...plan.sourceAppointment!, facialNotes: { version: 2, applications: [{ id: 'a', regionId: 'glabella', procedureType: 'botulinum-toxin', coordinates: { x: 0.5, y: 0.3 } }] } } };
+  const { container, rerender } = render(<TreatmentPlanPrint plan={facialPlan} clinic={{}} professional={{ name: 'Profissional' }} includeFacemap />);
+  expect(container).toHaveTextContent('Orçamento #2');
+  expect(screen.getByLabelText('Mapa ilustrativo das aplicações faciais').querySelectorAll('circle')).toHaveLength(1);
+  rerender(<TreatmentPlanPrint plan={facialPlan} clinic={{}} professional={{ name: 'Profissional' }} />);
+  expect(container.querySelector('.treatment-plan-facemap')).toBeNull();
+});

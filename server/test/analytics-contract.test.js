@@ -208,13 +208,15 @@ test('stats aggregates only pageviews, excludes story events from sources and om
     assert.ok(!('events' in res.body));
 });
 
-test('stats ranks only public page paths and nearby IP-derived locations within 15 km', async () => {
+test('stats ranks only public page paths and nearby IP-derived locations within 5 km', async () => {
     const prisma = {
         analyticsEvent: {
             findMany: async () => ([
                 { type: 'pageview', path: '/admin?source=menu', source: 'Direto', city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, ip: 'visitor-admin', userAgent: 'Mozilla/5.0' },
                 { type: 'pageview', path: '/tratamentos', source: 'Google', city: 'Ipatinga', state: 'MG', latitude: -19.47, longitude: -42.54, ip: 'visitor-near', userAgent: 'Mozilla/5.0' },
                 { type: 'pageview', path: '/', source: 'Direto', city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, ip: 'visitor-home', userAgent: 'Mozilla/5.0' },
+                { type: 'pageview', path: '/', source: 'Direto', city: 'Perto', state: 'MG', latitude: -18.8949, longitude: -41.95, ip: 'visitor-inside-radius', userAgent: 'Mozilla/5.0' },
+                { type: 'pageview', path: '/', source: 'Direto', city: 'Fora', state: 'MG', latitude: -18.8951, longitude: -41.95, ip: 'visitor-outside-radius', userAgent: 'Mozilla/5.0' },
                 { type: 'pageview', path: '/tratamento/clareamento', source: 'Ads', city: 'Belo Horizonte', state: 'MG', latitude: -19.92, longitude: -43.94, ip: 'visitor-far', userAgent: 'Mozilla/5.0' }
             ])
         },
@@ -225,18 +227,19 @@ test('stats ranks only public page paths and nearby IP-derived locations within 
 
     await handlers.stats({}, res);
 
-    assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 1, '/tratamento/clareamento': 1 });
+    assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 3, '/tratamento/clareamento': 1 });
     assert.ok(!('/admin' in res.body.topPaths));
-    assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares']);
-    assert.deepEqual(res.body.regions, { MG: 1 });
+    assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares', 'Perto']);
+    assert.deepEqual(res.body.regions, { MG: 2 });
     assert.deepEqual(res.body.nearbyRegions, [
-        { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 }
+        { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 },
+        { city: 'Perto', state: 'MG', latitude: -18.8949, longitude: -41.95, distanceKm: 5, count: 1 }
     ]);
 });
 
 test('nearby regions preserve distinct IP location estimates in the same city', async () => {
     const events = [
-        { city: 'Governador Valadares', latitude: -18.90, longitude: -41.95 },
+        { city: 'Governador Valadares', latitude: -18.89, longitude: -41.95 },
         { city: 'Governador Valadares', latitude: -18.85, longitude: -41.95 },
         { city: 'Governador Valadares', latitude: null, longitude: null },
     ].map(location => ({ ...location, type: 'pageview', path: '/', state: 'MG' }));
@@ -244,7 +247,7 @@ test('nearby regions preserve distinct IP location estimates in the same city', 
     const res = createResponse();
     await handlers.stats({}, res);
     assert.equal(res.body.nearbyRegions.length, 2);
-    assert.deepEqual(res.body.nearbyRegions.map(region => region.latitude), [-18.85, -18.90]);
+    assert.deepEqual(res.body.nearbyRegions.map(region => region.latitude), [-18.85, -18.89]);
     assert.deepEqual(res.body.locations, { 'Governador Valadares': 2 });
 });
 

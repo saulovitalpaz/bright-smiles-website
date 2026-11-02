@@ -102,13 +102,14 @@ async function buildPlanItem(tx, item, inactiveProcedureIds = new Set()) {
         unitPrice,
         quotedTotal: unitPrice.mul(quantity).toDecimalPlaces(2),
         toothNumber: item.toothNumber || null,
+        facialRegion: item.facialRegion || null,
         targets: item.targets || undefined,
         notes: item.notes || null,
     };
 }
 
 const includePlan = {
-    patient: { select: { id: true, name: true, birthDate: true } },
+    patient: { select: { id: true, name: true, birthDate: true, sex: true } },
     sourceAppointment: { select: { id: true, date: true, procedure: true } },
     items: { orderBy: [{ phase: 'asc' }, { id: 'asc' }] },
     payments: {
@@ -118,7 +119,7 @@ const includePlan = {
 };
 const includePlanForQuote = {
     ...includePlan,
-    sourceAppointment: { select: { id: true, date: true, procedure: true, dentalNotes: true } },
+    sourceAppointment: { select: { id: true, date: true, procedure: true, dentalNotes: true, facialNotes: true } },
 };
 
 function registerTreatmentPlanRoutes(app, { prisma, authenticateToken, authorizeRole }) {
@@ -188,7 +189,7 @@ function registerTreatmentPlanRoutes(app, { prisma, authenticateToken, authorize
         if (!parsed.success) return res.status(400).json({ error: 'Revise o paciente e os itens do plano.' });
         try {
             const plan = await prisma.$transaction(async tx => {
-                const patient = await tx.patient.findUnique({ where: { id: parsed.data.patientId }, select: { id: true } });
+                const patient = await tx.patient.update({ where: { id: parsed.data.patientId }, data: { treatmentPlanCounter: { increment: 1 } }, select: { id: true, treatmentPlanCounter: true } });
                 if (!patient) throw new RouteError(404, 'Paciente não encontrado.');
                 if (parsed.data.sourceAppointmentId) {
                     const appointment = await tx.appointment.findUnique({ where: { id: parsed.data.sourceAppointmentId }, select: { patientId: true } });
@@ -201,6 +202,7 @@ function registerTreatmentPlanRoutes(app, { prisma, authenticateToken, authorize
                 return tx.treatmentPlan.create({
                     data: {
                         patientId: patient.id,
+                        patientNumber: patient.treatmentPlanCounter,
                         sourceAppointmentId: parsed.data.sourceAppointmentId || null,
                         createdById: req.user.id,
                         validUntil,
@@ -228,6 +230,21 @@ function registerTreatmentPlanRoutes(app, { prisma, authenticateToken, authorize
         } catch {
             res.status(500).json({ error: 'Não foi possível carregar o orçamento.' });
         }
+    });
+
+    app.delete('/treatment-plans/:id', authenticateToken, authorizeRole(PLAN_ROLES), async (req, res) => {
+        const id = parseId(req.params.id);
+        if (!id) return res.status(400).json({ error: 'Plano inválido.' });
+        try {
+            await prisma.$transaction(async tx => {
+                await lockPlan(tx, id);
+                const plan = await tx.treatmentPlan.findUnique({ where: { id }, include: { payments: true } });
+                if (!plan) throw new RouteError(404, 'Plano não encontrado.');
+                if (plan.payments.length) throw new RouteError(409, 'Exclua os recebimentos no fluxo de caixa antes de excluir o plano.');
+                await tx.treatmentPlan.delete({ where: { id } });
+            });
+            res.status(204).end();
+        } catch (error) { routeError(res, error, 'Não foi possível excluir o plano.'); }
     });
 
     app.put('/treatment-plans/:id', authenticateToken, authorizeRole(PLAN_ROLES), async (req, res) => {
@@ -363,7 +380,7 @@ function registerTreatmentPlanRoutes(app, { prisma, authenticateToken, authorize
                         type: 'income',
                         amount: amountNumber(amount),
                         category: FINANCE_CATEGORY,
-                        description: `Recebimento de plano de tratamento #${id}`,
+                        description: `Recebimento de plano de tratamento #${plan.patientNumber}`,
                         date: payment.receivedAt,
                         patientId: plan.patientId,
                         paymentStatus: 'received',

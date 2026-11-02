@@ -805,8 +805,9 @@ const AdminAttendanceDetail = () => {
                                 {clinicalSaveStatus === "error" && "Falha ao salvar automaticamente"}
                             </p>
                         )}
-                        {(data.appointmentType === 'odontologia' || data.appointmentType === 'ambos') && (
+                        {(data.appointmentType === 'odontologia' || data.appointmentType === 'harmonizacao' || data.appointmentType === 'ambos') && (
                             <TreatmentPlanAttendanceSection
+                                mode={data.appointmentType as "odontologia" | "harmonizacao" | "ambos"}
                                 data={data.dentalNotes}
                                 onChange={(notes) => updateField('dentalNotes', notes)}
                                 appointmentId={id || "new"}
