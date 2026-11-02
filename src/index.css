@@ -872,6 +872,30 @@
     background: white !important;
   }
 
+  /* Documents render directly under body: exclude the entire interactive app
+     so hidden portals or off-screen controls cannot create a leading page. */
+  body:has(> [data-print-target="document"]) > :not([data-print-target="document"]) {
+    display: none !important;
+  }
+
+  /* The default page already uses the clinic A4 margins; switching to a
+     named page here can insert an empty leading page in Chromium. */
+  .print-document[data-print-target="document"] {
+    page: auto;
+  }
+
+  .print-only.print-document.print-manual-document {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 255mm !important;
+  }
+
+  .manual-document-footer {
+    margin-top: auto;
+    padding-top: 4mm;
+    break-inside: avoid;
+  }
+
   /* Printing is scoped to an explicit root so hidden application chrome
      cannot reserve a blank first page. */
   body:has(.print-root) .admin-content > :not(.print-root) {

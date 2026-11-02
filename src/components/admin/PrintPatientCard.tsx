@@ -1,6 +1,15 @@
 type PrintPatient = { name: string; cpf: string; phone?: string; address?: string };
 
 export function PrintPatientCard({ patient, blank = false, compact = false }: { patient: PrintPatient; blank?: boolean; compact?: boolean }) {
+  if (blank) return <div className="print-patient-block manual-patient-fields mb-5 rounded-lg border border-slate-100 bg-slate-50 p-3">
+    <div className="grid grid-cols-12 gap-x-4 gap-y-3">
+      {[["Paciente", "col-span-8"], ["CPF", "col-span-4"], ["Endereço", "col-span-8"], ["Telefone", "col-span-4"]].map(([label, columns]) => <div key={label} className={columns}>
+        <p className="mb-1 text-[8px] font-bold uppercase tracking-[0.12em] text-primary">{label}</p>
+        <p data-patient-value className="h-7 border-b border-slate-300" />
+      </div>)}
+    </div>
+  </div>;
+
   if (compact) return <div className="print-patient-block mb-4 space-y-1 border-b border-slate-200 pb-2 text-[10px] leading-relaxed">
     <p><span className="text-slate-500">Paciente: </span><strong data-patient-value>{blank ? null : patient.name || "________________________________"}</strong></p>
     <div className="flex flex-wrap gap-x-6">

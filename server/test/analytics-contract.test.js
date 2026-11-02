@@ -187,10 +187,11 @@ test('stats aggregates only pageviews, excludes story events from sources and om
             Ads: 1
         },
         locations: {
-            'Governador Valadares': 1
+            'Governador Valadares': 1,
+            Ipatinga: 1
         },
         regions: {
-            MG: 1
+            MG: 2
         },
         nearbyRegions: [
             { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 }
@@ -229,8 +230,8 @@ test('stats ranks only public page paths and nearby IP-derived locations within 
 
     assert.deepEqual(res.body.topPaths, { '/tratamentos': 1, '/': 3, '/tratamento/clareamento': 1 });
     assert.ok(!('/admin' in res.body.topPaths));
-    assert.deepEqual(Object.keys(res.body.locations), ['Governador Valadares', 'Perto']);
-    assert.deepEqual(res.body.regions, { MG: 2 });
+    assert.deepEqual(Object.keys(res.body.locations), ['Ipatinga', 'Governador Valadares', 'Perto', 'Fora', 'Belo Horizonte']);
+    assert.deepEqual(res.body.regions, { MG: 5 });
     assert.deepEqual(res.body.nearbyRegions, [
         { city: 'Governador Valadares', state: 'MG', latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 1 },
         { city: 'Perto', state: 'MG', latitude: -18.8949, longitude: -41.95, distanceKm: 5, count: 1 }
@@ -248,7 +249,7 @@ test('nearby regions preserve distinct IP location estimates in the same city', 
     await handlers.stats({}, res);
     assert.equal(res.body.nearbyRegions.length, 2);
     assert.deepEqual(res.body.nearbyRegions.map(region => region.latitude), [-18.85, -18.89]);
-    assert.deepEqual(res.body.locations, { 'Governador Valadares': 2 });
+    assert.deepEqual(res.body.locations, { 'Governador Valadares': 3 });
 });
 
 test('memory rate limiter prunes expired buckets before growing indefinitely', () => {

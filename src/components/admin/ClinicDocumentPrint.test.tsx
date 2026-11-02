@@ -37,15 +37,16 @@ describe("ClinicDocumentPrint", () => {
     expect(screen.getByRole("heading", { name: "Núcleo Odontológico" })).toBeInTheDocument();
     expect(screen.queryByText("Assinatura do Paciente")).not.toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /assinatura/i })).not.toBeInTheDocument();
-    expect(container.querySelector('[data-print-target="document"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-print-target="document"]')).toHaveClass("print-manual-document");
+    expect(container.querySelector(".manual-document-footer")).toContainElement(screen.getByText("Profissional de teste"));
+    expect(container.querySelector(".manual-document-footer")).toHaveTextContent("Governador Valadares");
   });
 
-  it("uses the same patient card grid and reserved field heights in blank and populated modes", () => {
+  it("keeps patient fields empty for handwritten entry", () => {
     const patient = { ...props.patient, phone: "Telefone fictício", address: "Endereço fictício" };
     const { container, rerender } = render(<PrintPatientCard patient={patient} />);
-    const populatedClasses = Array.from(container.querySelectorAll('*')).map(node => node.className);
     rerender(<PrintPatientCard patient={patient} blank />);
-    expect(Array.from(container.querySelectorAll('*')).map(node => node.className)).toEqual(populatedClasses);
+    expect(container.querySelector(".manual-patient-fields")).toBeInTheDocument();
     expect(container).not.toHaveTextContent(patient.name);
     expect(container).not.toHaveTextContent(patient.cpf);
     expect(container).not.toHaveTextContent(patient.phone);

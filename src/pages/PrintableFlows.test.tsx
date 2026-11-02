@@ -51,6 +51,7 @@ async function assertPrintWaitsForLogo(targetSelector: string, startPrint: () =>
   const target = await waitFor(() => {
     const found = document.querySelector(targetSelector);
     expect(found).not.toBeNull();
+    if (targetSelector === '[data-print-target="document"]') expect(found?.parentElement).toBe(document.body);
     return found as HTMLElement;
   });
   const logo = target.querySelector("img");

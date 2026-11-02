@@ -389,6 +389,8 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                     const state = clampText(event.state, 120, '') || legacyLocation.state;
 
                     incrementCount(sources, clampText(event.source, MAX_SOURCE_LENGTH, 'Direto'));
+                    incrementCount(locations, city);
+                    incrementCount(regions, state);
                     const distance = distanceInKm(CLINIC_COORDINATES, event);
                     if (city && distance !== null && distance <= NEARBY_RADIUS_KM) {
                         const locationKey = JSON.stringify([city, state, event.latitude, event.longitude]);
@@ -402,7 +404,6 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                         };
                         current.count += 1;
                         nearbyLocations.set(locationKey, current);
-                        incrementCount(regions, state);
                     }
                     const path = normalizeTrackedPath(event.path);
                     if (isPublicSitePath(path)) incrementCount(topPaths, path);
@@ -419,7 +420,6 @@ function createAnalyticsHandlers({ prisma, secret, geoLookup, rateLimiter }) {
                         distanceKm: Math.round(metric.distance),
                         count: metric.count
                     }));
-                nearbyRegions.forEach(({ city, count }) => { locations[city] = (locations[city] || 0) + count; });
 
                 return res.json({
                     totalVisits: pageviews.length,

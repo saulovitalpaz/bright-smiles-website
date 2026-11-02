@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useRef } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -505,7 +506,7 @@ const AdminDocuments = () => {
             </AttendanceWorkspace>
 
             {/* Keep the printable document outside the editing grid so print pagination is independent of screen layout. */}
-            {isPrintReady && (
+            {isPrintReady && createPortal(
                 <ClinicDocumentPrint
                     clinic={clinic}
                     professional={currentUser}
@@ -513,7 +514,7 @@ const AdminDocuments = () => {
                     content={documentContent}
                     includeElectronic={includeProfessionalSignature}
                     manual={isManualDocument}
-                />
+                />, document.body
             )}
 
         </AdminLayout >

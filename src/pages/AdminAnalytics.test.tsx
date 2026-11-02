@@ -31,6 +31,7 @@ const statsResponse = {
         Direto: 3,
     },
     locations: {
+        "Governador Valadares": 2,
         "Belo Horizonte": 7,
         "Nova Lima": 5,
     },
@@ -80,9 +81,18 @@ describe("AdminAnalytics", () => {
         expect(screen.getByText(/até 5 km da clínica/i)).toBeInTheDocument();
         const nearbyCard = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
         expect(nearbyCard).not.toBeNull();
+        expect(nearbyCard).toHaveTextContent(/2 acessos estimados em Governador Valadares/i);
         expect(nearbyCard!.textContent!.indexOf("Governador Valadares")).toBeLessThan(nearbyCard!.textContent!.indexOf("Perto"));
         expect(nearbyCard).toHaveTextContent("20%");
         expect(nearbyCard).toHaveTextContent("80%");
+    });
+
+    it("shows city estimates even when no IP location is within five kilometres", async () => {
+        fetchClientMock.mockResolvedValueOnce(response({ ...statsResponse, nearbyRegions: [] }));
+        render(<AdminAnalytics />);
+        expect(await screen.findByText("Nenhuma estimativa disponível dentro de 5 km.")).toBeInTheDocument();
+        const card = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
+        expect(card).toHaveTextContent("2 acessos estimados em Governador Valadares");
     });
 
     it("shows a recoverable error when the protected request rejects", async () => {

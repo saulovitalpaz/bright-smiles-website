@@ -102,6 +102,7 @@ const AdminAnalytics = () => {
     const locations = rankMetrics(analytics.locations, totalVisits);
     const topPaths = rankMetrics(analytics.topPaths, totalVisits);
     const devices = rankMetrics(analytics.devices, totalVisits);
+    const cityVisits = Object.entries(analytics.locations).filter(([city]) => city.trim().toLocaleLowerCase("pt-BR") === "governador valadares").reduce((sum, [, count]) => sum + count, 0);
     const nearbyTotal = analytics.nearbyRegions?.reduce((sum, region) => sum + region.count, 0) || 0;
     const nearbyRegions = analytics.nearbyRegions?.length
         ? analytics.nearbyRegions.map((region) => ({
@@ -123,43 +124,30 @@ const AdminAnalytics = () => {
         emptyMessage: string,
         barClassName: string,
     ) => (
-        <div className="space-y-4">
-            {items.length > 0 ? (
-                items.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between group">
-                        <div className="flex-1">
-                            <div className="mb-1 flex justify-between gap-3">
-                                <span className="break-words text-sm font-medium text-slate-700">{item.name}</span>
-                                <span className="text-sm font-bold text-slate-900">{item.percentage}%</span>
-                            </div>
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                                <div
-                                    className={`h-full transition-all duration-1000 ${barClassName}`}
-                                    style={{ width: `${item.percentage}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
-                ))
-            ) : (
-                <p className="py-6 text-center text-sm italic text-slate-500">{emptyMessage}</p>
-            )}
+        <div className="space-y-2">
+            {items.length > 0 ? items.map((item) => (
+                <div key={item.name} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(2rem,22%)_3ch] items-center gap-2">
+                    <span className="min-w-0 break-words text-sm font-medium leading-snug text-slate-700">{item.name}</span>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true"><div className={`h-full ${barClassName}`} style={{ width: `${item.percentage}%` }} /></div>
+                    <span className="text-right text-xs font-semibold tabular-nums text-slate-900">{item.percentage}%</span>
+                </div>
+            )) : <p className="py-2 text-sm text-slate-500">{emptyMessage}</p>}
         </div>
     );
 
     const renderNearbyRegions = () => (
-        <div className="space-y-4">
+        <div className="space-y-2">
             {nearbyRegions.length > 0 ? nearbyRegions.map((item) => (
                 <div key={`${item.name}-${item.latitude}-${item.longitude}`} className="flex items-center justify-between">
                     <div className="flex-1">
                         <div className="mb-1 flex justify-between gap-3">
-                            <span className="break-words text-sm font-medium text-slate-700">{item.name}<span className="ml-2 text-xs font-normal text-slate-500">aprox. {item.distanceKm} km</span><span className="block text-xs font-normal leading-snug text-slate-500">Localização estimada: {item.latitude}, {item.longitude}</span></span>
+                            <span className="break-words text-sm font-medium text-slate-700">{item.name}<span className="ml-2 text-xs font-normal text-slate-500">aprox. {item.distanceKm} km</span></span>
                             <span className="text-sm font-bold text-slate-900">{item.percentage}%</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-orange-500 transition-all duration-1000" style={{ width: `${item.percentage}%` }} /></div>
                     </div>
                 </div>
-            )) : <p className="py-6 text-center text-sm italic text-slate-500">Capturando aproximações regionais...</p>}
+            )) : <p className="py-2 text-sm text-slate-500">Nenhuma estimativa disponível dentro de 5 km.</p>}
         </div>
     );
 
@@ -259,9 +247,10 @@ const AdminAnalytics = () => {
                         <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
                             <MapPin size={18} className="text-orange-500" /> Regiões Aproximadas
                         </CardTitle>
-                        <CardDescription className="text-xs leading-snug">Estimativas por IP, da mais próxima à mais distante, em até 5 km da clínica</CardDescription>
+                        <CardDescription className="text-xs leading-snug">Estimativas por IP, da mais próxima à mais distante, em até 5 km da clínica. IP indica uma região aproximada e pode não representar a posição real.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 pt-2">
+                        <p className="mb-3 text-sm text-slate-700"><strong>{cityVisits}</strong> {cityVisits === 1 ? "acesso estimado" : "acessos estimados"} em Governador Valadares, independentemente da distância.</p>
                         {renderNearbyRegions()}
                     </CardContent>
                 </Card>
