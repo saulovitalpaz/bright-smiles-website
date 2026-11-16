@@ -2098,6 +2098,7 @@ app.delete('/patient-documents/:id', authenticateToken, authorizeRole(['admin', 
 // Analytics API
 app.post('/analytics', analyticsHandlers.collect);
 app.get('/analytics/stats', authenticateToken, authorizeRole(['admin', 'manager']), analyticsHandlers.stats);
+app.get('/analytics/clinic', authenticateToken, authorizeRole(['admin', 'manager']), require('./routes/clinicAnalytics').createClinicAnalyticsHandler(prisma));
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);

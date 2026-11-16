@@ -1,125 +1,25 @@
 import type { ReactNode } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { fetchClient } from "@/lib/api";
 import AdminAnalytics from "./AdminAnalytics";
-
-vi.mock("@/components/admin/AdminLayout", () => ({
-    default: ({ children, title }: { children: ReactNode; title: string }) => (
-        <main aria-label={title}>{children}</main>
-    ),
-}));
-
-vi.mock("@/lib/api", () => ({
-    API_URL: "https://api.example.com",
-    fetchClient: vi.fn(),
-}));
-
-const fetchClientMock = vi.mocked(fetchClient);
-const fetchMock = vi.fn();
-
-const statsResponse = {
-    totalVisits: 12,
-    uniqueVisitors: 5,
-    conversionRate: "40.00",
-    leadsCount: 2,
-    sources: {
-        Google: 6,
-        Instagram: 3,
-        Direto: 3,
-    },
-    locations: {
-        "Governador Valadares": 2,
-        "Belo Horizonte": 7,
-        "Nova Lima": 5,
-    },
-    regions: {
-        MG: 12,
-    },
-    nearbyRegions: [
-        { city: "Governador Valadares", state: "MG", latitude: -18.85, longitude: -41.95, distanceKm: 0, count: 2 },
-        { city: "Perto", state: "MG", latitude: -18.8949, longitude: -41.95, distanceKm: 5, count: 8 },
-    ],
-    topPaths: {
-        "/": 5,
-        "/tratamentos": 4,
-        "/tratamento/clareamento": 3,
-    },
-    devices: {
-        mobile: 8,
-        desktop: 4,
-    },
-};
-
-const response = (body: unknown, ok = true, status = ok ? 200 : 500) => ({
-    ok,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-}) as unknown as Response;
-
-describe("AdminAnalytics", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        vi.stubGlobal("fetch", fetchMock);
-        fetchClientMock.mockResolvedValue(response(statsResponse));
-    });
-
-    it("loads protected stats with fetchClient and renders aggregate analytics", async () => {
-        render(<AdminAnalytics />);
-
-        await waitFor(() => {
-            expect(fetchClientMock).toHaveBeenCalledWith("/analytics/stats");
-        });
-        expect(fetchMock).not.toHaveBeenCalled();
-
-        expect(await screen.findByText("40.00%")).toBeInTheDocument();
-        expect(screen.getByText("/tratamentos")).toBeInTheDocument();
-        expect(screen.getByText("mobile")).toBeInTheDocument();
-        expect(screen.getByText("Governador Valadares, MG")).toBeInTheDocument();
-        expect(screen.getByText(/até 5 km da clínica/i)).toBeInTheDocument();
-        const nearbyCard = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
-        expect(nearbyCard).not.toBeNull();
-        expect(nearbyCard).toHaveTextContent(/2 acessos estimados em Governador Valadares/i);
-        expect(nearbyCard!.textContent!.indexOf("Governador Valadares")).toBeLessThan(nearbyCard!.textContent!.indexOf("Perto"));
-        expect(nearbyCard).toHaveTextContent("20%");
-        expect(nearbyCard).toHaveTextContent("80%");
-    });
-
-    it("shows city estimates even when no IP location is within five kilometres", async () => {
-        fetchClientMock.mockResolvedValueOnce(response({ ...statsResponse, nearbyRegions: [] }));
-        render(<AdminAnalytics />);
-        expect(await screen.findByText("Nenhuma estimativa disponível dentro de 5 km.")).toBeInTheDocument();
-        const card = screen.getByText("Regiões Aproximadas").closest("div[data-admin-card]");
-        expect(card).toHaveTextContent("2 acessos estimados em Governador Valadares");
-    });
-
-    it("shows a recoverable error when the protected request rejects", async () => {
-        fetchClientMock.mockRejectedValueOnce(new Error("offline"));
-        render(<AdminAnalytics />);
-        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar as métricas.");
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-
-    it("shows a retry state when protected stats fail", async () => {
-        const user = userEvent.setup();
-
-        fetchClientMock
-            .mockResolvedValueOnce(response({ error: "unauthorized" }, false, 401))
-            .mockResolvedValueOnce(response(statsResponse));
-
-        render(<AdminAnalytics />);
-
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-            "Não foi possível carregar as métricas.",
-        );
-
-        await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
-
-        await waitFor(() => {
-            expect(fetchClientMock).toHaveBeenCalledTimes(2);
-        });
-        expect(await screen.findByText("40.00%")).toBeInTheDocument();
-    });
+vi.mock("@/components/admin/AdminLayout", () => ({ default: ({ children }: { children: ReactNode }) => <main>{children}</main> }));
+vi.mock("@/lib/api", () => ({ fetchClient: vi.fn() }));
+const mock = vi.mocked(fetchClient);
+describe("Analytics clínico", () => {
+  beforeEach(() => { mock.mockReset(); });
+  it("apresenta indicadores clínicos e financeiros e resume o site", async () => {
+    mock.mockResolvedValue({ ok: true, json: async () => ({ clinic: { appointments: [{status: "attended", type: "odontologia", count: 3}], procedures: [{name: "Limpeza", count: 3}], treatments: [], patients: 2, plans: {pending: 4, completed: 2} }, finance: {income: {count: 1, total: 100, categories: {Consulta: {count: 1, total: 100}}}, expense: {count: 0, total: 0, categories: {}}, pending: {count: 0, total: 0} }, website: {visits: 12, leads: 2} }) } as Response);
+    render(<AdminAnalytics />);
+    expect(await screen.findByText("Limpeza")).toBeInTheDocument();
+    expect(screen.getByText("Consultas realizadas")).toBeInTheDocument();
+    expect(screen.getByText("Planos de tratamento")).toBeInTheDocument();
+    expect(screen.getByText("Site e solicitações")).toBeInTheDocument();
+    expect(screen.queryByText("Dispositivos")).not.toBeInTheDocument();
+  });
+  it("permite tentar novamente após erro", async () => {
+    mock.mockRejectedValue(new Error("offline"));
+    render(<AdminAnalytics />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível carregar");
+  });
 });

@@ -1,262 +1,65 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Calendar,
-    Eye,
-    Globe,
-    MapPin,
-    Route,
-    Smartphone,
-    Target,
-    Users,
-} from "lucide-react";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchClient } from "@/lib/api";
 
-interface AnalyticsData {
-    totalVisits: number;
-    uniqueVisitors: number;
-    conversionRate: string;
-    leadsCount: number;
-    sources: Record<string, number>;
-    locations: Record<string, number>;
-    regions: Record<string, number>;
-    nearbyRegions?: NearbyRegion[];
-    topPaths: Record<string, number>;
-    devices: Record<string, number>;
-}
-
-interface NearbyRegion {
-    city: string;
-    state?: string | null;
-    latitude: number;
-    longitude: number;
-    distanceKm: number;
-    count: number;
-}
-
-interface RankedMetric {
-    name: string;
-    count: number;
-    percentage: number;
-}
-
-const emptyAnalytics: AnalyticsData = {
-    totalVisits: 0,
-    uniqueVisitors: 0,
-    conversionRate: "0.00",
-    leadsCount: 0,
-    sources: {},
-    locations: {},
-    regions: {},
-    nearbyRegions: [],
-    topPaths: {},
-    devices: {},
+type Item = { name: string; count: number };
+type MoneyGroup = { count: number; total: number; categories: Record<string, { count: number; total: number }> };
+type Data = {
+    clinic: null | { appointments: { status: string; type: string; count: number }[]; procedures: Item[]; treatments: Item[]; patients: number; plans: { pending: number; completed: number } };
+    finance: { income: MoneyGroup; expense: MoneyGroup; pending: { count: number; total: number } };
+    website: { visits: number; leads: number };
 };
+const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+const monthStart = () => `${today().slice(0, 7)}-01`;
+const monthEnd = () => { const [year, month] = today().split("-").map(Number); return `${year}-${String(month).padStart(2, "0")}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, "0")}`; };
+const typeName = (type: string) => ({ odontologia: "Odontologia", facial: "Harmonização facial" }[type] || type || "Não informado");
 
-const rankMetrics = (
-    metrics: Record<string, number>,
-    total: number,
-    limit = 6,
-): RankedMetric[] => (
-    Object.entries(metrics)
-        .map(([name, count]) => ({
-            name,
-            count,
-            percentage: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, limit)
-);
-
-const AdminAnalytics = () => {
-    const [analytics, setAnalytics] = useState<AnalyticsData>(emptyAnalytics);
+function Panel({ title, children, note }: { title: string; children: React.ReactNode; note?: string }) {
+    return <Card className="min-w-0 border-slate-200 shadow-sm"><CardHeader className="p-4 pb-2"><CardTitle className="text-base font-semibold">{title}</CardTitle>{note && <p className="text-xs leading-relaxed text-slate-500">{note}</p>}</CardHeader><CardContent className="p-4 pt-2">{children}</CardContent></Card>;
+}
+function List({ items }: { items: Item[] }) {
+    const sorted = [...items].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+    return sorted.length ? <ul className="divide-y divide-slate-100">{sorted.map(item => <li key={item.name} className="flex min-w-0 justify-between gap-3 py-2 text-sm"><span className="min-w-0 break-words text-slate-700">{item.name}</span><strong className="shrink-0 tabular-nums">{item.count}</strong></li>)}</ul> : <p className="py-2 text-sm text-slate-500">Nenhum registro no período.</p>;
+}
+function FinanceList({ group }: { group: MoneyGroup }) {
+    const items = Object.entries(group.categories).sort((a, b) => b[1].total - a[1].total);
+    return <><p className="break-words text-xl font-semibold tabular-nums text-slate-900">{money(group.total)}</p><p className="mb-2 text-xs text-slate-500">{group.count} lançamento(s)</p>{items.length ? <ul className="divide-y divide-slate-100">{items.map(([name, item]) => <li key={name} className="flex flex-wrap justify-between gap-x-3 py-2 text-sm"><span className="break-words">{name} <span className="text-slate-500">({item.count})</span></span><strong className="tabular-nums">{money(item.total)}</strong></li>)}</ul> : <p className="text-sm text-slate-500">Nenhum lançamento no período.</p>}</>;
+}
+export default function AdminAnalytics() {
+    const [mode, setMode] = useState("month");
+    const [start, setStart] = useState(monthStart);
+    const [end, setEnd] = useState(monthEnd);
+    const [range, setRange] = useState({ start: monthStart(), end: monthEnd() });
+    const [data, setData] = useState<Data | null>(null);
     const [loading, setLoading] = useState(true);
-    const [statsError, setStatsError] = useState<string | null>(null);
-
-    const loadStats = async () => {
-        setLoading(true);
-        setStatsError(null);
-        try {
-            const response = await fetchClient("/analytics/stats");
-            if (!response.ok) throw new Error("Analytics unavailable");
-            const analyticsData = await response.json() as AnalyticsData;
-            setAnalytics({
-                ...emptyAnalytics,
-                ...analyticsData,
-            });
-        } catch {
-            setStatsError("Não foi possível carregar as métricas.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    const [error, setError] = useState("");
+    const [attempt, setAttempt] = useState(0);
     useEffect(() => {
-        void loadStats();
-    }, []);
-
-    const totalVisits = analytics.totalVisits || 1;
-    const sources = rankMetrics(analytics.sources, totalVisits);
-    const locations = rankMetrics(analytics.locations, totalVisits);
-    const topPaths = rankMetrics(analytics.topPaths, totalVisits);
-    const devices = rankMetrics(analytics.devices, totalVisits);
-    const cityVisits = Object.entries(analytics.locations).filter(([city]) => city.trim().toLocaleLowerCase("pt-BR") === "governador valadares").reduce((sum, [, count]) => sum + count, 0);
-    const nearbyTotal = analytics.nearbyRegions?.reduce((sum, region) => sum + region.count, 0) || 0;
-    const nearbyRegions = analytics.nearbyRegions?.length
-        ? analytics.nearbyRegions.map((region) => ({
-            ...region,
-            name: `${region.city}${region.state ? `, ${region.state}` : ""}`,
-            percentage: Math.round((region.count / nearbyTotal) * 100),
-        }))
-        : [];
-
-    const cards = [
-        { label: "Visitas Totais", value: analytics.totalVisits, icon: Eye, color: "text-blue-600", bg: "bg-blue-100" },
-        { label: "Visitantes Únicos", value: analytics.uniqueVisitors, icon: Users, color: "text-indigo-600", bg: "bg-indigo-100" },
-        { label: "Solicitações (Leads)", value: analytics.leadsCount, icon: Calendar, color: "text-orange-600", bg: "bg-orange-100" },
-        { label: "Taxa de Conversão", value: `${analytics.conversionRate}%`, icon: Target, color: "text-emerald-600", bg: "bg-emerald-100" },
-    ];
-
-    const renderRankedList = (
-        items: RankedMetric[],
-        emptyMessage: string,
-        barClassName: string,
-    ) => (
-        <div className="space-y-2">
-            {items.length > 0 ? items.map((item) => (
-                <div key={item.name} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(2rem,22%)_3ch] items-center gap-2">
-                    <span className="min-w-0 break-words text-sm font-medium leading-snug text-slate-700">{item.name}</span>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true"><div className={`h-full ${barClassName}`} style={{ width: `${item.percentage}%` }} /></div>
-                    <span className="text-right text-xs font-semibold tabular-nums text-slate-900">{item.percentage}%</span>
-                </div>
-            )) : <p className="py-2 text-sm text-slate-500">{emptyMessage}</p>}
-        </div>
-    );
-
-    const renderNearbyRegions = () => (
-        <div className="space-y-2">
-            {nearbyRegions.length > 0 ? nearbyRegions.map((item) => (
-                <div key={`${item.name}-${item.latitude}-${item.longitude}`} className="flex items-center justify-between">
-                    <div className="flex-1">
-                        <div className="mb-1 flex justify-between gap-3">
-                            <span className="break-words text-sm font-medium text-slate-700">{item.name}<span className="ml-2 text-xs font-normal text-slate-500">aprox. {item.distanceKm} km</span></span>
-                            <span className="text-sm font-bold text-slate-900">{item.percentage}%</span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-orange-500 transition-all duration-1000" style={{ width: `${item.percentage}%` }} /></div>
-                    </div>
-                </div>
-            )) : <p className="py-2 text-sm text-slate-500">Nenhuma estimativa disponível dentro de 5 km.</p>}
-        </div>
-    );
-
-    if (loading) {
-        return (
-            <AdminLayout title="Análise de Dados">
-                <div className="p-12 text-center text-slate-500 italic">Carregando métricas...</div>
-            </AdminLayout>
-        );
-    }
-
-    if (statsError) {
-        return (
-            <AdminLayout title="Análise de Dados">
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm">
-                    <p role="alert" className="text-sm font-medium text-red-700">
-                        {statsError}
-                    </p>
-                    <button
-                        type="button"
-                        onClick={() => { void loadStats(); }}
-                        className="mt-4 inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-                    >
-                        Tentar novamente
-                    </button>
-                </div>
-            </AdminLayout>
-        );
-    }
-
-    return (
-        <AdminLayout title="Análise de Dados">
-            <div className="mb-4 grid items-start grid-cols-2 gap-3 lg:grid-cols-4 md:mb-6">
-                {cards.map((stat) => (
-                    <Card key={stat.label} className="border-slate-100 shadow-sm transition-shadow hover:shadow-md">
-                        <CardContent className="p-3 sm:p-4">
-                            <div className="mb-2 flex items-start justify-between">
-                                <div className={`${stat.bg} p-1.5 rounded-lg ${stat.color}`}>
-                                    <stat.icon size={16} aria-hidden="true" />
-                                </div>
-                            </div>
-                            <h3 className="text-xs font-medium text-slate-600">{stat.label}</h3>
-                            <p className="admin-metric-value mt-1 text-xl text-slate-900">{stat.value}</p>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            <div className="mb-6 grid items-start grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
-
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="space-y-1 p-4 pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
-                            <Globe size={18} className="text-blue-500" /> Origem do Tráfego
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        {renderRankedList(sources, "Dados de tráfego insuficientes.", "bg-blue-500")}
-                    </CardContent>
-                </Card>
-
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="space-y-1 p-4 pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
-                            <Globe size={18} className="text-emerald-500" /> Cidades Principais
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        {renderRankedList(locations, "Aguardando dados geográficos.", "bg-emerald-500")}
-                    </CardContent>
-                </Card>
-
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="space-y-1 p-4 pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
-                            <Route size={18} className="text-violet-500" /> Páginas Mais Visitadas
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        {renderRankedList(topPaths, "Ainda não há páginas ranqueadas.", "bg-violet-500")}
-                    </CardContent>
-                </Card>
-
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="space-y-1 p-4 pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
-                            <Smartphone size={18} className="text-sky-500" /> Dispositivos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        {renderRankedList(devices, "Dispositivos ainda sem volume suficiente.", "bg-sky-500")}
-                    </CardContent>
-                </Card>
-
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="space-y-1 p-4 pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-slate-900">
-                            <MapPin size={18} className="text-orange-500" /> Regiões Aproximadas
-                        </CardTitle>
-                        <CardDescription className="text-xs leading-snug">Estimativas por IP, da mais próxima à mais distante, em até 5 km da clínica. IP indica uma região aproximada e pode não representar a posição real.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        <p className="mb-3 text-sm text-slate-700"><strong>{cityVisits}</strong> {cityVisits === 1 ? "acesso estimado" : "acessos estimados"} em Governador Valadares, independentemente da distância.</p>
-                        {renderNearbyRegions()}
-                    </CardContent>
-                </Card>
-            </div>
-        </AdminLayout>
-    );
-};
-
-export default AdminAnalytics;
+        let active = true;
+        setLoading(true); setError("");
+        const query = mode === "all" ? "" : `?${new URLSearchParams(range).toString()}`;
+        fetchClient(`/analytics/clinic${query}`).then(async response => {
+            if (!response.ok) throw new Error();
+            const result = await response.json() as Data;
+            if (active) setData(result);
+        }).catch(() => { if (active) { setData(null); setError("Não foi possível carregar os indicadores."); } }).finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [mode, range, attempt]);
+    const chooseMode = (value: string) => { setMode(value); if (value === "month") { const next = { start: monthStart(), end: monthEnd() }; setStart(next.start); setEnd(next.end); setRange(next); } };
+    const appointments = data?.clinic?.appointments || [];
+    const attended = appointments.filter(item => item.status === "attended");
+    const attendedCount = attended.reduce((sum, item) => sum + item.count, 0);
+    const scheduled = appointments.filter(item => item.status === "scheduled").reduce((sum, item) => sum + item.count, 0);
+    const cancelled = appointments.filter(item => item.status === "cancelled").reduce((sum, item) => sum + item.count, 0);
+    return <AdminLayout title="Análise de Dados"><div className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-xl font-semibold text-slate-900">Visão da clínica</h2><p className="mt-1 text-sm text-slate-600">Acompanhe atendimentos, pacientes e movimento financeiro.</p></div><div className="w-full sm:w-auto"><label htmlFor="period-mode" className="mb-1 block text-sm font-medium">Período</label><select id="period-mode" value={mode} onChange={e => chooseMode(e.target.value)} className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm sm:w-48"><option value="month">Este mês</option><option value="all">Todo o histórico</option><option value="custom">Personalizado</option></select></div></div>
+        {mode === "custom" && <form className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4" onSubmit={e => { e.preventDefault(); if (start && end && start <= end) setRange({ start, end }); }}><div><label htmlFor="start" className="block text-sm font-medium">De</label><input id="start" type="date" required value={start} max={end} onChange={e => setStart(e.target.value)} className="mt-1 min-h-11 max-w-full rounded-md border px-3" /></div><div><label htmlFor="end" className="block text-sm font-medium">Até</label><input id="end" type="date" required value={end} min={start} onChange={e => setEnd(e.target.value)} className="mt-1 min-h-11 max-w-full rounded-md border px-3" /></div><button className="min-h-11 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white" type="submit">Aplicar período</button></form>}
+        {loading ? <p role="status" className="py-8 text-center text-slate-500">Carregando indicadores...</p> : error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error} <button type="button" className="ml-2 min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Tentar novamente</button></div> : data && <>
+            {data.clinic && <><div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">{[{ label: "Consultas realizadas", value: attendedCount }, { label: "Agendamentos", value: scheduled }, { label: "Cancelados", value: cancelled }, { label: "Pacientes cadastrados", value: data.clinic.patients }].map(item => <Card key={item.label} className="min-w-0 border-slate-200"><CardContent className="p-4"><p className="text-sm text-slate-600">{item.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{item.value}</p></CardContent></Card>)}</div><p className="text-xs text-slate-500">Consultas e agendamentos pela data do atendimento; pacientes pela data de cadastro. Agendamentos mostram a situação atual.</p><Panel title="Planos de tratamento" note="Planos criados no período, pela situação atual. Concluído: todos os itens autorizados e concluídos. Pendentes incluem planos expirados ou parcialmente autorizados; planos cancelados não são contados."><div className="flex flex-wrap gap-x-8 gap-y-2 text-sm"><p><strong className="text-lg tabular-nums">{data.clinic.plans.pending}</strong> pendentes</p><p><strong className="text-lg tabular-nums">{data.clinic.plans.completed}</strong> concluídos</p></div></Panel><div className="grid items-start gap-4 lg:grid-cols-3"><Panel title="Consultas por tipo"><List items={attended.map(item => ({ name: typeName(item.type), count: item.count }))} /></Panel><Panel title="Procedimentos em consultas"><List items={data.clinic.procedures} /></Panel><Panel title="Tratamentos concluídos" note="Itens de planos concluídos, pela data da última atualização."><List items={data.clinic.treatments} /></Panel></div></>}
+            <section aria-labelledby="financial-title" className="space-y-3"><h3 id="financial-title" className="text-lg font-semibold">Financeiro</h3><div className="grid items-start gap-4 md:grid-cols-2"><Panel title="Entradas recebidas" note="Receitas realizadas, por categoria."><FinanceList group={data.finance.income} /></Panel><Panel title="Despesas" note="Lançamentos não estornados, por categoria."><FinanceList group={data.finance.expense} /></Panel></div><p className="text-sm text-slate-600">A receber: <strong>{money(data.finance.pending.total)}</strong> em {data.finance.pending.count} lançamento(s). Valores pela data do lançamento.</p></section>
+            <Panel title="Site e solicitações" note="Visitas ao site e solicitações recebidas no período."><div className="flex flex-wrap gap-x-8 gap-y-2 text-sm"><p><strong className="text-lg tabular-nums">{data.website.visits}</strong> visitas</p><p><strong className="text-lg tabular-nums">{data.website.leads}</strong> solicitações</p></div></Panel>
+        </>}
+    </div></AdminLayout>;
+}
